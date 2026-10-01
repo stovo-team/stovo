@@ -252,6 +252,12 @@
   margin-left: auto;
 }
 
+.call-popup-header-actions > .icon-button {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+}
+
 .call-popup-peer-name {
   font-size: 0.88rem;
   color: var(--text-secondary);
@@ -631,6 +637,47 @@
   align-content: stretch;
 }
 
+.call-grid--screen-share {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 22%);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.call-grid--screen-share > .call-grid__tile--screen {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.call-grid__participant-rail {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: center;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.call-grid__participant-rail > [data-participant-id] {
+  position: relative;
+  width: 100%;
+  height: auto !important;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
+.call-grid__participant-rail .call-grid__tile {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
 .call-grid--presenting .call-grid__tile--screen {
   max-height: min(52vh, 420px);
 }
@@ -969,13 +1016,18 @@
   padding: 11px 14px;
 }
 .call-audio-popup-close {
-  background: transparent;
-  border: none;
-  border-radius: 5px;
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
   color: var(--text-tertiary);
   cursor: pointer;
   display: flex;
-  padding: 3px;
+  flex: 0 0 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  width: 36px;
 }
 .call-audio-popup-close:hover {
   background: var(--surface-hover);
@@ -999,11 +1051,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.call-audio-popup-divider {
-  background: var(--border-default);
-  height: 1px;
-  margin: 2px 0;
-}
 .call-audio-popup-warning {
   color: var(--danger-text, #b91c1c);
   font-size: 0.82rem;
@@ -1022,16 +1069,35 @@
   font-size: 0.82rem;
   color: var(--text-secondary);
 }
-.call-audio-device-row select {
+.call-audio-device-trigger {
+  align-items: center;
   background: var(--background-primary);
   border: 1px solid var(--border-default);
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--text-primary);
-  font-size: 0.82rem;
-  padding: 5px 8px;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 7px 10px;
+  text-align: left;
   width: 100%;
 }
-
+.call-audio-device-trigger:disabled { cursor: not-allowed; opacity: .55; }
+.call-audio-device-select { position: relative; width: 100%; }
+.call-audio-device-menu {
+  bottom: auto;
+  left: auto;
+  min-width: 0;
+  transform: none;
+  z-index: 4000;
+}
+.call-audio-device-menu::before { display: none; }
+.call-audio-device-menu .guest-device-menu-heading { padding: .35rem .5rem; }
+.call-audio-device-menu .guest-device-menu-option { min-height: 38px; }
+.call-audio-device-select .guest-device-menu-trigger:focus-visible,
+.call-audio-device-trigger:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 /* Sliders */
 .call-audio-slider-row {
   display: flex;
@@ -1057,13 +1123,10 @@
   width: 100%;
 }
 .call-audio-sub-sliders {
-  background: var(--background-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px;
+  padding: 4px 0 0;
   margin-top: 2px;
 }
 
@@ -1075,13 +1138,12 @@
 }
 .call-audio-toggle-row {
   align-items: center;
-  background: var(--background-primary);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
+  background: transparent;
+  border: 0;
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  padding: 4px 8px;
+  padding: 4px 0;
 }
 .call-audio-toggle-row.disabled {
   opacity: 0.45;
@@ -1103,44 +1165,6 @@
 .call-audio-toggle-desc {
   color: var(--text-tertiary);
   font-size: 0.74rem;
-}
-.call-audio-badge {
-  border-radius: 4px;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  padding: 1px 5px;
-  text-transform: uppercase;
-}
-.call-audio-badge-browser {
-  background: var(--accent-soft);
-  color: var(--accent-primary);
-}
-.call-audio-badge-software {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
-}
-[data-theme-mode="dark"] .call-audio-badge-software {
-  color: #4ade80;
-}
-.call-audio-status-chip {
-  border-radius: 4px;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  text-transform: uppercase;
-}
-.call-audio-status-chip.active {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
-}
-[data-theme-mode="dark"] .call-audio-status-chip.active {
-  color: #4ade80;
-}
-.call-audio-status-chip.unsupported {
-  background: var(--surface-raised);
-  color: var(--text-tertiary);
 }
 
 /* iOS-style toggle switch */
@@ -14326,6 +14350,24 @@ span.message-spoiler.is-revealed {
   pointer-events: auto;
 }
 
+.mobile-active-screen--landscape {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  width: 100dvh;
+  height: 100vw;
+  padding: 0;
+  transform: rotate(90deg);
+  transform-origin: top left;
+  z-index: 10000;
+  overflow: hidden;
+}
+.mobile-active-screen--landscape .mobile-active-video-stage { inset: 0; }
+.mobile-active-screen--landscape .mobile-active-controls { z-index: 35; }
+.mobile-active-screen--landscape .mobile-active-top-bar { z-index: 40; }
+.mobile-active-landscape-close { left: 12px; right: auto; }
+.mobile-active-landscape-open { position: absolute; top: max(env(safe-area-inset-top, 0px), 16px); right: 16px; z-index: 32; display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--border-default); border-radius: 50%; background: color-mix(in srgb, var(--surface-raised) 88%, transparent); color: var(--text-primary); }
+
 .mobile-active-video-stage {
   position: absolute;
   inset: 0;
@@ -14495,6 +14537,7 @@ span.message-spoiler.is-revealed {
 }
 
 .mobile-active-shrink-btn {
+  flex: 0 0 40px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -14746,6 +14789,20 @@ span.message-spoiler.is-revealed {
   transform: translateX(-50%);
   width: calc(100vw - 32px);
   max-width: 360px;
+}
+
+.meeting-intel-popover--anchored {
+  bottom: auto;
+  max-width: min(336px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  transform: none;
+  animation: intelPopoverAnchoredFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes intelPopoverAnchoredFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
 .meeting-intel-background-toast {
@@ -24904,11 +24961,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
-.voice-participant-card.is-speaking {
-  border-color: #22c55e;
-  box-shadow: 0 0 22px rgba(34, 197, 94, 0.28);
-}
-
 /* Avatar Wrappers & Sizing Tiers */
 .voice-participant-avatar-wrapper {
   position: relative;
@@ -24983,29 +25035,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: block;
 }
 
-.voice-speaking-ring {
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  border: 3px solid #22c55e;
-  animation: voice-ring-pulse 1.5s infinite;
-}
-
-@keyframes voice-ring-pulse {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-}
-
 .voice-card-muted-badge {
   position: absolute;
   bottom: 0;
@@ -25050,16 +25079,6 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .voice-participant-video-feed.is-mirrored {
   transform: scaleX(-1);
-}
-
-.voice-video-speaking-border {
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  border: 3px solid #22c55e;
-  box-shadow: inset 0 0 16px rgba(34, 197, 94, 0.35);
-  pointer-events: none;
-  z-index: 3;
 }
 
 .voice-participant-card.has-video {
@@ -25148,11 +25167,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.voice-participant-list-row.is-speaking {
-  border-color: #22c55e;
-  box-shadow: 0 0 14px rgba(34, 197, 94, 0.2);
-}
-
 .voice-list-row-left {
   display: flex;
   align-items: center;
@@ -25190,11 +25204,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: block;
 }
 
-.voice-list-avatar-wrap .voice-speaking-ring {
-  inset: -3px;
-  border-width: 2px;
-}
-
 .voice-list-row-name {
   font-size: 0.92rem;
   font-weight: 600;
@@ -25220,6 +25229,12 @@ button.chat-info-title-edit:active:not(:disabled) {
 .voice-list-row-state {
   font-size: 0.78rem;
   opacity: 0.65;
+}
+
+.voice-participant-card.is-speaking .voice-participant-state,
+.voice-participant-list-row.is-speaking .voice-list-row-state {
+  color: #22c55e;
+  opacity: 1;
 }
 
 /* Empty State */
@@ -25289,6 +25304,116 @@ button.chat-info-title-edit:active:not(:disabled) {
 /* ─────────────────────────────────────────────────────────────
    Bottom Bar & Controls
    ───────────────────────────────────────────────────────────── */
+
+/* Shared structure and control affordances for direct/group calls, voice
+   channels, and guest meetings. Surface wrappers retain their own placement. */
+.shared-call-stage {
+  color: var(--text-primary, #fff);
+  min-width: 0;
+}
+
+.call-grid__flip-camera {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.shared-call-stage .voice-room-grid,
+.shared-call-stage .call-grid {
+  margin-inline: auto;
+  max-width: 1120px;
+  width: 100%;
+}
+
+.shared-call-stage .voice-participant-card,
+.shared-call-stage .call-grid__tile {
+  background: #080808;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 18px;
+  box-sizing: border-box;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.shared-call-stage .voice-participant-card,
+.shared-call-stage .call-grid__tile { transition: background .2s ease; }
+
+.shared-call-controls {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.shared-call-controls .call-ctrl-btn,
+.shared-call-controls .voice-dock-btn,
+.shared-call-controls .mobile-active-ctrl-btn,
+.shared-call-controls .guest-device-control > button {
+  align-items: center;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, .12));
+  border-radius: 50%;
+  display: inline-flex;
+  flex: 0 0 48px;
+  height: 48px;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0;
+  width: 48px;
+}
+
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active) {
+  background: var(--surface-raised, #292a2d);
+  border-color: var(--border-default, #41434a);
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.shared-call-controls .call-ctrl-btn.is-muted:has(svg.lucide-volume-2),
+.shared-call-controls .mobile-active-ctrl-btn.muted:has(svg.lucide-volume-2) { color: var(--text-secondary, #a1a1aa); }
+
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.shared-call-controls .voice-dock-btn.is-active {
+  width: 48px;
+}
+
+.shared-call-controls .guest-device-control {
+  gap: 0;
+}
+
+.guest-preview-controls .shared-call-control-button {
+  flex: 0 0 48px;
+  height: 48px;
+  min-height: 48px;
+  width: 48px;
+}
+
+.voice-mobile-only-control {
+  display: none !important;
+}
 
 .voice-room-bottom-bar {
   display: flex;
@@ -25556,8 +25681,37 @@ button.chat-info-title-edit:active:not(:disabled) {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+
+.call-grid__participant-status {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .58);
+  color: #fff;
+  font-size: 11px;
+}
+
+.call-grid__tile.is-speaking .call-grid__participant-status,
+.mobile-active-speaking-status.is-speaking {
+  color: #22c55e;
+}
+
 .call-grid__tile.is-speaking {
-  box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.35);
+  outline: 1px solid #22c55e;
+  outline-offset: -1px;
+}
+
+.call-grid__tile.is-speaking .call-grid__avatar-circle {
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, .82);
+}
+
+.mobile-active-speaking-status {
+  color: var(--text-secondary);
+  font-size: .85rem;
+  font-weight: 650;
 }
 
 .call-grid__avatar-wrap {
@@ -25751,9 +25905,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.call-grid__tile.is-speaking {
-  box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.35);
-}
 
 .call-grid__avatar-wrap {
   position: relative;
@@ -29753,9 +29904,311 @@ button.checklist-add-item-btn:hover,
 .guest-test-sound { align-items: center; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 10px; color: var(--text-primary); cursor: pointer; display: inline-flex; font: inherit; font-size: .82rem; gap: .4rem; justify-content: center; min-height: 34px; }
 .guest-test-sound:disabled { cursor: not-allowed; opacity: .48; }
 .guest-device-issue { color: var(--text-secondary); font-size: .78rem; line-height: 1.35; margin: 0; }
+.guest-call-room .voice-room-stage > .guest-device-issue--visible {
+  background: rgba(24, 24, 27, .94);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  max-width: min(92vw, 32rem);
+  padding: .55rem .8rem;
+  position: absolute;
+  transform: translateX(-50%);
+  width: max-content;
+  z-index: 11;
+}
+
+/* One-to-one mobile video keeps the remote feed full-stage and a tappable
+   self preview in the lower-right corner. */
+.mobile-active-video-stage .call-grid--mobile-single {
+  position: absolute !important;
+  inset: 0;
+  display: block !important;
+  width: 100%;
+  height: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap {
+  box-sizing: border-box;
+  border-radius: 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--primary,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--primary {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--pip,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--pip > .call-grid__tile {
+  position: absolute;
+  width: 104px;
+  height: 140px;
+  min-height: 0;
+  aspect-ratio: auto;
+  right: 12px;
+  bottom: max(calc(env(safe-area-inset-bottom, 0px) + 104px), 116px);
+  z-index: 20;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap > .call-grid__tile--local {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: inherit;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--primary > .call-grid__tile--remote {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--pip > .call-grid__mobile-flip-camera,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--primary > .call-grid__mobile-flip-camera {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 25;
+  width: 36px;
+  height: 36px;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--pip {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-primary > .call-grid__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-pip > .call-grid__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Mobile calls keep the three frequent actions in the first row and put
+   secondary actions behind More in the second row. */
+.mobile-active-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, auto));
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  row-gap: 12px;
+  column-gap: 18px;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
+}
+
+.mobile-active-controls > .mobile-active-secondary-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+}
+
+/* Keep the mobile primary actions and More/End affordances on one compact row. */
+.mobile-active-controls {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  box-sizing: border-box;
+  column-gap: clamp(2px, 2vw, 12px);
+  row-gap: 0;
+  flex-wrap: nowrap;
+}
+
+.mobile-active-controls > .mobile-active-secondary-controls {
+  display: contents;
+}
+
+.mobile-active-controls .mobile-active-ctrl {
+  min-width: 0;
+}
+
+.mobile-active-controls .mobile-active-ctrl-lbl {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.call-grid--focus {
+  width: 100%;
+  height: 100%;
+  gap: 10px;
+  align-content: stretch;
+}
+
+.call-grid-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.call-grid__audio-pool {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.call-grid__focus-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 18px;
+  background: #080808;
+}
+
+.call-grid__focus-main > .call-grid__label,
+.call-grid__focus-main > .call-grid__participant-status {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  bottom: 10px;
+}
+
+.call-grid__focus-main > .call-grid__participant-status {
+  left: auto;
+  right: 10px;
+  top: 10px;
+  bottom: auto;
+}
+
+.call-grid__focus-participants {
+  min-width: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.call-grid__focus-participant {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border-default, #343b48);
+  border-radius: 10px;
+  background: #080808;
+  color: inherit;
+  cursor: pointer;
+}
+
+.call-grid__focus-participant .call-grid__label {
+  z-index: 2;
+}
+
+.call-grid__focus-close {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--border-default, #465166);
+  border-radius: 999px;
+  background: var(--surface-raised, #232b37);
+  color: inherit;
+  cursor: pointer;
+}
+
+.mobile-active-more-anchor {
+  position: relative;
+}
+
+.mobile-active-more-menu {
+  position: absolute;
+  left: 0;
+  right: auto;
+  bottom: calc(100% + 12px);
+  z-index: 40;
+  display: grid;
+  gap: 3px;
+  width: min(336px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  min-width: 212px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--border-default) 75%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--surface-raised) 92%, #101827);
+  box-shadow: 0 12px 32px #0008;
+  backdrop-filter: blur(20px);
+}
+
+.mobile-active-more-menu button {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meeting-intel-popover--inline-menu {
+  position: static;
+  inset: auto;
+  width: auto;
+  max-width: none;
+  transform: none;
+  animation: none;
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.meeting-intel-popover--inline-menu .meeting-intel-content { padding: 0; display: grid; gap: 2px; }
+.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 6px 10px 4px; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-title-row { gap: 7px; }
+.meeting-intel-popover--inline-menu .meeting-intel-logo { width: 16px; height: 16px; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-secondary); font-size: 11px; font-weight: 650; }
+.meeting-intel-popover--inline-menu .meeting-intel-card { padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-card:hover { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
+.meeting-intel-popover--inline-menu .meeting-intel-card-head { min-height: 30px; }
+.meeting-intel-popover--inline-menu .meeting-intel-card-icon { width: 20px; height: 20px; }
+
+.mobile-active-more-menu button:hover,
+.mobile-active-more-menu button:focus-visible {
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  outline: none;
+}
+.mobile-active-screen--landscape .mobile-active-more-menu { width: min(336px, calc(100dvh - 32px)); max-width: min(336px, calc(100dvh - 32px)); }
 .guest-preview-controls { align-items: end; flex-wrap: wrap; gap: .7rem; }
 .guest-device-control { align-items: center; background: var(--surface-raised); border: 0; border-radius: 999px; display: flex; gap: 0; height: 48px; position: relative; }
-.guest-preview-controls .guest-device-control > button { background: transparent; border: 0; border-radius: 50%; color: var(--text-secondary); cursor: pointer; flex: 0 0 46px; height: 46px; padding: 0; width: 46px; }
+.guest-preview-controls .guest-device-control > button { background: transparent; border: 0; border-radius: 50%; color: var(--text-secondary); cursor: pointer; flex: 0 0 48px; height: 48px; padding: 0; width: 48px; }
 .guest-preview-controls .guest-device-control > button.active { color: var(--accent-primary); }
 .guest-device-select { align-items: center; align-self: stretch; border-left: 1px solid var(--border-default); display: inline-flex; position: relative; }
 .guest-preview-controls .guest-device-menu-trigger { align-items: center; background: transparent; border: 0; border-radius: 0 999px 999px 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; height: 46px; justify-content: center; padding: 0; transition: background .16s ease, color .16s ease; width: 27px; }
@@ -29789,9 +30242,9 @@ button.checklist-add-item-btn:hover,
 .guest-prejoin-title-row { align-items: flex-start; }
 .guest-preview-avatar-halo { display: grid; height: 82px; isolation: isolate; place-items: center; position: relative; width: 82px; z-index: 0; }
 .guest-call-avatar-halo { height: 140px; width: 140px; }
+.guest-mobile-output-control, .guest-mobile-flip-control { display: none; }
 .guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
-.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: transparent; border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; z-index: -1; }
-@media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
+@media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-preview-controls .guest-device-select { display: none; } .guest-preview-controls .guest-mobile-output-control, .guest-preview-controls .guest-mobile-flip-control { display: inline-flex; } .guest-call-controls .guest-mobile-output-control, .guest-call-controls .guest-mobile-flip-control { display: inline-flex; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
 
 /* Guest meetings use the same stage, participant tiles, and control dock as group calls. */
 .guest-meeting-page--in-call {
@@ -29960,11 +30413,6 @@ button.checklist-add-item-btn:hover,
   width: 1px;
 }
 
-/* Keep the speaking state visible over a camera or screen share without motion. */
-.guest-call-room .guest-video-speaking-border {
-  border-color: color-mix(in srgb, var(--accent-primary) 86%, #ffffff);
-  box-shadow: inset 0 0 16px color-mix(in srgb, var(--accent-primary) 34%, transparent), 0 0 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-}
 
 .guest-call-avatar-placeholder {
   align-items: center;
@@ -29997,18 +30445,20 @@ button.checklist-add-item-btn:hover,
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 50%;
+  border-radius: 999px 0 0 999px;
   color: #fff;
   cursor: pointer;
   display: inline-flex;
-  height: 46px;
+  height: 48px;
   justify-content: center;
   padding: 0;
-  width: 46px;
+  width: 48px;
 }
 
 .guest-call-controls .guest-device-control > button.active { color: #fff; }
 .guest-call-controls .guest-device-control > button:not(.active) { color: #fb7185; }
+.guest-call-controls.shared-call-controls .guest-device-control > button.active { background: transparent; border-color: transparent; color: var(--accent-primary); }
+.guest-call-controls.shared-call-controls .guest-device-control > button:not(.active) { background: rgba(220, 38, 38, .12); border-color: transparent; color: #fb7185; }
 .guest-call-controls .guest-device-select { align-items: center; align-self: stretch; border-left: 1px solid rgba(255, 255, 255, .12); display: inline-flex; position: relative; }
 .guest-call-controls .guest-device-menu-trigger { align-items: center; background: transparent; border: 0; border-radius: 0 999px 999px 0; color: rgba(255, 255, 255, .7); cursor: pointer; display: inline-flex; height: 46px; justify-content: center; padding: 0; width: 27px; }
 .guest-call-controls .guest-device-menu-trigger:hover, .guest-call-controls .guest-device-menu-trigger[aria-expanded="true"] { background: rgba(255, 255, 255, .08); color: #fff; }
@@ -30025,8 +30475,10 @@ button.checklist-add-item-btn:hover,
 /* An unselected option contains one span, so it must not be mistaken for the
    selected-option checkmark by the generic last-child selector above. */
 .guest-device-menu-option > span:only-child { color: #fff; }
+.guest-device-menu.call-audio-device-menu { bottom: auto; left: auto; transform: none; z-index: 4000; }
 
 @media (max-width: 720px) {
+  .voice-mobile-only-control { display: inline-flex !important; }
   .guest-meeting-page--in-call { padding-top: 0; }
   .guest-call-room .voice-room-stage { padding: 5rem .65rem .65rem; }
   .guest-call-header { top: .8rem; }

@@ -537,7 +537,7 @@ export const strings = {
       you: "Вы",
     },
     voiceRoom: {
-      noUsers: "Нет участников",
+      microphone: "Микрофон", speaker: "Динамик", camera: "Камера", selectDevice: "Выбрать", deviceLabelFormat: "Устройство: {label}", systemDefault: "По умолчанию", deviceSelectionUnavailable: "Выбор устройства недоступен", noUsers: "Нет участников",
       noUsersDescription: "В этом голосовом канале сейчас никого нет. Присоединяйтесь к общению!",
       joinVoiceChannel: "Войти в голосовой канал",
       connecting: "Подключение…",

@@ -107,7 +107,7 @@ describe("VoiceChannelStage", () => {
     const mockSession = {
       callPhase: "idle",
       activeCallChatId: null,
-      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false, speakerMode: "small", cameraFacingMode: "user" },
       applyCallAudioPatch: vi.fn(),
       toggleScreenShare: vi.fn(),
       endActiveCall: vi.fn(),
@@ -148,7 +148,7 @@ describe("VoiceChannelStage", () => {
     const session = {
       callPhase: "idle",
       activeCallChatId: null,
-      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false, speakerMode: "small", cameraFacingMode: "user" },
       applyCallAudioPatch: vi.fn(),
       toggleScreenShare: vi.fn(),
       endActiveCall: vi.fn(),
@@ -277,7 +277,7 @@ describe("VoiceChannelStage", () => {
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
-      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false, speakerMode: "small", cameraFacingMode: "user" },
       callAudioCapabilities: { canShareScreen: true },
       applyCallAudioPatch: mockApplyCallAudioPatch,
       toggleScreenShare: vi.fn(),
@@ -327,7 +327,8 @@ describe("VoiceChannelStage", () => {
     expect(mockEndActiveCall).toHaveBeenCalled();
 
     // Test Mic toggle
-    const micBtn = buttons[0] as HTMLButtonElement;
+    const deviceControls = inCallToolbar!.querySelectorAll(".guest-device-control");
+    const micBtn = deviceControls[0]?.querySelector(".voice-dock-btn") as HTMLButtonElement;
     expect(micBtn).toBeDefined();
     act(() => {
       micBtn.click();
@@ -335,7 +336,14 @@ describe("VoiceChannelStage", () => {
     expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ micMuted: true });
 
     // Test Video button
-    const videoBtn = buttons[1] as HTMLButtonElement;
+    const speakerBtn = deviceControls[1]?.querySelector(".voice-dock-btn") as HTMLButtonElement;
+    expect(speakerBtn).toBeDefined();
+    act(() => {
+      speakerBtn.click();
+    });
+    expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ soundDisabled: true });
+
+    const videoBtn = deviceControls[2]?.querySelector(".voice-dock-btn") as HTMLButtonElement;
     expect(videoBtn).toBeDefined();
     act(() => {
       videoBtn.click();
@@ -343,8 +351,17 @@ describe("VoiceChannelStage", () => {
     expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: true });
     expect(mockAudioToggleVideo).toHaveBeenCalledWith(true);
 
+    const outputBtn = inCallToolbar!.querySelector('[aria-label="Audio output"]') as HTMLButtonElement;
+    const flipCameraBtn = inCallToolbar!.querySelector('[aria-label="Flip camera"]') as HTMLButtonElement;
+    expect(outputBtn.classList.contains("voice-mobile-only-control")).toBe(true);
+    expect(flipCameraBtn.classList.contains("voice-mobile-only-control")).toBe(true);
+    act(() => outputBtn.click());
+    act(() => flipCameraBtn.click());
+    expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ speakerMode: "large" });
+    expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraFacingMode: "environment" });
+
     // Test Screen Share button
-    const shareBtn = buttons[2] as HTMLButtonElement;
+    const shareBtn = inCallToolbar!.querySelector('[aria-label="Share Screen"]') as HTMLButtonElement;
     expect(shareBtn).toBeDefined();
     act(() => {
       shareBtn.click();
@@ -581,7 +598,7 @@ describe("VoiceChannelStage", () => {
     expect(mockToggleScreenShare).toHaveBeenCalled();
   });
 
-  it("shows the server error when AI Notes cannot start", async () => {
+  it("does not render a notice banner when AI Notes cannot start", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ detail: "Transcription service is not configured" }),
       { status: 503, headers: { "Content-Type": "application/json" } },
@@ -616,14 +633,14 @@ describe("VoiceChannelStage", () => {
       (container.querySelector("button[aria-label='Stovo Intelligence']") as HTMLButtonElement).click();
     });
     await act(async () => {
-      (container.querySelector("button[aria-label='Start AI Notes']") as HTMLButtonElement).click();
+      (document.body.querySelector("button[aria-label='Start AI Notes']") as HTMLButtonElement).click();
       await Promise.resolve();
     });
 
     expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
-  it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {
+  it("keeps the Speaking status without a ring around the participant avatar", () => {
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
@@ -656,10 +673,11 @@ describe("VoiceChannelStage", () => {
     );
 
     const speakingRings = container.querySelectorAll(".voice-speaking-ring");
-    expect(speakingRings.length).toBeGreaterThan(0);
+    expect(speakingRings).toHaveLength(0);
+    expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 
-  it("renders wave animation badge in top-right corner of active video feed in voice room when speaking", () => {
+  it("keeps the Speaking status without a top-right wave badge over active video in a voice room", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -714,7 +732,8 @@ describe("VoiceChannelStage", () => {
     const videoContainer = container.querySelector(".voice-participant-video-container");
     expect(videoContainer).not.toBeNull();
     const waveBadge = videoContainer?.querySelector(".speaking-wave-badge");
-    expect(waveBadge).not.toBeNull();
+    expect(waveBadge).toBeNull();
+    expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 
   it("shows the shared screen above the voice channel camera tiles", () => {

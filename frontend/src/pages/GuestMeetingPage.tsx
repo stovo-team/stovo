@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Camera, CameraOff, ChevronDown, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
@@ -11,6 +11,10 @@ import { useTranscription, type TranscriptState } from "../features/chats/callin
 import { useLiveCaptions } from "../features/chats/calling/useLiveCaptions";
 import { LiveCaptionsOverlay } from "../features/chats/calling/LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingIntelligencePopover";
+import { CallControlButton } from "../features/chats/calling/CallControlButton";
+import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
+import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
+import { createCallSpeakingIndicator, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
 import {
   createGuestMeetingSession,
   getGuestMeetingIntelligence,
@@ -25,16 +29,13 @@ import {
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 import { resolveGuestMeetingQualityBitrates, videoTrackPublishOptions } from "../realtime/call/callQuality";
 import { EmptyGuestRoomTimeout } from "./guestMeetingEmptyRoomTimeout";
+import { CameraTrackReplacementFailedError, CameraTrackReplacementRollbackError, replacePublishedCameraTrackSafely } from "./guestMeetingCameraTrackReplacement";
+import { updateMutedParticipantIds } from "./guestParticipantMuteState";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
-const SPEAKING_RING_RELEASE_DELAY_MS = 1000;
-
-function deviceLabel(device: MediaDeviceInfo, fallback: string, index: number) {
-  return device.label || `${fallback} ${index + 1}`;
-}
 
 function streamAspectRatio(stream: MediaStream | null | undefined) {
   const settings = stream?.getVideoTracks()[0]?.getSettings();
@@ -77,6 +78,8 @@ export default function GuestMeetingPage() {
   const [error, setError] = useState<string | null>(null);
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteParticipantStream[]>([]);
+  const [remoteSpeakingUserIds, setRemoteSpeakingUserIds] = useState<string[]>([]);
+  const [remoteMutedUserIds, setRemoteMutedUserIds] = useState<string[]>([]);
   const [remoteParticipantCount, setRemoteParticipantCount] = useState(0);
   const [emptyRoomWarning, setEmptyRoomWarning] = useState(false);
   const [wasDisconnectedForEmptyRoom, setWasDisconnectedForEmptyRoom] = useState(false);
@@ -87,13 +90,14 @@ export default function GuestMeetingPage() {
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState("");
   const [speakerDeviceId, setSpeakerDeviceId] = useState("");
   const [cameraDeviceId, setCameraDeviceId] = useState("");
+  const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("user");
   const [inputGain, setInputGain] = useState(100);
   const [outputVolume, setOutputVolume] = useState(100);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [meterLevel, setMeterLevel] = useState(0);
-  const [speakingIndicatorState, setSpeakingIndicatorState] = useState<"idle" | "speaking" | "settling">("idle");
+  const [speakingIndicatorState, setSpeakingIndicatorState] = useState<CallSpeakingState>("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
   const localRef = useRef<HTMLVideoElement>(null);
   const roomRef = useRef<Room | null>(null);
@@ -106,16 +110,71 @@ export default function GuestMeetingPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const meterFrameRef = useRef<number | null>(null);
-  const speakingReleaseTimerRef = useRef<number | null>(null);
+  const speakingIndicatorRef = useRef<ReturnType<typeof createCallSpeakingIndicator> | null>(null);
+  const remoteSpeakingIndicatorsRef = useRef(new Map<string, ReturnType<typeof createCallSpeakingIndicator>>());
+  function updateRemoteSpeakingParticipants(activeIds: string[]) {
+    const active = new Set(activeIds);
+    const ids = new Set([...remoteSpeakingIndicatorsRef.current.keys(), ...active]);
+    for (const id of ids) {
+      let indicator = remoteSpeakingIndicatorsRef.current.get(id);
+      if (!indicator) {
+        indicator = createCallSpeakingIndicator((nextState) => {
+          setRemoteSpeakingUserIds((previous) => {
+            const next = new Set(previous);
+            if (nextState === "idle") next.delete(id);
+            else next.add(id);
+            return [...next];
+          });
+        });
+        remoteSpeakingIndicatorsRef.current.set(id, indicator);
+      }
+      indicator.update({ microphoneEnabled: true, level: active.has(id) ? CALL_SPEAKING_THRESHOLD : 0 });
+    }
+  }
+  function clearRemoteSpeakingParticipant(id?: string) {
+    if (id) {
+      remoteSpeakingIndicatorsRef.current.get(id)?.dispose();
+      remoteSpeakingIndicatorsRef.current.delete(id);
+      setRemoteSpeakingUserIds((previous) => previous.filter((userId) => userId !== id));
+      setRemoteMutedUserIds((previous) => updateMutedParticipantIds(previous, id, false));
+      return;
+    }
+    for (const indicator of remoteSpeakingIndicatorsRef.current.values()) indicator.dispose();
+    remoteSpeakingIndicatorsRef.current.clear();
+    setRemoteSpeakingUserIds([]);
+    setRemoteMutedUserIds([]);
+  }
+  function setRemoteMicrophoneMuted(id: string, muted: boolean) {
+    setRemoteMutedUserIds((previous) => updateMutedParticipantIds(previous, id, muted));
+    remoteSpeakingIndicatorsRef.current.get(id)?.update({ microphoneEnabled: !muted, level: 0 });
+  }
+  useEffect(() => () => {
+    for (const indicator of remoteSpeakingIndicatorsRef.current.values()) indicator.dispose();
+    remoteSpeakingIndicatorsRef.current.clear();
+  }, []);
   const hasEditedNameRef = useRef(false);
   const guestSessionIDRef = useRef<string | null>(null);
   const screenShareStreamRef = useRef<MediaStream | null>(null);
   const emptyRoomTimeoutRef = useRef<EmptyGuestRoomTimeout | null>(null);
   const emptyRoomTimeoutCallbacksRef = useRef<{ onWarning: () => void; onTimeout: () => void }>({ onWarning: () => {}, onTimeout: () => {} });
 
+  useEffect(() => {
+    const indicator = createCallSpeakingIndicator(setSpeakingIndicatorState);
+    speakingIndicatorRef.current = indicator;
+    return () => {
+      indicator.dispose();
+      speakingIndicatorRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    speakingIndicatorRef.current?.update({ microphoneEnabled, level: meterLevel });
+  }, [microphoneEnabled, meterLevel]);
+
   const isOrgMemberOrHost = Boolean(accessToken && currentUser);
   const [meetingRoomId, setMeetingRoomId] = useState<string | null>(null);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [guestIntelStatus, setGuestIntelStatus] = useState<GuestMeetingIntelligenceStatus | null>(null);
 
   emptyRoomTimeoutCallbacksRef.current = {
@@ -219,8 +278,6 @@ export default function GuestMeetingPage() {
   function stopLocalMedia() {
     if (meterFrameRef.current !== null) window.cancelAnimationFrame(meterFrameRef.current);
     meterFrameRef.current = null;
-    if (speakingReleaseTimerRef.current !== null) window.clearTimeout(speakingReleaseTimerRef.current);
-    speakingReleaseTimerRef.current = null;
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     sourceAudioStreamRef.current?.getTracks().forEach((track) => track.stop());
     sourceVideoStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -235,6 +292,7 @@ export default function GuestMeetingPage() {
     if (localRef.current) localRef.current.srcObject = null;
     setMeterLevel(0);
     setSpeakingIndicatorState("idle");
+    speakingIndicatorRef.current?.update({ microphoneEnabled: false, level: 0 });
   }
 
   async function stopScreenShare() {
@@ -381,6 +439,70 @@ export default function GuestMeetingPage() {
     if (kind === "audio") setMicrophoneEnabled(enabled); else setCameraEnabled(enabled);
   }
 
+  function cycleAudioOutput() {
+    const available = outputDevices;
+    if (available.length === 0) {
+      setSpeakerEnabled((enabled) => !enabled);
+      return;
+    }
+    const currentIndex = available.findIndex((device) => device.deviceId === speakerDeviceId);
+    const next = available[(currentIndex + 1) % available.length];
+    setSpeakerDeviceId(next.deviceId);
+    setSpeakerEnabled(true);
+  }
+
+  async function flipCamera() {
+    const next: "user" | "environment" = cameraFacingMode === "user" ? "environment" : "user";
+    const track = localStreamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ facingMode: { exact: next } });
+      setCameraFacingMode(next);
+    } catch {
+      try {
+        const replacementStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { exact: next } } });
+        const replacementTrack = replacementStream.getVideoTracks()[0];
+        if (!replacementTrack) {
+          replacementStream.getTracks().forEach((item) => item.stop());
+          throw new Error("No camera track was returned.");
+        }
+        replacementTrack.enabled = track.enabled;
+        const previousVideoStream = sourceVideoStreamRef.current;
+        const previousLocalStream = localStreamRef.current;
+        const room = roomRef.current;
+        try {
+          if (room) {
+            await replacePublishedCameraTrackSafely(room.localParticipant, track, replacementTrack, {
+              source: Track.Source.Camera,
+              ...videoTrackPublishOptions(guestCallQuality.cameraBitrateKbps, "camera"),
+            });
+          }
+        } catch (publishError) {
+          replacementStream.getTracks().forEach((item) => item.stop());
+          throw publishError;
+        }
+        const replacementLocalStream = new MediaStream([
+          ...(previousLocalStream?.getAudioTracks() ?? []),
+          replacementTrack,
+        ]);
+        localStreamRef.current = replacementLocalStream;
+        sourceVideoStreamRef.current = replacementStream;
+        if (localRef.current) localRef.current.srcObject = replacementLocalStream;
+        track.stop();
+        previousVideoStream?.getTracks().forEach((item) => item.stop());
+        setCameraDeviceId("");
+        setCameraFacingMode(next);
+        setDeviceIssue(null);
+      } catch (error) {
+        setDeviceIssue(error instanceof CameraTrackReplacementRollbackError
+          ? "Camera rotation failed and the previous camera could not be restored. Rejoin the meeting if video remains unavailable."
+          : error instanceof CameraTrackReplacementFailedError
+            ? "Could not publish the selected camera. Your previous camera remains active."
+            : "Could not switch cameras. Your previous camera remains active.");
+      }
+    }
+  }
+
   function setMicVolume(value: number) {
     setInputGain(value);
     if (inputGainNodeRef.current) inputGainNodeRef.current.gain.value = value / 100;
@@ -466,7 +588,22 @@ export default function GuestMeetingPage() {
       if (credentials.roomName) setMeetingRoomId(credentials.roomName);
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
+      room.on(RoomEvent.ActiveSpeakersChanged, (participants) => {
+        updateRemoteSpeakingParticipants(participants.filter((participant) => !participant.isLocal).map((participant) => participant.identity));
+      });
+      room.on(RoomEvent.TrackMuted, (publication, participant) => {
+        if (publication.source === Track.Source.Microphone) {
+          setRemoteMicrophoneMuted(participant.identity, true);
+        }
+      });
+      room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
+        if (publication.source === Track.Source.Microphone) {
+          setRemoteMicrophoneMuted(participant.identity, false);
+        }
+      });
+      room.on(RoomEvent.Disconnected, () => clearRemoteSpeakingParticipant());
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        setRemoteMicrophoneMuted(participant.identity, !participant.isMicrophoneEnabled);
         if (!track.mediaStreamTrack) return;
         setRemoteStreams((previous) => {
           const existing = previous.find((item) => item.id === participant.identity);
@@ -487,7 +624,10 @@ export default function GuestMeetingPage() {
         return nextItem.cameraStream || nextItem.screenStream ? [nextItem] : [];
       })));
       room.on(RoomEvent.ParticipantConnected, () => setRemoteParticipantCount(room.remoteParticipants.size));
-      room.on(RoomEvent.ParticipantDisconnected, (participant) => setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity)));
+      room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+        clearRemoteSpeakingParticipant(participant.identity);
+        setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity));
+      });
       room.on(RoomEvent.ParticipantDisconnected, () => setRemoteParticipantCount(room.remoteParticipants.size));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
       setMeetingRoomId(room.name || credentials.roomName || null);
@@ -513,30 +653,6 @@ export default function GuestMeetingPage() {
   async function leaveForEmptyRoomTimeout() { setWasDisconnectedForEmptyRoom(true); await leave({ dueToEmptyRoom: true }); }
   function stayInEmptyRoom() { setEmptyRoomWarning(false); emptyRoomTimeoutRef.current?.stay(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
-  const hasVoiceActivity = microphoneEnabled && meterLevel >= 8;
-  useEffect(() => {
-    if (speakingReleaseTimerRef.current !== null) {
-      window.clearTimeout(speakingReleaseTimerRef.current);
-      speakingReleaseTimerRef.current = null;
-    }
-    if (!microphoneEnabled) {
-      setSpeakingIndicatorState("idle");
-      return;
-    }
-    if (hasVoiceActivity) {
-      setSpeakingIndicatorState("speaking");
-      return;
-    }
-    setSpeakingIndicatorState((current) => current === "idle" ? "idle" : "settling");
-    speakingReleaseTimerRef.current = window.setTimeout(() => {
-      speakingReleaseTimerRef.current = null;
-      setSpeakingIndicatorState("idle");
-    }, SPEAKING_RING_RELEASE_DELAY_MS);
-    return () => {
-      if (speakingReleaseTimerRef.current !== null) window.clearTimeout(speakingReleaseTimerRef.current);
-      speakingReleaseTimerRef.current = null;
-    };
-  }, [hasVoiceActivity, microphoneEnabled]);
   const isSpeaking = speakingIndicatorState === "speaking";
   const isSpeakingIndicatorVisible = speakingIndicatorState !== "idle";
 
@@ -551,8 +667,8 @@ export default function GuestMeetingPage() {
     const sharedScreenStream = hasLocalScreenShare ? localScreenStream : remoteScreenShare?.screenStream;
     const screenAspectRatio = streamAspectRatio(sharedScreenStream);
     const cameraTiles = [
-      { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeakingIndicatorVisible, local: true },
-      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: false, speaking: false, local: false }))
+      { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
+      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
     ];
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
@@ -568,31 +684,35 @@ export default function GuestMeetingPage() {
         <header className="guest-call-header">
           <div><strong>{preview?.title || "Guest meeting"}</strong><span><i aria-hidden="true" /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
         </header>
-        <div className="voice-room-stage">
+        <CallParticipantStage className="shared-call-stage voice-room-stage">
           {hasScreenShare ? <div className={`guest-call-spotlight${cameraTiles.length > 3 ? " guest-call-spotlight--grid" : ""}`} aria-label="Shared screen and cameras">
             <div className="guest-call-screen-stage">
               {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
             </div>
             <aside className="guest-call-camera-rail" aria-label="Participant cameras">
-              {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : undefined}>
-                {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className="voice-participant-video-feed is-mirrored" /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
+              {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : participant.speaking ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>
+                {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className={`voice-participant-video-feed${cameraFacingMode === "user" ? " is-mirrored" : ""}`} /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
               </GuestParticipantTile>)}
             </aside>
           </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
-            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className="voice-participant-video-feed is-mirrored" />}</GuestParticipantTile>
-            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
+            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeaking} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className={`voice-participant-video-feed${cameraFacingMode === "user" ? " is-mirrored" : ""}`} />}</GuestParticipantTile>
+            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={remoteMutedUserIds.includes(remote.id)} speaking={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id)} avatar={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
           </div>}
-        </div>
+        </CallParticipantStage>
+        {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
         <div className="voice-room-bottom-bar">
-          <div className="voice-room-in-call-controls guest-call-controls" role="toolbar" aria-label="Meeting controls">
-            <DeviceControl label="Microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
-            <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
-            <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={20} /> : <CameraOff size={20} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
-            <button className={`voice-dock-btn${isScreenSharing ? " is-active" : ""}`} type="button" onClick={() => void toggleScreenShare()} aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"}>{isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}</button>
+          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Meeting controls">
+            <CallDeviceControl label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+            <CallDeviceControl label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+            <CallDeviceControl label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
+            <CallControlButton action="audio-output" state="idle" className="voice-dock-btn guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
+            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
+            <CallControlButton action="screen-share" state={isScreenSharing ? "active" : "idle"} className="voice-dock-btn" label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"} onClick={() => void toggleScreenShare()} />
 
             {/* Stovo Intelligence Button */}
             <div className="voice-more-menu-anchor">
               <button
+                ref={intelligenceButtonRef}
                 className={`voice-dock-btn voice-dock-btn--intel${
                   isIntelligenceOpen ||
                   effectiveRecordingState === "recording" ||
@@ -616,6 +736,7 @@ export default function GuestMeetingPage() {
               <MeetingIntelligencePopover
                 isOpen={isIntelligenceOpen}
                 onClose={() => setIsIntelligenceOpen(false)}
+                anchorElement={intelligenceButtonRef.current}
                 notesState={effectiveNotesState}
                 onToggleNotes={() => {
                   if (!isOrgMemberOrHost) return;
@@ -646,9 +767,9 @@ export default function GuestMeetingPage() {
 
             <div className="guest-settings guest-call-settings" ref={settingsRef}>
               <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
-              {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
+              {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div></section>}
             </div>
-            <button className="voice-dock-btn voice-dock-btn--disconnect" type="button" onClick={() => void leave()} aria-label="Leave meeting" title="Leave meeting"><PhoneOff size={20} /></button>
+            <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={() => void leave()} label="Leave meeting" title="Leave meeting" />
           </div>
         </div>
       </section>
@@ -663,15 +784,18 @@ export default function GuestMeetingPage() {
         <div className="guest-preview-label">{guestDisplayName}</div>
         <div className="guest-settings" ref={settingsRef}>
           <button ref={settingsButtonRef} className="guest-settings-trigger" type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={22} /></button>
-          {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
+          {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div></section>}
         </div>
         <video ref={localRef} className={cameraEnabled ? "visible" : ""} autoPlay muted playsInline />
         {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
-        <div className="guest-preview-controls">
-          <DeviceControl label="Microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={23} /> : <MicOff size={23} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
-          <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={23} /> : <VolumeX size={23} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
-          <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={23} /> : <CameraOff size={23} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
+        <div className="guest-preview-controls shared-call-controls">
+          <CallDeviceControl label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+          <CallDeviceControl label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+          <CallDeviceControl label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
+          <CallControlButton action="audio-output" state="idle" className="guest-preview-action guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
+          <CallControlButton action="flip-camera" state="idle" className="guest-preview-action guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
         </div>
+        {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
       </section>
       <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
     </div>}
@@ -682,56 +806,10 @@ export default function GuestMeetingPage() {
   </section></main>;
 }
 
-function DeviceControl({ label, active, onToggle, icon, children }: { label: string; active: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
-  return <div className="guest-device-control"><button type="button" className={active ? "active" : ""} aria-label={`Toggle ${label}`} aria-pressed={active} onClick={onToggle}>{icon}</button>{children}</div>;
-}
-function DeviceSelect({ value, onChange, devices, fallback }: { value: string; onChange: (value: string) => void; devices: MediaDeviceInfo[]; fallback: string }) {
-  const [open, setOpen] = useState(false);
-  const controlRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuId = useId();
-  const selectedLabel = value ? devices.find((device) => device.deviceId === value)?.label || fallback : "System default";
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsidePress = (event: MouseEvent) => {
-      if (controlRef.current && !controlRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-    document.addEventListener("mousedown", closeOnOutsidePress);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsidePress);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [open]);
-
-  function chooseDevice(deviceId: string) {
-    onChange(deviceId);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  return <div className="guest-device-select" ref={controlRef}>
-    <button ref={triggerRef} type="button" className="guest-device-menu-trigger" aria-label={`Select ${fallback}`} aria-haspopup="listbox" aria-controls={menuId} aria-expanded={open} title={`Select ${fallback}: ${selectedLabel}`} onClick={() => setOpen((isOpen) => !isOpen)}><ChevronDown size={16} aria-hidden="true" /></button>
-    {open && <div id={menuId} className="guest-device-menu" role="listbox" aria-label={`${fallback} device`}>
-      <div className="guest-device-menu-heading"><span>{fallback}</span></div>
-      <div className="guest-device-menu-options">
-        <button type="button" role="option" aria-selected={!value} className="guest-device-menu-option" onClick={() => chooseDevice("")}><span>System default</span>{!value && <span aria-hidden="true">✓</span>}</button>
-        {devices.map((device, index) => <button type="button" role="option" aria-selected={device.deviceId === value} className="guest-device-menu-option" key={device.deviceId} onClick={() => chooseDevice(device.deviceId)}><span>{deviceLabel(device, fallback, index)}</span>{device.deviceId === value && <span aria-hidden="true">✓</span>}</button>)}
-      </div>
-    </div>}
-  </div>;
-}
 function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children, className = "", style }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}${className ? ` ${className}` : ""}`} style={style}>
-    {hasVideo ? <div className="voice-participant-video-container">{children}{speaking && <span className="voice-video-speaking-border guest-video-speaking-border" aria-label="Speaking" />}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>{children}</>}
-    <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state">{muted ? "Muted" : "Connected"}</span></div>
+    {hasVideo ? <div className="voice-participant-video-container">{children}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>{children}</>}
+    <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state" role="status">{muted ? "Muted" : speaking ? "Speaking" : "Connected"}</span></div>
   </div>;
 }
 function LocalStreamVideo({ stream, className }: { stream: MediaStream; className?: string }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); return <video ref={ref} className={className} autoPlay muted playsInline />; }

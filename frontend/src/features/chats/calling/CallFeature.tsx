@@ -191,6 +191,7 @@ export function CallFeature() {
                   })
                 }
                 onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
+                onOpenSettings={() => setIsCallAudioPopupOpen(true)}
                 onEnd={() => void endActiveCall()}
                 onShrink={() => session.setIsCallMinimized(true)}
                 notice={callNotice}

@@ -23,7 +23,9 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
-import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
+import { CallControlButton } from "./CallControlButton";
+import { CallDeviceControls } from "./CallDeviceControls";
+import { CallParticipantStage } from "./CallParticipantStage";
 import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
@@ -60,7 +62,7 @@ export function VoiceChannelStage({
     setCallType,
     activeCallChatId,
     callAudioSettings,
-    callAudioCapabilities,
+    callAudioCapabilities, callAudioDevices,
     callRemoteMedia,
     applyCallAudioPatch,
     toggleScreenShare,
@@ -82,6 +84,7 @@ export function VoiceChannelStage({
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
@@ -289,7 +292,7 @@ export function VoiceChannelStage({
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
       {/* Main Stage / Participant Grid or List */}
-      <div className="voice-room-stage">
+      <CallParticipantStage className="shared-call-stage voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
           {hasActiveScreenShare ? (
           <CallParticipantGrid
@@ -300,6 +303,7 @@ export function VoiceChannelStage({
             mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
             callType={callType}
             isLocalSpeaking={isLocalSpeaking}
+            isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
             speakingUserIds={speakingUserIds}
           />
@@ -335,7 +339,6 @@ export function VoiceChannelStage({
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
                         />
-                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                       </div>
                       <span className="voice-list-row-name">{info.displayName}</span>
                       {hasVideo && <span className="voice-list-video-pill" title={hasScreenShare ? "Screen Sharing" : "Camera Active"}><Video size={12} /></span>}
@@ -398,8 +401,6 @@ export function VoiceChannelStage({
                           muted={info.isSelf}
                           className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
-                        {isSpeaking && <SpeakingWaveBadge />}
-                        {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
                         {isMuted && (
                           <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
@@ -414,7 +415,6 @@ export function VoiceChannelStage({
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
                         />
-                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                         {isMuted && (
                           <span className="voice-card-muted-badge" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
@@ -450,7 +450,7 @@ export function VoiceChannelStage({
         )}
 
         </div>
-      </div>
+      </CallParticipantStage>
 
       {canAddPeople && onOpenAddPeople && (
         <button
@@ -480,41 +480,19 @@ export function VoiceChannelStage({
             </button>
           </div>
         ) : (
-          <div className="voice-room-in-call-controls" role="toolbar" aria-label="Voice Channel Controls">
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.micMuted ? " is-muted" : " is-active"}`}
-              onClick={handleToggleMic}
-              title={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
-              aria-label={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
-            >
-              {callAudioSettings.micMuted ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
-
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.cameraEnabled ? " is-active" : ""}`}
-              onClick={handleToggleVideo}
-              title={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
-              aria-label={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
-            >
-              {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
-            </button>
+          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+            <CallDeviceControls settings={callAudioSettings} devices={callAudioDevices} capabilities={callAudioCapabilities} controlClassName="voice-dock-btn" labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }} toggleLabels={{ microphone: callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone"), camera: callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera") }} deviceStrings={voiceStrings} onPatch={(patch) => void applyCallAudioPatch(patch)} onToggleCamera={handleToggleVideo} />
 
             {/* Screen Demonstration / Share button */}
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-              onClick={handleToggleScreenShare}
-              title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-              aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-            >
-              {callAudioSettings.screenSharing ? <ScreenShare size={20} /> : <ScreenShareOff size={20} />}
-            </button>
+            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="voice-dock-btn" onClick={handleToggleScreenShare} label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")} />
+
+            <CallControlButton action="audio-output" toggle state={callAudioSettings.speakerMode === "large" ? "active" : "idle"} className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })} label="Audio output" />
+            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user" })} label="Flip camera" />
 
             {/* Stovo Intelligence Popover Button */}
             <div className="voice-more-menu-anchor">
               <button
+                ref={intelligenceButtonRef}
                 type="button"
                 className={`voice-dock-btn voice-dock-btn--intel${
                   isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
@@ -534,6 +512,7 @@ export function VoiceChannelStage({
               <MeetingIntelligencePopover
                 isOpen={isIntelligenceOpen}
                 onClose={() => setIsIntelligenceOpen(false)}
+                anchorElement={intelligenceButtonRef.current}
                 notesState={transcriptState}
                 onToggleNotes={handleToggleNotes}
                 isNotesAllowed={true}
@@ -585,15 +564,7 @@ export function VoiceChannelStage({
               )}
             </div>
 
-            <button
-              type="button"
-              className="voice-dock-btn voice-dock-btn--disconnect"
-              onClick={handleLeave}
-              title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
-              aria-label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
-            >
-              <PhoneOff size={20} />
-            </button>
+            <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={handleLeave} title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} />
           </div>
         )}
       </div>

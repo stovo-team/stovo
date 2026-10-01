@@ -7,6 +7,8 @@ import {
   type SFUMediaEnginePort,
 } from "./mediaEngineFactory";
 import type { CallQualityBitrates } from "./callQuality";
+// createCallSpeakingIndicator centralizes CALL_SPEAKING_THRESHOLD and CALL_SPEAKING_RELEASE_DELAY_MS.
+import { createCallSpeakingIndicator, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
 import {
   CallCapabilities,
   CallDevice,
@@ -49,6 +51,7 @@ export default class CallSessionController {
   /** First remote stream with video (1:1 UI compat). Prefers screen when present. */
   private remoteStream: MediaStream | null = null;
   private remoteMedia = new Map<string, RemoteMedia>();
+  private remoteMicrophoneMuted = new Map<string, boolean>();
 
   chatId: string | null = null;
   roomId: string | null = null;
@@ -79,11 +82,8 @@ export default class CallSessionController {
   private wasLocalSpeaking = false;
   private localSpeakingAnalyser: AnalyserNode | null = null;
   private remoteAnalysers = new Map<string, AnalyserNode>();
-  private localSpeakingSince: number | null = null;
-  private remoteSpeakingSince = new Map<string, number>();
-  // Ignore ambient noise and require a sustained voice-level signal before marking a participant as speaking.
-  private readonly SPEAKING_THRESHOLD = 0.025;
-  private readonly SPEAKING_ACTIVATION_DELAY_MS = 120;
+  private localSpeakingIndicator: ReturnType<typeof createCallSpeakingIndicator> | null = null;
+  private remoteSpeakingIndicators = new Map<string, ReturnType<typeof createCallSpeakingIndicator>>();
 
   onVideoUnavailable?: () => void;
   onConnectionReconnecting?: () => void;
@@ -223,6 +223,7 @@ export default class CallSessionController {
     // for N-party is handled in syncMeshPeers via shouldOfferToPeer.
     await this.mesh.connectPeer(targetUserId, true);
     this.peerReady = true;
+    this.broadcastMicrophoneState(targetUserId);
     await this.flushPreconnectSignals();
   }
 
@@ -239,6 +240,7 @@ export default class CallSessionController {
     // Callee waits for the caller's offer on the classic 1:1 path.
     await this.mesh.connectPeer(targetUserId, false);
     this.peerReady = true;
+    this.broadcastMicrophoneState(targetUserId);
     await this.flushPreconnectSignals();
   }
 
@@ -261,6 +263,7 @@ export default class CallSessionController {
     if (asOfferer) {
       await this.mesh.renegotiatePeer(targetUserId, { iceRestart: true });
     }
+    this.broadcastMicrophoneState(targetUserId);
   }
 
   handleSignal(payload: {
@@ -271,6 +274,14 @@ export default class CallSessionController {
     if (!payload?.chatId || !payload?.data) return Promise.resolve();
     if (this.chatId && payload.chatId !== this.chatId) return Promise.resolve();
     if (this.topology === "sfu") return Promise.resolve();
+    if (payload.data.type === "microphone-state") {
+      if (typeof payload.data.muted !== "boolean" || !payload.fromUserId) return Promise.resolve();
+      this.remoteMicrophoneMuted.set(payload.fromUserId, payload.data.muted);
+      if (this.remoteMedia.has(payload.fromUserId)) {
+        this.upsertRemoteMedia(payload.fromUserId, { isMuted: payload.data.muted });
+      }
+      return Promise.resolve();
+    }
 
     if (!this.peerReady) {
       this.preconnectSignals.push(payload);
@@ -297,8 +308,15 @@ export default class CallSessionController {
       participantUserIds.filter((id) => id && id !== localId),
     );
 
-    for (const id of this.mesh.getPeerIds()) {
-      if (!remotes.has(id)) this.mesh.disconnectPeer(id);
+    const existingPeerIds = this.mesh.getPeerIds();
+    const trackedRemoteIds = new Set([...existingPeerIds, ...this.remoteMicrophoneMuted.keys(), ...this.remoteMedia.keys()]);
+    for (const id of trackedRemoteIds) {
+      if (!remotes.has(id)) {
+        if (existingPeerIds.includes(id)) this.mesh.disconnectPeer(id);
+        this.remoteMicrophoneMuted.delete(id);
+        if (this.remoteMedia.delete(id)) this.notifyRemoteMediaChange();
+        this.unregisterRemoteAudioSpeaking(id);
+      }
     }
 
     await this.ensureLocalMedia();
@@ -310,6 +328,7 @@ export default class CallSessionController {
     for (const remoteId of remotes) {
       const asOfferer = localId ? shouldOfferToPeer(localId, remoteId) : false;
       await this.mesh.connectPeer(remoteId, asOfferer);
+      this.broadcastMicrophoneState(remoteId);
     }
     await this.flushPreconnectSignals();
   }
@@ -632,6 +651,7 @@ export default class CallSessionController {
     this.onLocalScreenStreamChange?.(null);
     this.remoteStream = null;
     this.remoteMedia.clear();
+    this.remoteMicrophoneMuted.clear();
     this.onRemoteMediaChange?.([]);
 
     if (this.remoteAudioEl) {
@@ -705,15 +725,30 @@ export default class CallSessionController {
       this.notifyRemoteMediaChange();
       this.refreshPrimaryRemoteVideo();
     };
+    this.sfu.onRemoteMicrophoneMuteChange = (userId, muted) => {
+      this.remoteMicrophoneMuted.set(userId, muted);
+      if (this.remoteMedia.has(userId)) this.upsertRemoteMedia(userId, { isMuted: muted });
+    };
+    this.sfu.onRemoteParticipantDisconnected = (userId) => {
+      this.remoteMicrophoneMuted.delete(userId);
+      this.remoteMedia.delete(userId);
+      this.removeExtraAudio(userId);
+      this.unregisterRemoteAudioSpeaking(userId);
+      this.notifyRemoteMediaChange();
+      this.refreshPrimaryRemoteVideo();
+    };
     this.sfu.onConnected = () => this.markMediaConnected();
     this.sfu.onDisconnected = () => {
+      this.remoteMicrophoneMuted.clear();
+      this.remoteMedia.clear();
+      this.notifyRemoteMediaChange();
       this.onConnectionReconnecting?.();
     };
   }
 
   private upsertRemoteMedia(
     userId: string,
-    patch: { stream?: MediaStream; screenStream?: MediaStream | null },
+    patch: { stream?: MediaStream; screenStream?: MediaStream | null; isMuted?: boolean },
   ) {
     const prev = this.remoteMedia.get(userId);
     const stream = patch.stream ?? prev?.stream ?? new MediaStream();
@@ -728,6 +763,7 @@ export default class CallSessionController {
       hasVideo: stream.getVideoTracks().some((t) => t.readyState !== "ended"),
       hasAudio: stream.getAudioTracks().length > 0,
       hasScreenShare: liveScreen,
+      isMuted: patch.isMuted ?? this.remoteMicrophoneMuted.get(userId) ?? prev?.isMuted ?? false,
     });
     this.notifyRemoteMediaChange();
   }
@@ -1011,9 +1047,24 @@ export default class CallSessionController {
     const on = !this.settings.micMuted;
     for (const t of this.localStream?.getAudioTracks() ?? []) t.enabled = on;
     if (this.topology === "sfu") this.sfu.setMicMuted(this.settings.micMuted);
+    else this.broadcastMicrophoneState();
     if (this.settings.micMuted && this.wasLocalSpeaking) {
       this.wasLocalSpeaking = false;
       this.localSpeakingCallback?.(false);
+    }
+  }
+
+  private broadcastMicrophoneState(targetUserId?: string) {
+    if (this.tearingDown || !this.chatId || this.topology !== "mesh") return;
+    const targets = targetUserId ? [targetUserId] : this.mesh.getPeerIds();
+    for (const userId of targets) {
+      if (!userId || userId === this.localUserId) continue;
+      this.socket.emit("call:signal", {
+        chatId: this.chatId,
+        roomId: this.roomId ?? undefined,
+        targetUserId: userId,
+        data: { type: "microphone-state", muted: this.settings.micMuted },
+      });
     }
   }
 
@@ -1076,6 +1127,14 @@ export default class CallSessionController {
   }
 
   private registerLocalAudioSpeaking(stream: MediaStream) {
+    this.localSpeakingIndicator?.dispose();
+    this.localSpeakingIndicator = createCallSpeakingIndicator((state: CallSpeakingState) => {
+      const isSpeaking = state !== "idle";
+      if (isSpeaking !== this.wasLocalSpeaking) {
+        this.wasLocalSpeaking = isSpeaking;
+        this.localSpeakingCallback?.(isSpeaking);
+      }
+    });
     if (stream.getAudioTracks().length === 0) {
       this.localSpeakingAnalyser = null;
       return;
@@ -1088,7 +1147,6 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.localSpeakingAnalyser = analyser;
-      this.localSpeakingSince = null;
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1096,6 +1154,8 @@ export default class CallSessionController {
   }
 
   private registerRemoteAudioSpeaking(userId: string, stream: MediaStream) {
+    this.remoteSpeakingIndicators.get(userId)?.dispose();
+    this.remoteSpeakingIndicators.set(userId, createCallSpeakingIndicator(() => undefined));
     if (stream.getAudioTracks().length === 0) return;
     const ctx = this.getOrCreateSpeakingContext();
     if (!ctx) return;
@@ -1105,7 +1165,6 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.remoteAnalysers.set(userId, analyser);
-      this.remoteSpeakingSince.delete(userId);
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1114,7 +1173,8 @@ export default class CallSessionController {
 
   private unregisterRemoteAudioSpeaking(userId: string) {
     this.remoteAnalysers.delete(userId);
-    this.remoteSpeakingSince.delete(userId);
+    this.remoteSpeakingIndicators.get(userId)?.dispose();
+    this.remoteSpeakingIndicators.delete(userId);
   }
 
   private ensureSpeakingPolling() {
@@ -1125,43 +1185,20 @@ export default class CallSessionController {
       // 1. Local speaking
       if (this.localSpeakingAnalyser && !this.settings.micMuted) {
         this.localSpeakingAnalyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
-        if (avg > this.SPEAKING_THRESHOLD) {
-          this.localSpeakingSince ??= now;
-        } else {
-          this.localSpeakingSince = null;
-        }
-        const localSpeaking =
-          this.localSpeakingSince !== null &&
-          now - this.localSpeakingSince >= this.SPEAKING_ACTIVATION_DELAY_MS;
-        if (localSpeaking !== this.wasLocalSpeaking) {
-          this.wasLocalSpeaking = localSpeaking;
-          this.localSpeakingCallback?.(localSpeaking);
-        }
+        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        this.localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg });
       } else {
-        this.localSpeakingSince = null;
-        if (this.wasLocalSpeaking) {
-          this.wasLocalSpeaking = false;
-          this.localSpeakingCallback?.(false);
-        }
+        this.localSpeakingIndicator?.update({ microphoneEnabled: false, level: 0 });
       }
 
       // 2. Remote peer speaking
       const activeSpeakingUserIds: string[] = [];
       for (const [uid, analyser] of this.remoteAnalysers.entries()) {
         analyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
-        if (avg > this.SPEAKING_THRESHOLD) {
-          this.remoteSpeakingSince.set(uid, this.remoteSpeakingSince.get(uid) ?? now);
-        } else {
-          this.remoteSpeakingSince.delete(uid);
-        }
-        if (
-          this.remoteSpeakingSince.has(uid) &&
-          now - (this.remoteSpeakingSince.get(uid) ?? now) >= this.SPEAKING_ACTIVATION_DELAY_MS
-        ) {
-          activeSpeakingUserIds.push(uid);
-        }
+        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        const indicator = this.remoteSpeakingIndicators.get(uid);
+        indicator?.update({ microphoneEnabled: true, level: avg });
+        if (indicator && indicator.state !== "idle") activeSpeakingUserIds.push(uid);
       }
 
       const anySpeaking = activeSpeakingUserIds.length > 0;
@@ -1184,8 +1221,10 @@ export default class CallSessionController {
     }
     this.localSpeakingAnalyser = null;
     this.remoteAnalysers.clear();
-    this.localSpeakingSince = null;
-    this.remoteSpeakingSince.clear();
+    this.localSpeakingIndicator?.dispose();
+    this.localSpeakingIndicator = null;
+    for (const indicator of this.remoteSpeakingIndicators.values()) indicator.dispose();
+    this.remoteSpeakingIndicators.clear();
     if (this.speakingContext) {
       void this.speakingContext.close().catch(() => undefined);
       this.speakingContext = null;

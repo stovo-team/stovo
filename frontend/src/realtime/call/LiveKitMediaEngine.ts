@@ -22,6 +22,8 @@ export default class LiveKitMediaEngine {
   onRemoteStream?: (userId: string, stream: MediaStream) => void;
   onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void;
   onRemoteStreamRemoved?: (userId: string) => void;
+  onRemoteMicrophoneMuteChange?: (userId: string, muted: boolean) => void;
+  onRemoteParticipantDisconnected?: (userId: string) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
 
@@ -36,6 +38,26 @@ export default class LiveKitMediaEngine {
       dynacast: true,
     });
     this.room = room;
+
+    const reportMicrophoneState = (participant: { identity: string; isMicrophoneEnabled: boolean }) => {
+      this.onRemoteMicrophoneMuteChange?.(participant.identity, !participant.isMicrophoneEnabled);
+    };
+
+    room.on(lk.RoomEvent.ParticipantConnected, (participant) => {
+      reportMicrophoneState(participant);
+    });
+
+    room.on(lk.RoomEvent.TrackMuted, (publication, participant) => {
+      if (publication.source === lk.Track.Source.Microphone) {
+        this.onRemoteMicrophoneMuteChange?.(participant.identity, true);
+      }
+    });
+
+    room.on(lk.RoomEvent.TrackUnmuted, (publication, participant) => {
+      if (publication.source === lk.Track.Source.Microphone) {
+        this.onRemoteMicrophoneMuteChange?.(participant.identity, false);
+      }
+    });
 
     room.on(lk.RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       const userId = participant.identity;
@@ -95,6 +117,7 @@ export default class LiveKitMediaEngine {
 
     room.on(lk.RoomEvent.ParticipantDisconnected, (participant) => {
       const userId = participant.identity;
+      this.onRemoteParticipantDisconnected?.(userId);
       if (this.remoteStreams.has(userId)) {
         this.remoteStreams.delete(userId);
         this.onRemoteStreamRemoved?.(userId);
@@ -106,12 +129,16 @@ export default class LiveKitMediaEngine {
     });
 
     room.on(lk.RoomEvent.Disconnected, () => {
+      for (const participant of room.remoteParticipants.values()) {
+        this.onRemoteParticipantDisconnected?.(participant.identity);
+      }
       this.remoteStreams.clear();
       this.remoteScreenStreams.clear();
       this.onDisconnected?.();
     });
 
     await room.connect(resolveLiveKitUrl(opts.url), opts.token);
+    for (const participant of room.remoteParticipants.values()) reportMicrophoneState(participant);
     this.onConnected?.();
   }
 

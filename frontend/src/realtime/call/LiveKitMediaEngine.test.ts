@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const livekit = vi.hoisted(() => {
-  const roomInstances: Array<{ localParticipant: any; connect: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+  const roomInstances: Array<{ localParticipant: any; remoteParticipants: Map<string, any>; connect: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
   class Room {
     localParticipant = {
       trackPublications: new Map(),
       publishTrack: vi.fn(async (_track, options) => ({ options, track: _track })),
       unpublishTrack: vi.fn(async () => undefined),
     };
+    remoteParticipants = new Map();
     connect = vi.fn(async () => undefined);
     on = vi.fn();
     disconnect = vi.fn(async () => undefined);
@@ -16,7 +17,7 @@ const livekit = vi.hoisted(() => {
   return {
     Room,
     roomInstances,
-    RoomEvent: { TrackSubscribed: "subscribed", TrackUnsubscribed: "unsubscribed", ParticipantDisconnected: "participant-disconnected", Disconnected: "disconnected" },
+    RoomEvent: { TrackSubscribed: "subscribed", TrackUnsubscribed: "unsubscribed", ParticipantConnected: "participant-connected", ParticipantDisconnected: "participant-disconnected", TrackMuted: "track-muted", TrackUnmuted: "track-unmuted", Disconnected: "disconnected" },
     Track: { Source: { Microphone: "microphone", Camera: "camera", ScreenShare: "screen-share" } },
   };
 });
@@ -45,6 +46,30 @@ describe("LiveKitMediaEngine video quality", () => {
     expect(room.localParticipant.publishTrack).toHaveBeenNthCalledWith(2, screen, {
       source: "screen-share", screenShareEncoding: { maxBitrate: 3_500_000, maxFramerate: 30 },
     });
+    await engine.disconnect();
+  });
+
+  it("reports initial and changing remote microphone mute state", async () => {
+    const engine = new LiveKitMediaEngine();
+    const onRemoteMicrophoneMuteChange = vi.fn();
+    engine.onRemoteMicrophoneMuteChange = onRemoteMicrophoneMuteChange;
+    await engine.connect({ url: "wss://calls.example", token: "token" });
+    const room = livekit.roomInstances[0];
+    const participant = { identity: "peer-1", isMicrophoneEnabled: false };
+    room.remoteParticipants.set(participant.identity, participant);
+    const handlers = Object.fromEntries(room.on.mock.calls.map(([event, handler]) => [event, handler as (...args: any[]) => void]));
+
+    handlers["participant-connected"]?.(participant);
+    handlers["track-muted"]?.({ source: "microphone" }, participant);
+    handlers["track-unmuted"]?.({ source: "microphone" }, participant);
+    handlers["track-muted"]?.({ source: "camera" }, participant);
+    handlers["track-unmuted"]?.({ source: "screen-share" }, participant);
+
+    expect(onRemoteMicrophoneMuteChange.mock.calls).toEqual([
+      ["peer-1", true],
+      ["peer-1", true],
+      ["peer-1", false],
+    ]);
     await engine.disconnect();
   });
 });

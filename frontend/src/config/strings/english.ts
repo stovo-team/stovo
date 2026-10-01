@@ -514,7 +514,7 @@ export const strings = {
       you: "You",
     },
     voiceRoom: {
-      noUsers: "No users",
+      microphone: "Microphone", speaker: "Speaker", camera: "Camera", selectDevice: "Select", deviceLabelFormat: "{label} device", systemDefault: "System default", deviceSelectionUnavailable: "Device selection unavailable in this browser", noUsers: "No users",
       noUsersDescription: "No users in this voice channel right now. Join to start talking!",
       joinVoiceChannel: "Join Voice Channel",
       connecting: "Connecting…",

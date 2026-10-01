@@ -399,7 +399,7 @@ export function useCallSession({
   }, [chatId, activeCallChatId, callPhase]);
 
   useEffect(() => {
-    if (!isCallAudioPopupOpen) {
+    if (!isCallAudioPopupOpen && callPhase === "idle") {
       return;
     }
     void refreshCallAudioDevices().catch(() => undefined);
@@ -413,7 +413,7 @@ export function useCallSession({
     return () => {
       navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
     };
-  }, [isCallAudioPopupOpen, refreshCallAudioDevices]);
+  }, [callPhase, isCallAudioPopupOpen, refreshCallAudioDevices]);
 
   useEffect(() => {
     if (callAudioSettings.soundDisabled) {

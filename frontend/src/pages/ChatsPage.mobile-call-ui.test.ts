@@ -34,7 +34,7 @@ describe("mobile active video call UI", () => {
 
   it("puts camera flip on the compact self-view instead of the control row", () => {
     expect(mobileActiveSource).toContain("mobile-active-pip-flip");
-    expect(mobileActiveSource).toContain("aria-label=\"Flip camera\"");
+    expect(mobileActiveSource).toContain('label="Flip camera"');
     expect(mobileActiveSource).not.toContain("{/* Flip camera â€” only during video */}");
   });
 

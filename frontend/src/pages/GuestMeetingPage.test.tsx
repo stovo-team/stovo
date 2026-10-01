@@ -1,10 +1,12 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
-  createGuestMeetingSession: vi.fn(async () => ({ id: "session-1", state: "waiting" as const })),
+  createGuestMeetingSession: vi.fn(async (): Promise<{ id: string; state: "waiting" | "admitted" }> => ({ id: "session-1", state: "waiting" })),
+  getGuestMeetingToken: vi.fn(async () => ({ url: "wss://meeting.example.test", token: "room-token", roomName: "guest-room" })),
   leaveGuestMeetingSession: vi.fn(async () => undefined),
   previewGuestMeeting: vi.fn(async () => ({
     title: "Daily standup",
@@ -28,9 +30,32 @@ vi.mock("../api/guestMeetings", () => ({
   createGuestMeetingSession: api.createGuestMeetingSession,
   leaveGuestMeetingSession: api.leaveGuestMeetingSession,
   getGuestMeetingStatus: vi.fn(),
-  getGuestMeetingToken: vi.fn(),
+  getGuestMeetingToken: api.getGuestMeetingToken,
   getGuestMeetingIntelligence: vi.fn(async () => ({ notesState: "idle", recordingState: "idle" })),
   GuestMeetingLinkError,
+}));
+
+vi.mock("livekit-client", () => ({
+  Room: class {
+    name = "guest-room";
+    remoteParticipants = new Map();
+    localParticipant = { trackPublications: new Map(), publishTrack: vi.fn(async () => undefined) };
+    on = vi.fn();
+    connect = vi.fn(async () => undefined);
+    disconnect = vi.fn(async () => undefined);
+  },
+  RoomEvent: {
+    ActiveSpeakersChanged: "activeSpeakersChanged",
+    TrackMuted: "trackMuted",
+    TrackUnmuted: "trackUnmuted",
+    Disconnected: "disconnected",
+    TrackSubscribed: "trackSubscribed",
+    TrackUnsubscribed: "trackUnsubscribed",
+    ParticipantConnected: "participantConnected",
+    ParticipantDisconnected: "participantDisconnected",
+  },
+  Track: { Source: { Microphone: "microphone", Camera: "camera", ScreenShare: "screen_share", ScreenShareAudio: "screen_share_audio" } },
+  VideoPreset: class { constructor(readonly width: number, readonly height: number, readonly bitrate: number, readonly framerate: number) {} },
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -40,6 +65,7 @@ vi.mock("../auth/AuthContext", () => ({
 class FakeTrack {
   enabled = true;
   stop = vi.fn();
+  applyConstraints = vi.fn(async () => undefined);
   constructor(readonly kind: "audio" | "video") {}
 }
 
@@ -77,6 +103,7 @@ beforeEach(() => {
       enumerateDevices: vi.fn(async () => [
         { kind: "audioinput", deviceId: "mic-1", label: "Studio mic" },
         { kind: "audiooutput", deviceId: "speaker-1", label: "Desk speakers" },
+        { kind: "audiooutput", deviceId: "speaker-2", label: "USB speakers" },
         { kind: "videoinput", deviceId: "camera-1", label: "Desk camera" },
       ]),
       getUserMedia: vi.fn(async (constraints: MediaStreamConstraints) => new FakeMediaStream([
@@ -96,6 +123,28 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
+  it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {
+    api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joined", state: "admitted" });
+    await renderPage();
+    await act(async () => {
+      const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Guest tester");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const header = host?.querySelector<HTMLElement>(".guest-call-header");
+    expect(header).not.toBeNull();
+    expect(header?.querySelector('button[aria-label*="Minimize"], button[title*="Minimize"], .call-preview-minimize')).toBeNull();
+    expect(host?.querySelector('[aria-label="Minimize call"], [aria-label="Shrink call"]')).toBeNull();
+  });
+
   it("passes the signed-in account token when creating a meeting session", async () => {
     auth.accessToken = "host-access-token";
     auth.currentUser = { displayName: "Meeting Host", username: "host", profilePhoto: null };
@@ -154,6 +203,67 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).toBeNull();
   });
 
+  it("renders mobile audio-output and camera-flip actions while retaining desktop device menus", async () => {
+    await renderPage();
+
+    const outputAction = host?.querySelector<HTMLButtonElement>('[aria-label="Audio output"]');
+    const flipAction = host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]');
+    expect(outputAction).not.toBeNull();
+    expect(flipAction).not.toBeNull();
+
+    await act(async () => { outputAction?.click(); });
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Select Speaker"]')?.title).toContain("Desk speakers");
+
+    const mediaResults = (navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>).mock.results;
+    const mediaStreams = await Promise.all(mediaResults.map((result) => result.value as Promise<FakeMediaStream>));
+    const cameraTrack = mediaStreams.flatMap((stream) => stream.getVideoTracks());
+    await act(async () => { flipAction?.click(); await Promise.resolve(); });
+    expect(cameraTrack[0]?.applyConstraints).toHaveBeenCalledWith({ facingMode: { exact: "environment" } });
+
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]')?.click(); });
+    expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).not.toBeNull();
+  });
+
+  it("falls back to reopening the camera with the requested facing mode when track constraints fail", async () => {
+    await renderPage();
+    const getUserMedia = navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>;
+    const existingStreams = await Promise.all(getUserMedia.mock.results.map((result) => result.value as Promise<FakeMediaStream>));
+    const cameraTrack = existingStreams.flatMap((stream) => stream.getVideoTracks())[0];
+    cameraTrack.applyConstraints.mockRejectedValueOnce(new Error("facingMode constraint unsupported"));
+    const callsBeforeFlip = getUserMedia.mock.calls.length;
+
+    await act(async () => {
+      host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(getUserMedia.mock.calls.length).toBeGreaterThan(callsBeforeFlip);
+    expect(getUserMedia.mock.calls.at(-1)?.[0]).toMatchObject({ video: { facingMode: { exact: "environment" } } });
+    expect(cameraTrack.stop).toHaveBeenCalled();
+    const replacementStream = await getUserMedia.mock.results.at(-1)?.value as Promise<FakeMediaStream>;
+    const replacementTrack = replacementStream.getVideoTracks()[0];
+    const previewStream = host?.querySelector<HTMLVideoElement>("video")?.srcObject as FakeMediaStream | null;
+    expect(previewStream?.getVideoTracks()).toContain(replacementTrack);
+  });
+
+  it("shows camera-switch failures beside the controls while settings are closed", async () => {
+    await renderPage();
+    const getUserMedia = navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>;
+    const streams = await Promise.all(getUserMedia.mock.results.map((result) => result.value as Promise<FakeMediaStream>));
+    streams.flatMap((stream) => stream.getVideoTracks())[0].applyConstraints.mockRejectedValueOnce(new Error("constraint failed"));
+    getUserMedia.mockRejectedValueOnce(new Error("camera publication failed"));
+
+    await act(async () => {
+      host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(host?.querySelector('[role="status"]')?.textContent).toContain("Could not switch cameras");
+    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
+  });
+
   it("uses the halo wrapper for the camera-off speaking avatar", async () => {
     await renderPage();
     const cameraToggle = host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
@@ -200,4 +310,17 @@ describe("GuestMeetingPage pre-join controls", () => {
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
     expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
   });
+
+  it("renders device actions as joined segments rather than separate circular camera buttons", async () => {
+    await renderPage();
+    const camera = host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+    expect(camera).not.toBeNull();
+    expect(camera?.closest(".guest-device-control")).not.toBeNull();
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const rule = css.match(/\.guest-call-controls \.guest-device-control > button\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(rule).toMatch(/border-radius:\s*999px\s+0\s+0\s+999px/);
+    expect(rule).not.toMatch(/border-radius:\s*50%/);
+  });
+
 });
