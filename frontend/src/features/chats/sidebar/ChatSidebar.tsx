@@ -115,7 +115,7 @@ export function ChatSidebar({
               <button
                 type="button"
                 className="server-switcher-trigger"
-                aria-label="Select space"
+                aria-label={strings.spaceSwitcher.selectSpace}
                 aria-expanded={isServerMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setIsServerMenuOpen((open) => !open)}
@@ -170,7 +170,7 @@ export function ChatSidebar({
                       <Server aria-hidden="true" size={16} />
                       <span>
                         <strong>{displayFamilyName}</strong>
-                        <small>Current space</small>
+                        <small>{strings.spaceSwitcher.currentSpace}</small>
                       </span>
                     </button>
                   )}
@@ -184,7 +184,7 @@ export function ChatSidebar({
                     }}
                   >
                     <Plus aria-hidden="true" size={16} />
-                    Connect Space
+                    {strings.spaceSwitcher.connectSpace}
                   </button>
                 </div>
               )}

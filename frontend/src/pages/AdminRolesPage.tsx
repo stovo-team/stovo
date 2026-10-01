@@ -7,40 +7,27 @@ import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { useStrings } from "../i18n/LanguageContext";
 
-const permissionGroups = [
-  {
-    name: "Server administration",
-    permissions: [
-      ["manage_server", "Manage server", "Change server-wide appearance, encryption, public access, and plugin availability"],
-      ["manage_roles", "Manage roles", "Create, edit, delete, and assign roles"],
-    ],
-  },
-  {
-    name: "Members, spaces & calls",
-    permissions: [
-      ["manage_members", "Manage members", "Create and revoke server invitations, remove members, assign roles, and add people to any space"],
-      ["manage_channels", "Manage spaces", "Create and manage groups, channels, and voice channels. Chat-list folders remain personal"],
-      ["manage_calls", "Manage guest links", "Create guest links for group and voice calls, then host and manage guests on links you create"],
-    ],
-  },
-  {
-    name: "Content moderation",
-    permissions: [
-      ["manage_messages", "Manage messages", "Manage pins in spaces configured for administrators only"],
-      ["manage_files", "Manage files and storage folders", "Access, edit, share, or delete any server file, folder, or album"],
-    ],
-  },
-  {
-    name: "Billing & connections",
-    permissions: [
-      ["manage_plans", "Manage all plans", "Edit or delete every server plan. Everyone can still manage plans they created"],
-      ["manage_integrations", "Manage integrations", "Configure MCP connectors and their access to server data"],
-    ],
-  },
-] as const;
-
 export default function AdminRolesPage() {
   const strings = useStrings();
+  const copy = strings.admin.roles;
+  const permissionGroups = [
+    { name: copy.groups.serverAdministration, permissions: [
+      ["manage_server", ...copy.permissions.manageServer], ["manage_roles", ...copy.permissions.manageRoles],
+    ] },
+    { name: copy.groups.membersSpacesCalls, permissions: [
+      ["manage_members", ...copy.permissions.manageMembers], ["manage_channels", ...copy.permissions.manageSpaces], ["manage_calls", ...copy.permissions.manageGuestLinks],
+    ] },
+    { name: copy.groups.contentModeration, permissions: [
+      ["manage_messages", ...copy.permissions.manageMessages], ["manage_files", ...copy.permissions.manageFiles],
+    ] },
+    { name: copy.groups.billingConnections, permissions: [
+      ["manage_plans", ...copy.permissions.managePlans], ["manage_integrations", ...copy.permissions.manageIntegrations],
+    ] },
+  ] as const;
+  const premiumGroups = [
+    { title: strings.admin.rbac.chatCreationLimits, description: strings.admin.rbac.chatCreationLimitsDesc, options: Object.values(copy.premium.chatCreation) },
+    { title: strings.admin.rbac.advancedRestrictions, description: copy.premium.lockedDescription, options: Object.values(copy.premium.restrictions) },
+  ];
   const { accessToken, currentUser } = useAuth();
   const prefix = getClusterPrefix();
   const [roles, setRoles] = useState<ServerRole[]>([]);
@@ -56,8 +43,8 @@ export default function AdminRolesPage() {
       const next = await getServerRoles(accessToken);
       setRoles(next);
       setSelectedId((current) => next.some((role) => role.id === current) ? current : next[0]?.id ?? null);
-    } catch (err) { setError(err instanceof ApiError ? String(err.message) : "Could not load roles"); }
-  }, [accessToken]);
+    } catch (err) { setError(err instanceof ApiError ? String(err.message) : copy.couldNotLoad); }
+  }, [accessToken, copy.couldNotLoad]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -84,26 +71,25 @@ export default function AdminRolesPage() {
       if (draft.id === "new") await createServerRole(accessToken, draft);
       else await updateServerRole(accessToken, draft.id, { name: draft.name, description: draft.description, permissions: draft.permissions });
       await load();
-    } catch (err) { setError(err instanceof ApiError ? String(err.message) : "Could not save role"); } finally { setSaving(false); }
+    } catch (err) { setError(err instanceof ApiError ? String(err.message) : copy.couldNotSave); } finally { setSaving(false); }
   }
   async function remove() {
     if (!accessToken || !draft || draft.isDefault) return;
     const replacement = roles.find((role) => role.id !== draft.id);
-    if (!replacement || !window.confirm(`Delete ${draft.name}? Assigned members will become ${replacement.name}.`)) return;
+    if (!replacement || !window.confirm(copy.deleteConfirmation(draft.name, replacement.name))) return;
     setSaving(true); setError(null);
     try { await deleteServerRole(accessToken, draft.id, replacement.id); setSelectedId(null); await load(); }
-    catch (err) { setError(err instanceof ApiError ? String(err.message) : "Could not delete role"); } finally { setSaving(false); }
+    catch (err) { setError(err instanceof ApiError ? String(err.message) : copy.couldNotDelete); } finally { setSaving(false); }
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page"><AppNav /><section className="page-surface admin-surface">
-    <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" /><div><h1>Roles</h1></div></div>
-    {!canManage && <p className="error-text">Role management access required.</p>}{error && <p className="error-text">{error}</p>}
+    <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={copy.backToAdmin} /><div><h1>{copy.title}</h1></div></div>
+    {!canManage && <p className="error-text">{copy.adminAccessRequired}</p>}{error && <p className="error-text">{error}</p>}
     {canManage && <div className="admin-roles-layout">
-      <aside className="admin-role-list" aria-label="Server roles">{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? "Default role" : `${role.memberCount} members`}</small></button>)}<button type="button" className="admin-role-create" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}><span className="ms-icon ms-icon--18" aria-hidden="true">add</span>Create role</button></aside>
-      {draft && <section className="admin-panel admin-role-editor"><label>Role name<input value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} disabled={saving} /></label><label>Description<input value={draft.description ?? ""} onChange={(event) => setDraft({ ...draft, description: event.target.value })} disabled={saving} /></label><p className="admin-role-default">{draft.isDefault ? "Default role — it can be edited but not deleted." : "Custom role"}</p><div className="admin-role-permissions">{permissionGroups.map((group) => { const keys = group.permissions.map(([key]) => key); const allEnabled = keys.every((key) => draft.permissions.includes(key)); return <section className="admin-role-permission-group" key={group.name}><div className="admin-role-permission-group-heading"><h2>{group.name}</h2><label className="admin-role-group-toggle"><input type="checkbox" checked={allEnabled} onChange={() => togglePermissionGroup(keys)} disabled={saving} /><span>All</span></label></div><div className="admin-role-permission-options">{group.permissions.map(([key, label, helper]) => <label key={key}><input type="checkbox" checked={draft.permissions.includes(key)} onChange={() => togglePermission(key)} disabled={saving} /><span><strong>{label}</strong><small>{helper}</small></span></label>)}</div></section>; })}
-        <section className="admin-role-permission-group admin-role-premium-group"><div className="admin-role-permission-group-heading"><div><h2>{strings.admin.rbac.chatCreationLimits}</h2><small>{strings.admin.rbac.chatCreationLimitsDesc}</small></div><span className="premium-feature-badge">{strings.admin.encryption.premium}</span></div><div className="admin-role-permission-options">{[strings.admin.rbac.createChats, strings.admin.rbac.directMessages, strings.admin.rbac.groupChats, strings.admin.rbac.textChannels, strings.admin.rbac.voiceChats].map((label) => <label key={label}><input type="checkbox" disabled aria-label={`${label} (${strings.admin.encryption.premium})`} /><span><strong>{label}</strong></span></label>)}</div></section>
-        <section className="admin-role-permission-group admin-role-premium-group"><div className="admin-role-permission-group-heading"><h2>{strings.admin.rbac.advancedRestrictions}</h2><span className="premium-feature-badge">{strings.admin.encryption.premium}</span></div><div className="admin-role-permission-options">{[strings.admin.rbac.manageAI, strings.admin.rbac.shareFiles, strings.admin.rbac.createInvites, strings.admin.rbac.manageIntegrations].map((label) => <label key={label}><input type="checkbox" disabled aria-label={`${label} (${strings.admin.encryption.premium})`} /><span><strong>{label}</strong></span></label>)}</div></section>
-      </div><div className="admin-member-actions"><button type="button" className="primary-button" onClick={() => void save()} disabled={saving || !draft.name.trim()}>Save role</button>{!draft.isDefault && draft.id !== "new" && <button type="button" className="danger-button" onClick={() => void remove()} disabled={saving}>Delete role</button>}</div></section>}
+      <aside className="admin-role-list" aria-label={copy.serverRoles}>{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? copy.defaultRole : copy.members(role.memberCount)}</small></button>)}<button type="button" className="admin-role-create" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}><span className="ms-icon ms-icon--18" aria-hidden="true">add</span>{copy.createRole}</button></aside>
+      {draft && <section className="admin-panel admin-role-editor"><label><span>{copy.roleName}</span><input value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} disabled={saving} /></label><label><span>{copy.description}</span><input value={draft.description ?? ""} onChange={(event) => setDraft({ ...draft, description: event.target.value })} disabled={saving} /></label><p className="admin-role-default">{draft.isDefault ? copy.defaultRoleDescription : copy.customRole}</p><div className="admin-role-permissions">{permissionGroups.map((group) => { const keys = group.permissions.map(([key]) => key); const allEnabled = keys.every((key) => draft.permissions.includes(key)); return <section className="admin-role-permission-group" key={group.name}><div className="admin-role-permission-group-heading"><h2>{group.name}</h2><label className="admin-role-group-toggle"><input type="checkbox" checked={allEnabled} onChange={() => togglePermissionGroup(keys)} disabled={saving} /><span>{copy.all}</span></label></div><div className="admin-role-permission-options">{group.permissions.map(([key, label, helper]) => <label key={key}><input type="checkbox" checked={draft.permissions.includes(key)} onChange={() => togglePermission(key)} disabled={saving} /><span><strong>{label}</strong><small>{helper}</small></span></label>)}</div></section>; })}
+        {premiumGroups.map((group) => <section className="admin-role-permission-group admin-role-premium-group" key={group.title} aria-disabled="true"><div className="admin-role-permission-group-heading"><div><h2>{group.title}</h2><small>{group.description}</small></div><span className="premium-feature-badge">{strings.admin.encryption.premium}</span></div><label className="admin-role-group-toggle admin-role-premium-all"><input type="checkbox" disabled aria-label={`${copy.all} (${strings.admin.encryption.premium})`} /><span>{copy.all}</span><small>{copy.premium.allDescription}</small></label><div className="admin-role-permission-options">{group.options.map(([label, description]) => <label key={label}><input type="checkbox" disabled aria-label={`${label} (${strings.admin.encryption.premium})`} /><span><strong>{label}</strong><small>{description}</small></span></label>)}</div></section>)}
+      </div><div className="admin-member-actions"><button type="button" className="primary-button" onClick={() => void save()} disabled={saving || !draft.name.trim()}>{copy.saveRole}</button>{!draft.isDefault && draft.id !== "new" && <button type="button" className="danger-button" onClick={() => void remove()} disabled={saving}>{copy.deleteRole}</button>}</div></section>}
     </div>}
   </section></main>;
 }

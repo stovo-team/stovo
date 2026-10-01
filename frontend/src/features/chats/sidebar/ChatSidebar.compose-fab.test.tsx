@@ -25,6 +25,7 @@ vi.mock("../../../auth/AuthContext", () => ({
 
 vi.mock("../../../i18n/LanguageContext", () => ({
   useStrings: () => ({
+    spaceSwitcher: { selectSpace: "Select space", currentSpace: "Current space", connectSpace: "Connect Space" },
     chats: {
       title: "Chats",
       searchPlaceholder: "Search",
@@ -88,6 +89,40 @@ function overview(): ChatOverviewController {
 }
 
 describe("ChatSidebar compose action", () => {
+  it("shows the localized Connect Space action in the space switcher", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        <ChatSidebar
+          familyName="Stovo"
+          familyId="family-1"
+          canCreateFamilyInvite={false}
+          onOpenFamilyInvite={vi.fn()}
+          incomingSharedFiles={null}
+          isLoading={false}
+          accessToken={null}
+          overview={overview()}
+          onSelectChat={vi.fn()}
+          onOpenChat={vi.fn()}
+          onOpenDraftsAndScheduled={vi.fn()}
+          onOpenMessageArchive={vi.fn()}
+        />
+      );
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>(".server-switcher-trigger");
+    expect(trigger?.getAttribute("aria-label")).toBe("Select space");
+    act(() => { trigger?.click(); });
+    const connect = container.querySelector<HTMLButtonElement>(".server-switcher-connect");
+    expect(connect?.textContent?.trim()).toBe("Connect Space");
+    act(() => { connect?.click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/auth/server");
+  });
+
   it("renders an accessible SVG pencil and starts a new chat without a glyph fallback", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
