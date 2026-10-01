@@ -84,14 +84,12 @@ jobs:
     name: Frontend CI
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, e2e]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -103,12 +101,20 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+      - name: Upload frontend build for Android release
+        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 1
 
   backend-ci:
     name: Backend CI
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, tests]
     services:
       postgres:
         image: postgres:16
@@ -145,7 +151,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
           cache: false
       - name: Download modules
         run: go mod download
@@ -323,7 +328,7 @@ jobs:
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
-            docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build frontend
+            docker_with_space_recovery sudo env DOCKER_BUILDKIT=1 docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build frontend
             sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --force-recreate caddy
 
             # Verify public HTTPS listener
@@ -455,13 +460,13 @@ jobs:
             # Build backend docker image for child servers
             docker_with_space_recovery sudo docker run --rm -v "$PWD/backend/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
               migrate validate --dir file:///migrations
-            docker_with_space_recovery sudo docker build -t stovo-backend ./backend
+            docker_with_space_recovery sudo env DOCKER_BUILDKIT=1 docker build -t stovo-backend ./backend
 
             # Reconcile the LiveKit SFU
             docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d livekit
 
             # Build and deploy orchestrator, caddy gateway, and coturn
-            docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build orchestrator caddy coturn
+            docker_with_space_recovery sudo env DOCKER_BUILDKIT=1 docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build orchestrator caddy coturn
             sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --force-recreate caddy
 
             # Check public TLS listener
@@ -635,7 +640,7 @@ jobs:
     name: Android Release
     needs: [changes, frontend-ci]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
-    runs-on: self-hosted
+    runs-on: [self-hosted, e2e]
     permissions:
       contents: write
 
@@ -649,8 +654,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -728,9 +731,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: frontend/dist/
 
       - name: Sync Capacitor Android project
         working-directory: frontend

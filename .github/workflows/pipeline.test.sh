@@ -72,6 +72,17 @@ awk '
     sub(/^    if:[[:space:]]*/, "", condition)
     job_condition[job] = condition
   }
+  /^    runs-on:/ {
+    runner = $0
+    sub(/^    runs-on:[[:space:]]*/, "", runner)
+    job_runner[job] = runner
+  }
+  job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
+  (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
+  job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
+  job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
+  job == "deploy-android" && /^      - name: Build frontend$/ { android_rebuilds_frontend = 1 }
+  index($0, "name: frontend-dist-${{ github.sha }}") > 0 { artifact_name_count++ }
   /dorny\/paths-filter@v4/ { paths_filter_v4 = 1 }
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
 
@@ -89,6 +100,23 @@ awk '
     }
     if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\''") {
       fail("Backend CI must run only when backend paths changed.")
+    }
+    if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
+      fail("Frontend CI must stay on the frontend runner labeled e2e.")
+    }
+    if (job_runner["backend-ci"] != "[self-hosted, tests]") {
+      fail("Backend CI must stay on the backend CI runner labeled tests.")
+    }
+    if (job_runner["deploy-android"] != "[self-hosted, e2e]") {
+      fail("Android release must stay on the frontend runner labeled e2e.")
+    }
+    if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
+    if (npm_remote_cache_enabled) fail("Frontend and Android jobs must use the runner-local npm cache, not restore the oversized remote archive.")
+    if (!frontend_artifact_uploaded || !frontend_artifact_downloaded || android_rebuilds_frontend) {
+      fail("Android release must reuse the frontend build artifact from the same workflow run.")
+    }
+    if (artifact_name_count != 2) {
+      fail("Frontend build upload and Android download must use the same commit-scoped artifact name.")
     }
 
     expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
