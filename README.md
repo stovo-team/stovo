@@ -168,13 +168,14 @@ Some backend integration tests need disposable PostgreSQL and Redis services. E2
 
 Stovo is under active development. Features, configuration, and deployment contracts can change between revisions; review the guides and release notes for the version you deploy. Resource values in the Helm chart are starting estimates, not benchmark-backed capacity guarantees.
 
-**License pending:** the project has not selected a software license yet. Do not assume that viewing the public source grants rights to use, modify, or redistribute it.
+Stovo is licensed under the [Apache License 2.0](LICENSE).
 
 ## Documentation
 
 | Guide | What it covers |
 | --- | --- |
 | [Documentation index](docs/README.md) | Entry point to the maintained documentation. |
+| [License](LICENSE) | Apache License 2.0. |
 | [Docker Compose self-hosting](docs/self-hosting/docker-compose.md) | Installation, external services, network exposure, backups, upgrades, and troubleshooting. |
 | [Kubernetes and Helm](docs/self-hosting/kubernetes.md) | Chart values, Secret references, storage, ingress, media networking, resource estimates, and upgrades. |
 | [Subsystem map](docs/architecture/subsystems.md) | Backend package boundaries, frontend areas, transports, and infrastructure. |

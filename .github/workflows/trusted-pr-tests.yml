@@ -1,0 +1,134 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request_target:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: trusted-pr-tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          token: ${{ github.token }}
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'scripts/check-solid-boundaries.sh'
+              - 'docs/engineering/size-baseline.tsv'
+              - '.github/workflows/trusted-pr-tests.yml'
+              - '.github/workflows/pipeline.yml'
+            backend:
+              - 'backend/**'
+              - 'migrations/master/**'
+              - 'deploy/**'
+              - 'scripts/check-solid-boundaries.sh'
+              - 'docs/engineering/size-baseline.tsv'
+              - '.github/workflows/trusted-pr-tests.yml'
+              - '.github/workflows/pipeline.yml'
+
+  frontend-ci:
+    name: Frontend CI
+    needs: changes
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login == 'left-try' &&
+      needs.changes.outputs.frontend == 'true'
+    runs-on: [self-hosted, e2e]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: SOLID architecture boundaries
+        run: bash scripts/check-solid-boundaries.sh frontend
+      - name: Test
+        working-directory: frontend
+        run: npm test
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  backend-ci:
+    name: Backend CI
+    needs: changes
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login == 'left-try' &&
+      needs.changes.outputs.backend == 'true'
+    runs-on: [self-hosted, tests]
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: family_user
+          POSTGRES_PASSWORD: family_password
+          POSTGRES_DB: family_messenger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U family_user -d family_messenger_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://family_user:family_password@localhost:5432/family_messenger_test?sslmode=disable
+      TEST_REDIS_URL: redis://localhost:6379/0
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+      - name: Download modules
+        run: go mod download
+      - name: Go lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          working-directory: backend
+          verify: true
+          skip-cache: true
+          args: --timeout=5m
+      - name: Unit and integration tests
+        run: go test -count=1 ./...
+      - name: SOLID architecture boundaries
+        working-directory: .
+        run: bash scripts/check-solid-boundaries.sh backend

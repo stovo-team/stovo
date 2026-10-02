@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Deploy develop to the dev stack
         env:
-          DEPLOY_HOST: 10.29.106.221
+          DEPLOY_HOST: ${{ vars.DEV_DEPLOY_HOST }}
           DEV_PATH: /opt/stovo/dev
-          DEV_URL: http://10.29.106.221:9080
+          DEV_URL: ${{ vars.DEV_URL }}
         run: bash scripts/deploy-environment.sh dev

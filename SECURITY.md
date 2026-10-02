@@ -2,7 +2,7 @@
 
 ## Report a vulnerability privately
 
-Please do not report suspected vulnerabilities in public issues, discussions, pull requests, or social media. Send a private report through [GitHub Security Advisories](https://github.com/left-try/Stovo/security/advisories/new). If that private reporting form is unavailable, use a verified private contact method provided by the repository maintainers; do not post vulnerability details publicly.
+Please do not report suspected vulnerabilities in public issues, discussions, pull requests, or social media. Send a private report through [GitHub Security Advisories](https://github.com/stovo-team/stovo-messenger/security/advisories/new). If that private reporting form is unavailable, use a verified private contact method provided by the repository maintainers; do not post vulnerability details publicly.
 
 Include a concise description, affected component or version if known, steps to reproduce, and potential impact. Use a test environment and sanitized proof of concept. Do not include real user data, credentials, encryption keys, or other secrets. Avoid actions that access, modify, or disrupt data belonging to others.
 

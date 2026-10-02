@@ -29,7 +29,7 @@ Edit `.env` and set at least:
 | `PUBLIC_IP`, `TURN_HOST`, `TURN_REALM` | Public TURN address and matching realm. `PUBLIC_IP` is the host IPv4 used for relay candidates. |
 | `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `INVITE_TOKEN_SECRET` | Replace examples with unique, strong values. |
 | `MESSAGE_ENCRYPTION_KEY` | A base64 encoding of exactly 32 random bytes. Generate with `openssl rand -base64 32`. Preserve this key: changing it can make encrypted message data unreadable. |
-| `MINIO_ROOT_PASSWORD`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `TURN_PASSWORD`, `LIVEKIT_API_SECRET` | Set unique strong credentials; keep the LiveKit key map and backend credentials aligned. |
+| `MINIO_ROOT_PASSWORD`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `TURN_PASSWORD`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Set unique strong credentials; keep the LiveKit key map and backend credentials aligned. |
 | `GROQ_API_KEY` | Optional; needed for the configured Groq-based transcription features. |
 
 The full set of supported Compose variables and example values is in `.env.example`. Keep `.env` out of source control and limit access to it. The template's values are examples, not production secrets.

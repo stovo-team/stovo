@@ -29,17 +29,17 @@ x-backend: &backend
     POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
     POSTGRES_PORT: ${POSTGRES_PORT:-5432}
     POSTGRES_USER: ${POSTGRES_USER:-family_user}
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
     # When set, this takes precedence over the POSTGRES_* values above. It is
     # the connection URL for a managed/external PostgreSQL instance.
     DATABASE_URL: ${DATABASE_URL:-}
     REDIS_HOST: ${REDIS_HOST:-redis}
     REDIS_PORT: ${REDIS_PORT:-6379}
-    REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     REDIS_URL: ${REDIS_URL:-}
     # Streams are isolated from cache, presence, and socket Pub/Sub state.
-    REDIS_JOBS_URL: ${REDIS_JOBS_URL:-redis://:${REDIS_PASSWORD:-}@redis-jobs:6379/0}
+    REDIS_JOBS_URL: ${REDIS_JOBS_URL:-redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis-jobs:6379/0}
     JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
     JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
     JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
@@ -76,8 +76,8 @@ x-backend: &backend
     FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-}
     FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON:-}
     LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
-    LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
-    LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+    LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in .env}
+    LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in .env}
   expose:
     - "8000"
   networks:
@@ -116,7 +116,7 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_USER: ${POSTGRES_USER:-family_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
       DATABASE_URL: ${DATABASE_URL:-}
     entrypoint: ["/bin/sh", "-ec"]
@@ -132,7 +132,7 @@ services:
     image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-family_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -146,7 +146,7 @@ services:
     profiles:
       - disabled
     image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-data:/data
     healthcheck:
@@ -161,7 +161,7 @@ services:
     image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     # Streams carry durable worker work. Do not evict a pending job under
     # pressure; PostgreSQL remains the replayable source through outbox_events.
-    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction", "--requirepass", "${REDIS_PASSWORD:-}"]
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-jobs-data:/data
     healthcheck:
@@ -358,7 +358,7 @@ services:
           port_range_end: 50100
           use_external_ip: true
         keys:
-          ${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}
+          ${LIVEKIT_API_KEY:?Set LIVEKIT_API_KEY in .env}: ${LIVEKIT_API_SECRET:?Set LIVEKIT_API_SECRET in .env}
         logging:
           level: info
 
