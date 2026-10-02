@@ -1995,7 +1995,7 @@ h2 {
   .app-frame > .app-nav .app-nav-logout {
     border: none;
     border-radius: 12px;
-    gap: 4px;
+    gap: 2px;
     max-height: none;
     max-width: none;
     min-height: 54px;
@@ -2010,8 +2010,13 @@ h2 {
   .app-frame > .app-nav a .ms-icon,
   .app-frame > .app-nav .app-nav-logout .ms-icon {
     color: var(--text-muted);
-    font-size: 22px;
+    font-size: 20px;
     font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+  }
+
+  .app-frame > .app-nav a svg {
+    height: 20px;
+    width: 20px;
   }
 
   .app-frame > .app-nav a > span:not(.ms-icon):not(.nav-badge),
@@ -2055,7 +2060,7 @@ h2 {
   .app-frame > .app-nav a.active .ms-icon,
   .app-frame > .app-nav a.active .ms-icon.ms-icon--filled {
     color: var(--stovo-primary);
-    font-size: 22px;
+    font-size: 20px;
     font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
   }
 
@@ -2109,7 +2114,7 @@ h2 {
   border-radius: var(--radius-control);
   color: var(--text-secondary);
   display: flex;
-  gap: 3px;
+  gap: 2px;
   min-height: 42px;
   padding: 8px 12px;
   position: relative;
@@ -13519,7 +13524,7 @@ span.message-spoiler.is-revealed {
 
   .app-frame > .app-nav a svg,
   .app-frame > .app-nav a .ms-icon {
-    font-size: 24px;
+    font-size: 20px;
     font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
     position: relative;
     z-index: 1;
@@ -13527,13 +13532,13 @@ span.message-spoiler.is-revealed {
 
   .app-frame > .app-nav a.active .ms-icon,
   .app-frame > .app-nav a .ms-icon.ms-icon--filled {
-    font-size: 24px;
+    font-size: 20px;
     font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
   }
 
   .app-frame > .app-nav a svg {
-    height: 24px;
-    width: 24px;
+    height: 20px;
+    width: 20px;
   }
 
   .app-frame > .app-nav .app-brand,
@@ -20166,7 +20171,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 /* Desktop conversation chrome: keep the sidebar header fixed over its own list. */
 @media (min-width: 961px) {
   .app-frame > .app-nav {
-    --app-nav-state-circle-size: 60px;
+    --app-nav-state-circle-size: 68px;
     padding: 12px 6px;
   }
 
