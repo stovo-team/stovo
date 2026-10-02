@@ -12,7 +12,7 @@ import type { Socket } from "socket.io-client";
 import type { NavigateFunction } from "react-router-dom";
 
 import type { User } from "../../../api/auth";
-import type { Chat, Message } from "../../../api/chats";
+import { getChat, type Chat, type Message } from "../../../api/chats";
 import { getFamily } from "../../../api/family";
 import CallController, {
   CallCapabilities,
@@ -545,19 +545,34 @@ export function useCallSession({
       setError("Realtime connection is offline. Please refresh and try again.");
       return;
     }
-    const peers = selectedChat.members.filter((member) => member.id !== currentUser.id);
+    let callChat = selectedChat;
+    let peers = callChat.members.filter((member) => member.id !== currentUser.id);
     if (peers.length === 0) {
-      console.warn("[CALL] startDirectCall: no peer member found in chat");
-      return;
+      // The selected chat can be an outdated overview snapshot. Reload its
+      // authoritative member list before deciding that there is nobody to call.
+      if (accessToken) {
+        try {
+          callChat = await getChat(accessToken, selectedChat.id);
+          setSelectedChat(callChat);
+          peers = callChat.members.filter((member) => member.id !== currentUser.id);
+        } catch (err) {
+          console.warn("[CALL] startDirectCall: failed to refresh chat members", err);
+        }
+      }
+      if (peers.length === 0) {
+        console.warn("[CALL] startDirectCall: no peer member found in chat");
+        setError("This chat has no other members to call. Add someone to the chat and try again.");
+        return;
+      }
     }
     const selectedInvitees =
       inviteUserIds && inviteUserIds.length > 0
         ? inviteUserIds
-        : selectedChat.type === "direct"
+        : callChat.type === "direct"
           ? [peers[0].id]
           : peers.map((p) => p.id);
     const primaryPeer = peers.find((p) => selectedInvitees.includes(p.id)) ?? peers[0];
-    const isGroup = selectedChat.type === "group" || selectedChat.type === "family";
+    const isGroup = callChat.type === "group" || callChat.type === "family";
     console.log("[CALL] startDirectCall: peer=", primaryPeer.id, "invitees=", selectedInvitees, "isGroup=", isGroup);
     setError(null);
     setCallNotice(null);
@@ -574,14 +589,14 @@ export function useCallSession({
     activeCallSessionIdRef.current = "pending";
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(primaryPeer.id);
-    setCallPeerDisplayName(isGroup ? (selectedChat.title ?? primaryPeer.displayName ?? null) : (primaryPeer.displayName ?? null));
+    setCallPeerDisplayName(isGroup ? (callChat.title ?? primaryPeer.displayName ?? null) : (primaryPeer.displayName ?? null));
     setCallParticipantIds([currentUser.id, ...selectedInvitees]);
     setCallTopology("mesh");
     activeCallChatIdRef.current = selectedChat.id;
     audioCallRef.current?.setLocalUserId(currentUser.id);
     console.log("[CALL] startDirectCall: calling prepareForCall type=", type);
     try {
-      await loadCallQuality(callQualityProfileForChatType(selectedChat.type));
+      await loadCallQuality(callQualityProfileForChatType(callChat.type));
       await audioCallRef.current?.prepareForCall(type);
       console.log("[CALL] startDirectCall: prepareForCall resolved OK");
     } catch (err) {
@@ -600,7 +615,7 @@ export function useCallSession({
     }
     console.log("[CALL] startDirectCall: emitting call:start chatId=", selectedChat.id, "callType=", type);
     socket.emit("call:start", {
-      chatId: selectedChat.id,
+      chatId: callChat.id,
       callType: type,
       inviteUserIds: selectedInvitees
     });
