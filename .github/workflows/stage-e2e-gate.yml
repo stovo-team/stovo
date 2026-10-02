@@ -8,7 +8,6 @@ on:
       stage_url:
         description: 'Stage Base URL for E2E Tests'
         required: false
-        default: 'http://10.29.106.221:9081'
 
 concurrency:
   group: stage-e2e-${{ github.ref }}
@@ -26,9 +25,9 @@ jobs:
 
       - name: Deploy Stage Compose Environment
         env:
-          DEPLOY_HOST: 10.29.106.221
+          DEPLOY_HOST: ${{ vars.STAGE_DEPLOY_HOST }}
           STAGE_PATH: /opt/stovo/stage
-          STAGE_URL: ${{ inputs.stage_url || 'http://10.29.106.221:9081' }}
+          STAGE_URL: ${{ inputs.stage_url || vars.STAGE_URL }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: bash scripts/deploy-stage.sh
 
@@ -58,7 +57,7 @@ jobs:
       - name: Run E2E Playwright Suite against Stage
         working-directory: ./e2e
         env:
-          E2E_BASE_URL: ${{ inputs.stage_url || 'http://10.29.106.221:9081' }}
+          E2E_BASE_URL: ${{ inputs.stage_url || vars.STAGE_URL }}
           CI: 'true'
         run: npm run test:ci
 

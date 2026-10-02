@@ -10,28 +10,15 @@ awk '
   /^jobs:$/ {
     in_jobs = 1
     in_global_permissions = 0
-    in_pull_request = 0
     next
   }
 
   !in_jobs {
-    if ($0 == "  pull_request:") {
-      in_pull_request = 1
-      next
-    }
-    if (in_pull_request && $0 ~ /^  [[:alnum:]_-]+:/) {
-      in_pull_request = 0
-    }
-    if (in_pull_request && $0 == "      - master") {
-      pr_targets_master = 1
-    }
+    if ($0 == "  pull_request:") fail("Untrusted pull requests must not run on self-hosted pipeline runners.")
 
     if ($0 == "permissions:") {
       in_global_permissions = 1
       next
-    }
-    if (in_global_permissions && $0 ~ /^[[:space:]]+pull-requests:/) {
-      fail("Pull request API access must be scoped to the changes job.")
     }
     if (in_global_permissions && $0 == "  contents: read") {
       global_contents_read = 1
@@ -53,12 +40,6 @@ awk '
   }
   in_job_permissions && /^    [[:alnum:]_-]+:/ {
     in_job_permissions = 0
-  }
-  in_job_permissions && /pull-requests:/ {
-    pull_request_permission_count++
-    if (job == "changes" && $0 == "      pull-requests: read") {
-      changes_pull_request_read = 1
-    }
   }
   in_job_permissions && job == "changes" && $0 == "      contents: read" {
     changes_contents_read = 1
@@ -87,11 +68,7 @@ awk '
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
 
   END {
-    if (!pr_targets_master) fail("Pull requests targeting master must trigger the pipeline.")
     if (!global_contents_read) fail("The workflow token must have read-only contents access by default.")
-    if (pull_request_permission_count != 1 || !changes_pull_request_read) {
-      fail("Only the changes job may have pull-requests: read permission.")
-    }
     if (!changes_contents_read) fail("The changes job must retain contents: read permission.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
     if (insecure_node_override) fail("The pipeline must not enable the insecure Node.js runtime override.")
@@ -135,6 +112,20 @@ awk '
     if (failed) exit 1
   }
 ' .github/workflows/pipeline.yml
+
+trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
+grep -Fq 'pull_request_target:' "$trusted_pr_workflow" || {
+  echo "Trusted PR tests must use the base-branch pull_request_target workflow." >&2
+  exit 1
+}
+grep -Fq "github.event.pull_request.user.login == 'left-try'" "$trusted_pr_workflow" || {
+  echo "Self-hosted PR tests must be restricted to the trusted PR author." >&2
+  exit 1
+}
+grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
+  echo "PR checkout must not persist a write-capable GitHub token." >&2
+  exit 1
+}
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then

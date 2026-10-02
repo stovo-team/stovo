@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        For a suspected security vulnerability, stop here and use [private vulnerability reporting](https://github.com/left-try/Stovo/security/advisories/new). Do not post credentials, encryption keys, private messages, personal data, or unredacted logs.
+        For a suspected security vulnerability, stop here and use [private vulnerability reporting](https://github.com/stovo-team/stovo-messenger/security/advisories/new). Do not post credentials, encryption keys, private messages, personal data, or unredacted logs.
   - type: textarea
     id: summary
     attributes:

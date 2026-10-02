@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Playwright E2E configuration for Stovo testing runner.
  * Supports running inside LXC container, local machine, or CI pipeline.
  */
-const BASE_URL = process.env.E2E_BASE_URL || process.env.BASE_URL || 'http://10.29.106.221:9081';
+const BASE_URL = process.env.E2E_BASE_URL || process.env.BASE_URL || 'http://localhost:8081';
 
 export default defineConfig({
   testDir: './tests',

@@ -11,13 +11,13 @@ case "$ENVIRONMENT" in
     DEPLOY_PATH="${DEV_PATH:-/opt/stovo/dev}"
     COMPOSE_FILE="deploy/compose/dev.yml"
     PROJECT_NAME="stovo-dev"
-    HEALTH_URL="${DEV_URL:-http://10.29.106.221:9080}"
+    HEALTH_URL="${DEV_URL:?Set DEV_URL to the dev health-check URL}"
     ;;
   stage)
     DEPLOY_PATH="${STAGE_PATH:-/opt/stovo/stage}"
     COMPOSE_FILE="deploy/compose/stage.yml"
     PROJECT_NAME="stovo-stage"
-    HEALTH_URL="${STAGE_URL:-http://10.29.106.221:9081}"
+    HEALTH_URL="${STAGE_URL:?Set STAGE_URL to the stage health-check URL}"
     ;;
   *)
     echo "Unknown environment: $ENVIRONMENT (expected dev or stage)" >&2
@@ -25,7 +25,7 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-DEPLOY_HOST="${DEPLOY_HOST:-10.29.106.221}"
+DEPLOY_HOST="${DEPLOY_HOST:?Set DEPLOY_HOST to the deployment host}"
 DEPLOY_USER="${DEPLOY_USER:-root}"
 SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 

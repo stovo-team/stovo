@@ -80,7 +80,22 @@ test('README has the required product, deployment, development, status, and docs
   const statusStart = readme.search(/^## Project status\s*$/m);
   const statusEnd = readme.slice(statusStart + 1).search(/^## /m);
   const status = statusStart >= 0 ? readme.slice(statusStart, statusEnd >= 0 ? statusStart + 1 + statusEnd : undefined) : '';
-  assert.match(status, /license.{0,40}pending|pending.{0,40}license/i, 'status must clearly say that the license is pending');
+  assert.match(status, /Apache License 2\.0/i, 'status must identify the selected license');
+  assert.match(read('LICENSE'), /Copyright 2026 Stakhov Ivan/);
+});
+
+test('production and stage Compose require deployment credentials', () => {
+  const production = read('deploy/compose/production-bluegreen.yml');
+  for (const key of ['POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET']) {
+    assert.ok(production.includes(`${key}: \${${key}:?Set ${key} in .env}`), `${key} must be required in production Compose`);
+  }
+  assert.doesNotMatch(production, /family_password|\$\{REDIS_PASSWORD:-\}|devkey|LIVEKIT_API_SECRET:-secret/i);
+
+  const stage = read('deploy/compose/stage.yml');
+  for (const key of ['POSTGRES_PASSWORD', 'REDIS_PASSWORD', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'INVITE_TOKEN_SECRET', 'MESSAGE_ENCRYPTION_KEY', 'MINIO_ROOT_PASSWORD']) {
+    assert.ok(stage.includes(`${key}: \${${key}:?Set ${key} in the stage .env}`), `${key} must be required in stage Compose`);
+  }
+  assert.doesNotMatch(stage, /stage_password|stage_secret|stage_encryption_key|stovo_stage_pass|stage_turn_pass/i);
 });
 
 test('README architecture includes a connected Mermaid service flow with verified services', () => {

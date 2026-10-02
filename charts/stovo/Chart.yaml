@@ -4,9 +4,9 @@ description: Stovo web application for Kubernetes; database, Redis, S3 storage, 
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-home: https://github.com/left-try/Stovo
+home: https://github.com/stovo-team/stovo-messenger
 sources:
-  - https://github.com/left-try/Stovo
+  - https://github.com/stovo-team/stovo-messenger
 keywords:
   - stovo
   - self-hosted

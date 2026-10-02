@@ -17,22 +17,6 @@ on:
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - 'migrations/master/**'
-      - 'deploy/caddy/Caddyfile'
-      - 'deploy/caddy/Caddyfile.internal'
-      - 'deploy/compose/production-multiserver.yml'
-      - 'backend/Dockerfile.orchestrator'
-      - 'deploy/**'
-      - 'docs/engineering/size-baseline.tsv'
-      - 'scripts/**'
-      - '.github/workflows/pipeline.yml'
-      - '.github/workflows/pipeline.test.sh'
   workflow_dispatch:
 
 concurrency:
@@ -48,7 +32,6 @@ jobs:
     runs-on: self-hosted
     permissions:
       contents: read
-      pull-requests: read
     outputs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
@@ -432,7 +415,11 @@ jobs:
             }
 
             pg_user="$(get_env POSTGRES_USER family_user)"
-            pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
+            pg_pass="$(get_env POSTGRES_PASSWORD '')"
+            if [ -z "$pg_pass" ]; then
+              echo "POSTGRES_PASSWORD must be configured before production deployment." >&2
+              exit 1
+            fi
             pg_db="$(get_env POSTGRES_DB family_messenger)"
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
             tenant_redis_url="$(get_env REDIS_URL 'redis://redis:6379/0')"
@@ -522,15 +509,23 @@ jobs:
                         if [ -n "$existing_container_id" ]; then
                           sudo docker rm -f "$existing_container_id" || true
                         fi
-                        master_secret="$(get_env MASTER_SYSTEM_SECRET super_secret_master_key_123)"
-                        minio_user="$(get_env MINIO_ROOT_USER stovo_minio_root)"
-                        minio_pass="$(get_env MINIO_ROOT_PASSWORD stovo_minio_pass)"
+                        master_secret="$(get_env MASTER_SYSTEM_SECRET '')"
+                        minio_user="$(get_env MINIO_ROOT_USER '')"
+                        minio_pass="$(get_env MINIO_ROOT_PASSWORD '')"
+                        if [ -z "$master_secret" ] || [ -z "$minio_user" ] || [ -z "$minio_pass" ]; then
+                          echo "MASTER_SYSTEM_SECRET, MINIO_ROOT_USER, and MINIO_ROOT_PASSWORD must be configured before tenant deployment." >&2
+                          exit 1
+                        fi
                         turn_enabled="$(get_env TURN_ENABLED true)"
                         turn_host="$(get_env TURN_HOST "$(get_env PUBLIC_HOST "$(get_env PUBLIC_IP stovo.local)")")"
                         turn_port="$(get_env TURN_PORT 3478)"
                         turn_realm="$(get_env TURN_REALM family-messenger)"
                         turn_username="$(get_env TURN_USERNAME family)"
-                        turn_password="$(get_env TURN_PASSWORD change_me)"
+                        turn_password="$(get_env TURN_PASSWORD '')"
+                        if [ "$turn_enabled" = true ] && [ -z "$turn_password" ]; then
+                          echo "TURN_PASSWORD must be configured when TURN_ENABLED is true." >&2
+                          exit 1
+                        fi
                         groq_api_key="$(get_env GROQ_API_KEY "$(get_env groq_api_key "$(get_env GROQ_KEY "$(get_env GROQ_API_TOKEN "")")")")"
                         groq_base_url="$(get_env GROQ_BASE_URL "$(get_env GROQ_API_BASE "")")"
                         groq_stt_model="$(get_env GROQ_STT_MODEL whisper-large-v3-turbo)"

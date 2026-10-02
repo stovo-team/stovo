@@ -1,5 +1,5 @@
 # Staging Compose Environment for Stovo (tracks the stage branch).
-# LXD proxy-2 exposes the Caddy gateway as http://10.29.106.221:9081.
+# Set APP_URL, API_URL, FRONTEND_ORIGIN, and APP_DOMAIN for the stage endpoint.
 
 networks:
   stovo-stage-net:
@@ -20,7 +20,7 @@ services:
       - stovo-stage-net
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-stage_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stage_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stage .env}
       POSTGRES_DB: ${POSTGRES_DB:-stovo_stage_db}
     expose:
       - "5432"
@@ -38,12 +38,15 @@ services:
     restart: unless-stopped
     networks:
       - stovo-stage-net
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}
     expose:
       - "6379"
     volumes:
       - redis-stage-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,13 +57,15 @@ services:
     restart: unless-stopped
     networks:
       - stovo-stage-net
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}
     expose:
       - "6379"
     volumes:
       - redis-jobs-stage-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -88,8 +93,8 @@ services:
       - stovo-stage-net
     command: server /data --address ":9000" --quiet
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stovo_stage_root}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_stage_pass}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the stage .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the stage .env}
       MINIO_BROWSER: "off"
     expose:
       - "9000"
@@ -110,7 +115,7 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c "mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-stovo_stage_root} ${MINIO_ROOT_PASSWORD:-stovo_stage_pass} &&
+      /bin/sh -c "mc alias set local http://minio:9000 ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the stage .env} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the stage .env} &&
       mc mb --ignore-existing local/stovo-files && mc mb --ignore-existing local/stovo-logs && mc mb --ignore-existing local/stovo-calls"
 
   backend:
@@ -126,34 +131,36 @@ services:
     environment:
       APP_ENV: staging
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.32.0.2/32}
-      APP_URL: ${APP_URL:-http://10.29.106.221:9081}
+      APP_URL: ${APP_URL:-http://localhost:8081}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-capacitor://localhost}
       NATIVE_CLIENT_ORIGINS: ${NATIVE_CLIENT_ORIGINS:-capacitor://localhost}
-      API_URL: ${API_URL:-http://10.29.106.221:9081}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://10.29.106.221:9081}
+      API_URL: ${API_URL:-http://localhost:8081}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8081}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-stage_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stage_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stage .env}
       POSTGRES_DB: ${POSTGRES_DB:-stovo_stage_db}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_JOBS_URL: redis://redis-jobs:6379/0
-      JWT_SECRET: stage_secret_jwt_key_12345
-      REFRESH_TOKEN_SECRET: stage_refresh_secret_key_12345
-      INVITE_TOKEN_SECRET: stage_invite_secret_key_12345
-      MESSAGE_ENCRYPTION_KEY: stage_encryption_key_123456789012
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}
+      REDIS_JOBS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}@redis-jobs:6379/0
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the stage .env}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:?Set REFRESH_TOKEN_SECRET in the stage .env}
+      INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:?Set INVITE_TOKEN_SECRET in the stage .env}
+      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:?Set MESSAGE_ENCRYPTION_KEY in the stage .env}
       STORAGE_PROVIDER: minio
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-stovo_stage_root}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-stovo_stage_pass}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the stage .env}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the stage .env}
       MINIO_SECURE: "false"
       MINIO_FILES_BUCKET: stovo-files
       MINIO_LOGS_BUCKET: stovo-logs
       MINIO_CALLS_BUCKET: stovo-calls
       NTFY_BASE_URL: http://ntfy:80
-      TURN_USERNAME: stage_turn
-      TURN_PASSWORD: stage_turn_pass
+      TURN_ENABLED: ${TURN_ENABLED:-false}
+      TURN_USERNAME: ${TURN_USERNAME:-stage_turn}
+      TURN_PASSWORD: ${TURN_PASSWORD:-}
     expose:
       - "8000"
     depends_on:
@@ -186,10 +193,10 @@ services:
       - frontend
       - backend
     ports:
-      # proxy-2 exposes this as http://10.29.106.221:9081.
+      # Expose this port through the stage host's configured proxy.
       - "127.0.0.1:8081:8000"
     environment:
-      APP_DOMAIN: 10.29.106.221
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
       ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-proxy}
     volumes:
       - ./deploy/caddy/Caddyfile.internal:/etc/caddy/Caddyfile:ro
