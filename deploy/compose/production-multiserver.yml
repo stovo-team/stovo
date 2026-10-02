@@ -6,13 +6,13 @@ services:
     container_name: stovo-master-db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-stovo_master_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +35,8 @@ services:
     restart: always
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stovo_minio_root}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_minio_pass}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio-data:/data
     healthcheck:
@@ -57,40 +57,40 @@ services:
       - 1.1.1.1
       - 8.8.8.8
     environment:
-      MASTER_DB_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-stovo_master_db}?sslmode=disable
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      MASTER_DB_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # Optional external services for tenant backends. DATABASE_URL may use
       # {slug}, for example .../stovo_db_{slug}?sslmode=require.
-      DATABASE_URL: ${DATABASE_URL:-}
-      REDIS_URL: ${REDIS_URL:-}
-      MASTER_ADMIN_USER: ${MASTER_ADMIN_USER:-admin}
-      MASTER_ADMIN_PASSWORD: ${MASTER_ADMIN_PASSWORD:-changeme_master_pass}
-      MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET:-super_secret_master_key_123}
-      PUBLIC_HOST: ${PUBLIC_HOST:-stovo.local}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      MASTER_ADMIN_USER: ${MASTER_ADMIN_USER}
+      MASTER_ADMIN_PASSWORD: ${MASTER_ADMIN_PASSWORD}
+      MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET}
+      PUBLIC_HOST: ${PUBLIC_HOST}
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-stovo_minio_root}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-stovo_minio_pass}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stovo_minio_root}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_minio_pass}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       DOCKER_NETWORK_NAME: stovo_default
       TRUSTED_PROXY_NETWORK_NAME: stovo-master-members-proxy
-      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.33.0.2/32}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_BASE_URL: ${GROQ_BASE_URL:-}
-      GROQ_STT_MODEL: ${GROQ_STT_MODEL:-qwen3-asr-flash-2025-09-08}
-      GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-}
-      GROQ_STT_COST_PER_AUDIO_HOUR_USD: ${GROQ_STT_COST_PER_AUDIO_HOUR_USD:-0.04}
-      AI_CALL_TRANSCRIPTION_ENABLED: ${AI_CALL_TRANSCRIPTION_ENABLED:-true}
-      LIVEKIT_URL: ${LIVEKIT_URL:-}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
-      TURN_ENABLED: ${TURN_ENABLED:-true}
-      TURN_HOST: ${TURN_HOST:-}
-      TURN_PORT: ${TURN_PORT:-3478}
-      TURN_REALM: ${TURN_REALM:-family-messenger}
-      TURN_USERNAME: ${TURN_USERNAME:-family}
-      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_BASE_URL: ${GROQ_BASE_URL}
+      GROQ_STT_MODEL: ${GROQ_STT_MODEL}
+      GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL}
+      GROQ_STT_COST_PER_AUDIO_HOUR_USD: ${GROQ_STT_COST_PER_AUDIO_HOUR_USD}
+      AI_CALL_TRANSCRIPTION_ENABLED: ${AI_CALL_TRANSCRIPTION_ENABLED}
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      TURN_ENABLED: ${TURN_ENABLED}
+      TURN_HOST: ${TURN_HOST}
+      TURN_PORT: ${TURN_PORT}
+      TURN_REALM: ${TURN_REALM}
+      TURN_USERNAME: ${TURN_USERNAME}
+      TURN_PASSWORD: ${TURN_PASSWORD}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -117,7 +117,7 @@ services:
     environment:
       # Supplying a hostname (rather than only :80) lets Caddy obtain a TLS
       # certificate and listen on the published HTTPS port.
-      APP_DOMAIN: ${APP_DOMAIN:-stovo-cloud.stovo.ru}
+      APP_DOMAIN: ${APP_DOMAIN}
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -138,10 +138,10 @@ services:
     container_name: stovo-coturn
     restart: always
     environment:
-      TURN_USERNAME: ${TURN_USERNAME:-family}
-      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
-      TURN_REALM: ${TURN_REALM:-family-messenger}
-      PUBLIC_IP: ${PUBLIC_IP:-}
+      TURN_USERNAME: ${TURN_USERNAME}
+      TURN_PASSWORD: ${TURN_PASSWORD}
+      TURN_REALM: ${TURN_REALM}
+      PUBLIC_IP: ${PUBLIC_IP}
     ports:
       - "3478:3478/tcp"
       - "3478:3478/udp"
@@ -151,12 +151,12 @@ services:
       - --log-file=stdout
       - --lt-cred-mech
       - --fingerprint
-      - --user=${TURN_USERNAME:-family}:${TURN_PASSWORD:-change_me}
-      - --realm=${TURN_REALM:-family-messenger}
+      - --user=${TURN_USERNAME}:${TURN_PASSWORD}
+      - --realm=${TURN_REALM}
       - --listening-port=3478
       - --min-port=49160
       - --max-port=49200
-      - --external-ip=${PUBLIC_IP:-}
+      - --external-ip=${PUBLIC_IP}
 
   livekit:
     # v1.9.10 introduced the /rtc/v1 signaling endpoint used by the current
@@ -180,7 +180,7 @@ services:
           port_range_end: 50100
           use_external_ip: true
         keys:
-          ${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}
+          ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
         logging:
           level: info
 
