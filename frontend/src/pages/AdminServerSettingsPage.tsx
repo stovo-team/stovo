@@ -171,6 +171,14 @@ export default function AdminServerSettingsPage() {
           <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.groupCallsQuality}</h2>
             {qualityControl("groupCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
           </section>
+          <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.voiceChannelTimeoutHeading}</h2>
+            <div className="appearance-setting-row appearance-setting-row--disabled">
+              <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
+              <span><strong>{strings.admin.serverSettings.voiceChannelTimeoutLabel}</strong><small>{strings.admin.serverSettings.voiceChannelTimeoutHelp}</small></span>
+              <GuestMeetingSelect ariaLabel={strings.admin.serverSettings.voiceChannelTimeoutLabel} className="server-settings-select" value="never" options={[{ value: "never", label: strings.admin.serverSettings.never }]} disabled onChange={() => undefined} />
+              <span className="premium-feature-badge">{premium}</span>
+            </div>
+          </section>
           <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.dmCallsQuality}</h2>
             {qualityControl("dmCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
           </section>

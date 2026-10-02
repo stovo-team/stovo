@@ -32,6 +32,7 @@ vi.mock("../i18n/LanguageContext", () => ({
       spaceName: "Space Name",
       screenShareBitrate: "Screen-share bitrate (kbps)", cameraBitrate: "Camera bitrate (kbps)",
       groupCallsQuality: "Group calls & voice chats", dmCallsQuality: "DM calls",
+      voiceChannelTimeoutHeading: "Voice channel timeout", voiceChannelTimeoutLabel: "Disconnect a lone participant after", voiceChannelTimeoutHelp: "Automatically end a voice channel when only one participant remains.",
       safetyAndModeration: "Safety & moderation", disallowedFileTypes: "Disallowed file types",
       contentSafetyChecks: "Content safety checks", antispam: "Antispam", storageAndRetention: "Storage and retention",
       fileCompression: "File compression", fileCompressionHelp: "Optimize media and documents", optimizeSize: "Optimize size",
@@ -110,6 +111,15 @@ describe("AdminServerSettingsPage", () => {
     const heading = [...document.querySelectorAll("h2")].find((candidate) => candidate.textContent?.trim() === sectionName);
     return heading?.closest("section")?.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`) ?? null;
   }
+
+  it("shows the lone-participant voice channel timeout as a Premium placeholder", async () => {
+    await renderPage();
+    const control = document.querySelector<HTMLButtonElement>('button[aria-label^="Disconnect a lone participant after"]');
+    expect(control?.disabled).toBe(true);
+    expect(control?.textContent).toContain("Never");
+    expect(document.body.textContent).toContain("Premium");
+    expect(mocks.authRequest).toHaveBeenCalledTimes(1);
+  });
 
   it("shows and saves the server notification provider", async () => {
     await renderPage();
@@ -291,7 +301,7 @@ describe("AdminServerSettingsPage", () => {
     expect(messageTtl.closest(".server-settings-select")).toBeTruthy();
     expect(inactiveUsers.closest(".server-settings-select")).toBeTruthy();
     expect(compression.disabled && messageTtl.disabled && inactiveUsers.disabled).toBe(true);
-    expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(6);
+    expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(7);
     expect(mocks.authRequest).toHaveBeenCalledTimes(1);
     expect(mocks.updateNotificationProviderSettings).not.toHaveBeenCalled();
   });
