@@ -20171,7 +20171,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 /* Desktop conversation chrome: keep the sidebar header fixed over its own list. */
 @media (min-width: 961px) {
   .app-frame > .app-nav {
-    --app-nav-state-circle-size: 68px;
+    --app-nav-state-circle-size: 60px;
     padding: 12px 6px;
   }
 
