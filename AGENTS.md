@@ -11,8 +11,13 @@
 
 ## Pull request naming
 
-- Use Gitflow-style prefixes in PR titles: `feature: <user-visible capability>`, `hotfix: <corrected behavior>`, or `release: <version or release scope>`.
-- Name the outcome, not the work phase. Avoid titles such as `test: plan ...` or `implementation: ...`; planning and test work belong in the PR description.
+- Every completed task must be committed on its dedicated task branch and submitted as a pull request targeting `main`. Do not push directly to `main`; the repository owner reviews and merges pull requests manually.
+- Organize pull requests around one coherent logical section of work. Keep each pull request small, normally no more than 300–400 changed lines of code. If the work exceeds that size, split it into independently reviewable pull requests with clear logical boundaries; coordinate dependencies in their descriptions.
+- Each commit should represent one small, complete task and use a clear, descriptive message. A pull request may contain multiple task-sized commits when they all contribute to its single logical section.
+- Use one of these exact pull request title prefixes: `Feature:`, `Fix:`, `CritFix:`, `Test:`, or `Docs:`. The pull request title should match its primary commit message, replacing the commit message's square-bracket category with the corresponding colon prefix (for example, `[Docs] clarify review workflow` becomes `Docs: clarify review workflow`).
+- Do not assign or request pull request reviewers by default. Add an appropriate label to every pull request. Link the relevant issue and project when applicable; do not invent issue or project associations when none exists.
+- Include a concise explanation of the logical change, why it is needed, and any relevant verification in the pull request description.
+- Do not publish changes without authorization. When authorized to push and open a pull request, report its link and status. If a remote pull request cannot be created, retain the branch and worktree and report the blocker.
 
 ## New features: test-driven development
 
