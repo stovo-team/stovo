@@ -36,10 +36,11 @@ body:
     attributes:
       label: Deployment
       options:
-        - Docker Compose
-        - Kubernetes / Helm
-        - Local development
-        - Other / not sure
+        - Cloud based
+        - Managed Instance
+        - Local - Docker Compose
+        - Local - Kubernetes/Helm
+        - Other
     validations:
       required: true
   - type: textarea

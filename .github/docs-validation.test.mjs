@@ -54,6 +54,20 @@ test('README links to the maintained deployment and contributor guides', () => {
   }
 });
 
+test('bug report deployment choices cover hosted, managed, and local deployments', () => {
+  const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
+  const deploymentField = bugReport.match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
+  assert.ok(deploymentField, 'bug report must include a deployment dropdown');
+  const choices = [...deploymentField.matchAll(/^        - (.+)$/gm)].map((match) => match[1]);
+  assert.deepEqual(choices, [
+    'Cloud based',
+    'Managed Instance',
+    'Local - Docker Compose',
+    'Local - Kubernetes/Helm',
+    'Other',
+  ]);
+});
+
 test('README opens with the approved corporate positioning and tagline', () => {
   const readme = read('README.md');
   const opening = readme.slice(0, readme.search(/^## /m));
