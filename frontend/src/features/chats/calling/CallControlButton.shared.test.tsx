@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Volume2, VolumeX } from "lucide-react";
+import { ScreenShare, ScreenShareOff, Volume2, VolumeX } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CallControlButton } from "./CallControlButton";
 
@@ -97,6 +97,8 @@ describe("shared call control button", () => {
 
     expect(cameraOn.querySelector("svg")?.outerHTML).not.toBe(cameraOff.querySelector("svg")?.outerHTML);
     expect(sharing.querySelector("svg")?.outerHTML).not.toBe(notSharing.querySelector("svg")?.outerHTML);
+    expect(notSharing.querySelector("svg")?.outerHTML).toBe(renderToStaticMarkup(<ScreenShare aria-hidden="true" size={20} />));
+    expect(sharing.querySelector("svg")?.outerHTML).toBe(renderToStaticMarkup(<ScreenShareOff aria-hidden="true" size={20} />));
   });
 
   it("does not expose toggle state for one-shot actions", () => {

@@ -4,14 +4,8 @@ import {
   useState
 } from "react";
 import {
-  Mic,
   MicOff,
-  Minimize2,
-  MoreVertical,
-  PhoneOff,
   Settings,
-  ScreenShare,
-  ScreenShareOff,
   UserPlus,
   Video,
   VideoOff,
@@ -82,11 +76,8 @@ export function VoiceChannelStage({
     audioCallRef
   } = session;
 
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
-  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
 
   const effectiveRoomId = callRoomId ?? (chat.activeCall?.roomId ?? null);
@@ -124,23 +115,6 @@ export function VoiceChannelStage({
     localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
     displayName: currentUser?.displayName ?? "You",
   });
-  // Close more menu when clicking outside
-  useEffect(() => {
-    if (!isMoreMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        moreMenuRef.current &&
-        !moreMenuRef.current.contains(e.target as Node) &&
-        moreButtonRef.current &&
-        !moreButtonRef.current.contains(e.target as Node)
-      ) {
-        setIsMoreMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMoreMenuOpen]);
-
   const isConnecting = activeCallChatId === chat.id && callPhase === "connecting";
   const activeCall = activeGroupCalls[chat.id] || chat.activeCall;
   const rawParticipants = (activeCall?.participants as Array<{ userId: string; state: string; role: string }>) || [];
@@ -202,12 +176,10 @@ export function VoiceChannelStage({
   };
 
   const handleLeave = () => {
-    setIsMoreMenuOpen(false);
     void endActiveCall();
   };
 
   const handleOpenSettings = () => {
-    setIsMoreMenuOpen(false);
     if (setIsCallAudioPopupOpen) {
       setIsCallAudioPopupOpen(true);
     } else if (setIsCallSettingsMenuOpen) {
@@ -525,43 +497,16 @@ export function VoiceChannelStage({
               />
             </div>
 
-            {/* 3 Dots Menu Button for Settings */}
             <div className="voice-more-menu-anchor">
               <button
-                ref={moreButtonRef}
                 type="button"
-                className={`voice-dock-btn${isMoreMenuOpen ? " is-active" : ""}`}
-                onClick={() => setIsMoreMenuOpen((open) => !open)}
-                title={voiceStrings?.moreOptions ?? "More Options"}
-                aria-label={voiceStrings?.moreOptions ?? "More Options"}
-                aria-haspopup="true"
-                aria-expanded={isMoreMenuOpen}
+                className="voice-dock-btn"
+                onClick={handleOpenSettings}
+                title={voiceStrings?.settings ?? "Settings"}
+                aria-label={voiceStrings?.settings ?? "Settings"}
               >
-                <MoreVertical size={20} />
-                {transcriptState === "recording" && (
-                  <span className="voice-dock-badge-dot" title="AI Notes Recording" />
-                )}
+                <Settings size={20} aria-hidden="true" />
               </button>
-
-              {isMoreMenuOpen && (
-                <div
-                  ref={moreMenuRef}
-                  className="voice-more-menu"
-                  role="menu"
-                  aria-label="More Options Menu"
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="voice-more-menu-item"
-                    onClick={handleOpenSettings}
-                  >
-                    <Settings size={16} aria-hidden="true" />
-                    <span>{voiceStrings?.settings ?? "Settings"}</span>
-                  </button>
-
-                </div>
-              )}
             </div>
 
             <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={handleLeave} title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} />

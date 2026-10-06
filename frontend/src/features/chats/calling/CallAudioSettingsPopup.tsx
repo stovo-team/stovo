@@ -87,8 +87,8 @@ export function CallAudioSettingsPopup({
       <div className="call-audio-popup-body">
         {warning && <p className="call-audio-popup-warning">{warning}</p>}
 
-        <section className="call-audio-popup-section" aria-label="Microphone">
-          <div className="call-audio-section-label">Microphone</div>
+        <section className="call-audio-popup-section" aria-label="Microphone settings">
+          <div className="call-audio-section-label">Microphone settings</div>
           <div className="call-audio-device-row">
             <span>Microphone</span>
             <CallDeviceSelect
@@ -113,10 +113,31 @@ export function CallAudioSettingsPopup({
               max={200}
               step={1}
               value={settings.inputGain}
+              disabled={!capabilities.canUseVoiceEnhancement}
+              aria-label="Input gain"
               onChange={(e) => onPatch({ inputGain: Number(e.target.value) })}
             />
           </div>
+        </section>
+
+        <section className="call-audio-popup-section" aria-label="Dynamic settings">
+          <div className="call-audio-section-label">Dynamic settings</div>
           <div className="call-audio-toggle-group">
+            <div className="call-audio-slider-row">
+              <div className="call-audio-slider-head">
+                <span>Speaking sensitivity</span>
+                <span className="call-audio-slider-value">{Math.round(settings.speakingSensitivity)}</span>
+              </div>
+              <input
+                aria-label="Speaking sensitivity"
+                type="range"
+                min={2}
+                max={24}
+                step={1}
+                value={settings.speakingSensitivity}
+                onChange={(e) => onPatch({ speakingSensitivity: Number(e.target.value) })}
+              />
+            </div>
             <AudioToggleRow
               name="Noise suppression"
               description="Filters background noise via browser"
@@ -180,7 +201,7 @@ export function CallAudioSettingsPopup({
           </div>
         </section>
 
-        <section className="call-audio-popup-section" aria-label="Speaker">
+        <section className="call-audio-popup-section" aria-label="Speaker settings">
           <div className="call-audio-section-label">Speaker</div>
           <div className="call-audio-device-row">
             <span>Output device</span>

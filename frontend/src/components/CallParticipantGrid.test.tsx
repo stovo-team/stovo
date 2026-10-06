@@ -30,7 +30,7 @@ function styleRules(css: string, selector: string) {
 }
 
 describe("shared call participant presentation", () => {
-  it("places square avatar/video participants in a desktop screen-share side rail", () => {
+  it("places 16:9 avatar/video participants in a desktop screen-share side rail", () => {
     const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
     const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;
     const container = renderGrid({
@@ -51,7 +51,7 @@ describe("shared call participant presentation", () => {
     const rail = grid?.querySelector<HTMLElement>(".call-grid__participant-rail");
     expect(rail).not.toBeNull();
     const remote = rail?.querySelector<HTMLElement>('[data-participant-id="Alex Morgan"]');
-    expect(remote?.style.aspectRatio).toBe("1 / 1");
+    expect(remote?.style.aspectRatio).toBe("16 / 9");
     expect(remote?.querySelector(".call-grid__avatar")).not.toBeNull();
 
     const css = readFileSync("src/styles.css", "utf8");
@@ -236,7 +236,7 @@ describe("shared call participant presentation", () => {
 
     const maya = container.querySelector<HTMLButtonElement>('[data-focus-participant="Maya Chen"]');
     expect(maya).not.toBeNull();
-    expect(maya?.style.aspectRatio).toBe("1 / 1");
+    expect(maya?.style.aspectRatio).toBe("16 / 9");
     expect(maya?.querySelector(".call-grid__avatar")).not.toBeNull();
     expect(maya?.querySelector("video")).toBeNull();
     act(() => maya?.click());

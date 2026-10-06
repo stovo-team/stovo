@@ -116,6 +116,7 @@ export function useCallSession({
     autoGainControl: true,
     voiceEnhancement: true,
     inputGain: 100,
+    speakingSensitivity: 8,
     outputVolume: 100,
     voiceEnhancementThreshold: -24,
     voiceEnhancementHighpass: 120,
