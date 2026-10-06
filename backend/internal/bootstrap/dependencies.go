@@ -44,13 +44,13 @@ import (
 	"stovo-messenger/backend/internal/adapters/messageforwards"
 	"stovo-messenger/backend/internal/adapters/messagehistory"
 	"stovo-messenger/backend/internal/adapters/messagemutations"
-	"stovo-messenger/backend/internal/adapters/notificationprovider"
 	"stovo-messenger/backend/internal/adapters/messagepersistence"
 	"stovo-messenger/backend/internal/adapters/messagereactions"
 	"stovo-messenger/backend/internal/adapters/messagereads"
 	"stovo-messenger/backend/internal/adapters/messagesearch"
 	"stovo-messenger/backend/internal/adapters/messagesync"
 	"stovo-messenger/backend/internal/adapters/messageunread"
+	"stovo-messenger/backend/internal/adapters/notificationprovider"
 	"stovo-messenger/backend/internal/adapters/outbox"
 	adapterpolls "stovo-messenger/backend/internal/adapters/polls"
 	"stovo-messenger/backend/internal/adapters/publicaccess"
@@ -232,7 +232,7 @@ func openDatabase(cfg config.Config) (*sql.DB, error) {
 		return db, nil
 	}
 
-	if strings.TrimSpace(cfg.DatabaseURL) != "" {
+	if shouldAttemptLocalDatabaseFallback(cfg.DatabaseURL, cfg.DatabaseURLDisableLocalFallback) {
 		log.Printf("[database] WARNING: failed to connect to primary database (%v), attempting local fallback...", err)
 
 		candidates := cfg.LocalFallbackCandidates()
@@ -255,6 +255,10 @@ func openDatabase(cfg config.Config) (*sql.DB, error) {
 	}
 
 	return nil, err
+}
+
+func shouldAttemptLocalDatabaseFallback(databaseURL string, disabled bool) bool {
+	return strings.TrimSpace(databaseURL) != "" && !disabled
 }
 
 func connectDB(dbURL string, cfg config.Config) (*sql.DB, error) {

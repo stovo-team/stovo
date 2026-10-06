@@ -2,6 +2,7 @@
 package orchestrator
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -28,6 +29,13 @@ func NewOrchestrator(dockerClient *client.Client, masterDBURL string) *Orchestra
 	orch := &Orchestrator{dockerClient: dockerClient, masterDB: db}
 	if err := orch.initSchema(); err != nil {
 		log.Printf("[orchestrator] failed to init master DB schema: %v", err)
+		return orch
+	}
+	if pgbouncerEnabled() {
+		if err := orch.syncPgBouncerAuth(context.Background()); err != nil {
+			log.Printf("[orchestrator] failed to synchronize PgBouncer auth: %v", err)
+			return orch
+		}
 	}
 	orch.ReconcileContainers()
 	return orch
@@ -47,6 +55,8 @@ func (o *Orchestrator) initSchema() error {
 	);
 	CREATE INDEX IF NOT EXISTS idx_servers_slug ON servers(slug);
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS nav_tabs JSONB DEFAULT '{"chats":true,"storage":true,"plans":true,"settings":true}'::jsonb;
+	ALTER TABLE servers ADD COLUMN IF NOT EXISTS tenant_db_runtime_user TEXT;
+	ALTER TABLE servers ADD COLUMN IF NOT EXISTS tenant_db_runtime_password_ciphertext TEXT;
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS chat_types JSONB NOT NULL DEFAULT '{"direct":true,"group":true,"channel":true,"voice":true}'::jsonb;
 	`
 	_, err := o.masterDB.Exec(schema)

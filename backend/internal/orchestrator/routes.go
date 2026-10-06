@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -175,11 +176,40 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	// Create PostgreSQL database and schema for the server
+	// Create a Space-scoped database and least-privilege runtime role.
 	dbName := "stovo_db_" + req.Slug
-	if _, err := o.masterDB.Exec(`CREATE DATABASE ` + dbName); err != nil {
+	encryptionKey := os.Getenv("TENANT_DB_ENCRYPTION_KEY")
+	if len(encryptionKey) != 32 || (pgbouncerEnabled() && validatePgBouncerAdminPassword(os.Getenv("PGBOUNCER_ADMIN_PASSWORD")) != nil) {
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id=$1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "tenant database encryption and required database pooler secrets must be configured"})
+		return
+	}
+	runtimeUser := "stovo_runtime_" + req.Slug
+	runtimePassword := uuid.NewString() + uuid.NewString()
+	encryptedPassword, err := encryptTenantDBPassword(runtimePassword, encryptionKey)
+	if err != nil {
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id=$1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to protect tenant database credentials"})
+		return
+	}
+	adminDB, err := o.openTenantAdminDB()
+	if err == nil {
+		err = provisionTenantDatabase(r.Context(), adminDB, req.Slug, runtimePassword)
+		_ = adminDB.Close()
+	}
+	if err == nil {
+		_, err = o.masterDB.Exec(`UPDATE servers SET tenant_db_runtime_user=$1, tenant_db_runtime_password_ciphertext=$2 WHERE id=$3`, runtimeUser, encryptedPassword, id)
+	}
+	if err == nil {
+		err = o.syncPgBouncerAuth(r.Context())
+	}
+	if err != nil {
+		if cleanupErr := o.dropTenantDatabase(req.Slug); cleanupErr != nil {
+			log.Printf("[orchestrator] provisioning rollback failed for %s: %v", req.Slug, cleanupErr)
+		}
 		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create server database"})
+		_ = o.syncPgBouncerAuth(context.Background())
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to provision tenant database"})
 		return
 	}
 	// Create MinIO bucket
@@ -198,8 +228,11 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	// orchestrator reconciles them after a deploy or restart.
 	if err := o.startBackendContainer(req.Slug); err != nil {
 		log.Printf("[orchestrator] failed to initialize server %s: %v", dbName, err)
-		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbName)
-		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
+		if cleanupErr := o.dropTenantDatabase(req.Slug); cleanupErr != nil {
+			log.Printf("[orchestrator] tenant database cleanup failed for %s: %v", req.Slug, cleanupErr)
+		}
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id=$1`, id)
+		_ = o.syncPgBouncerAuth(context.Background())
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to initialize server database"})
 		return
 	}
@@ -376,11 +409,28 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 // handleDeleteServer tears down a server.
 func (o *Orchestrator) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id") // treat id param as slug for simplicity
+	var exists bool
+	if err := o.masterDB.QueryRow(`SELECT EXISTS (SELECT 1 FROM servers WHERE slug=$1)`, slug).Scan(&exists); err != nil || !exists {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
+		return
+	}
 	// Stop and remove backend container
-	_ = o.stopAndRemoveContainer(slug)
+	if err := o.stopAndRemoveContainer(slug); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to stop server backend"})
+		return
+	}
 	// Drop database
-	dbName := "stovo_db_" + slug
-	_, _ = o.masterDB.Exec(`DROP DATABASE IF EXISTS ` + dbName)
+	if err := o.dropTenantDatabase(slug); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to delete tenant database"})
+		return
+	}
+	// Remove the credentials from PgBouncer before deleting the registry row.
+	// If this fails, the row remains so a retry can repeat the idempotent drop
+	// and auth cleanup steps.
+	if err := o.syncPgBouncerAuthExcluding(r.Context(), slug); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "tenant database deleted but PgBouncer credentials could not be cleared; retry deletion"})
+		return
+	}
 	// Delete record
 	_, err := o.masterDB.Exec(`DELETE FROM servers WHERE slug=$1`, slug)
 	if err != nil {
@@ -489,6 +539,9 @@ func (o *Orchestrator) getChatTypesForServer(slug string) string {
 
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
+	if err := o.ensureTenantCredentials(slug); err != nil {
+		return fmt.Errorf("ensure tenant runtime credentials: %w", err)
+	}
 	// Existing tenant databases must be upgraded too. Previously migrations ran
 	// only during tenant creation, leaving deployed code able to reference
 	// columns that older tenant databases did not have.
@@ -505,10 +558,20 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	}
 
 	desiredEnv := backendContainerEnv(slug, func(key, fallback string) string {
-		switch key {
-		case "NAV_TABS":
+		if key == "TENANT_DB_RUNTIME_USER" || key == "TENANT_DB_RUNTIME_PASSWORD" {
+			user, password, err := o.tenantRuntimeCredentials(slug)
+			if err == nil {
+				if key == "TENANT_DB_RUNTIME_USER" {
+					return user
+				}
+				return password
+			}
+			return ""
+		}
+		if key == "NAV_TABS" {
 			return o.getNavTabsForServer(slug)
-		case "CHAT_TYPES":
+		}
+		if key == "CHAT_TYPES" {
 			return o.getChatTypesForServer(slug)
 		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
@@ -628,14 +691,25 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 	groqKey := get("GROQ_API_KEY", get("groq_api_key", get("GROQ_KEY", get("GROQ_API_TOKEN", ""))))
 	navTabs := get("NAV_TABS", `{"chats":true,"storage":true,"plans":true,"settings":true}`)
 	chatTypes := get("CHAT_TYPES", `{"direct":true,"group":true,"channel":true,"voice":true}`)
-	databaseURL := strings.TrimSpace(get("DATABASE_URL", ""))
-	if databaseURL == "" {
-		databaseURL = fmt.Sprintf("postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug)
-	} else {
-		// A multi-tenant external Postgres deployment can use {slug} in its URL
-		// to retain one database per tenant. A URL without the placeholder is
-		// intentionally supported for a single existing tenant.
-		databaseURL = strings.ReplaceAll(databaseURL, "{slug}", slug)
+	usePgBouncer := strings.EqualFold(get("PGBOUNCER_ENABLED", "false"), "true")
+	directURL := strings.TrimSpace(get("DATABASE_URL", ""))
+	if directURL == "" {
+		directURL = fmt.Sprintf("postgres://%s@postgres:5432/stovo_db_{slug}?sslmode=disable", url.UserPassword(pgUser, pgPass).String())
+	}
+	runtimeUser, runtimePassword := get("TENANT_DB_RUNTIME_USER", ""), get("TENANT_DB_RUNTIME_PASSWORD", "")
+	var upstreamErr error
+	if usePgBouncer {
+		if upstreamHost := strings.TrimSpace(get("PGBOUNCER_UPSTREAM_HOST", "")); upstreamHost != "" {
+			upstreamErr = validatePgBouncerUpstream(directURL, upstreamHost, get("PGBOUNCER_UPSTREAM_PORT", "5432"))
+		}
+	}
+	databaseURL, migrationURL, urlErr := buildTenantDatabaseURLsWithPooler(slug, directURL, get("PGBOUNCER_HOST", "pgbouncer"), get("PGBOUNCER_PORT", "6432"), runtimeUser, runtimePassword, usePgBouncer)
+	if upstreamErr != nil {
+		log.Printf("[orchestrator] invalid PgBouncer upstream config: %v", upstreamErr)
+		databaseURL, migrationURL = "", ""
+	} else if urlErr != nil {
+		log.Printf("[orchestrator] invalid tenant database URL config: %v", urlErr)
+		databaseURL, migrationURL = "", ""
 	}
 	redisURL := strings.TrimSpace(get("REDIS_URL", ""))
 	if redisURL == "" {
@@ -647,10 +721,12 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("APP_URL=%s", serverURL),
 		fmt.Sprintf("API_URL=%s", serverURL),
 		fmt.Sprintf("DATABASE_URL=%s", databaseURL),
+		"DATABASE_URL_DISABLE_LOCAL_FALLBACK=true",
+		fmt.Sprintf("MIGRATION_DATABASE_URL=%s", migrationURL),
 		fmt.Sprintf("POSTGRES_HOST=%s", get("POSTGRES_HOST", "postgres")),
 		fmt.Sprintf("POSTGRES_PORT=%s", get("POSTGRES_PORT", "5432")),
-		fmt.Sprintf("POSTGRES_USER=%s", pgUser),
-		fmt.Sprintf("POSTGRES_PASSWORD=%s", pgPass),
+		fmt.Sprintf("POSTGRES_USER=%s", runtimeUser),
+		fmt.Sprintf("POSTGRES_PASSWORD=%s", runtimePassword),
 		fmt.Sprintf("POSTGRES_DB=stovo_db_%s", slug),
 		fmt.Sprintf("REDIS_URL=%s", redisURL),
 		fmt.Sprintf("STORAGE_PROVIDER=%s", get("STORAGE_PROVIDER", "minio")),
@@ -691,13 +767,22 @@ func (o *Orchestrator) stopAndRemoveContainer(slug string) error {
 	if err != nil {
 		return err
 	}
+	var lifecycleErr error
 	for _, c := range containers {
-		timeoutSec := 10
-		_ = o.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{Timeout: &timeoutSec})
-		_ = o.dockerClient.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true, RemoveVolumes: true})
+		if c.State == "running" {
+			timeoutSec := 10
+			if err := o.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{Timeout: &timeoutSec}); err != nil {
+				lifecycleErr = errors.Join(lifecycleErr, fmt.Errorf("stop backend container %s: %w", c.ID, err))
+				continue
+			}
+		}
+		if err := o.dockerClient.ContainerRemove(ctx, c.ID, container.RemoveOptions{Force: true, RemoveVolumes: true}); err != nil {
+			lifecycleErr = errors.Join(lifecycleErr, fmt.Errorf("remove backend container %s: %w", c.ID, err))
+			continue
+		}
 		log.Printf("[orchestrator] Stopped and removed container %s for server %s", c.ID, slug)
 	}
-	return nil
+	return lifecycleErr
 }
 
 func (o *Orchestrator) initChildDBSchema(slug string) error {
@@ -709,11 +794,22 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 		netName = "stovo_default"
 	}
 	env := backendContainerEnv(slug, func(key, fallback string) string {
+		if key == "TENANT_DB_RUNTIME_USER" || key == "TENANT_DB_RUNTIME_PASSWORD" {
+			user, password, err := o.tenantRuntimeCredentials(slug)
+			if err == nil {
+				if key == "TENANT_DB_RUNTIME_USER" {
+					return user
+				}
+				return password
+			}
+			return ""
+		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
 		}
 		return fallback
 	})
+	envMap := parseEnvSlice(env)
 	name := fmt.Sprintf("stovo-migrate-%s-%s", slug, uuid.NewString()[:8])
 	containerID := ""
 	defer func() {
@@ -726,7 +822,7 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 		Image:      "stovo-backend:latest",
 		Env:        env,
 		Entrypoint: []string{"/bin/sh", "-ec"},
-		Cmd:        []string{"database_url=\"$(stovo-database-url)\"; atlas migrate apply --dir file:///app/migrations --url \"$database_url\""},
+		Cmd:        []string{"atlas migrate apply --dir file:///app/migrations --url \"$MIGRATION_DATABASE_URL\""},
 	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode(netName),
 		DNS:         []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"},
@@ -756,6 +852,9 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 				continue
 			}
 			if status.StatusCode == 0 {
+				if err := grantTenantRuntimePrivileges(envMap["MIGRATION_DATABASE_URL"], envMap["TENANT_DB_RUNTIME_USER"]); err != nil {
+					return fmt.Errorf("grant runtime database privileges: %w", err)
+				}
 				return nil
 			}
 			logs, logErr := o.dockerClient.ContainerLogs(ctx, containerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})

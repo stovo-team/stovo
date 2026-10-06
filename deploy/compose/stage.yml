@@ -141,6 +141,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-stage_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stage .env}
       POSTGRES_DB: ${POSTGRES_DB:-stovo_stage_db}
+      # The backend builds the direct PostgreSQL URL from POSTGRES_* settings.
+      DATABASE_URL_DISABLE_LOCAL_FALLBACK: "true"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the stage .env}

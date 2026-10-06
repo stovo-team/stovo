@@ -2,7 +2,11 @@ package fcm
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -102,33 +106,14 @@ func TestNewClientAcceptsServiceAccountCredentials(t *testing.T) {
 
 func validServiceAccountCredentials(t *testing.T) string {
 	t.Helper()
-	const privateKeyPEM = `-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEAriLoaNmdHbnau46BHGJIZFwkU9kchiDHOCUnrLeCA7WVXMpU
-Bxbn9B0OkapbQTp5nJYxhe2zFtFoICxRtoW5Lvv95ZL63qtKZCkQarp1BOj3qt3e
-Dmdbjp6t/MVq7hDFGesq7aofVnfm8oRW5BJgv6LlpF7DkgPtBtoe1GGdIkDZMO0y
-o8uloZtZUo0WHhZjmRRNvDGAJUt1K6GeDjLNn9VbOIIkCIjvOKiTZrBcn/jal6pR
-5VLhhzRs8R1YCdNEaUTJnVDddnYB9ZG+6V/zOyaBeH5b+n7+pnY+aJBsmyujnu+D
-Xs0BtQ4SVJ67Xm/hN94aIx4ow1x4mu91vfKo4QIDAQABAoIBAQCELFrbutFWzssH
-sZKuSKtKAeZQ/mp4JEkShKEop+E3j4xfcfN1rh1BXQzB49yAFjJYeGf+j/1vRGMU
-iI89SyLUVtDQgE+K09kTTVf4qq5Hm8zhFKaHqEwGZMsLIY2YRYJVufpLiuVebIQP
-cAPD+W8WBj7oFEW9ft1aZhUgfzcV14JxhQWGPWmlbU6QjBpKxAOs2uHblXIT9QP/
-1dB0MR3cp/lug6n+1+RMLYhnoLfDnPU/mCm4DoTvXY+2FGR5vhv0YQaa6VS2mjuz
-UD9M8v9IGxjpFGTeMyqXROef/qa5UZwPwdtSpsJWriebmlq66xBNFNFNkE9pJL6z
-2Uvt/9lBAoGBANbj0a53vrYT04anvD2qHOpJZAldb37P1xV8TGk+gIWVuHvzbHHc
-M+vnWXExtGMf5ALjjbvEb/J7bIJ5NuLCCAC6eIRHgEkPl+ELHB2R0VwXGWG6obJf
-fEvNv0L69ADDCMCP4ovbFqXm7dkVMOqk7WtquyhLAcDpUS92WRwA2xtnAoGBAM9z
-MXcaqU2SxII7Bft+xRzWUxAh3qwP1uVM4laaKpJnyZftvDquwF7HNn1qNluhE3rB
-9VgKsbWACM5J7rhmAAQaL9j+nYejpCXzibVIegY+rTDY4kW2OWkY3Ikc4ktxadZ0
-GDDNEWcZYjAj1Z2QOgYvwWDUEWMxI92PggNoODR3AoGALsAttBlVImO510fSyk+i
-Ls58txTe1uX80y3RqevxJh7mngDdjP/tQ9t3OAsqRY6AmqhLA5i/CjAT8WbRrA+u
-kgn/gjfUDxEXZ9x053H77F8SJJLn7tibQBqpC7dxMmE8HDixft/RU5KkGGBl3ga3
-qHD1+tQms4OPKBZFWLRO9u0CgYANyDdnFExfLPsFM+qn1Lo/ujV2gumKQNskDMGU
-w1VEuMR55X913ppFMbL7Dg1idQcYRr6IBN3dkw4CtoK3mX8yxpKbNf89Pa/wHYfu
-lUwWEh/reN0/iGW0B8TPDy4xmO1RJBFfXKBlWxhc3mSYvTY9pvqP9kbZcjBRzfDz
-TP8+7QKBgEmdXUKvC66mbPjKrnaAq1pGw1uo8fOnaqj0vJXV0Qgr9jfBThgPPx26
-cZcR6bdiRGFP5LZXgc4pgPVIhdXDiVn/8cAqmbTPHNL68Ae3MCOekZFgPtngAd5r
-p6WrEiVPUw6nzjYuWMaHLAeahxWCwJAxYCpc8zomK3byrwp8No1y
------END RSA PRIVATE KEY-----`
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate test service-account key: %v", err)
+	}
+	privateKeyPEM := string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}))
 	credentials := map[string]string{
 		"type":                        "service_account",
 		"project_id":                  "test-project",
