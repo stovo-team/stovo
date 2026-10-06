@@ -1993,7 +1993,7 @@ h2 {
   }
 
   .app-frame > .app-nav {
-    --nav-rail-width: 72px;
+    --nav-rail-width: 76px;
     gap: 10px;
     padding: 14px 8px;
     width: var(--nav-rail-width);
@@ -20180,7 +20180,15 @@ button.chat-info-title-edit:active:not(:disabled) {
 @media (min-width: 961px) {
   .app-frame > .app-nav {
     --app-nav-state-circle-size: 60px;
-    padding: 12px 6px;
+    padding: 12px 4px;
+  }
+
+  .app-frame > .app-nav a {
+    padding: 5px 1px;
+  }
+
+  .app-frame > .app-nav .app-nav-logout {
+    padding: 8px 2px;
   }
 
   .app-frame > .app-nav a:not(.active):hover,
