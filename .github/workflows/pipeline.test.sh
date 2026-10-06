@@ -64,7 +64,7 @@ awk '
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
   job == "deploy-android" && /^      - name: Build frontend for Android release$/ { android_builds_frontend = 1 }
   job == "deploy-android" && /git fetch --tags/ { android_fetches_tags = 1 }
-  /dorny\/paths-filter@v4/ { paths_filter_v4 = 1 }
+  /dorny\/paths-filter@v4/ || /dorny\/paths-filter@[[:xdigit:]]{40}[[:space:]]+# v4/ { paths_filter_v4 = 1 }
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
 
   END {
@@ -114,12 +114,8 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
-grep -Fq 'pull_request_target:' "$trusted_pr_workflow" || {
-  echo "Trusted PR tests must use the base-branch pull_request_target workflow." >&2
-  exit 1
-}
-grep -Fq "github.event.pull_request.user.login == 'left-try'" "$trusted_pr_workflow" || {
-  echo "Self-hosted PR tests must be restricted to the trusted PR author." >&2
+grep -Fq '  pull_request:' "$trusted_pr_workflow" || {
+  echo "Trusted PR tests must use pull_request so GitHub can require approval before external PR workflows run." >&2
   exit 1
 }
 grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
@@ -153,7 +149,7 @@ grep -Eq '^// Code generated .* DO NOT EDIT\.$' backend/ent/user.go || {
   echo "Generated Ent output must retain the marker recognized by strict generated-file detection." >&2
   exit 1
 }
-grep -Eq 'golangci-lint-action@v9' .github/workflows/pipeline.yml || {
+grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:]]+# v9' .github/workflows/pipeline.yml || {
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
