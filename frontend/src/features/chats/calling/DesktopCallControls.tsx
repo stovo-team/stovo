@@ -9,7 +9,7 @@ import {
   RotateCcw,
   ScreenShare,
   ScreenShareOff,
-  SlidersHorizontal,
+  Settings,
   Video,
   VideoOff,
 } from "lucide-react";
@@ -312,7 +312,7 @@ export function DesktopCallControls() {
 
       {/* Avatar area — shown when no remote video is playing */}
       {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && !hasRemoteVideo && !callRemoteMedia.some((m) => m.hasScreenShare) && callPhase === "in-call" && !isMobileViewport && (
-        <div className="call-popup-avatar-area">
+        <div className={`call-popup-avatar-area${isPeerSpeaking ? " is-speaking" : ""}`}>
           <div className="call-popup-avatar-circle">
             <RealAvatar
               accessToken={accessToken ?? null}
@@ -402,7 +402,7 @@ export function DesktopCallControls() {
                     }
                   }}
                 >
-                  <SlidersHorizontal aria-hidden="true" size={20} />
+                  <Settings aria-hidden="true" size={20} />
                 </button>
                 <span>Settings</span>
               </div>

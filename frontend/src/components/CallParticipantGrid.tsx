@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
@@ -41,29 +41,20 @@ const tileStyle: CSSProperties = {
   borderRadius: "18px",
   overflow: "hidden",
   minHeight: "120px",
-  aspectRatio: "4 / 3",
+  aspectRatio: "16 / 9",
 };
 
 const landscapePresenterTileStyle: CSSProperties = {
   ...tileStyle,
-  aspectRatio: "16 / 9",
+  aspectRatio: "19 / 9",
   minHeight: "180px",
   gridColumn: "1 / -1",
-};
-
-const portraitPresenterTileStyle: CSSProperties = {
-  ...tileStyle,
-  aspectRatio: "9 / 16",
-  minHeight: "180px",
-  maxWidth: "min(100%, calc(52vh * 9 / 16))",
-  gridColumn: "1 / -1",
-  justifySelf: "center",
 };
 
 const videoStyle: CSSProperties = {
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
   display: "block",
   background: "#000",
 };
@@ -115,7 +106,6 @@ function ParticipantTile({
   isScreen,
   isSpeaking,
   isMuted = false,
-  onVideoDimensions,
   className,
   style,
   onFlipCamera,
@@ -133,7 +123,6 @@ function ParticipantTile({
   isScreen?: boolean;
   isSpeaking?: boolean;
   isMuted?: boolean;
-  onVideoDimensions?: (width: number, height: number) => void;
   className: string;
   style: CSSProperties;
   onFlipCamera?: () => void;
@@ -179,9 +168,6 @@ function ParticipantTile({
             playsInline
             muted
             ref={(el) => bindStream(el, stream)}
-            onLoadedMetadata={(event) => {
-              onVideoDimensions?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight);
-            }}
           />
         </>
       ) : localVideoPlaceholder ? (
@@ -238,7 +224,6 @@ export default function CallParticipantGrid({
   isCallConnected = true,
   hideParticipants = false,
 }: CallParticipantGridProps) {
-  const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
   // Voice channels may keep their audio call type while a local camera track
   // is live. The presentation/PiP grid must follow the actual track, otherwise
@@ -257,14 +242,6 @@ export default function CallParticipantGrid({
             m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
         );
   const isPresenting = Boolean(presenter);
-
-  useEffect(() => {
-    const track = presenter?.screenStream?.getVideoTracks()[0];
-    const settings = track?.getSettings?.();
-    setIsPresenterPortrait(
-      Boolean(settings?.width && settings?.height && settings.height > settings.width),
-    );
-  }, [presenter?.screenStream]);
 
   const count = 1 + remoteMedia.length;
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
@@ -313,7 +290,7 @@ export default function CallParticipantGrid({
     const stream = preferScreen ? remote.screenStream : remote.stream;
     const isRemoteSpeaking = isCallConnected && !remote.isMuted && (speakingUserIds.includes(remote.userId) || (isPeerSpeaking && remoteMedia.length === 1));
     return (
-      <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", width: "100%", height: "100%", aspectRatio: isPresenting && !mobileSingleRemote ? "1 / 1" : undefined }}>
+      <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", width: "100%", height: "100%", aspectRatio: isPresenting && !mobileSingleRemote ? "16 / 9" : undefined }}>
         <ParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={() => { if (mobileSingleRemote) onToggleMobileStage?.(); else focusParticipant(remote.userId); }} />
       </div>
     );
@@ -337,8 +314,8 @@ export default function CallParticipantGrid({
         <ParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
-            ? { ...(isPresenterPortrait ? portraitPresenterTileStyle : landscapePresenterTileStyle), gridColumn: "1", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
-            : isPresenterPortrait ? portraitPresenterTileStyle : landscapePresenterTileStyle}
+            ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
+            : landscapePresenterTileStyle}
           label={presenter.userId}
           stream={presenter.screenStream}
           showVideo
@@ -346,17 +323,12 @@ export default function CallParticipantGrid({
           isSpeaking={isPresenterSpeaking}
           isMuted={presenter.userId === localUserLabel ? isLocalMuted : "isMuted" in presenter && Boolean(presenter.isMuted)}
           isConnected={isCallConnected}
-          onVideoDimensions={(width, height) => {
-            if (width > 0 && height > 0) {
-              setIsPresenterPortrait(height > width);
-            }
-          }}
         />
       ) : null}
 
       {hideParticipants ? null : useScreenShareRail ? (
         <div className="call-grid__participant-rail">
-          <div data-participant-id={localUserLabel} style={{ aspectRatio: "1 / 1" }}>{localTile}</div>
+          <div data-participant-id={localUserLabel} style={{ aspectRatio: "16 / 9" }}>{localTile}</div>
           {remoteTiles}
         </div>
       ) : mobileSingleRemote ? (

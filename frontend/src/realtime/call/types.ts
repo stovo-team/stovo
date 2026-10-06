@@ -40,6 +40,7 @@ export type CallSettings = {
   autoGainControl: boolean;
   voiceEnhancement: boolean;
   inputGain: number;
+  speakingSensitivity: number;
   outputVolume: number;
   voiceEnhancementThreshold: number;
   voiceEnhancementHighpass: number;
@@ -78,6 +79,7 @@ export const DEFAULT_CALL_SETTINGS: CallSettings = {
   autoGainControl: true,
   voiceEnhancement: true,
   inputGain: 100,
+  speakingSensitivity: 8,
   outputVolume: 100,
   voiceEnhancementThreshold: -24,
   voiceEnhancementHighpass: 120,

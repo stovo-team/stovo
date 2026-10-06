@@ -3,6 +3,17 @@ import CallSessionController from "./CallSessionController";
 import type { MediaEngineFactory } from "./mediaEngineFactory";
 
 describe("CallSessionController call quality", () => {
+  it("applies output volume patches to active remote audio playback", async () => {
+    const factory = { createMesh: () => ({}), createSFU: () => ({}) } as unknown as MediaEngineFactory;
+    const controller = new CallSessionController({} as never, "token", factory);
+    const remoteAudio = { muted: false, volume: 1 } as HTMLAudioElement;
+    Object.assign(controller, { remoteAudioEl: remoteAudio });
+
+    await controller.applySettings({ outputVolume: 25, speakerMode: "large" });
+
+    expect(remoteAudio.volume).toBe(0.25);
+  });
+
   it("applies independently selected camera and screen-share limits to mesh and LiveKit engines", () => {
     const mesh = { setVideoBitrates: vi.fn() };
     const sfu = { setVideoBitrates: vi.fn() };
