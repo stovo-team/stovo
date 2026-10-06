@@ -61,6 +61,8 @@ features.db
 
 # Local helper scripts
 /scripts/*
+!/scripts/ensure-docker-buildx.sh
+!/scripts/ensure-docker-buildx.test.sh
 !/scripts/check-solid-boundaries.sh
 !/scripts/deploy-environment.sh
 !/scripts/deploy-stage.sh

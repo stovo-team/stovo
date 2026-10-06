@@ -284,8 +284,9 @@ jobs:
                 cat "$deploy_log"
                 rm -f "$deploy_log"
                 return 0
+              else
+                deploy_status=$?
               fi
-              deploy_status=$?
               cat "$deploy_log" >&2
               if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
                 rm -f "$deploy_log"
@@ -300,6 +301,7 @@ jobs:
               "$@"
             }
 
+            bash scripts/ensure-docker-buildx.sh
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
@@ -370,6 +372,7 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
+            bash scripts/ensure-docker-buildx.sh
             test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
@@ -398,8 +401,9 @@ jobs:
                 cat "$deploy_log"
                 rm -f "$deploy_log"
                 return 0
+              else
+                deploy_status=$?
               fi
-              deploy_status=$?
               cat "$deploy_log" >&2
               if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
                 rm -f "$deploy_log"
