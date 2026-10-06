@@ -91,9 +91,13 @@ type Config struct {
 	GroqSTTCostPerHourUSD      float64
 	AICallTranscriptionEnabled bool
 	AICallMaxDurationMinutes   int
-	MinIOCallsBucket           string
-	SolutionProfile            SolutionProfile
-	FeatureMatrix              FeatureMatrix
+	// IntelligenceSourceEnabled is the process-wide kill switch for the
+	// Messenger source API. Installation and connection gates are additional
+	// requirements resolved by the source credential store.
+	IntelligenceSourceEnabled bool
+	MinIOCallsBucket          string
+	SolutionProfile           SolutionProfile
+	FeatureMatrix             FeatureMatrix
 }
 
 func Load() (Config, error) {
@@ -228,6 +232,7 @@ func Load() (Config, error) {
 		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
 		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
 		AICallMaxDurationMinutes:   envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
+		IntelligenceSourceEnabled:  envBool("INTELLIGENCE_SOURCE_ENABLED", false),
 		MinIOCallsBucket:           getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
 		SolutionProfile:            ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
 		FeatureMatrix:              GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),

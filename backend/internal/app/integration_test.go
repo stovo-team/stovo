@@ -283,7 +283,7 @@ func execSchemaSQL(db *sql.DB, raw string) error {
 		cleaned.WriteString(line)
 		cleaned.WriteByte('\n')
 	}
-	for _, stmt := range strings.Split(cleaned.String(), ";\n") {
+	for _, stmt := range splitSQLStatements(cleaned.String()) {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" || schemaStatementIsCommentOnly(stmt) || shouldSkipSchemaStatement(stmt) {
 			continue
@@ -297,6 +297,116 @@ func execSchemaSQL(db *sql.DB, raw string) error {
 		}
 	}
 	return nil
+}
+
+func splitSQLStatements(raw string) []string {
+	statements := make([]string, 0)
+	start := 0
+	inSingleQuote, inDoubleQuote, inLineComment := false, false, false
+	blockCommentDepth := 0
+	dollarTag := ""
+
+	for index := 0; index < len(raw); {
+		if dollarTag != "" {
+			if strings.HasPrefix(raw[index:], dollarTag) {
+				index += len(dollarTag)
+				dollarTag = ""
+			} else {
+				index++
+			}
+			continue
+		}
+		if inLineComment {
+			if raw[index] == '\n' {
+				inLineComment = false
+			}
+			index++
+			continue
+		}
+		if blockCommentDepth > 0 {
+			switch {
+			case strings.HasPrefix(raw[index:], "/*"):
+				blockCommentDepth++
+				index += 2
+			case strings.HasPrefix(raw[index:], "*/"):
+				blockCommentDepth--
+				index += 2
+			default:
+				index++
+			}
+			continue
+		}
+		if inSingleQuote {
+			if raw[index] == '\'' {
+				if index+1 < len(raw) && raw[index+1] == '\'' {
+					index += 2
+					continue
+				}
+				inSingleQuote = false
+			}
+			index++
+			continue
+		}
+		if inDoubleQuote {
+			if raw[index] == '"' {
+				if index+1 < len(raw) && raw[index+1] == '"' {
+					index += 2
+					continue
+				}
+				inDoubleQuote = false
+			}
+			index++
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(raw[index:], "--"):
+			inLineComment = true
+			index += 2
+		case strings.HasPrefix(raw[index:], "/*"):
+			blockCommentDepth = 1
+			index += 2
+		case raw[index] == '\'':
+			inSingleQuote = true
+			index++
+		case raw[index] == '"':
+			inDoubleQuote = true
+			index++
+		case raw[index] == '$':
+			if end := strings.IndexByte(raw[index+1:], '$'); end >= 0 {
+				tag := raw[index+1 : index+1+end]
+				validTag := true
+				for tagIndex, char := range tag {
+					isLetter := char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
+					isDigit := tagIndex > 0 && char >= '0' && char <= '9'
+					if char != '_' && !isLetter && !isDigit {
+						validTag = false
+						break
+					}
+				}
+				if validTag {
+					dollarTag = raw[index : index+end+2]
+					index += len(dollarTag)
+				} else {
+					index++
+				}
+			} else {
+				index++
+			}
+		case raw[index] == ';':
+			if statement := strings.TrimSpace(raw[start:index]); statement != "" {
+				statements = append(statements, statement)
+			}
+			index++
+			start = index
+		default:
+			index++
+		}
+	}
+	if statement := strings.TrimSpace(raw[start:]); statement != "" {
+		statements = append(statements, statement)
+	}
+	return statements
 }
 
 func shouldSkipSchemaStatement(stmt string) bool {
