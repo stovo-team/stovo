@@ -113,6 +113,25 @@ awk '
   }
 ' .github/workflows/pipeline.yml
 
+if grep -Eq '^RUN[[:space:]]+--mount=' frontend/Dockerfile; then
+  echo "The production frontend image must build with Docker's legacy builder when BuildKit is unavailable." >&2
+  exit 1
+fi
+
+awk '
+  /docker_with_space_recovery\(\)/ { in_recovery = 1; in_command = 0; in_failure_branch = 0 }
+  in_recovery && /if "\$@" >"\$deploy_log" 2>&1; then/ { in_command = 1 }
+  in_command && /else/ { in_failure_branch = 1; next }
+  in_command && in_failure_branch && /deploy_status=\$\?/ { status_captured++ }
+  in_recovery && /^            }$/ { in_recovery = 0 }
+  END {
+    if (status_captured < 2) {
+      print "Every Docker deployment wrapper must capture command failures inside its failed-command branch." > "/dev/stderr"
+      exit 1
+    }
+  }
+' .github/workflows/pipeline.yml
+
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
 grep -Fq 'pull_request_target:' "$trusted_pr_workflow" || {
   echo "Trusted PR tests must use the base-branch pull_request_target workflow." >&2

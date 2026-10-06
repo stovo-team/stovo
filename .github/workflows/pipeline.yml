@@ -284,8 +284,9 @@ jobs:
                 cat "$deploy_log"
                 rm -f "$deploy_log"
                 return 0
+              else
+                deploy_status=$?
               fi
-              deploy_status=$?
               cat "$deploy_log" >&2
               if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
                 rm -f "$deploy_log"
@@ -398,8 +399,9 @@ jobs:
                 cat "$deploy_log"
                 rm -f "$deploy_log"
                 return 0
+              else
+                deploy_status=$?
               fi
-              deploy_status=$?
               cat "$deploy_log" >&2
               if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
                 rm -f "$deploy_log"
