@@ -26,6 +26,7 @@ type RouteComposition struct {
 	Files              FileRoutes
 	Admin              AdminRoutes
 	MCP                stdhttp.Handler
+	IntelligenceSource stdhttp.Handler
 	Plugins            stdhttp.Handler
 	FrontendFallback   stdhttp.Handler
 }
@@ -49,6 +50,9 @@ func NewRouter(routes RouteComposition) stdhttp.Handler {
 	RegisterFileRoutes(router, routes.Files)
 	RegisterAdminRoutes(router, routes.Admin)
 	RegisterMCPRoutes(router, routes.MCP)
+	if routes.IntelligenceSource != nil {
+		router.Mount("/api/v1/intelligence/source", routes.IntelligenceSource)
+	}
 	if routes.Plugins != nil {
 		router.Mount("/api/v1/plugins", routes.Plugins)
 	}
