@@ -15,8 +15,8 @@ describe("shared call speaking indicator", () => {
 
   it("routes DM/group/voice activity through the same indicator and thresholds", () => {
     expect(callSessionSource).toMatch(/localSpeakingIndicator\s*=\s*createCallSpeakingIndicator\(/);
-    expect(callSessionSource).toContain('localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg })');
-    expect(callSessionSource).toContain('indicator?.update({ microphoneEnabled: true, level: avg })');
+    expect(callSessionSource).toContain('localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity })');
+    expect(callSessionSource).toContain('indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity })');
     expect(callSessionSource).toContain('indicator && indicator.state !== "idle"');
     expect(callSessionSource).toContain("peerSpeakingUserIdsCallback?.(activeSpeakingUserIds)");
     expect(callSessionSource).toContain("localSpeakingCallback?.(isSpeaking)");
@@ -34,6 +34,14 @@ describe("shared call speaking indicator", () => {
     indicator.update({ microphoneEnabled: true, level: CALL_SPEAKING_THRESHOLD });
     expect(indicator.state).toBe("speaking");
     expect(onStateChange).toHaveBeenLastCalledWith("speaking");
+    indicator.dispose();
+  });
+
+  it("uses a per-session sensitivity threshold without changing the guest default", () => {
+    const onStateChange = vi.fn();
+    const indicator = createCallSpeakingIndicator(onStateChange);
+    indicator.update({ microphoneEnabled: true, level: 5, threshold: 5 });
+    expect(indicator.state).toBe("speaking");
     indicator.dispose();
   });
 

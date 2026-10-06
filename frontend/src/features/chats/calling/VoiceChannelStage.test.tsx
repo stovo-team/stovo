@@ -268,7 +268,7 @@ describe("VoiceChannelStage", () => {
     expect(container.textContent).not.toContain("Alice (You)");
   });
 
-  it("renders connected controls when active in the voice channel without text labels and with 3-dots menu", () => {
+  it("renders connected controls with a direct settings gear instead of a one-item menu", () => {
     const mockEndActiveCall = vi.fn();
     const mockApplyCallAudioPatch = vi.fn();
     const mockSetIsCallAudioPopupOpen = vi.fn();
@@ -320,6 +320,11 @@ describe("VoiceChannelStage", () => {
 
     const leaveBtn = container.querySelector(".voice-dock-btn--disconnect") as HTMLButtonElement;
     expect(leaveBtn).toBeDefined();
+    expect(container.querySelector(".voice-more-menu")).toBeNull();
+    const settingsButton = inCallToolbar!.querySelector<HTMLButtonElement>('button[aria-label="Settings"]');
+    expect(settingsButton?.querySelector("svg")).not.toBeNull();
+    act(() => settingsButton?.click());
+    expect(mockSetIsCallAudioPopupOpen).toHaveBeenCalledWith(true);
 
     act(() => {
       leaveBtn.click();
@@ -368,28 +373,8 @@ describe("VoiceChannelStage", () => {
     });
     expect(mockSession.toggleScreenShare).toHaveBeenCalled();
 
-    // Click 3-dots more menu
-    const moreBtn = inCallToolbar!.querySelector("button[title='More Options']") as HTMLButtonElement;
-    expect(moreBtn).toBeDefined();
-
-    act(() => {
-      moreBtn.click();
-    });
-
-    const moreMenu = container.querySelector(".voice-more-menu");
-    expect(moreMenu).toBeDefined();
-    expect(moreMenu!.textContent).toContain("Settings");
-    expect(moreMenu!.textContent).not.toContain("AI Notes");
-
-    // Click Settings item in more menu
-    const settingsItem = Array.from(moreMenu!.querySelectorAll(".voice-more-menu-item")).find(
-      (el) => el.textContent?.includes("Settings")
-    ) as HTMLButtonElement;
-    expect(settingsItem).toBeDefined();
-
-    act(() => {
-      settingsItem.click();
-    });
+    // The direct settings gear opens audio settings.
+    act(() => settingsButton?.click());
     expect(mockSetIsCallAudioPopupOpen).toHaveBeenCalledWith(true);
   });
 
@@ -640,7 +625,7 @@ describe("VoiceChannelStage", () => {
     expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
-  it("keeps the Speaking status without a ring around the participant avatar", () => {
+  it("shows the shared speaking state and ring on an active voice participant", () => {
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
@@ -672,8 +657,7 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    const speakingRings = container.querySelectorAll(".voice-speaking-ring");
-    expect(speakingRings).toHaveLength(0);
+    expect(container.querySelector(".voice-participant-card.is-speaking")).not.toBeNull();
     expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 

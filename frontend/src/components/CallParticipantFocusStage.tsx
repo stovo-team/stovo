@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { RemoteMedia } from "../realtime/call/types";
 
-const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#000" };
+const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "#000" };
 const avatarStyle: CSSProperties = { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: "1.25rem" };
 const labelStyle: CSSProperties = { position: "absolute", left: 8, bottom: 8, padding: "2px 8px", borderRadius: 4, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 12, zIndex: 3 };
 
@@ -63,7 +63,7 @@ export function CallParticipantFocusStage({
       </div>
       <div className="call-grid__focus-participants" aria-label="Other participants">
         {others.map((person) => (
-          <button type="button" className="call-grid__focus-participant" style={{ aspectRatio: "1 / 1" }} data-focus-participant={person.id} key={person.id} onClick={() => onSelect(person.id)}>
+          <button type="button" className="call-grid__focus-participant" style={{ aspectRatio: "16 / 9" }} data-focus-participant={person.id} key={person.id} onClick={() => onSelect(person.id)}>
             {person.hasVideo && person.stream ? <video className="call-grid__video" style={videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, person.stream)} /> : <span className="call-grid__avatar" style={avatarStyle}>{initial(person.id)}</span>}
             <span className="call-grid__label" style={labelStyle}>{person.id}</span>
           </button>

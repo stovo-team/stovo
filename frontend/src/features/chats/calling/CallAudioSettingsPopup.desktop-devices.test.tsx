@@ -51,7 +51,7 @@ describe("desktop call device selection", () => {
     expect(close).not.toBeNull();
     expect(css).toMatch(/\.call-audio-slider-row input\[type="range"\]\s*\{[^}]*accent-color:\s*var\(--accent-primary\)/s);
     const closeRule = css.match(/\.call-audio-popup-close\s*\{([^}]*)\}/s)?.[1] ?? "";
-    expect(closeRule).toMatch(/background:\s*var\(--(?:surface-hover|background-secondary)\)/);
+    expect(closeRule).toMatch(/background:\s*(?:var\(--(?:surface-hover|background-secondary)\)|color-mix\()/);
     expect(closeRule).toMatch(/border:\s*1px solid var\(--border-default\)/);
     expect(closeRule).toMatch(/border-radius:\s*999px/);
     expect(closeRule).toMatch(/width:\s*36px/);
@@ -139,6 +139,7 @@ describe("desktop call device selection", () => {
   });
 
   it("separates microphone processing from speaker output controls without extra boxed rows or browser tags", () => {
+    const onPatch = vi.fn();
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -155,24 +156,37 @@ describe("desktop call device selection", () => {
         ]}
         trackStatus={null}
         warning={null}
-        onPatch={vi.fn()}
+        onPatch={onPatch}
         onClose={vi.fn()}
       />,
     ));
 
-    const microphone = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Microphone"]');
-    const speaker = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Speaker"]');
+    const microphone = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Microphone settings"]');
+    const speaker = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Speaker settings"]');
     expect(microphone).not.toBeNull();
     expect(speaker).not.toBeNull();
     expect(microphone?.textContent).toContain("Input gain");
-    expect(microphone?.textContent).toContain("Noise suppression");
-    expect(microphone?.textContent).toContain("Echo cancellation");
-    expect(microphone?.textContent).toContain("Auto gain control");
-    expect(microphone?.textContent).toContain("Voice enhancement");
+    expect(microphone?.textContent).not.toContain("Noise suppression");
+    const dynamics = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Dynamic settings"]');
+    expect(dynamics?.textContent).toContain("Noise suppression");
+    expect(dynamics?.textContent).toContain("Echo cancellation");
+    expect(dynamics?.textContent).toContain("Auto gain control");
+    expect(dynamics?.textContent).toContain("Voice enhancement");
+    expect(dynamics?.textContent).toContain("Speaking sensitivity");
     expect(speaker?.textContent).toContain("Output volume");
     expect(speaker?.querySelector('[role="group"][aria-label="Speaker mode"]')).not.toBeNull();
     expect(speaker?.textContent).not.toContain("Noise suppression");
     expect(container.querySelectorAll(".call-audio-badge, .call-audio-status-chip")).toHaveLength(0);
+
+    const sensitivity = dynamics?.querySelector<HTMLInputElement>('[aria-label="Speaking sensitivity"]');
+    expect(sensitivity?.value).toBe("8");
+    act(() => {
+      if (sensitivity) {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(sensitivity, "5");
+        sensitivity.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    expect(onPatch).toHaveBeenCalledWith({ speakingSensitivity: 5 });
 
     const css = readFileSync("src/styles.css", "utf8");
     const toggleRule = css.match(/\.call-audio-toggle-row\s*\{([^}]*)\}/s)?.[1] ?? "";

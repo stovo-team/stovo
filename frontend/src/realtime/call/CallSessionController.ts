@@ -554,7 +554,7 @@ export default class CallSessionController {
       canUseNoiseSuppression: has,
       canUseEchoCancellation: has,
       canUseAutoGainControl: has,
-      canUseVoiceEnhancement: typeof window !== "undefined" && "AudioContext" in window,
+      canUseVoiceEnhancement: typeof window !== "undefined" && ("AudioContext" in window || "webkitAudioContext" in window),
       canUseCamera: has,
       canShareScreen: isNativeScreenCaptureAvailable() || (has && typeof navigator.mediaDevices?.getDisplayMedia === "function"),
     };
@@ -590,7 +590,7 @@ export default class CallSessionController {
 
     if (patch.micMuted !== undefined) this.applyMicMutedState();
     if (patch.cameraEnabled !== undefined) this.applyCameraEnabledState();
-    if (patch.soundDisabled !== undefined || patch.speakerMode !== undefined) {
+    if (patch.soundDisabled !== undefined || patch.speakerMode !== undefined || patch.outputVolume !== undefined) {
       this.applySoundDisabledState();
       if (patch.speakerMode === "large" && !this.settings.outputDeviceId) {
         void this.applyOutputDevice();
@@ -599,6 +599,7 @@ export default class CallSessionController {
 
     const needsReacquire =
       patch.inputDeviceId !== undefined ||
+      patch.inputGain !== undefined ||
       patch.videoDeviceId !== undefined ||
       patch.cameraFacingMode !== undefined ||
       patch.echoCancellation !== undefined ||
@@ -914,9 +915,13 @@ export default class CallSessionController {
       });
     }
 
-    const nextSend = this.settings.voiceEnhancement
-      ? this.createEnhancedStream(nextSource)
-      : nextSource;
+    let nextSend: MediaStream;
+    if (this.settings.voiceEnhancement || this.settings.inputGain !== 100) {
+      nextSend = this.createEnhancedStream(nextSource);
+    } else {
+      this.closeAudioProcessor();
+      nextSend = nextSource;
+    }
 
     this.stopStream(this.localStream);
     if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
@@ -999,7 +1004,7 @@ export default class CallSessionController {
         void el.play().catch(() => undefined);
       }
       el.muted = this.settings.soundDisabled;
-      el.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
+      el.volume = this.getOutputVolume();
     }
 
     // Drop extras for peers no longer present (except first which uses remoteAudioEl).
@@ -1077,12 +1082,16 @@ export default class CallSessionController {
   private applySoundDisabledState() {
     if (this.remoteAudioEl) {
       this.remoteAudioEl.muted = this.settings.soundDisabled;
-      this.remoteAudioEl.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
+      this.remoteAudioEl.volume = this.getOutputVolume();
     }
     for (const el of this.extraAudioEls.values()) {
       el.muted = this.settings.soundDisabled;
-      el.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
+      el.volume = this.getOutputVolume();
     }
+  }
+
+  private getOutputVolume() {
+    return Math.max(0, Math.min(1, this.settings.outputVolume / 100)) * (this.settings.speakerMode === "small" ? 0.35 : 1);
   }
 
   private supportsSinkId() {
@@ -1186,7 +1195,7 @@ export default class CallSessionController {
       if (this.localSpeakingAnalyser && !this.settings.micMuted) {
         this.localSpeakingAnalyser.getByteFrequencyData(data);
         const avg = data.reduce((s, v) => s + v, 0) / data.length;
-        this.localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg });
+        this.localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
       } else {
         this.localSpeakingIndicator?.update({ microphoneEnabled: false, level: 0 });
       }
@@ -1197,7 +1206,7 @@ export default class CallSessionController {
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((s, v) => s + v, 0) / data.length;
         const indicator = this.remoteSpeakingIndicators.get(uid);
-        indicator?.update({ microphoneEnabled: true, level: avg });
+        indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
         if (indicator && indicator.state !== "idle") activeSpeakingUserIds.push(uid);
       }
 
@@ -1246,20 +1255,30 @@ export default class CallSessionController {
     if (!AudioCtor) return input;
     this.closeAudioProcessor();
     this.processorContext = new AudioCtor();
+    if (this.processorContext.state === "suspended") {
+      void this.processorContext.resume().catch(() => undefined);
+    }
     const src = this.processorContext.createMediaStreamSource(input);
-    const hp = this.processorContext.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = this.settings.voiceEnhancementHighpass;
-    const comp = this.processorContext.createDynamicsCompressor();
-    comp.threshold.value = this.settings.voiceEnhancementThreshold;
-    comp.knee.value = 24;
-    comp.ratio.value = 3;
-    comp.attack.value = 0.003;
-    comp.release.value = 0.2;
+    const gain = this.processorContext.createGain();
+    gain.gain.value = this.settings.inputGain / 100;
     this.processorDestination = this.processorContext.createMediaStreamDestination();
-    src.connect(hp);
-    hp.connect(comp);
-    comp.connect(this.processorDestination);
+    src.connect(gain);
+    if (this.settings.voiceEnhancement) {
+      const hp = this.processorContext.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = this.settings.voiceEnhancementHighpass;
+      const comp = this.processorContext.createDynamicsCompressor();
+      comp.threshold.value = this.settings.voiceEnhancementThreshold;
+      comp.knee.value = 24;
+      comp.ratio.value = 3;
+      comp.attack.value = 0.003;
+      comp.release.value = 0.2;
+      gain.connect(hp);
+      hp.connect(comp);
+      comp.connect(this.processorDestination);
+    } else {
+      gain.connect(this.processorDestination);
+    }
     for (const t of input.getVideoTracks()) this.processorDestination.stream.addTrack(t);
     return this.processorDestination.stream;
   }

@@ -16,12 +16,12 @@ export function createCallSpeakingIndicator(onStateChange: (state: CallSpeakingS
 
   return {
     get state() { return currentState; },
-    update({ microphoneEnabled, level }: { microphoneEnabled: boolean; level: number }) {
+    update({ microphoneEnabled, level, threshold = CALL_SPEAKING_THRESHOLD }: { microphoneEnabled: boolean; level: number; threshold?: number }) {
       if (!microphoneEnabled) {
         if (releaseTimer !== null) clearTimeout(releaseTimer);
         releaseTimer = null;
         setState("idle");
-      } else if (level >= CALL_SPEAKING_THRESHOLD) {
+      } else if (level >= threshold) {
         if (releaseTimer !== null) clearTimeout(releaseTimer);
         releaseTimer = null;
         setState("speaking");

@@ -174,7 +174,7 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector(".mobile-active-screenshare-bar")).not.toBeNull();
   });
 
-  it("uses a vertical presentation tile for a portrait screen share", () => {
+  it("fits portrait screen content inside the shared 19:9 presentation frame", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -196,7 +196,8 @@ describe("MobileActiveScreen", () => {
     );
 
     const presentationTile = container.querySelector(".call-grid__tile--screen") as HTMLDivElement;
-    expect(presentationTile.style.aspectRatio).toBe("9 / 16");
+    expect(presentationTile.style.aspectRatio).toBe("19 / 9");
+    expect(presentationTile.querySelector<HTMLVideoElement>("video")?.style.objectFit).toBe("contain");
   });
 
   it("keeps every camera tile below an active remote screen share", () => {
