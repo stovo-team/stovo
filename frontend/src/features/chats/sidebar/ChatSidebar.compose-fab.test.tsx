@@ -123,7 +123,7 @@ describe("ChatSidebar compose action", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/auth/server");
   });
 
-  it("renders an accessible SVG pencil and starts a new chat without a glyph fallback", () => {
+  it("renders an accessible SVG plus and starts a new chat without a glyph fallback", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -154,7 +154,7 @@ describe("ChatSidebar compose action", () => {
     expect(composeFab.getAttribute("aria-label")).toBe("Start a chat");
     const icon = composeFab.querySelector("svg");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
-    expect(icon?.getAttribute("width")).toBe("24");
+    expect(icon?.getAttribute("width")).toBe("20");
     expect(composeFab.textContent).not.toContain("edit_square");
     expect(composeFab.querySelector(".ms-icon")).toBeNull();
 
