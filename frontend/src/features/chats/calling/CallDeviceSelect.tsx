@@ -57,11 +57,9 @@ export function CallDeviceSelect({
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(Math.max(rect.width, 220), window.innerWidth - 16);
-      const maxHeight = Math.min(280, window.innerHeight - 32);
-      const top = rect.bottom + 6 + maxHeight > window.innerHeight
-        ? Math.max(16, rect.top - maxHeight - 6)
-        : rect.bottom + 6;
+      const width = Math.min(rect.width, window.innerWidth - 16);
+      const top = rect.bottom + 6;
+      const maxHeight = Math.min(280, Math.max(0, window.innerHeight - top - 8));
       const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
       setPosition({ top, left, width, maxHeight });
     };

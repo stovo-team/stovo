@@ -190,6 +190,20 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.textContent).not.toContain("Camera unavailable — you can still join with your microphone");
   });
 
+  it("requests a detailed desktop camera preview and retains quality after device selection", async () => {
+    await renderPage();
+    const getUserMedia = navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>;
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: false, video: expect.objectContaining({
+      width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 },
+    }) });
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[aria-label="Select Camera"]')?.click(); });
+    const camera = Array.from(host?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []).find((option) => option.textContent?.includes("Desk camera"));
+    await act(async () => { camera?.click(); });
+    expect(getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: expect.objectContaining({
+      deviceId: { exact: "camera-1" }, width: { ideal: 1920 }, height: { ideal: 1080 },
+    }) });
+  });
+
   it("opens a device menu and selects a device", async () => {
     await renderPage();
     const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]');
@@ -302,13 +316,23 @@ describe("GuestMeetingPage pre-join controls", () => {
     const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Open device settings"]');
     await act(async () => { trigger?.click(); });
 
-    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).not.toBeNull();
-    expect(host?.querySelector<HTMLInputElement>('[aria-label="Microphone volume"]')?.value).toBe("100");
-    expect(host?.querySelector<HTMLInputElement>('[aria-label="Speaker volume"]')?.value).toBe("100");
+    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).not.toBeNull();
+    expect(host?.querySelector<HTMLInputElement>('[aria-label="Input gain"]')?.value).toBe("100");
+    expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("100");
+    expect(host?.textContent).toContain("Microphone test");
+    expect(host?.querySelector('[aria-label="Speaking sensitivity"]')).not.toBeNull();
     expect(host?.textContent).toContain("Test sound");
 
+    const volume = host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(volume, "35");
+      volume?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
-    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
+    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).toBeNull();
+    await act(async () => { trigger?.click(); });
+    expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("35");
   });
 
   it("renders device actions as joined segments rather than separate circular camera buttons", async () => {
