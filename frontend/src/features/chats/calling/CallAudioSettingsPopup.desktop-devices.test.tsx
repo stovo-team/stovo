@@ -138,6 +138,87 @@ describe("desktop call device selection", () => {
     expect(document.body.querySelector('[role="listbox"]')).toBeNull();
   });
 
+  it("keeps a narrow device list below its trigger even near the bottom of the viewport", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+    act(() => root.render(<CallAudioSettingsPopup popupRef={{ current: null }} isMobile={false}
+      settings={DEFAULT_CALL_SETTINGS} capabilities={capabilities} devices={[]}
+      warning={null} onPatch={vi.fn()} onClose={vi.fn()} />));
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Select Speaker"]')!;
+    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
+      top: window.innerHeight - 100, bottom: window.innerHeight - 60, left: 50, right: 230,
+      width: 180, height: 40, x: 50, y: window.innerHeight - 100, toJSON: () => ({}),
+    });
+    act(() => trigger.click());
+    const menu = container.querySelector<HTMLElement>('[role="listbox"]')!;
+    expect(menu.style.top).toBe(`${window.innerHeight - 54}px`);
+    expect(menu.style.left).toBe("50px");
+    expect(menu.style.width).toBe("180px");
+    expect(Number.parseFloat(menu.style.maxHeight)).toBeLessThanOrEqual(54);
+  });
+
+  it("starts at audible volume and plays the speaker test through the chosen output", async () => {
+    const ramp = vi.fn();
+    const sink = vi.fn(async () => undefined);
+    const close = vi.fn(async () => undefined);
+    const start = vi.fn();
+    const AudioContextMock = vi.fn(function () { return {
+      state: "running", currentTime: 0, destination: {}, close, setSinkId: sink,
+      createOscillator: () => ({ frequency: { value: 0 }, connect: vi.fn(), start, stop: vi.fn() }),
+      createGain: () => ({ gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: ramp }, connect: vi.fn() }),
+    }; });
+    vi.stubGlobal("AudioContext", AudioContextMock);
+    try {
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      mountedRoots.push(root);
+      const render = (outputVolume: number) => act(() => root.render(<CallAudioSettingsPopup
+        popupRef={{ current: null }} isMobile={false} settings={{ ...DEFAULT_CALL_SETTINGS, outputDeviceId: "speaker-1", outputVolume }}
+        capabilities={capabilities} devices={[]} warning={null} onPatch={vi.fn()} onClose={vi.fn()} />));
+      render(DEFAULT_CALL_SETTINGS.outputVolume);
+      expect(container.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("100");
+      expect(container.textContent).toContain("Microphone test");
+      const testSound = container.querySelector<HTMLButtonElement>('[aria-label="Test sound"]');
+      expect(testSound).not.toBeNull();
+      await act(async () => { testSound?.click(); });
+      expect(sink).toHaveBeenCalledWith("speaker-1");
+      expect(start).toHaveBeenCalledTimes(3);
+      expect(ramp).toHaveBeenCalledWith(0.25, 0.02);
+      render(0);
+      expect(container.querySelector<HTMLButtonElement>('[aria-label="Test sound"]')?.disabled).toBe(true);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("meters the existing microphone stream and releases the test when muted", () => {
+    const close = vi.fn(async () => undefined);
+    const source = vi.fn(() => ({ connect: vi.fn() }));
+    vi.stubGlobal("AudioContext", vi.fn(function () { return {
+      state: "running", close, createMediaStreamSource: source,
+      createAnalyser: () => ({ fftSize: 256, getByteTimeDomainData: (samples: Uint8Array) => samples.fill(160) }),
+    }; }));
+    try {
+      const stream = { getAudioTracks: () => [{}] } as unknown as MediaStream;
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      mountedRoots.push(root);
+      const render = (micMuted: boolean) => act(() => root.render(<CallAudioSettingsPopup
+        popupRef={{ current: null }} isMobile={false} localStream={stream}
+        settings={{ ...DEFAULT_CALL_SETTINGS, micMuted }} capabilities={capabilities} devices={[]}
+        warning={null} onPatch={vi.fn()} onClose={vi.fn()} />));
+      render(false);
+      expect(source).toHaveBeenCalledWith(stream);
+      expect(container.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("45");
+      render(true);
+      expect(close).toHaveBeenCalledOnce();
+      expect(container.querySelector('[role="meter"]')).toBeNull();
+      expect(container.textContent).toContain("Microphone muted");
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it("separates microphone processing from speaker output controls without extra boxed rows or browser tags", () => {
     const onPatch = vi.fn();
     const container = document.createElement("div");

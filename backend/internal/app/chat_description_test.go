@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -62,5 +63,50 @@ func TestChatDescriptionUpdatesAndPersists(t *testing.T) {
 	cleared := decodeJSON[chatPublic](t, clearResp)
 	if cleared.Description != nil {
 		t.Fatalf("cleared description = %v, want nil", cleared.Description)
+	}
+}
+
+func TestChatNameAndDescriptionEnforceLengthLimits(t *testing.T) {
+	_, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Length Limit Test Workspace",
+		"username":    "length-owner",
+		"password":    "secure-password",
+		"displayName": "Length Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d, want %d", setupResp.StatusCode, http.StatusCreated)
+	}
+	owner := decodeJSON[authResponse](t, setupResp)
+
+	createResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/group", owner.AccessToken, map[string]any{
+		"title":     "A valid chat name",
+		"memberIds": []string{},
+	})
+	if createResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create chat status = %d, want %d", createResp.StatusCode, http.StatusCreated)
+	}
+	created := decodeJSON[chatPublic](t, createResp)
+
+	tooLongName := strings.Repeat("n", 256)
+	for _, path := range []string{"/api/chats/group", "/api/chats/" + created.ID} {
+		method := http.MethodPost
+		body := map[string]any{"title": tooLongName, "memberIds": []string{}}
+		if path == "/api/chats/"+created.ID {
+			method = http.MethodPatch
+			body = map[string]any{"title": tooLongName}
+		}
+		resp := jsonRequest(t, client, method, serverURL.URL+path, owner.AccessToken, body)
+		if resp.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("%s %s status = %d, want %d", method, path, resp.StatusCode, http.StatusUnprocessableEntity)
+		}
+	}
+
+	tooLongDescription := strings.Repeat("d", 121)
+	descriptionResp := jsonRequest(t, client, http.MethodPatch, serverURL.URL+"/api/chats/"+created.ID, owner.AccessToken, map[string]any{
+		"description": tooLongDescription,
+	})
+	if descriptionResp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("description update status = %d, want %d", descriptionResp.StatusCode, http.StatusUnprocessableEntity)
 	}
 }

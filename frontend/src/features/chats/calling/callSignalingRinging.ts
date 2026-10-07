@@ -98,7 +98,7 @@ export function registerCallRingingHandler(socket: Socket, audioController: Call
           const peerId = isCaller
             ? (payload.participants?.find((p) => p.userId !== selfUserId)?.userId ?? payload.calleeId)
             : payload.callerId;
-          setCallPeerUserId(peerId);
+          setCallPeerUserId(isCaller && !peerId ? null : peerId);
 
           const chat = chatsRef.current.find((c: Chat) => c.id === payload.chatId) ?? selectedChat;
           const isGroup = chat ? (chat.type === "group" || chat.type === "family") : (payload.participants ? payload.participants.length > 2 : false);

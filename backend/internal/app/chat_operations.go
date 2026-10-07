@@ -77,7 +77,7 @@ func (s *Server) createChat(ctx context.Context, user userPublic, kind string, r
 	if (kind == "group" || kind == "channel" || kind == "voice") && !hasPermission(user, permissionManageChannels) {
 		return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
 	}
-	if request.Title == "" {
+	if request.Title == "" || chatTitleTooLong(request.Title) {
 		return nil, 0, newStatusError(http.StatusUnprocessableEntity, "Invalid "+kind+" chat payload")
 	}
 	members, err := s.resolveChatMembers(user, request.MemberIDs)
@@ -210,8 +210,8 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 		return nil, 0, newStatusError(http.StatusNotFound, "Chat not found")
 	}
 	if payload.Title != nil {
-		if *payload.Title == "" {
-			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "title cannot be blank")
+		if message := chatTitleValidationMessage(*payload.Title); message != "" {
+			return nil, 0, newStatusError(http.StatusUnprocessableEntity, message)
 		}
 		if !s.canManageChat(chat, user) {
 			return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
@@ -227,8 +227,8 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 		desc := strings.TrimSpace(*payload.Description)
 		var descPtr *string
 		if desc != "" {
-			if len(desc) > 255 {
-				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 255 characters")
+			if chatDescriptionTooLong(desc) {
+				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 120 characters")
 			}
 			descPtr = &desc
 		}
