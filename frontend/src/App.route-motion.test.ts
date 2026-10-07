@@ -28,4 +28,17 @@ describe("call session route lifetime", () => {
     expect(appSource).toContain('<div key={location.pathname}>\n    <Routes location={location}>');
     expect(appSource).not.toContain('key={location.pathname}\n      className={`app-route-layer');
   });
+
+  it("keeps minimized call UI outside the hidden chats route and minimizes calls on departure", () => {
+    const callFeatureSource = readFileSync(
+      resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"),
+      "utf8",
+    );
+
+    expect(callFeatureSource).toContain("createPortal");
+    expect(callFeatureSource).toContain("useLocation");
+    expect(callFeatureSource).toContain("setRouteMinimized(true)");
+    expect(callFeatureSource).toContain('className="mobile-call-strip--global"');
+    expect(styles).toContain(".mobile-call-strip--global");
+  });
 });

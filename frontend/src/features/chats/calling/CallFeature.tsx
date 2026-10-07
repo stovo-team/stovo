@@ -1,3 +1,6 @@
+import { useLayoutEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallSettingsContextMenu } from "./CallSettingsContextMenu";
@@ -11,7 +14,7 @@ import { MobileActiveScreen } from "./MobileActiveScreen";
 import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MobileMinimizedCallBar } from "./MobileMinimizedCallBar";
 import { useCallTimer } from "./useCallTimer";
-import { useCallFeatureContext } from "./CallFeatureContext";
+import { CallFeatureProvider as CallFeatureContextProvider, useCallFeatureContext } from "./CallFeatureContext";
 
 export {
   CallSettingsContextMenu,
@@ -38,6 +41,8 @@ export { CallFeatureProvider } from "./CallFeatureContext";
  */
 export function CallFeature() {
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
+  const { pathname } = useLocation();
+  const [routeMinimized, setRouteMinimized] = useState(false);
   const {
     callPhase,
     callType,
@@ -92,7 +97,26 @@ export function CallFeature() {
   // minimized. Keeping them out of the generic popup prevents minimization
   // from looking like the room ended or from creating a second call surface.
   const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
-  const effectiveIsCallMinimized = isCallMinimized;
+  const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
+
+  const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
+  useLayoutEffect(() => {
+    if (callPhase === "idle") {
+      setRouteMinimized(false);
+    } else if (!isOnChatsRoute) {
+      setRouteMinimized(true);
+    }
+  }, [callPhase, isOnChatsRoute]);
+
+  const callUiSession = {
+    ...session,
+    isCallMinimized: isCallMinimized || routeMinimized,
+    setIsCallMinimized: (value: boolean | ((current: boolean) => boolean)) => {
+      const nextValue = typeof value === "function" ? value(isCallMinimized || routeMinimized) : value;
+      setRouteMinimized(false);
+      session.setIsCallMinimized(nextValue);
+    },
+  };
 
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
@@ -103,8 +127,23 @@ export function CallFeature() {
     return null;
   }
 
-  return (
+  const callUi = (
     <>
+      {routeMinimized && (isMobileViewport || isVoiceChannel) && callPhase !== "idle" && (
+        <MobileMinimizedCallBar
+          className="mobile-call-strip--global"
+          peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (activeChat?.title ?? "Call")}
+          callPhase={callPhase}
+          callTimer={callTimer}
+          micMuted={callAudioSettings.micMuted}
+          onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+          onEnd={() => void endActiveCall()}
+          onExpand={() => {
+            callUiSession.setIsCallMinimized(false);
+            if (activeChat) onOpenChat?.(activeChat);
+          }}
+        />
+      )}
       {preJoinChatId && preJoinActiveCall && preJoinChat && (
         <GroupCallPreJoinModal
           chatTitle={preJoinChat.title ?? "Group Chat"}
@@ -138,7 +177,7 @@ export function CallFeature() {
             }
           >
             {/* Mobile incoming call full-screen */}
-            {isMobileViewport && !isCallMinimized && callPhase === "incoming" && (
+            {isMobileViewport && !effectiveIsCallMinimized && callPhase === "incoming" && (
               <MobileIncomingScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 peerProfilePhoto={peerProfilePhoto}
@@ -149,7 +188,7 @@ export function CallFeature() {
               />
             )}
             {/* Mobile active call full-screen */}
-            {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
+            {isMobileViewport && !effectiveIsCallMinimized && callPhase !== "incoming" && (
               <MobileActiveScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 peerProfilePhoto={peerProfilePhoto}
@@ -261,4 +300,19 @@ export function CallFeature() {
       )}
     </>
   );
+
+  const callUiWithContext = (
+    <CallFeatureContextProvider
+      session={callUiSession}
+      isMobileViewport={isMobileViewport}
+      members={members}
+      currentUser={currentUser}
+      chats={chats}
+      onOpenChat={onOpenChat}
+    >
+      {callUi}
+    </CallFeatureContextProvider>
+  );
+
+  return typeof document !== "undefined" ? createPortal(callUiWithContext, document.body) : callUiWithContext;
 }
