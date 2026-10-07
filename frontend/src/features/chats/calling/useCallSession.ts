@@ -560,8 +560,7 @@ export function useCallSession({
           console.warn("[CALL] startDirectCall: failed to refresh chat members", err);
         }
       }
-      const isGroupChat = callChat.type === "group" || callChat.type === "family";
-      if (peers.length === 0 && !isGroupChat) {
+      if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
         console.warn("[CALL] startDirectCall: no peer member found in chat");
         setError("This chat has no other members to call. Add someone to the chat and try again.");
         return;
