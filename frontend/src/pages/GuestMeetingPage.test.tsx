@@ -123,6 +123,50 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
+  it("keeps the joining screen as an unboxed black loading state with the Stovo link at the bottom", async () => {
+    api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joining", state: "admitted" });
+    api.getGuestMeetingToken.mockReturnValueOnce(new Promise<{ url: string; token: string; roomName: string }>(() => undefined));
+    await renderPage();
+
+    const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+    await act(async () => {
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Guest tester");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const page = host?.querySelector<HTMLElement>(".guest-meeting-page--connecting");
+    expect(page).not.toBeNull();
+    expect(page?.querySelector(".guest-meeting-card")).toBeNull();
+    expect(page?.querySelector('[role="status"]')?.textContent).toBe("Joining meeting…");
+    expect(page?.querySelector(".guest-connecting-spinner")).not.toBeNull();
+    expect(page?.querySelector(".guest-stovo-marketing")?.parentElement).toBe(page);
+    const css = readFileSync("src/styles.css", "utf8");
+    const connectingPageRule = css.match(/\.guest-meeting-page--connecting\s*\{([^}]*)\}/)?.[1] ?? "";
+    const connectingLinkRule = css.match(/\.guest-meeting-page--connecting \.guest-stovo-marketing\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(connectingPageRule).toMatch(/background:\s*#000/);
+    expect(connectingLinkRule).toMatch(/position:\s*fixed/);
+    expect(connectingLinkRule).toMatch(/bottom:/);
+  });
+
+  it("keeps the shared-screen frame 16:9 and centered instead of stretching to the desktop stage", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
+    const desktopSpotlightRules = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]);
+    const desktopScreenTileRules = Array.from(css.matchAll(/\.guest-call-room \.guest-call-screen-tile\s*\{([^}]*)\}/g), (match) => match[1]);
+    const screenTileRule = css.match(/\.guest-call-screen-tile\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(screenTileRule).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
+    expect(css.match(/\.guest-call-spotlight\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/margin-inline:\s*auto/);
+    expect(pageSource).toMatch(/guest-call-screen-tile" style=\{\{ aspectRatio: "16 \/ 9" \}\}/);
+    expect(desktopSpotlightRules.every((rule) => !/flex:\s*1(?:\s|;|$)/.test(rule))).toBe(true);
+    expect(desktopScreenTileRules.every((rule) => !/height:\s*100%/.test(rule))).toBe(true);
+  });
+
   it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {
     api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joined", state: "admitted" });
     await renderPage();
