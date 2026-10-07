@@ -560,7 +560,7 @@ export function useCallSession({
           console.warn("[CALL] startDirectCall: failed to refresh chat members", err);
         }
       }
-      if (peers.length === 0) {
+      if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
         console.warn("[CALL] startDirectCall: no peer member found in chat");
         setError("This chat has no other members to call. Add someone to the chat and try again.");
         return;
@@ -574,7 +574,7 @@ export function useCallSession({
           : peers.map((p) => p.id);
     const primaryPeer = peers.find((p) => selectedInvitees.includes(p.id)) ?? peers[0];
     const isGroup = callChat.type === "group" || callChat.type === "family";
-    console.log("[CALL] startDirectCall: peer=", primaryPeer.id, "invitees=", selectedInvitees, "isGroup=", isGroup);
+    console.log("[CALL] startDirectCall: peer=", primaryPeer?.id ?? null, "invitees=", selectedInvitees, "isGroup=", isGroup);
     setError(null);
     setCallNotice(null);
     setCallType(type);
@@ -589,8 +589,8 @@ export function useCallSession({
     callPhaseRef.current = initialPhase;
     activeCallSessionIdRef.current = "pending";
     setActiveCallChatId(selectedChat.id);
-    setCallPeerUserId(primaryPeer.id);
-    setCallPeerDisplayName(isGroup ? (callChat.title ?? primaryPeer.displayName ?? null) : (primaryPeer.displayName ?? null));
+    setCallPeerUserId(primaryPeer?.id ?? null);
+    setCallPeerDisplayName(isGroup ? (callChat.title ?? primaryPeer?.displayName ?? null) : (primaryPeer?.displayName ?? null));
     setCallParticipantIds([currentUser.id, ...selectedInvitees]);
     setCallTopology("mesh");
     activeCallChatIdRef.current = selectedChat.id;
