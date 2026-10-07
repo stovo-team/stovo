@@ -227,7 +227,7 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 		desc := strings.TrimSpace(*payload.Description)
 		var descPtr *string
 		if desc != "" {
-			if utf8.RuneCountInString(desc) > 120 {
+			if chatDescriptionTooLong(desc) {
 				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 120 characters")
 			}
 			descPtr = &desc
