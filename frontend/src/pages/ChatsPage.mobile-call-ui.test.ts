@@ -62,7 +62,7 @@ describe("mobile active video call UI", () => {
   it("keeps a minimized voice channel in the persistent call header", () => {
     expect(callFeatureSource).toContain('callPhase !== "idle" && !isVoiceChannel');
     expect(chatsPageSource).toContain('callPhase !== "idle" && isCallMinimized && !chatId');
-    expect(chatsPageSource).toContain('selectedChat && chatId && callPhase !== "idle" && isCallMinimized');
+    expect(chatsPageSource).toContain('(isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== "idle" && isCallMinimized');
     expect(conversationPanelSource).toContain('callSession?.setIsCallMinimized(true);');
     expect(conversationPanelSource).not.toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
     expect(conversationPanelSource).toContain('const isShowingVoiceTextChat');

@@ -214,6 +214,24 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   }
 
   const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);
+  const minimizedCallHeader = (isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== "idle" && isCallMinimized ? <MobileMinimizedCallBar
+      className="mobile-call-strip--chat-header"
+      peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
+      callPhase={callPhase} callTimer={callTimer} micMuted={callAudioSettings.micMuted}
+      onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+      onEnd={() => void endActiveCall()}
+      onExpand={() => {
+        setIsCallMinimized(false);
+        if (activeCallChatId) {
+          const target = chats.find((c) => c.id === activeCallChatId);
+          if (target) {
+            setIsDraftsAndScheduledOpen(false);
+            setIsMessageArchiveOpen(false);
+            openChat(target);
+          }
+        }
+      }}
+    /> : null;
 
   useEffect(() => {
     setIsVoiceCallExpanded(false);
@@ -254,7 +272,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
             onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView(loadMessageArchiveView(currentUser?.id)); setSelectedChat(archive); openChat(archive); if (chatId === archive.id || archiveGroup) navigate(`${getClusterPrefix()}/app/chats/${archive.id}`); } }}
             isMessageArchiveActive={isMessageArchiveOpen}
             mobileCallStrip={
-              callPhase !== "idle" && isCallMinimized && !chatId ? (
+              callPhase !== "idle" && isCallMinimized && !chatId && !isDraftsAndScheduledOpen ? (
                 <MobileMinimizedCallBar
                   peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
                   callPhase={callPhase}
@@ -282,7 +300,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
             onPointerMove={(event) => moveChatExitSwipe(event, isDraftsAndScheduledOpen ? () => setIsDraftsAndScheduledOpen(false) : requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }} onBack={() => setIsDraftsAndScheduledOpen(false)} /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} onBack={requestCloseActiveChatSurface} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }} onBack={() => setIsDraftsAndScheduledOpen(false)} minimizedCallHeader={minimizedCallHeader} /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} onBack={requestCloseActiveChatSurface} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}
@@ -319,26 +337,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               onOpenAddPeople={() => setAddPeopleChat(selectedChat)}
               isVoiceCallExpanded={isVoiceCallExpanded}
               onToggleVoiceCallExpanded={() => setIsVoiceCallExpanded((expanded) => !expanded)}
-              minimizedCallHeader={
-                selectedChat && chatId && callPhase !== "idle" && isCallMinimized ? (
-                  <MobileMinimizedCallBar
-                    className="mobile-call-strip--chat-header"
-                    peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
-                    callPhase={callPhase}
-                    callTimer={callTimer}
-                    micMuted={callAudioSettings.micMuted}
-                    onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                    onEnd={() => void endActiveCall()}
-                    onExpand={() => {
-                      setIsCallMinimized(false);
-                      if (activeCallChatId) {
-                        const target = chats.find((c) => c.id === activeCallChatId);
-                        if (target) openChat(target);
-                      }
-                    }}
-                  />
-                ) : null
-              }
+              minimizedCallHeader={minimizedCallHeader}
               onOpenChat={openChat}
               onOpenImage={openFullViewImage}
               onOpenNewChat={openNewChatScreen}

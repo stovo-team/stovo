@@ -1,12 +1,12 @@
 import { Archive, FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { getMessageArchiveGroups, type Chat, type MessageArchiveGroup } from "../../api/chats";
 import { getOutboxMessages, type QueuedOutboxMessage } from "./outbox/messageOutboxStore";
 import { chatAvatarFallbackKind, chatAvatarFile, chatAvatarTypeClass, displayChatName } from "./shared/chatPresentation";
 import { RealAvatar } from "./sidebar/RealAvatar";
 import { BackButton } from "../../components/BackButton";
 
-export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat, onBack }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onOpenChat: (chat: Chat) => void; onBack?: () => void }) {
+export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat, onBack, minimizedCallHeader }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onOpenChat: (chat: Chat) => void; onBack?: () => void; minimizedCallHeader?: ReactNode }) {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
   const [scheduledMessages, setScheduledMessages] = useState<QueuedOutboxMessage[]>([]);
   const draftRows = chats.flatMap((chat) => {
@@ -38,6 +38,7 @@ export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat
         <span className="avatar chat-avatar archive"><FileText size={20} /></span>
         <span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span>
       </header>
+      {minimizedCallHeader}
       <div className="quick-access-panel-tabs" role="tablist"><button type="button" className={tab === "drafts" ? "active" : ""} role="tab" aria-selected={tab === "drafts"} onClick={() => setTab("drafts")}>Drafts</button><button type="button" className={tab === "scheduled" ? "active" : ""} role="tab" aria-selected={tab === "scheduled"} onClick={() => setTab("scheduled")}>Scheduled</button></div>
       {tab === "drafts" && draftRows.length > 0 ? (
         <div className="archive-quick-list quick-access-draft-list">
