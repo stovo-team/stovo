@@ -3780,7 +3780,7 @@ h2 {
 .chat-list-copy .chat-list-voice-participants {
   align-items: center;
   display: flex;
-  min-height: 30px;
+  min-height: 0;
   overflow: visible;
 }
 
@@ -3804,11 +3804,11 @@ h2 {
 
 .chat-list-voice-avatar {
   border: 1.5px solid var(--surface-raised, #111827);
-  flex: 0 0 30px;
+  flex: 0 0 20px;
   font-size: 0.68rem;
   font-weight: 700;
-  height: 30px;
-  width: 30px;
+  height: 20px;
+  width: 20px;
 }
 
 .chat-list-voice-member-tooltip {
