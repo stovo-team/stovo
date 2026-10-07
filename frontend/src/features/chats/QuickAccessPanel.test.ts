@@ -13,6 +13,14 @@ describe("message archive grouped view", () => {
     expect(page).toContain('<QuickAccessPanel accessToken={accessToken} chats={chats}');
   });
 
+  it("keeps the minimized call bar visible over Drafts & scheduled", () => {
+    expect(panel).toContain("minimizedCallHeader?: ReactNode");
+    expect(panel).toContain("{minimizedCallHeader}");
+    expect(page).toContain("minimizedCallHeader={minimizedCallHeader}");
+    expect(page).toContain("setIsDraftsAndScheduledOpen(false)");
+    expect(page).toContain("(isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== \"idle\" && isCallMinimized");
+  });
+
   it("loads scheduled messages from the outbox instead of showing a placeholder", () => {
     expect(panel).toContain('getOutboxMessages(currentUserId)');
     expect(panel).toContain('message.status === "scheduled" || Boolean(message.scheduledFor)');
