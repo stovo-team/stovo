@@ -40,7 +40,7 @@ frontend/src/features/chats/calling/DesktopCallControls.tsx	552
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	660
 frontend/src/features/chats/calling/useCallSession.ts	1055
 frontend/src/features/chats/calling/useTranscription.ts	605
-frontend/src/features/chats/calling/VoiceChannelStage.tsx	536
+frontend/src/features/chats/calling/VoiceChannelStage.tsx	580
 frontend/src/features/chats/composer/Composer.tsx	963
 frontend/src/features/chats/composer/useMessageComposer.ts	898
 frontend/src/features/chats/conversation/ConversationPanel.tsx	769
