@@ -641,12 +641,12 @@
 }
 
 .call-grid--screen-share {
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 22%);
+  grid-template-columns: minmax(120px, 22%) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
 }
 
 .call-grid--screen-share > .call-grid__tile--screen {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   width: 100%;
   height: 100%;
@@ -655,18 +655,33 @@
 }
 
 .call-grid__participant-rail {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
-  align-content: center;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
+  overflow: hidden;
+}
+
+.call-grid__participant-pin {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+}
+
+.call-grid__remote-rail {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
   overflow-y: auto;
 }
 
-.call-grid__participant-rail > [data-participant-id] {
+.call-grid__remote-rail > [data-participant-id] {
   position: relative;
   width: 100%;
   height: auto !important;
@@ -674,11 +689,52 @@
   aspect-ratio: 16 / 9;
 }
 
-.call-grid__participant-rail .call-grid__tile {
+.call-grid__participant-rail .call-grid__tile,
+.call-grid__remote-rail .call-grid__tile {
   width: 100%;
   height: 100%;
   min-height: 0;
   aspect-ratio: 16 / 9;
+}
+
+@media (max-width: 640px) {
+  .call-grid--screen-share {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .shared-call-stage .call-grid--screen-share {
+    aspect-ratio: auto;
+    height: 100% !important;
+    max-height: 100%;
+  }
+
+  .call-grid--screen-share > .call-grid__tile--screen {
+    grid-column: 1 !important;
+    grid-row: 1;
+  }
+
+  .call-grid--screen-share .call-grid__participant-rail {
+    display: flex;
+    grid-column: 1;
+    grid-row: 2;
+    height: 104px;
+    overflow: hidden;
+  }
+
+  .call-grid--screen-share .call-grid__participant-pin,
+  .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
+    flex: 0 0 clamp(124px, 32vw, 180px);
+    height: 100%;
+  }
+
+  .call-grid--screen-share .call-grid__remote-rail {
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 }
 
 .call-grid--presenting .call-grid__tile--screen {
@@ -3087,6 +3143,16 @@ h2 {
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(340px, 420px);
 }
 
+.chat-layout.voice-call-expanded,
+.chat-layout.voice-call-expanded.details-open {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.voice-call-expanded .chat-sidebar,
+.voice-call-expanded .chat-details-panel {
+  display: none;
+}
+
 .chat-sidebar,
 .chat-detail,
 .chat-details-panel {
@@ -3738,6 +3804,10 @@ h2 {
   min-width: 0;
 }
 
+.chat-list-copy:has(.chat-list-voice-participants) {
+  gap: 1px;
+}
+
 .chat-list-preview,
 .chat-list-copy > span:not(.chat-list-topline),
 .chat-list-topline time,
@@ -3817,11 +3887,11 @@ h2 {
 
 .chat-list-voice-avatar {
   border: 1.5px solid var(--surface-raised, #111827);
-  flex: 0 0 20px;
+  flex: 0 0 24px;
   font-size: 0.68rem;
   font-weight: 700;
-  height: 20px;
-  width: 20px;
+  height: 24px;
+  width: 24px;
 }
 
 .chat-list-voice-member-tooltip {
@@ -24915,7 +24985,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   justify-content: flex-start;
   padding: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px) 16px 16px;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 0;
   height: 100%;
   width: 100%;
@@ -25386,6 +25456,30 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: 10px;
   width: 40px;
   height: 40px;
+}
+
+.voice-room-expand-button {
+  position: absolute;
+  z-index: 20;
+  top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px);
+  left: 16px;
+  align-items: center;
+  background: rgba(20, 24, 30, .88);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+
+.voice-room-expand-button:hover,
+.voice-room-expand-button:focus-visible {
+  background: rgba(48, 57, 68, .96);
+  outline: 2px solid color-mix(in oklab, var(--accent-primary) 60%, transparent);
 }
 
 .voice-room-member-invite:hover,

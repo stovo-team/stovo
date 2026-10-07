@@ -50,13 +50,22 @@ describe("shared call participant presentation", () => {
     expect(grid?.classList.contains("call-grid--screen-share")).toBe(true);
     const rail = grid?.querySelector<HTMLElement>(".call-grid__participant-rail");
     expect(rail).not.toBeNull();
-    const remote = rail?.querySelector<HTMLElement>('[data-participant-id="Alex Morgan"]');
+    expect(rail?.querySelector(".call-grid__participant-pin[data-participant-id='You']")).not.toBeNull();
+    const remoteRail = rail?.querySelector<HTMLElement>(".call-grid__remote-rail");
+    expect(remoteRail).not.toBeNull();
+    const remote = remoteRail?.querySelector<HTMLElement>('[data-participant-id="Alex Morgan"]');
     expect(remote?.style.aspectRatio).toBe("16 / 9");
     expect(remote?.querySelector(".call-grid__avatar")).not.toBeNull();
 
     const css = readFileSync("src/styles.css", "utf8");
     expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:/);
-    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/grid-auto-rows:/);
+    expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:\s*minmax\(120px,\s*22%\)\s+minmax\(0,\s*1fr\)/);
+    expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/grid-column:\s*2/);
+    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/grid-column:\s*1/);
+    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/overflow:\s*hidden/);
+    expect(styleRules(css, ".call-grid__remote-rail")).toMatch(/overflow-y:\s*auto/);
+    expect(css).toMatch(/@media[^{}]*\(max-width:\s*640px\)[\s\S]*?\.call-grid--screen-share\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/);
+    expect(css).toMatch(/\.call-grid--screen-share \.call-grid__remote-rail\s*\{[^}]*overflow-x:\s*auto/);
   });
 
   it("shows the same speaking status on local and remote participants", () => {

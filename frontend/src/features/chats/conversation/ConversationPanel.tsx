@@ -62,6 +62,8 @@ export type ConversationPanelProps = {
   onBackFromArchiveGroup?: () => void;
   canAddPeople?: boolean;
   onOpenAddPeople?: () => void;
+  isVoiceCallExpanded?: boolean;
+  onToggleVoiceCallExpanded?: () => void;
   onOpenChat: (chat: Chat) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
@@ -95,6 +97,8 @@ export function ConversationPanel({
   onBackFromArchiveGroup,
   canAddPeople,
   onOpenAddPeople,
+  isVoiceCallExpanded = false,
+  onToggleVoiceCallExpanded,
   isChatMenuOpen,
   chatMenuRef,
   onToggleChatMenu,
@@ -474,6 +478,8 @@ export function ConversationPanel({
             accessToken={accessToken}
             canAddPeople={canAddPeople}
             onOpenAddPeople={onOpenAddPeople}
+            isExpanded={isVoiceCallExpanded}
+            onToggleExpanded={onToggleVoiceCallExpanded}
           />
         ) : null
       ) : (
