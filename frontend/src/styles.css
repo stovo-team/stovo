@@ -193,7 +193,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 200;
-  width: 460px;
+  width: min(720px, calc(100vw - 40px));
   background: var(--surface-card);
   border: 1px solid var(--border-default);
   border-radius: 14px;
@@ -208,6 +208,93 @@
     opacity var(--motion-surface-duration) var(--motion-route-ease),
     transform var(--motion-surface-duration) var(--motion-route-ease),
     box-shadow var(--motion-surface-duration) var(--motion-route-ease);
+}
+
+.call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
+  width: min(960px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  box-sizing: border-box;
+  padding: 20px 24px 24px;
+  gap: 18px;
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.call-popup.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) {
+  width: min(1120px, calc(100vw - 40px));
+  padding: 22px 26px 26px;
+  gap: 20px;
+}
+
+.call-popup-group-call .call-popup-ctrl-row {
+  flex-wrap: nowrap;
+  gap: 14px;
+  width: 100%;
+}
+
+.call-popup-group-call .call-popup-ctrl-row .call-ctrl-wrap > span {
+  display: none;
+}
+
+.call-popup-group-participants {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  grid-template-rows: auto;
+  grid-auto-rows: minmax(140px, auto);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-self: stretch;
+}
+
+.call-popup-group-participants.voice-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto;
+}
+
+.call-popup-group-participant {
+  min-height: 140px;
+}
+
+.call-popup-group-participant .voice-participant-meta {
+  text-align: center;
+}
+
+.call-popup-group-call:not(.call-popup-fullscreen) .call-popup-header-actions {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  right: auto;
+  z-index: 4;
+}
+.call-popup-group-call:not(.call-popup-fullscreen) .call-popup-header {
+  min-height: 40px;
+  padding-left: 52px;
+  padding-right: 150px;
+}
+.call-popup-group-call:not(.call-popup-fullscreen) .call-popup-ctrl-row .call-ctrl-wrap:has(.call-ctrl-btn--invite) {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+}
+.call-popup-group-call .call-grid__participant-rail {
+  overflow: hidden;
+  grid-auto-rows: auto;
+}
+.call-popup-group-call .call-grid__participant-rail:has(> [data-participant-id]:nth-child(4)) {
+  overflow-y: auto;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+@media (max-width: 680px) {
+  .call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
+    width: calc(100vw - 24px);
+    padding: 16px;
+  }
+
+  .call-popup-group-call .call-popup-ctrl-row {
+    flex-wrap: wrap;
+    max-width: 520px;
+    margin-inline: auto;
+  }
 }
 
 /* Minimized: slim chip — width collapses to fit content */
@@ -6869,6 +6956,16 @@ span.message-spoiler.is-revealed {
 		min-width: min(280px, calc(100vw - 24px));
 		width: min(340px, calc(100vw - 24px));
 	}
+}
+
+@media (max-width: 680px) {
+  .call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
+    width: calc(100vw - 24px);
+    padding: 14px 12px 16px;
+  }
+  .call-popup-group-call .call-popup-ctrl-row { flex-wrap: nowrap; gap: clamp(4px, 1.4vw, 10px); }
+  .call-popup-group-call:not(.call-popup-fullscreen) .call-popup-ctrl-row .call-ctrl-wrap:has(.call-ctrl-btn--invite) { top: 12px; right: 12px; }
+  .call-popup-group-call:not(.call-popup-fullscreen) .call-popup-header-actions { top: 12px; left: 12px; }
 }
 
 /* OG previews are visual messages, not full-width conversation cards. Keep
@@ -30398,6 +30495,115 @@ button.checklist-add-item-btn:hover,
   color: var(--text-primary, #fff);
   text-align: left;
   cursor: pointer;
+}
+
+/* Mobile group calls use one fitted presentation stage, square participant
+   portraits, and a single row of unlabeled controls. */
+.mobile-active-screen--video .mobile-active-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-evenly;
+  gap: clamp(2px, 1.5vw, 10px);
+  padding: 12px 8px max(env(safe-area-inset-bottom, 0px), 12px);
+  background: linear-gradient(transparent, rgba(0, 0, 0, .9) 25%);
+}
+.mobile-active-top-bar { left: 16px; right: auto; }
+.mobile-active-screenshare-bar { left: 50%; right: auto; transform: translateX(-50%); }
+
+.mobile-active-controls > .mobile-active-secondary-controls { display: contents; }
+.mobile-active-controls .mobile-active-ctrl { flex: 0 1 64px; min-width: 0; }
+.mobile-active-controls .mobile-active-ctrl-lbl { display: none; }
+.mobile-active-controls .mobile-active-ctrl-btn { width: clamp(48px, 13vw, 58px); height: clamp(48px, 13vw, 58px); }
+.mobile-active-controls .mobile-active-ctrl-btn.muted:not(.end) { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .07); color: #fff; }
+.call-popup.call-popup-fullscreen > .call-popup-header,
+.call-popup.call-popup-fullscreen > .call-popup-video-area { display: none; }
+
+.mobile-active-video-stage .call-grid--mobile-presentation {
+  position: absolute !important;
+  inset: max(env(safe-area-inset-top, 0px), 52px) 10px calc(82px + env(safe-area-inset-bottom, 0px));
+  display: grid !important;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  aspect-ratio: auto !important;
+  overflow: hidden;
+}
+.mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__tile--screen {
+  width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9;
+}
+.call-grid__mobile-participant-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+}
+.call-grid--mobile-presentation-many .call-grid__mobile-participant-row {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 84px;
+  scrollbar-width: thin;
+}
+.call-grid__mobile-participant-row > .call-grid__tile,
+.call-grid__mobile-participant-row > [data-participant-id] {
+  position: relative;
+  flex: 0 1 76px;
+  width: 76px;
+  height: 76px;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.call-grid__mobile-participant-row [data-participant-id] > .call-grid__tile {
+  width: 100%; height: 100%; min-height: 0; aspect-ratio: 1 / 1; border-radius: inherit;
+}
+.call-grid__profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+.call-grid__profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.call-grid__mobile-participant-row .call-grid__label { left: 3px; right: 3px; bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.call-grid__mobile-participant-row .call-grid__participant-status { display: none; }
+.meeting-intel-inline-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
+  color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left;
+}
+.meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
+.meeting-intel-card:has(.meeting-intel-restricted-badge[aria-label="Premium feature"]) .meeting-intel-card-info { flex-direction: row; align-items: center; gap: 8px; }
+.meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
+  width: auto; min-width: 58px; height: 32px; min-height: 32px; flex: 0 0 auto;
+  padding: 0 12px; border-radius: 9px; font-size: .78rem;
+}
+.meeting-intel-restricted-badge[aria-label="Premium feature"] {
+  display: inline-flex; align-items: center; width: max-content; padding: 2px 8px;
+  color: #bfdbfe; background: rgba(37, 99, 235, .24); border: 1px solid rgba(96, 165, 250, .4);
+  border-radius: 999px; font-size: 10px; font-weight: 700;
+}
+
+@media (max-width: 420px) {
+  .mobile-active-video-stage .call-grid--mobile-presentation { inset-inline: 6px; }
+  .call-grid__mobile-participant-row > .call-grid__tile,
+  .call-grid__mobile-participant-row > [data-participant-id] { flex-basis: 64px; width: 64px; height: 64px; }
 }
 
 .meeting-intel-popover--inline-menu {

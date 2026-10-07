@@ -76,6 +76,8 @@ describe("mobile call UI unification", () => {
     const actionLabels = Array.from(controls?.querySelectorAll<HTMLButtonElement>("button[aria-label]") ?? [])
       .map((button) => button.getAttribute("aria-label"));
     expect(actionLabels).toEqual(["Mute", "Audio output", "Turn on camera", "More options", "End call"]);
+    expect(controls?.querySelector('[aria-label="End call"] svg')).not.toBeNull();
+    expect(controls?.querySelectorAll(".mobile-active-ctrl-lbl")).toHaveLength(0);
   });
 
   it("keeps mobile audio routing and camera flip actions without desktop device menus", async () => {
@@ -160,6 +162,38 @@ describe("mobile call UI unification", () => {
     expect(flipButton?.closest(".call-grid__mobile-local-wrap")).not.toBeNull();
     expect(container.querySelector('.mobile-active-controls [aria-label="Flip camera"]')).toBeNull();
   });
+
+  it("renders mobile group participants as centered square tiles and does not open focus view on tap", () => {
+    const stream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps,
+      isGroupCall: true,
+      remoteMedia: [{ userId: "peer-1", stream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      participantProfiles: { "peer-1": { displayName: "Alex", profilePhoto: null } },
+    });
+    const tile = container.querySelector<HTMLElement>(".call-grid__tile--remote");
+    expect(container.querySelector(".mobile-active-avatar")).toBeNull();
+    expect(tile?.classList.contains("call-grid__mobile-pip")).toBe(false);
+    expect(tile?.getAttribute("role")).toBeNull();
+    expect(container.querySelector(".call-grid__focus-main")).toBeNull();
+  });
+
+  it("fits the shared screen at 16:9 above square participant cards on mobile", () => {
+    const screenTrack = { readyState: "live", enabled: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+    const audioStream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps,
+      isGroupCall: true,
+      isScreenSharing: true,
+      localScreenStream: screenStream,
+      remoteMedia: [{ userId: "peer-1", stream: audioStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+    });
+    expect(container.querySelector(".call-grid--mobile-presentation")).not.toBeNull();
+    expect(container.querySelector(".call-grid__tile--screen")).not.toBeNull();
+    expect(container.querySelector(".call-grid__mobile-participant-row .call-grid__tile--remote")).not.toBeNull();
+    expect(container.querySelector(".mobile-active-more-anchor")).not.toBeNull();
+  });
   it("routes the core call controls to their actions", () => {
     const onToggleMic = vi.fn();
     const onToggleCamera = vi.fn();
@@ -183,7 +217,7 @@ describe("mobile call UI unification", () => {
     expect(onEnd).toHaveBeenCalledOnce();
   });
 
-  it("opens Settings, Share screen and Stovo Intelligence from the lower More menu and closes on Escape", () => {
+  it("orders screen sharing before Settings and keeps the Intelligence section collapsed until opened", () => {
     const container = renderScreen(baseProps);
     const more = container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]');
     expect(more).not.toBeNull();
@@ -191,12 +225,20 @@ describe("mobile call UI unification", () => {
 
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Settings", "Share screen", "Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+    for (const label of ["Share screen", "Settings", "Stovo Intelligence"]) {
       const action = menu?.querySelector<HTMLElement>(`[aria-label="${label}"]`);
       expect(action, `expected mobile More action ${label}`).not.toBeNull();
       expect(action?.getAttribute("role")).toBeNull();
       expect(action?.tabIndex).toBe(0);
     }
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).toBeNull();
+    const intelligence = menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]');
+    act(() => intelligence?.click());
+    for (const label of ["Start AI Notes", "Start Recording"]) {
+      expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
+    }
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
+    expect(menu?.querySelector('[aria-label="Premium feature"]')?.textContent).toBe("Premium");
 
     const settings = menu?.querySelector<HTMLButtonElement>('button[aria-label="Settings"]');
     act(() => settings?.focus());
@@ -205,20 +247,19 @@ describe("mobile call UI unification", () => {
     expect(document.activeElement).toBe(more);
   });
 
-  it("shows the three Stovo Intelligence actions directly in More and runs them without a nested Intelligence step", () => {
+  it("expands Stovo Intelligence inside More and runs its actions in place", () => {
     const container = renderScreen(baseProps);
     act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
     const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).toBeNull();
+    act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
+    for (const label of ["Start AI Notes", "Start Recording"]) {
       expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
     }
-    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
-    const captionsToggle = menu?.querySelector<HTMLInputElement>('[aria-label="Toggle Live Captions"]');
-    expect(captionsToggle?.checked).toBe(false);
-    act(() => captionsToggle?.click());
-    expect(captionsToggle?.checked).toBe(true);
+    expect(menu?.querySelector('[aria-label="Live Captions locked"] svg')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
@@ -307,9 +348,11 @@ describe("mobile call UI unification", () => {
     const container = renderScreen(baseProps);
     act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
+    act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
@@ -423,7 +466,7 @@ describe("mobile call UI unification", () => {
     }
   });
 
-  it("clears participant focus when rotating an active screen share to landscape", () => {
+  it("keeps participant taps out of the focus view and rotates screen share to landscape", () => {
     const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
     const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
     const remoteStream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
@@ -435,7 +478,7 @@ describe("mobile call UI unification", () => {
     });
 
     act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote")?.click());
-    expect(container.querySelector('[data-focus-main="Alex"]')).not.toBeNull();
+    expect(container.querySelector('[data-focus-main="Alex"]')).toBeNull();
     const rotate = container.querySelector<HTMLButtonElement>('[aria-label="Rotate landscape"]');
     expect(rotate).not.toBeNull();
     act(() => rotate?.click());
@@ -606,9 +649,11 @@ describe("mobile call UI unification", () => {
     act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
     const intelligence = container.querySelector('[role="group"][aria-label="Meeting features"]');
     expect(intelligence).not.toBeNull();
+    act(() => intelligence?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
   });
 
   it("uses a landscape screen-share stage without participant tiles, keeps controls, and closes back to portrait", () => {

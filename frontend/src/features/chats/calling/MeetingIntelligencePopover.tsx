@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
+import { Check, ChevronDown, FileText, Globe, LockKeyhole, Sparkles, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -85,6 +85,7 @@ export function MeetingIntelligencePopover({
   const anchorRef = useRef<HTMLElement | null>(null);
   const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(null);
   const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(!inlineMenu);
   const backgroundToast = <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />;
 
   const handleToggleNotes = () => {
@@ -192,15 +193,23 @@ export function MeetingIntelligencePopover({
     >
       {/* Header */}
       <div className="meeting-intel-header">
+        {inlineMenu ? (
+        <button type="button" className="meeting-intel-inline-toggle" aria-label="Stovo Intelligence" aria-expanded={isExpanded} onClick={() => setIsExpanded((expanded) => !expanded)}>
+          <img src="/stovo-brain-color.svg" width={20} height={20} className="meeting-intel-logo" alt="" />
+          <span className="meeting-intel-name">Stovo Intelligence</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </button>
+        ) : (
         <div className="meeting-intel-title-row">
           <img src="/stovo-brain-color.svg" width={20} height={20} className="meeting-intel-logo" alt="" />
           <div className="meeting-intel-title-copy">
             <span className="meeting-intel-name">Stovo Intelligence</span>
           </div>
         </div>
+        )}
       </div>
 
-      <div className="meeting-intel-content">
+      {isExpanded && <div className="meeting-intel-content">
         {/* 1. AI Notes Section */}
         <div className={`meeting-intel-card ${isNotesActive ? "is-active" : ""}`}>
           <div className="meeting-intel-card-head">
@@ -221,7 +230,7 @@ export function MeetingIntelligencePopover({
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isNotesActive ? "Stop" : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : "Start"}
                 </button>
               ) : (
                 <span
@@ -271,7 +280,7 @@ export function MeetingIntelligencePopover({
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isRecActive ? "Stop" : isRecStopping ? <Check size={16} aria-hidden="true" /> : "Start"}
                 </button>
               ) : (
                 <span
@@ -293,26 +302,26 @@ export function MeetingIntelligencePopover({
             </div>
             <div className="meeting-intel-card-info">
               <div className="meeting-intel-card-title">Live Captions</div>
+              {isMobile && <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>}
             </div>
             <div className="meeting-intel-card-action">
-              <label className="meeting-intel-switch">
-                <input
-                  type="checkbox"
-                  checked={isCaptionsEnabled}
-                  onChange={onToggleCaptions}
-                  aria-label="Toggle Live Captions"
-                />
-                <span className="meeting-intel-switch-slider" />
-              </label>
+              {isMobile ? <span className="meeting-intel-locked-indicator" aria-label="Live Captions locked"><LockKeyhole size={16} aria-hidden="true" /></span> : (
+                <label className="meeting-intel-switch">
+                  <input
+                    type="checkbox"
+                    checked={isCaptionsEnabled}
+                    onChange={onToggleCaptions}
+                    aria-label="Toggle Live Captions"
+                  />
+                  <span className="meeting-intel-switch-slider" />
+                </label>
+              )}
             </div>
           </div>
 
-          <div className="meeting-intel-card-subbar meeting-intel-premium-lock">
-            <span>Caption translation</span>
-            <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>
-          </div>
+          {!isMobile && <div className="meeting-intel-card-subbar meeting-intel-premium-lock"><span>Caption translation</span></div>}
         </div>
-      </div>
+      </div>}
     </div>
   );
 

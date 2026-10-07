@@ -50,6 +50,8 @@ export function MobileActiveScreen({
   roomId,
   currentUserId,
   socketRef,
+  isGroupCall = false,
+  participantProfiles = {},
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
@@ -86,6 +88,8 @@ export function MobileActiveScreen({
   roomId?: string | null;
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
+  isGroupCall?: boolean;
+  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>;
 }) {
   const [isLandscapeView, setIsLandscapeView] = useState(false);
 
@@ -302,7 +306,8 @@ export function MobileActiveScreen({
       ? [{ userId: peerName, stream: remoteVideoStream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false }]
       : [];
   const showLocalCamera = Boolean(isCameraEnabled && localVideoStream);
-  const showAnyVideo = showRemoteVideo || isSharingLocalScreen || showPresentationGrid || (callType === "video" && isCameraEnabled);
+  const showGroupRoster = isGroupCall;
+  const showAnyVideo = showRemoteVideo || isSharingLocalScreen || showPresentationGrid || showGroupRoster || (callType === "video" && isCameraEnabled);
   const showAvatar = !showAnyVideo;
   const showProximityBlank =
     isProximityNear && (callType === "audio" || (!isCameraEnabled && !showRemoteVideo && !isSharingLocalScreen));
@@ -313,7 +318,6 @@ export function MobileActiveScreen({
       data-mobile-orientation={isLandscapeView ? "landscape" : "portrait"}
       onPointerDown={toggleControls}
     >
-      {/* Top right shrink button */}
       <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
         {isLandscapeView && <button type="button" className="mobile-active-shrink-btn mobile-active-landscape-close" aria-label="Close landscape view" onClick={(event) => { event.stopPropagation(); setIsLandscapeView(false); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
         {isParticipantFocused && <button type="button" className="mobile-active-shrink-btn mobile-active-focus-back" aria-label="Close participant focus" onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
@@ -336,7 +340,6 @@ export function MobileActiveScreen({
         </button>
       </div>
 
-      {/* Screen sharing state stays visible; stopping uses the Share action in More. */}
       {isSharingLocalScreen && (
         <div
           className={`mobile-active-screenshare-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
@@ -358,15 +361,16 @@ export function MobileActiveScreen({
         <div className="mobile-active-proximity-blank" aria-hidden="true" />
       )}
 
-      {/* Video stage */}
       {showAnyVideo && (
         <CallParticipantStage className="shared-call-stage mobile-active-video-stage" onPointerDown={toggleControls}>
-          {useSharedVideoGrid ? (
+          {useSharedVideoGrid || showGroupRoster ? (
             <CallParticipantGrid
               localStream={localVideoStream}
               localScreenStream={localScreenStream}
               remoteMedia={gridRemoteMedia}
               localUserLabel={localUserLabel}
+              accessToken={accessToken}
+              participantProfiles={participantProfiles}
               mirrorLocal={mirrorLocalVideo && previewFacingMode === "user"}
               callType={callType}
               isLocalSpeaking={isLocalSpeaking}
@@ -585,19 +589,16 @@ export function MobileActiveScreen({
         {/* Mic */}
         <div className="mobile-active-ctrl">
           <CallControlButton action="microphone" state={isMicMuted ? "muted" : "active"} className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : " active"}`} label={isMicMuted ? "Unmute" : "Mute"} data-shape="circle" data-fixed-size="true" onClick={onToggleMic} />
-          <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
         </div>
 
         {/* Speaker */}
         <div className="mobile-active-ctrl">
           <CallControlButton action="audio-output" toggle state={speakerMode === "large" ? "active" : "idle"} className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`} label="Audio output" data-shape="circle" data-fixed-size="true" onClick={onOpenSpeakerSheet} />
-          <span className="mobile-active-ctrl-lbl">{speakerMode === "large" ? "Speaker" : "Earpiece"}</span>
         </div>
 
         {/* Camera */}
         <div className="mobile-active-ctrl">
           <CallControlButton action="camera" state={isCameraEnabled ? "active" : "muted"} className={`mobile-active-ctrl-btn${isCameraEnabled ? " active" : " muted"}`} label={isCameraEnabled ? "Turn off camera" : "Turn on camera"} data-shape="circle" data-fixed-size="true" onClick={onToggleCamera} />
-          <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
 
         <div className="mobile-active-secondary-controls">
@@ -641,7 +642,6 @@ export function MobileActiveScreen({
           {/* End call remains directly reachable beside More. */}
           <div className="mobile-active-ctrl">
           <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" data-shape="circle" data-fixed-size="true" onClick={onEnd} />
-            <span className="mobile-active-ctrl-lbl">End</span>
           </div>
         </div>
       </div>
