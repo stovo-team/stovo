@@ -27,6 +27,7 @@ import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -296,6 +297,9 @@ export function VoiceChannelStage({
             isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
             speakingUserIds={speakingUserIds}
+            onFlipLocalCamera={callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream)
+              ? () => void applyCallAudioPatch({ cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user" })
+              : undefined}
           />
         ) : participantCount > 0 ? (
           isListMode ? (
@@ -391,6 +395,16 @@ export function VoiceChannelStage({
                           muted={info.isSelf}
                           className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
+                        {info.isSelf && !hasScreenShare && callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream) && (
+                          <CallControlButton
+                            action="flip-camera"
+                            label="Flip camera"
+                            state="idle"
+                            iconSize={16}
+                            className="call-grid__flip-camera voice-channel-flip-camera"
+                            onClick={() => void applyCallAudioPatch({ cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user" })}
+                          />
+                        )}
                         {isMuted && (
                           <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
@@ -473,14 +487,11 @@ export function VoiceChannelStage({
           <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
             <CallDeviceControls settings={callAudioSettings} devices={callAudioDevices} capabilities={callAudioCapabilities} controlClassName="voice-dock-btn" labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }} toggleLabels={{ microphone: callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone"), camera: callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera") }} deviceStrings={voiceStrings} onPatch={(patch) => void applyCallAudioPatch(patch)} onToggleCamera={handleToggleVideo} />
 
-            {/* Screen Demonstration / Share button */}
-            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="voice-dock-btn" onClick={handleToggleScreenShare} label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")} />
-
-            <CallControlButton action="audio-output" toggle state={callAudioSettings.speakerMode === "large" ? "active" : "idle"} className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })} label="Audio output" />
-            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user" })} label="Flip camera" />
+            {/* Screen sharing and secondary call actions live in the mobile More menu. */}
+            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="voice-dock-btn voice-room-desktop-action" onClick={handleToggleScreenShare} label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")} />
 
             {/* Stovo Intelligence Popover Button */}
-            <div className="voice-more-menu-anchor">
+            <div className="voice-more-menu-anchor voice-room-desktop-action">
               <button
                 ref={intelligenceButtonRef}
                 type="button"
@@ -515,7 +526,7 @@ export function VoiceChannelStage({
               />
             </div>
 
-            <div className="voice-more-menu-anchor">
+            <div className="voice-more-menu-anchor voice-room-desktop-action">
               <button
                 type="button"
                 className="voice-dock-btn"
@@ -525,6 +536,39 @@ export function VoiceChannelStage({
               >
                 <Settings size={20} aria-hidden="true" />
               </button>
+            </div>
+
+            <div className="voice-room-mobile-more">
+              <MobileCallMoreMenu
+                isSharing={callAudioSettings.screenSharing}
+                onOpenSettings={handleOpenSettings}
+                onToggleScreenShare={handleToggleScreenShare}
+              >
+                <CallControlButton
+                  action="audio-output"
+                  toggle
+                  state={callAudioSettings.speakerMode === "large" ? "active" : "idle"}
+                  label={callAudioSettings.speakerMode === "large" ? "Use earpiece" : "Use speaker"}
+                  onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })}
+                >
+                  <span>{callAudioSettings.speakerMode === "large" ? "Use earpiece" : "Use speaker"}</span>
+                </CallControlButton>
+                <MeetingIntelligencePopover
+                  isOpen
+                  onClose={() => undefined}
+                  notesState={transcriptState}
+                  onToggleNotes={handleToggleNotes}
+                  isNotesAllowed
+                  recordingState={recording.recordingState}
+                  recordingTimer={recording.recordingTimer}
+                  onToggleRecording={handleToggleRecording}
+                  isRecordingAllowed
+                  isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+                  onToggleCaptions={liveCaptions.toggleCaptions}
+                  isMobile
+                  inlineMenu
+                />
+              </MobileCallMoreMenu>
             </div>
 
             <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={handleLeave} title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} />

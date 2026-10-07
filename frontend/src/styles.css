@@ -697,7 +697,7 @@
   aspect-ratio: 16 / 9;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .call-grid--screen-share {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
@@ -718,14 +718,20 @@
     display: flex;
     grid-column: 1;
     grid-row: 2;
-    height: 104px;
+    height: 92px;
     overflow: hidden;
   }
 
   .call-grid--screen-share .call-grid__participant-pin,
   .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
-    flex: 0 0 clamp(124px, 32vw, 180px);
+    flex: 0 0 clamp(112px, 28vw, 164px);
     height: 100%;
+  }
+
+  .call-grid--screen-share .call-grid__participant-pin .call-grid__avatar-circle,
+  .call-grid--screen-share .call-grid__remote-rail .call-grid__avatar-circle {
+    width: 52px;
+    height: 52px;
   }
 
   .call-grid--screen-share .call-grid__remote-rail {
@@ -25511,6 +25517,9 @@ button.chat-info-title-edit:active:not(:disabled) {
   background: rgba(0, 0, 0, 0.56);
 }
 
+.voice-room-stage .call-grid__tile--local > .call-grid__flip-camera,
+.voice-channel-flip-camera { display: none; }
+
 .shared-call-stage .voice-room-grid,
 .shared-call-stage .call-grid {
   margin-inline: auto;
@@ -25539,14 +25548,20 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-stage .call-grid__tile { transition: background .2s ease; }
 .shared-call-stage .call-grid__video { object-fit: contain; }
 
-.shared-call-stage .voice-participant-card.is-speaking,
-.shared-call-stage .call-grid__tile.is-speaking {
+.shared-call-stage .voice-participant-card.is-speaking:not(.has-video),
+.shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) {
   border-color: #22c55e;
   box-shadow: 0 0 0 1px rgba(34, 197, 94, .82), 0 0 20px rgba(34, 197, 94, .18);
 }
-.shared-call-stage .voice-participant-card.is-speaking .voice-participant-avatar,
-.shared-call-stage .call-grid__tile.is-speaking .call-grid__avatar-circle {
+.shared-call-stage .voice-participant-card.is-speaking:not(.has-video) .voice-participant-avatar,
+.shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) .call-grid__avatar-circle {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, .82), 0 0 18px rgba(34, 197, 94, .24);
+}
+
+.shared-call-stage .call-grid__tile.is-speaking:not(:has(.call-grid__avatar-wrap)) {
+  border-color: rgba(255, 255, 255, .12);
+  box-shadow: none;
+  outline: none;
 }
 
 .shared-call-controls {
@@ -25726,6 +25741,11 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   justify-content: center;
 }
+
+.voice-room-mobile-more { display: none; }
+.voice-room-mobile-more .mobile-active-ctrl { flex-direction: row; }
+.voice-room-mobile-more .mobile-active-ctrl-btn { flex: 0 0 48px; width: 48px; height: 48px; }
+.voice-room-mobile-more .mobile-active-more-menu { max-height: min(70dvh, 520px); overflow-y: auto; }
 
 .voice-dock-badge-dot {
   position: absolute;
@@ -30711,6 +30731,15 @@ button.checklist-add-item-btn:hover,
 
 @media (max-width: 720px) {
   .voice-mobile-only-control { display: inline-flex !important; }
+  .voice-room-desktop-action { display: none !important; }
+  .voice-room-mobile-more { display: flex; align-items: center; }
+  .voice-room-mobile-more .mobile-active-more-menu { left: auto; right: 0; }
+  .voice-room-in-call-controls { max-width: none; justify-content: space-between; gap: clamp(4px, 2vw, 12px); }
+  .voice-room-bottom-bar { padding: 10px max(8px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+  .voice-room-stage .call-grid__tile--local > .call-grid__flip-camera { display: inline-flex; }
+  .voice-channel-flip-camera { display: inline-flex; }
+  .voice-room-stage .voice-grid--1 .voice-participant-avatar-wrapper.voice-avatar-wrapper--xl { width: min(120px, 30vw); height: min(120px, 30vw); }
+  .voice-room-stage .voice-grid--1 .voice-participant-avatar.voice-avatar--xl { width: min(120px, 30vw) !important; height: min(120px, 30vw) !important; }
   .guest-meeting-page--in-call { padding-top: 0; }
   .guest-call-room .voice-room-stage { padding: 5rem .65rem .65rem; }
   .guest-call-header { top: .8rem; }
