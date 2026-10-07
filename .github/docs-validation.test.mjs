@@ -360,11 +360,13 @@ test('Design issue form requires a description, screenshot, and suggested fix', 
   for (const [id, label] of [
     ['problem', 'What is wrong with the current design?'],
     ['screenshot', 'Screenshot'],
-    ['suggestion', 'How would you fix it?'],
   ]) {
     const field = form.match(new RegExp(`- type: textarea\\s+id: ${id}\\s+attributes:[\\s\\S]*?label: ${label.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}[\\s\\S]*?validations:\\s+required: true`));
     assert.ok(field, `${label} must be a required issue form field`);
   }
+  const suggestionField = form.match(/- type: textarea\s+id: suggestion[\s\S]*?(?=\n  - type:|$)/);
+  assert.ok(suggestionField, 'design issue form must include a suggested fix field');
+  assert.doesNotMatch(suggestionField[0], /required:\s*true/, 'suggested fix must be optional');
   assert.match(form, /title:\s*"\[Design\]: "/);
 
   const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');

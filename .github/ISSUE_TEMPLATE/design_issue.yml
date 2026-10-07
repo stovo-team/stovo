@@ -25,5 +25,3 @@ body:
     attributes:
       label: How would you fix it?
       description: Suggest a change that would address the design issue.
-    validations:
-      required: true
