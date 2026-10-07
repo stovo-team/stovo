@@ -1,0 +1,29 @@
+name: Design issue
+description: Report a visual or interaction design problem.
+title: "[Design]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Upload a screenshot that shows the design issue. Remove private messages, personal data, and other sensitive information before attaching it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong with the current design?
+      description: Describe what looks or behaves incorrectly and where it appears.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Attach at least one screenshot showing the issue. Drag an image into this field or paste it here.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: How would you fix it?
+      description: Suggest a change that would address the design issue.
+    validations:
+      required: true

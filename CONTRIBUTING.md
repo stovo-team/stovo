@@ -8,7 +8,7 @@ Thanks for helping improve Stovo. Bug reports, focused fixes, documentation impr
 - For a suspected security vulnerability, do not open a public issue. Use [GitHub's private vulnerability reporting](https://github.com/stovo-team/stovo-messenger/security/advisories/new) as described in [SECURITY.md](SECURITY.md).
 - Do not include passwords, access tokens, encryption keys, private messages, personal data, or production logs containing such data in issues or pull requests.
 
-Use the issue forms for [bug reports](https://github.com/stovo-team/stovo-messenger/issues/new?template=bug_report.yml) and [feature requests](https://github.com/stovo-team/stovo-messenger/issues/new?template=feature_request.yml). Include only the information needed to reproduce or understand the request, and redact sensitive values.
+Use the issue forms for [bug reports](https://github.com/stovo-team/stovo-messenger/issues/new?template=bug_report.yml), [design issues](https://github.com/stovo-team/stovo-messenger/issues/new?template=design_issue.yml), and [feature requests](https://github.com/stovo-team/stovo-messenger/issues/new?template=feature_request.yml). Include only the information needed to reproduce or understand the request, and redact sensitive values. Design issues require a screenshot and a suggested fix; bug report reproduction steps are optional.
 
 ## Propose a change
 
