@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Link2Off, LoaderCircle, Settings, Users } from "lucide-react";
+import { Link2Off, Settings, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
@@ -16,6 +16,7 @@ import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
 import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
 import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
+import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
 import { GuestParticipantTile, LocalStreamVideo, RemoteVideo } from "./GuestMeetingMedia";
 import { createCallSpeakingIndicator, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
@@ -775,16 +776,7 @@ export default function GuestMeetingPage() {
     </main>;
   }
 
-  if (state === "joining") {
-    return <main className="guest-meeting-page guest-meeting-page--connecting">
-      <div className="guest-connecting-status" role="status">
-        <LoaderCircle className="guest-connecting-spinner" size={36} aria-hidden="true" />
-        <span>Joining meeting…</span>
-      </div>
-      <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a>
-    </main>;
-  }
-
+  if (state === "joining") return <GuestMeetingConnectingScreen stovoSite={stovoSite} />;
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
     {wasDisconnectedForEmptyRoom && <p className="guest-empty-room-ended" role="status">You left the meeting because nobody else joined. You can join again whenever you’re ready.</p>}
