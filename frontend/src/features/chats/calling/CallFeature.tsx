@@ -98,6 +98,18 @@ export function CallFeature() {
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id !== currentUser?.id);
   const peerProfilePhoto = activePeer?.profilePhoto ?? null;
+  const participantProfiles = Object.fromEntries(
+    [...members, ...(activeChat?.members ?? [])].map((member) => [member.id, {
+      displayName: member.displayName,
+      profilePhoto: member.profilePhoto ?? null,
+    }]),
+  );
+  if (currentUser) {
+    participantProfiles[currentUser.displayName] = {
+      displayName: currentUser.displayName,
+      profilePhoto: currentUser.profilePhoto ?? null,
+    };
+  }
 
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
@@ -127,6 +139,7 @@ export function CallFeature() {
               isMobileViewport ? "call-popup-fullscreen" : "",
               effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
               isGroupCall ? "call-popup-group-call" : "",
+              isGroupCall && (callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)) ? "call-popup-group-call--sharing" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
@@ -199,6 +212,8 @@ export function CallFeature() {
                 roomId={session.callRoomId}
                 currentUserId={currentUser?.id}
                 socketRef={session.socketRef}
+                isGroupCall={isGroupCall}
+                participantProfiles={participantProfiles}
               />
             )}
 

@@ -79,10 +79,10 @@ export function MobileCallMoreMenu({
       </button>
       {isOpen && (
         <div ref={menuRef} className="mobile-active-more-menu" style={{ left: `${-menuOffset}px` }} role="group" aria-label="More call options">
+          <CallControlButton action="screen-share" label={isSharing ? "Stop sharing" : "Share screen"} state={isSharing ? "active" : "idle"} onClick={() => { setIsOpen(false); onToggleScreenShare(); }}><span>{isSharing ? "Stop sharing" : "Share screen"}</span></CallControlButton>
           <button type="button" aria-label="Settings" onClick={() => { setIsOpen(false); onOpenSettings?.(); }}>
             <Settings2 size={17} aria-hidden="true" /><span>Settings</span>
           </button>
-          <CallControlButton action="screen-share" label={isSharing ? "Stop sharing" : "Share screen"} state={isSharing ? "active" : "idle"} onClick={() => { setIsOpen(false); onToggleScreenShare(); }}><span>{isSharing ? "Stop sharing" : "Share screen"}</span></CallControlButton>
           {children}
         </div>
       )}

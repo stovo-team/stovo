@@ -1,7 +1,9 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
+import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
+import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -24,6 +26,8 @@ type CallParticipantGridProps = {
   isMobileLayout?: boolean;
   isCallConnected?: boolean;
   hideParticipants?: boolean;
+  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>;
+  accessToken?: string | null;
 };
 
 const gridStyle: CSSProperties = {
@@ -115,6 +119,8 @@ function ParticipantTile({
   mobilePip,
   onClick,
   isConnected = true,
+  accessToken,
+  profilePhoto,
 }: {
   label: string;
   stream: MediaStream | null;
@@ -132,6 +138,8 @@ function ParticipantTile({
   mobilePip?: boolean;
   onClick?: () => void;
   isConnected?: boolean;
+  accessToken?: string | null;
+  profilePhoto?: FamilyFile | null;
 }) {
   return (
     <div
@@ -174,11 +182,11 @@ function ParticipantTile({
         localVideoPlaceholder
       ) : (
         <div className="call-grid__avatar-wrap">
-          <div className="call-grid__avatar-circle">
-            <div className="call-grid__avatar" style={avatarStyle}>
-              {initial(label)}
+          {profilePhoto ? <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar" file={profilePhoto} label={label} /> : (
+            <div className="call-grid__avatar-circle">
+              <div className="call-grid__avatar" style={avatarStyle}>{initial(label)}</div>
             </div>
-          </div>
+          )}
         </div>
       )}
       {onFlipCamera && showVideo && (
@@ -223,6 +231,8 @@ export default function CallParticipantGrid({
   isMobileLayout = false,
   isCallConnected = true,
   hideParticipants = false,
+  participantProfiles = {},
+  accessToken,
 }: CallParticipantGridProps) {
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
   // Voice channels may keep their audio call type while a local camera track
@@ -252,6 +262,8 @@ export default function CallParticipantGrid({
       : isCallConnected && !("isMuted" in presenter && presenter.isMuted) && (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
     : false;
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
+  const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
+  const hasLongMobileParticipantRow = useMobilePresentationRow && remoteMedia.length >= 5;
 
   const closeFocus = () => {
     setFocusedParticipantId(null);
@@ -277,9 +289,11 @@ export default function CallParticipantGrid({
       onFlipCamera={mobileSingleRemote ? undefined : onFlipLocalCamera}
       isFlippingCamera={isFlippingCamera}
       localVideoPlaceholder={localVideoPlaceholder}
+      accessToken={accessToken}
+      profilePhoto={participantProfiles[localUserLabel]?.profilePhoto ?? null}
       mobilePrimary={mobileSingleRemote && isLocalPrimary}
       mobilePip={mobileSingleRemote && !isLocalPrimary}
-      onClick={() => { if (mobileSingleRemote) onToggleMobileStage?.(); else focusParticipant(localUserLabel); }}
+      onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(localUserLabel)}
     />
   );
 
@@ -291,7 +305,7 @@ export default function CallParticipantGrid({
     const isRemoteSpeaking = isCallConnected && !remote.isMuted && (speakingUserIds.includes(remote.userId) || (isPeerSpeaking && remoteMedia.length === 1));
     return (
       <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", width: "100%", height: "100%", aspectRatio: isPresenting && !mobileSingleRemote ? "16 / 9" : undefined }}>
-        <ParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={() => { if (mobileSingleRemote) onToggleMobileStage?.(); else focusParticipant(remote.userId); }} />
+        <ParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
       </div>
     );
   });
@@ -300,11 +314,13 @@ export default function CallParticipantGrid({
     <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
   ) : (
     <div
-      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
+      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
         gridTemplateColumns: useScreenShareRail
           ? "minmax(0, 1fr) minmax(120px, 22%)"
+          : useMobilePresentationRow
+          ? "minmax(0, 1fr)"
           : isPresenting
           ? "repeat(auto-fit, minmax(120px, 1fr))"
           : `repeat(${columns}, minmax(0, 1fr))`,
@@ -315,7 +331,9 @@ export default function CallParticipantGrid({
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
-            : landscapePresenterTileStyle}
+            : useMobilePresentationRow
+              ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
+              : landscapePresenterTileStyle}
           label={presenter.userId}
           stream={presenter.screenStream}
           showVideo
@@ -329,6 +347,11 @@ export default function CallParticipantGrid({
       {hideParticipants ? null : useScreenShareRail ? (
         <div className="call-grid__participant-rail">
           <div data-participant-id={localUserLabel} style={{ aspectRatio: "16 / 9" }}>{localTile}</div>
+          {remoteTiles}
+        </div>
+      ) : useMobilePresentationRow ? (
+        <div className="call-grid__mobile-participant-row">
+          {localTile}
           {remoteTiles}
         </div>
       ) : mobileSingleRemote ? (
