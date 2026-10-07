@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, matchPath, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 
 import { ensureFullScreenIntentPermission } from "./api/notifications";
@@ -47,6 +47,11 @@ function ClusterRoutes() {
   const { slug } = useParams();
   const prefix = slug ? `/s/${slug}` : "";
   const location = useLocation();
+  const chatRouteMatch = matchPath({ path: `${prefix}/app/chats/:chatId?`, end: true }, location.pathname);
+  const chatRouteActive = Boolean(chatRouteMatch);
+  const [hasVisitedChats, setHasVisitedChats] = useState(chatRouteActive);
+  const cachedChatIdRef = useRef(chatRouteMatch?.params.chatId);
+  if (chatRouteActive) cachedChatIdRef.current = chatRouteMatch?.params.chatId;
   const previousPathRef = useRef(location.pathname);
   // A transformed ancestor becomes the containing block for `position: fixed`
   // in Android WebView.  The tab-transition class must therefore exist only
@@ -67,6 +72,15 @@ function ClusterRoutes() {
   };
   const previousIndex = tabIndex(previousPathRef.current);
   const currentIndex = tabIndex(location.pathname);
+  useEffect(() => {
+    if (chatRouteActive) {
+      setHasVisitedChats(true);
+    } else if (currentIndex === null) {
+      setHasVisitedChats(false);
+    }
+  }, [chatRouteActive, currentIndex]);
+
+  const showChatsRoute = chatRouteActive || (hasVisitedChats && currentIndex !== null);
   const routeDirection =
     previousIndex !== null && currentIndex !== null && previousIndex !== currentIndex
       ? currentIndex > previousIndex
@@ -85,7 +99,6 @@ function ClusterRoutes() {
 
   return (
     <div
-      key={location.pathname}
       className={`app-route-layer${routeMotionClass}`}
       aria-live="off"
       onAnimationEnd={(event) => {
@@ -95,6 +108,18 @@ function ClusterRoutes() {
         setMotionFinishedForPath(location.pathname);
       }}
     >
+    {showChatsRoute && (
+      <div
+        className="app-cached-chat-route"
+        style={{ display: chatRouteActive ? "contents" : "none" }}
+        aria-hidden={!chatRouteActive}
+      >
+        <RequireAuth>
+          <ChatsPage routeChatId={chatRouteActive ? chatRouteMatch?.params.chatId : cachedChatIdRef.current} />
+        </RequireAuth>
+      </div>
+    )}
+    <div key={location.pathname}>
     <Routes location={location}>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/server-setup" element={<ServerSetupPage />} />
@@ -107,14 +132,7 @@ function ClusterRoutes() {
       <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
       <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
       <Route path="/release-notes" element={<Navigate to="/legal/release-notes" replace />} />
-      <Route
-        path="/app/chats/:chatId?"
-        element={
-          <RequireAuth>
-            <ChatsPage />
-          </RequireAuth>
-        }
-      />
+      <Route path="/app/chats/:chatId?" element={null} />
       <Route path="/app/canvas/:canvasId" element={<RequireAuth><CanvasPage /></RequireAuth>} />
       <Route path="/app/checklist/:checklistId" element={<RequireAuth><ChecklistPage /></RequireAuth>} />
       <Route
@@ -197,6 +215,7 @@ function ClusterRoutes() {
       <Route path="/app/settings/statistics" element={<RequireAuth><AdminStatsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to={`${prefix}/app/chats`} replace />} />
     </Routes>
+    </div>
     </div>
   );
 }
