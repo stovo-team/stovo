@@ -102,6 +102,44 @@ const mockCurrentUser: User = {
 };
 
 describe("VoiceChannelStage", () => {
+  it("exposes a voice call expand control with the current expanded state", () => {
+    const onToggleExpanded = vi.fn();
+    const mockSession = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false, activeGroupCalls: {},
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={mockSession} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" onToggleExpanded={onToggleExpanded} isExpanded={false} />
+    );
+
+    const button = container.querySelector<HTMLButtonElement>('[aria-label="Expand Voice Channel"]');
+    expect(button).not.toBeNull();
+    expect(button?.getAttribute("aria-pressed")).toBe("false");
+    act(() => button?.click());
+    expect(onToggleExpanded).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the app screen-share control in the bottom voice dock", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false, activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" onToggleExpanded={vi.fn()} />
+    );
+
+    const dock = container.querySelector(".voice-room-bottom-bar");
+    const shareButton = dock?.querySelector('[aria-label="Share Screen"]');
+    expect(dock).not.toBeNull();
+    expect(shareButton).not.toBeNull();
+  });
+
   it("renders when disconnected with active participants and allows user to join with exactly one button", () => {
     const mockJoinVoiceChannel = vi.fn();
     const mockSession = {

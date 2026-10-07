@@ -7,6 +7,23 @@ const cameraReplacement = readFileSync(resolve(process.cwd(), "src/pages/guestMe
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 describe("guest meeting responsive device-control source contract", () => {
+  it("keeps the guest prejoin preview at 16:9 with fully fitted video and opaque controls", () => {
+    const lastRule = (selector: string) => Array.from(styles.matchAll(new RegExp(`${selector}\\s*\\{([^}]*)\\}`, "gs"))).at(-1)?.[1] ?? "";
+    const previewRule = lastRule("\\.guest-prejoin-preview");
+    const videoRule = lastRule("\\.guest-prejoin-preview video");
+    const controlsRule = lastRule("\\.guest-prejoin-preview \\.guest-call-controls \\.guest-device-control > button");
+
+    expect(previewRule).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
+    expect(previewRule).not.toMatch(/min-height:\s*[1-9]/);
+    expect(videoRule).toMatch(/object-fit:\s*contain/);
+    expect(controlsRule).toMatch(/background:\s*(?!transparent|rgba?\()/);
+  });
+
+  it("uses an SVG arrow in the Run Stovo link", () => {
+    expect(guestMeeting).toContain("Run Stovo <ArrowUpRight size={16} aria-hidden=\"true\" />");
+    expect(guestMeeting).not.toContain("Run Stovo <span aria-hidden=\"true\">↗</span>");
+  });
+
   it("uses the shared speaking-indicator contract rather than a guest-only threshold", () => {
     expect(/createCallSpeakingIndicator\s*\(/.test(guestMeeting)).toBe(true);
     expect(/callSpeakingIndicator/.test(guestMeeting)).toBe(true);

@@ -81,7 +81,7 @@ export default function AdminStatsPage() {
     <AppNav />
     <section className="page-surface admin-surface stats-surface">
       <header className="stats-header">
-        <BackButton to={`${prefix}/app/settings`} className="stats-back" ariaLabel="Back to Settings" />
+        <BackButton to={`${prefix}/app/settings`} className="stats-back mobile-back-button" ariaLabel="Back to Settings" />
         <div><h1>Statistics dashboard</h1></div>
       </header>
 

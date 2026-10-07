@@ -114,7 +114,7 @@ export function AppearanceEditor({
         <header className="section-title-row appearance-editor-header">
           <BackButton
             buttonRef={backButtonRef}
-            className="appearance-editor-back"
+            className="appearance-editor-back mobile-back-button"
             ariaLabel={strings.appearance.backToSettings}
             onClick={discardAndClose}
           />
@@ -172,4 +172,3 @@ export function AppearanceEditor({
     </>
   );
 }
-

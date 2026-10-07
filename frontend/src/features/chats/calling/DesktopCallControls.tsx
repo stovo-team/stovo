@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Maximize2,
   Mic,
-  MicOff,
   Minimize2,
   Phone,
   RotateCcw,
@@ -13,8 +12,8 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
-import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
+import { CallPopupAudioStage } from "./CallPopupAudioStage";
 import { useTranscription } from "./useTranscription";
 import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
@@ -86,11 +85,7 @@ export function DesktopCallControls() {
 
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";
-
-  const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
-    activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
-    activeChat?.members?.find((m) => m.id !== currentUser?.id);
-  const peerProfilePhoto = activePeer?.profilePhoto ?? null;
+  const isGroupCall = activeChat?.type === "group" || activeChat?.type === "family";
 
   const callTitle = (callPeerDisplayName ?? activeCallPeerName) ?? activeChat?.title ?? (isVoiceChannel ? "Voice Channel" : "Call");
   const callTimer = session.callTimer;
@@ -99,7 +94,6 @@ export function DesktopCallControls() {
     : remoteVideoStream
       ? [{ userId: session.callPeerUserId ?? callPeerDisplayName ?? "Participant", stream: remoteVideoStream, screenStream: null, hasVideo: callType === "video" || hasRemoteVideo, hasAudio: true, hasScreenShare: false }]
       : [];
-
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
     roomId: callRoomId,
@@ -177,6 +171,8 @@ export function DesktopCallControls() {
                 ? "Connecting…"
                 : isVoiceChannel
                 ? (activeChat?.title ?? "Voice Channel")
+                : isGroupCall
+                ? (activeChat?.title ?? "Group call")
                 : "Audio call"}
             </strong>
             )}
@@ -310,26 +306,7 @@ export function DesktopCallControls() {
         <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
       )}
 
-      {/* Avatar area — shown when no remote video is playing */}
-      {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && !hasRemoteVideo && !callRemoteMedia.some((m) => m.hasScreenShare) && callPhase === "in-call" && !isMobileViewport && (
-        <div className={`call-popup-avatar-area${isPeerSpeaking ? " is-speaking" : ""}`}>
-          <div className="call-popup-avatar-circle">
-            <RealAvatar
-              accessToken={accessToken ?? null}
-              className="avatar call-popup-real-avatar"
-              file={peerProfilePhoto}
-              label={callPeerDisplayName ?? activeCallPeerName ?? "Call"}
-            />
-            <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
-            <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
-          </div>
-          <div className="call-popup-waveform">
-            {[0,1,2,3,4].map((i) => (
-              <div key={i} className={`call-popup-wave-bar${isPeerSpeaking ? "" : " silent"}`} />
-            ))}
-          </div>
-        </div>
-      )}
+      <CallPopupAudioStage activeChat={activeChat ?? null} />
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (

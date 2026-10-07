@@ -51,7 +51,21 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function renderDesktopControls({ isPeerSpeaking = false, isLocalSpeaking = false, withRemoteVideo = false } = {}) {
+function renderDesktopControls({
+  isPeerSpeaking = false,
+  isLocalSpeaking = false,
+  withRemoteVideo = false,
+  callType = "video",
+  activeChat = null,
+  currentUser = null,
+}: {
+  isPeerSpeaking?: boolean;
+  isLocalSpeaking?: boolean;
+  withRemoteVideo?: boolean;
+  callType?: "audio" | "video";
+  activeChat?: { id: string; type: string; title: string; members: Array<{ id: string; displayName: string; profilePhoto: null }> } | null;
+  currentUser?: { id: string; displayName: string; profilePhoto: null } | null;
+} = {}) {
   const noop = vi.fn();
   const mockTrack = {
     readyState: "live",
@@ -65,7 +79,7 @@ function renderDesktopControls({ isPeerSpeaking = false, isLocalSpeaking = false
   } as unknown as MediaStream;
   const session = {
     callPhase: "in-call",
-    callType: "video",
+    callType,
     setCallType: noop,
     callNotice: null,
     isCallMinimized: false,
@@ -121,8 +135,15 @@ function renderDesktopControls({ isPeerSpeaking = false, isLocalSpeaking = false
     callRoomId: null,
     accessToken: null,
     socketRef: { current: null },
-    activeCallChatId: null,
-    activeGroupCalls: {},
+    activeCallChatId: activeChat?.id ?? null,
+    activeGroupCalls: activeChat ? {
+      [activeChat.id]: {
+        participants: [
+          { userId: "self", state: "connected" },
+          { userId: "peer", state: "connected" },
+        ],
+      },
+    } : {},
     callTimer: "00:15",
     callPeerUserId: "peer",
   } as unknown as CallSessionApi;
@@ -131,7 +152,13 @@ function renderDesktopControls({ isPeerSpeaking = false, isLocalSpeaking = false
   const root = createRoot(host);
   mountedRoots.push(root);
   act(() => root.render(
-    <CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[]}>
+    <CallFeatureProvider
+      session={session}
+      isMobileViewport={false}
+      members={(activeChat?.members ?? []) as never}
+      currentUser={currentUser as never}
+      chats={(activeChat ? [activeChat] : []) as never}
+    >
       <DesktopCallControls />
     </CallFeatureProvider>,
   ));
@@ -170,6 +197,29 @@ describe("DesktopCallControls visibility", () => {
     const intelligence = container.querySelector<HTMLButtonElement>('.call-ctrl-row [aria-label="Stovo Intelligence"]');
     expect(intelligence).not.toBeNull();
     expect(intelligence?.closest(".call-ctrl-wrap")).not.toBeNull();
+  });
+
+  it("shows voice-channel-style speaking states and group title in an audio group call", () => {
+    const container = renderDesktopControls({
+      callType: "audio",
+      isPeerSpeaking: true,
+      activeChat: {
+        id: "group-chat",
+        type: "group",
+        title: "Project Room",
+        members: [
+          { id: "self", displayName: "Sam", profilePhoto: null },
+          { id: "peer", displayName: "Alex", profilePhoto: null },
+        ],
+      },
+      currentUser: { id: "self", displayName: "Sam", profilePhoto: null },
+    });
+
+    expect(container.querySelector(".call-popup-status")?.textContent).toBe("Project Room");
+    expect(container.querySelectorAll(".call-popup-group-participant")).toHaveLength(2);
+    expect(container.querySelector('.call-popup-group-participant[role="listitem"] .voice-participant-state')?.textContent).toBe("Connected");
+    expect(container.querySelectorAll('.call-popup-group-participant.is-speaking .voice-participant-state')).toHaveLength(1);
+    expect(container.querySelector('.call-popup-group-participant.is-speaking .voice-participant-state')?.textContent).toBe("Speaking…");
   });
 
 });

@@ -11,7 +11,7 @@
 
 ## Pull request naming
 
-- Every completed task must be committed on its dedicated task branch and submitted as a pull request targeting `main`. Do not push directly to `main`; the repository owner reviews and merges pull requests manually.
+- Every completed task must be committed on its dedicated task branch and submitted as a pull request targeting `master`. Do not push directly to `master`; the repository owner reviews and merges pull requests manually.
 - Organize pull requests around one coherent logical section of work. Keep each pull request small, normally no more than 300–400 changed lines of code. If the work exceeds that size, split it into independently reviewable pull requests with clear logical boundaries; coordinate dependencies in their descriptions.
 - Each commit should represent one small, complete task and use a clear, descriptive message. A pull request may contain multiple task-sized commits when they all contribute to its single logical section.
 - Use one of these exact pull request title prefixes: `Feature:`, `Fix:`, `CritFix:`, `Test:`, or `Docs:`. The pull request title should match its primary commit message, replacing the commit message's square-bracket category with the corresponding colon prefix (for example, `[Docs] clarify review workflow` becomes `Docs: clarify review workflow`).

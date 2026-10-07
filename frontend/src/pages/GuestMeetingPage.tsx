@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Link2Off, Settings, Users } from "lucide-react";
+import { ArrowUpRight, Link2Off, Settings, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
@@ -16,6 +16,7 @@ import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
 import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
 import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
+import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
 import { GuestParticipantTile, LocalStreamVideo, RemoteVideo } from "./GuestMeetingMedia";
 import { createCallSpeakingIndicator, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
@@ -686,7 +687,7 @@ export default function GuestMeetingPage() {
         <CallParticipantStage className="shared-call-stage voice-room-stage">
           {hasScreenShare ? <div className={`guest-call-spotlight${cameraTiles.length > 3 ? " guest-call-spotlight--grid" : ""}`} aria-label="Shared screen and cameras">
             <div className="guest-call-screen-stage">
-              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "19 / 9" }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "19 / 9" }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "16 / 9" }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "16 / 9" }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
             </div>
             <aside className="guest-call-camera-rail" aria-label="Participant cameras">
               {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : participant.speaking ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>
@@ -775,6 +776,7 @@ export default function GuestMeetingPage() {
     </main>;
   }
 
+  if (state === "joining") return <GuestMeetingConnectingScreen stovoSite={stovoSite} />;
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
     {wasDisconnectedForEmptyRoom && <p className="guest-empty-room-ended" role="status">You left the meeting because nobody else joined. You can join again whenever you’re ready.</p>}
@@ -799,8 +801,7 @@ export default function GuestMeetingPage() {
       <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
     </div>}
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
-    {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
     {error && <p className="error-text">{error}</p>}
-    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a>
+    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <ArrowUpRight size={16} aria-hidden="true" /></a>
   </section></main>;
 }

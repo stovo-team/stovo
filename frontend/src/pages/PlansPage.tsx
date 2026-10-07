@@ -635,7 +635,7 @@ export default function PlansPage() {
             </div>
           )}
           <button type="button" className="plans-create-fab" disabled={!canCreate} onClick={openCreateModal} aria-label={strings.plans.createPlan}>
-            <Plus size={28} aria-hidden="true" />
+            <Plus size={22} aria-hidden="true" />
           </button>
         </section>
       </section>
@@ -795,4 +795,3 @@ export default function PlansPage() {
     </main>
   );
 }
-

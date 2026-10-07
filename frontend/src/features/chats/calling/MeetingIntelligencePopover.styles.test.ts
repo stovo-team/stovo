@@ -27,15 +27,22 @@ describe("meeting intelligence popover design", () => {
     expect(ruleFor(".meeting-intel-card + .meeting-intel-card")).not.toMatch(/border/);
   });
 
-  it("uses circular start and square stop SVG controls for both AI Notes and recording", () => {
-    expect(component).toMatch(/\bCircle\b/);
-    expect(component).toMatch(/\bSquare\b/);
-    expect(component.match(/<Circle\b/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    expect(component.match(/<Square\b/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    const button = ruleFor(".meeting-intel-toggle-btn");
-    expect(button).toMatch(/border-radius:\s*(?:50%|999px)/);
-    expect(button).toMatch(/height:\s*\d+px/);
-    expect(button).toMatch(/width:\s*\d+px/);
+  it("uses labeled rectangular controls and a collapsed Intelligence section in the mobile menu", () => {
+    expect(component).toContain('className="meeting-intel-inline-toggle"');
+    expect(component).toContain('aria-expanded={isExpanded}');
+    expect(component).toContain('{isExpanded && <div className="meeting-intel-content">');
+    expect(component).toContain('isNotesActive ? "Stop"');
+    expect(component).toContain('isRecActive ? "Stop"');
+    const button = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
+    expect(button).toMatch(/border-radius:\s*9px/);
+    expect(button).toMatch(/min-width:\s*58px/);
+    expect(button).toMatch(/flex:\s*0 0 auto/);
+  });
+
+  it("keeps the blue Premium badge inside the Live Captions card", () => {
+    const captionsCard = component.slice(component.indexOf("{/* Live captions"));
+    expect(captionsCard.indexOf("aria-label=\"Premium feature\"")).toBeLessThan(captionsCard.indexOf("meeting-intel-card-subbar"));
+    expect(ruleFor('.meeting-intel-restricted-badge[aria-label="Premium feature"]')).toMatch(/#bfdbfe/);
   });
 
   it("centers the AI Notes preparation toast in the viewport", () => {
