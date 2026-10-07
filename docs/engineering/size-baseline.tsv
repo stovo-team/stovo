@@ -40,10 +40,10 @@ frontend/src/features/chats/calling/DesktopCallControls.tsx	552
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	660
 frontend/src/features/chats/calling/useCallSession.ts	1055
 frontend/src/features/chats/calling/useTranscription.ts	605
-frontend/src/features/chats/calling/VoiceChannelStage.tsx	518
+frontend/src/features/chats/calling/VoiceChannelStage.tsx	536
 frontend/src/features/chats/composer/Composer.tsx	963
 frontend/src/features/chats/composer/useMessageComposer.ts	898
-frontend/src/features/chats/conversation/ConversationPanel.tsx	763
+frontend/src/features/chats/conversation/ConversationPanel.tsx	769
 frontend/src/features/chats/conversation/MessageBubble.tsx	646
 frontend/src/features/chats/conversation/useMessageThread.ts	910
 frontend/src/features/chats/details/ChatDetailsPanel.tsx	1411
@@ -54,7 +54,7 @@ frontend/src/features/chats/sidebar/ChatList.tsx	848
 frontend/src/features/chats/sidebar/useChatDataLoader.ts	591
 frontend/src/features/chats/useChatsPageController.ts	428
 frontend/src/messageMarkdown.tsx	724
-frontend/src/pages/ChatsPage.tsx	462
+frontend/src/pages/ChatsPage.tsx	469
 frontend/src/pages/ChecklistPage.tsx	780
 frontend/src/pages/FilesPage.tsx	900
 frontend/src/pages/GuestMeetingPage.tsx	807
