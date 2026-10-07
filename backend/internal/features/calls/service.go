@@ -181,7 +181,7 @@ func (s *Service) resolveInvitees(chat domain.CallChat, caller string, requested
 			}
 		}
 	}
-	if len(invitees) == 0 && chat.Type != domain.ChatTypeVoice {
+	if len(invitees) == 0 && chat.Type != domain.ChatTypeVoice && chat.Type != domain.ChatTypeGroup && chat.Type != domain.ChatTypeFamily {
 		return nil, ErrNoParticipants
 	}
 	return invitees, nil

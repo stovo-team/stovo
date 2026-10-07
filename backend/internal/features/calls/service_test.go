@@ -56,3 +56,17 @@ func TestServiceBuildsConnectedGroupCall(t *testing.T) {
 		t.Fatalf("PrepareStart() = %#v, want connected group call", call)
 	}
 }
+
+func TestServiceAllowsStartingGroupCallWithOnlyCaller(t *testing.T) {
+	service := NewService(chatReaderStub{chat: domain.CallChat{
+		ID: "chat", Type: domain.ChatTypeGroup, Members: []string{"caller"},
+	}}, nil, nil)
+
+	call, err := service.PrepareStart(context.Background(), StartInput{ChatID: "chat", CallerUserID: "caller", CallType: "audio"})
+	if err != nil {
+		t.Fatalf("PrepareStart() error = %v", err)
+	}
+	if !call.StartsActive || len(call.Participants) != 1 || call.Participants[0].UserID != "caller" {
+		t.Fatalf("PrepareStart() = %#v, want an active call with only the caller", call)
+	}
+}
