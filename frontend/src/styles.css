@@ -212,11 +212,11 @@
 
 /* Minimized: slim chip — width collapses to fit content */
 .call-popup.call-popup-minimized {
-  top: 96px;
+  top: 80px;
   left: auto;
   right: 24px;
   transform: none;
-  width: max-content;
+  width: auto;
   max-width: calc(100vw - 48px);
   min-width: 0;
   border-radius: var(--float-radius-pill, 999px);
