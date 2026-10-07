@@ -14117,6 +14117,20 @@ span.message-spoiler.is-revealed {
     margin-top: 2px;
   }
 
+  .messenger-shell.has-active-chat .emoji-picker {
+    box-sizing: border-box;
+    left: 0;
+    max-width: min(360px, calc(100vw - var(--active-chat-message-inset-x) - 64px));
+    right: auto;
+    transform: none;
+    width: min(360px, calc(100vw - var(--active-chat-message-inset-x) - 64px));
+  }
+
+  .messenger-shell.has-active-chat .emoji-picker .EmojiPickerReact {
+    max-width: 100%;
+    width: 100% !important;
+  }
+
   .messenger-shell.has-active-chat .message-composer--emoji-docked .emoji-picker-dock {
     margin-inline: calc(-1 * (var(--mobile-edge-inset-x) + 8px));
     width: calc(100% + (var(--mobile-edge-inset-x) + 8px) * 2);
