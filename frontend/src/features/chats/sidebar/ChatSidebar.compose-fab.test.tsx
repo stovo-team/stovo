@@ -123,7 +123,7 @@ describe("ChatSidebar compose action", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/auth/server");
   });
 
-  it("renders an accessible plus icon and starts a new chat without a glyph fallback", () => {
+  it("renders an accessible SVG plus and starts a new chat without a glyph fallback", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
