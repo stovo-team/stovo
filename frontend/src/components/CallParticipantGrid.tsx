@@ -372,7 +372,7 @@ export default function CallParticipantGrid({
         </div>
       ) : localTile}
 
-      {!hideParticipants && !useScreenShareRail ? remoteTiles : null}
+      {!hideParticipants && !useScreenShareRail && !useMobilePresentationRow ? remoteTiles : null}
     </div>
   );
 

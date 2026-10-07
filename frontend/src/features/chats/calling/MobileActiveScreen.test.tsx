@@ -115,7 +115,7 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector("button[aria-label='Stop sharing']")).toBeNull();
   });
 
-  it("shows a compact SVG Back beside Shrink during participant focus and restores the grid", () => {
+  it("keeps mobile group participants in the centered grid when tapped", () => {
     const track = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
     const stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
     const remoteMedia = ["Alice", "Bob"].map((userId) => ({
@@ -135,17 +135,12 @@ describe("MobileActiveScreen", () => {
         remoteMedia={remoteMedia}
       />,
     );
-    act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote .call-grid__label")?.click());
-    expect(container.querySelector(".call-grid--focus")).not.toBeNull();
-
-    const topBar = container.querySelector<HTMLElement>(".mobile-active-top-bar");
-    const actions = Array.from(topBar?.querySelectorAll<HTMLButtonElement>("button") ?? []);
-    expect(actions.map((button) => button.getAttribute("aria-label"))).toEqual(["Close participant focus", "Shrink call"]);
-    expect(actions[0].querySelector("svg")).not.toBeNull();
-    expect(actions[0].textContent?.trim()).toBe("");
-    act(() => actions[0].click());
+    const tile = container.querySelector<HTMLElement>(".call-grid__tile--remote");
+    expect(tile).not.toBeNull();
+    act(() => tile?.click());
     expect(container.querySelector(".call-grid--focus")).toBeNull();
-    expect(Array.from(topBar?.querySelectorAll<HTMLButtonElement>("button") ?? []).map((button) => button.getAttribute("aria-label"))).toEqual(["Shrink call"]);
+    expect(container.querySelector(".mobile-active-top-bar [aria-label='Close participant focus']")).toBeNull();
+    expect(container.querySelector(".mobile-active-top-bar [aria-label='Shrink call']")).not.toBeNull();
     expect(container.querySelectorAll(".call-grid__tile").length).toBeGreaterThan(1);
   });
 
@@ -174,7 +169,7 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector(".mobile-active-screenshare-bar")).not.toBeNull();
   });
 
-  it("fits portrait screen content inside the shared 19:9 presentation frame", () => {
+  it("fits portrait screen content inside the shared 16:9 presentation frame", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -196,7 +191,7 @@ describe("MobileActiveScreen", () => {
     );
 
     const presentationTile = container.querySelector(".call-grid__tile--screen") as HTMLDivElement;
-    expect(presentationTile.style.aspectRatio).toBe("19 / 9");
+    expect(presentationTile.style.aspectRatio).toBe("16 / 9");
     expect(presentationTile.querySelector<HTMLVideoElement>("video")?.style.objectFit).toBe("contain");
   });
 

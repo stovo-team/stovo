@@ -280,20 +280,20 @@ describe("call UI preview interactions", () => {
     expect(intelligence?.nextElementSibling?.textContent?.trim()).not.toBe("Intelligence");
   });
 
-  it("shows all Stovo Intelligence actions directly inside More and lets them run without opening a nested panel", () => {
+  it("keeps Stovo Intelligence collapsed inside More until opened", () => {
     const container = mountPreview();
     click(container, "Mobile");
     click(container, "More options");
     const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).toBeNull();
+    act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
+    for (const label of ["Start AI Notes", "Start Recording"]) {
       expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
     }
-    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
-    const captionsToggle = menu?.querySelector<HTMLInputElement>('[aria-label="Toggle Live Captions"]');
-    expect(captionsToggle?.checked).toBe(false);
-    act(() => captionsToggle?.click());
-    expect(captionsToggle?.checked).toBe(true);
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
+    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
@@ -348,7 +348,7 @@ describe("call UI preview interactions", () => {
     expect(input?.title).toContain("USB Microphone");
   });
 
-  it("opens Settings, Screen Share and Stovo Intelligence from the lower mobile More menu and closes on Escape or outside click", () => {
+  it("opens Settings, Screen Share and collapsed Stovo Intelligence from the lower mobile More menu and closes on Escape or outside click", () => {
     const container = mountPreview();
     click(container, "Mobile");
     const controls = container.querySelector(".call-preview-control-rows");
@@ -358,7 +358,7 @@ describe("call UI preview interactions", () => {
     act(() => more?.click());
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Settings", "Screen Share", "Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+    for (const label of ["Settings", "Screen Share", "Stovo Intelligence"]) {
       const action = menu?.querySelector<HTMLElement>(`[aria-label="${label}"]`)
         ?? Array.from(menu?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((candidate) => candidate.textContent?.includes(label));
       expect(action, `expected mobile More action ${label}`).toBeDefined();
@@ -397,15 +397,18 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector('[aria-label="Stop sharing"]')).not.toBeNull();
   });
 
-  it("shows the Stovo Intelligence actions directly in the mobile More menu", () => {
+  it("shows Stovo Intelligence collapsed in the mobile More menu", () => {
     const container = mountPreview();
     click(container, "Mobile");
     act(() => container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]')?.click());
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).toBeNull();
+    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).not.toBeNull();
+    act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
-    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
+    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
