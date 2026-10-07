@@ -478,8 +478,7 @@ export default function SettingsPage() {
                 aria-label={getActiveSettingsItemTitle(activeSettingsItem)}
               >
                 <div className="section-title-row">
-                  <BackButton
-                    ariaLabel={strings.settings.closeSettingsPanel}
+                  <BackButton className="mobile-back-button" ariaLabel={strings.settings.closeSettingsPanel}
                     onClick={() => {
                       if (activeSettingsItem === "Privacy and Security" && privacyDetail !== "overview") {
                         setPrivacyDetail("overview");
