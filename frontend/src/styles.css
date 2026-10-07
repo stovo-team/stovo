@@ -16794,6 +16794,23 @@ button.attachment-nav-item:focus-visible {
   animation: mobile-call-strip-enter var(--motion-surface-duration) var(--motion-route-ease);
 }
 
+.mobile-call-strip--global {
+  bottom: max(env(safe-area-inset-bottom), 12px);
+  left: var(--mobile-edge-inset-x, 16px);
+  margin: 0;
+  position: fixed;
+  right: var(--mobile-edge-inset-x, 16px);
+  z-index: 2500;
+}
+
+@media (min-width: 768px) {
+  .mobile-call-strip--global {
+    left: auto;
+    right: 24px;
+    width: min(460px, calc(100vw - 48px));
+  }
+}
+
 .messenger-shell.chat-list-view .chat-sidebar-header .mobile-call-strip {
   margin: 8px 0 0;
 }
