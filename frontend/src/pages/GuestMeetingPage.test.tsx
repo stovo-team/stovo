@@ -164,7 +164,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(css.match(/\.guest-call-spotlight\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/margin-inline:\s*auto/);
     expect(pageSource).toMatch(/guest-call-screen-tile" style=\{\{ aspectRatio: "16 \/ 9" \}\}/);
     expect(desktopSpotlightRules.every((rule) => !/flex:\s*1(?:\s|;|$)/.test(rule))).toBe(true);
-    expect(desktopScreenTileRules.every((rule) => !/height:\s*100%/.test(rule))).toBe(true);
+    expect(desktopScreenTileRules.every((rule) => !/(?:^|[;\n])\s*height:\s*100%/.test(rule))).toBe(true);
   });
 
   it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {
