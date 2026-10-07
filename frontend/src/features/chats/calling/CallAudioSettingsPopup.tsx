@@ -6,6 +6,7 @@ import {
   CallSettings,
 } from "../../../realtime/CallController";
 import { CallDeviceSelect } from "./CallDeviceSelect";
+import { useCallAudioTests } from "./useCallAudioTests";
 
 function AudioToggleRow({
   name,
@@ -53,6 +54,7 @@ export function CallAudioSettingsPopup({
   warning,
   onPatch,
   onClose,
+  localStream = null,
 }: {
   popupRef: RefObject<HTMLDivElement | null>;
   isMobile: boolean;
@@ -63,7 +65,9 @@ export function CallAudioSettingsPopup({
   warning: string | null;
   onPatch: (patch: Partial<CallSettings>) => void;
   onClose: () => void;
+  localStream?: MediaStream | null;
 }) {
+  const audioTest = useCallAudioTests(localStream, settings);
   return (
     <div
       className="call-audio-popup-backdrop"
@@ -117,6 +121,10 @@ export function CallAudioSettingsPopup({
               aria-label="Input gain"
               onChange={(e) => onPatch({ inputGain: Number(e.target.value) })}
             />
+          </div>
+          <div className="call-audio-mic-test">
+            <span>Microphone test</span>
+            {audioTest.available ? <div className="guest-mic-meter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={audioTest.level}><i style={{ width: `${audioTest.level}%` }} /></div> : <small>{settings.micMuted ? "Microphone muted" : "Microphone unavailable"}</small>}
           </div>
         </section>
 
@@ -219,8 +227,10 @@ export function CallAudioSettingsPopup({
           {!capabilities.canSelectOutputDevice && <p className="call-audio-popup-note">This browser uses the system default output only.</p>}
           <div className="call-audio-slider-row">
             <div className="call-audio-slider-head"><span>Output volume</span><span className="call-audio-slider-value">{Math.round(settings.outputVolume)}%</span></div>
-            <input type="range" min={0} max={100} step={1} value={settings.outputVolume} onChange={(e) => onPatch({ outputVolume: Number(e.target.value) })} />
+            <input aria-label="Output volume" type="range" min={0} max={100} step={1} value={settings.outputVolume} onChange={(e) => onPatch({ outputVolume: Number(e.target.value) })} />
           </div>
+          <button className="call-audio-test-sound" type="button" aria-label="Test sound" disabled={settings.soundDisabled || settings.outputVolume <= 0} onClick={() => void audioTest.testSound()}><Volume2 aria-hidden="true" size={16} /> Test sound</button>
+          {audioTest.warning && <p className="call-audio-popup-warning" role="status">{audioTest.warning}</p>}
           {isMobile && (
               <div className="call-audio-speaker-row" role="group" aria-label="Speaker mode">
                 <button

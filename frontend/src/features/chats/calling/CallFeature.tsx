@@ -228,6 +228,7 @@ export function CallFeature() {
           capabilities={callAudioCapabilities}
           devices={callAudioDevices}
           trackStatus={callTrackStatus}
+          localStream={audioCallRef.current?.getLocalStream() ?? localVideoStream}
           warning={callAudioWarning}
           onPatch={(patch) => void applyCallAudioPatch(patch)}
           onClose={() => setIsCallAudioPopupOpen(false)}
@@ -261,4 +262,3 @@ export function CallFeature() {
     </>
   );
 }
-
