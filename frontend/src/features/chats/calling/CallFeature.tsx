@@ -126,6 +126,7 @@ export function CallFeature() {
               effectiveIsCallMinimized ? "call-popup-minimized" : "",
               isMobileViewport ? "call-popup-fullscreen" : "",
               effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
+              isGroupCall ? "call-popup-group-call" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
