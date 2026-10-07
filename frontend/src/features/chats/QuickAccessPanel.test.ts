@@ -29,6 +29,11 @@ describe("message archive grouped view", () => {
     expect(styles).toMatch(/\.quick-access-panel--outbox \.quick-access-panel-tabs\s*\{[^}]*margin-left:\s*0;[^}]*margin-top:\s*0;/);
   });
 
+  it("keeps quick-access sidebar hover on the shared chat-row surface", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(styles).toMatch(/\.chat-list-item:hover:not\(:disabled\)\s*\{[^}]*background:\s*color-mix\(in oklab, var\(--background-panel-accent\) 60%, transparent\);/);
+  });
+
   it("lists archive-origin groups rather than unrelated recently active chats", () => {
     expect(panel).toContain("getMessageArchiveGroups(accessToken)");
     expect(panel).toContain("My Notes");

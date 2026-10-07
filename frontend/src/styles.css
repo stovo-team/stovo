@@ -3667,7 +3667,7 @@ h2 {
   z-index: 3;
 }
 
-.chat-list-item:hover {
+.chat-list-item:hover:not(:disabled) {
   background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent);
   border-radius: 22px;
 }
