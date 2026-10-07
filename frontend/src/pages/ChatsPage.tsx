@@ -213,13 +213,10 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   }
 
   const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);
-  const minimizedCallHeader = (isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== "idle" && isCallMinimized ? (
-    <MobileMinimizedCallBar
+  const minimizedCallHeader = (isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== "idle" && isCallMinimized ? <MobileMinimizedCallBar
       className="mobile-call-strip--chat-header"
       peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
-      callPhase={callPhase}
-      callTimer={callTimer}
-      micMuted={callAudioSettings.micMuted}
+      callPhase={callPhase} callTimer={callTimer} micMuted={callAudioSettings.micMuted}
       onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
       onEnd={() => void endActiveCall()}
       onExpand={() => {
@@ -233,8 +230,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
           }
         }
       }}
-    />
-  ) : null;
+    /> : null;
 
   return (
     <main
