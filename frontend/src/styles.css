@@ -30828,3 +30828,27 @@ button.checklist-add-item-btn:hover,
   cursor: not-allowed;
   opacity: 0.55;
 }
+
+/* Keep the guest camera preview at a consistent 16:9 size on every viewport. */
+.guest-prejoin-preview {
+  align-self: start;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+}
+.guest-prejoin-preview video {
+  object-fit: contain;
+}
+
+/* Device controls sit over live video, so use solid fills for clear contrast. */
+.guest-prejoin-preview .guest-call-controls .guest-device-control > button {
+  background: #252a33;
+}
+.guest-prejoin-preview .guest-call-controls.shared-call-controls .guest-device-control > button.active {
+  background: #252a33;
+}
+.guest-prejoin-preview .guest-call-controls .guest-device-control > button:not(.active) {
+  background: #35252a;
+}
+.guest-prejoin-preview .guest-call-controls .guest-device-menu-trigger {
+  background: #252a33;
+}

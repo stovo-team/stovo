@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Link2Off, Settings, Users } from "lucide-react";
+import { ArrowUpRight, Link2Off, Settings, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
@@ -801,6 +801,6 @@ export default function GuestMeetingPage() {
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
     {error && <p className="error-text">{error}</p>}
-    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a>
+    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <ArrowUpRight size={16} aria-hidden="true" /></a>
   </section></main>;
 }
