@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"stovo-messenger/backend/internal/cache"
 	"stovo-messenger/backend/internal/domain"
@@ -77,7 +78,7 @@ func (s *Server) createChat(ctx context.Context, user userPublic, kind string, r
 	if (kind == "group" || kind == "channel" || kind == "voice") && !hasPermission(user, permissionManageChannels) {
 		return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
 	}
-	if request.Title == "" {
+	if request.Title == "" || utf8.RuneCountInString(request.Title) > 255 {
 		return nil, 0, newStatusError(http.StatusUnprocessableEntity, "Invalid "+kind+" chat payload")
 	}
 	members, err := s.resolveChatMembers(user, request.MemberIDs)
@@ -213,6 +214,9 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 		if *payload.Title == "" {
 			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "title cannot be blank")
 		}
+		if utf8.RuneCountInString(*payload.Title) > 255 {
+			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "title cannot exceed 255 characters")
+		}
 		if !s.canManageChat(chat, user) {
 			return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
 		}
@@ -227,8 +231,8 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 		desc := strings.TrimSpace(*payload.Description)
 		var descPtr *string
 		if desc != "" {
-			if len(desc) > 255 {
-				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 255 characters")
+			if utf8.RuneCountInString(desc) > 120 {
+				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 120 characters")
 			}
 			descPtr = &desc
 		}
