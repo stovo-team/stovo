@@ -18811,8 +18811,65 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen .chat-info-avatar-wrap .chat-avatar {
-    height: 120px;
-    width: 120px;
+    height: 88px;
+    max-height: 88px;
+    max-width: 88px;
+    min-height: 88px;
+    min-width: 88px;
+    width: 88px;
+  }
+
+  .chat-info-screen .chat-info-avatar-wrap {
+    height: 88px;
+    margin-bottom: 2px;
+    width: 88px;
+  }
+
+  .chat-info-screen .chat-info-avatar-edit {
+    bottom: 0;
+    height: 32px;
+    right: -4px;
+    width: 32px;
+  }
+
+  .chat-info-screen .chat-info-avatar-edit .ms-icon {
+    font-size: 18px;
+  }
+
+  .chat-info-screen .chat-info-hero {
+    gap: 4px;
+    padding-bottom: 10px;
+  }
+
+  .chat-info-screen .chat-info-hero h3 {
+    font-size: 1.125rem;
+  }
+
+  .chat-info-screen .chat-info-subtitle,
+  .chat-info-screen .chat-info-meta {
+    font-size: 0.8125rem;
+  }
+
+  .chat-info-screen .chat-info-actions {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .chat-info-screen .chat-info-action {
+    border-radius: 10px;
+    gap: 6px;
+    min-height: 52px;
+    padding: 8px 4px;
+  }
+
+  .chat-info-screen .chat-info-action > span:last-child {
+    font-size: 0.75rem;
+  }
+
+  .chat-info-screen .chat-info-add-description-btn {
+    font-size: 0.8125rem;
+    gap: 6px;
+    padding: 9px 14px;
   }
 }
 
