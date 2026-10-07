@@ -20180,7 +20180,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 @media (min-width: 961px) {
   .app-frame > .app-nav {
     --app-nav-state-circle-size: 60px;
-    padding: 12px 4px;
+    padding: 6px 4px;
   }
 
   .app-frame > .app-nav a {
@@ -20214,8 +20214,8 @@ button.chat-info-title-edit:active:not(:disabled) {
     left: 50%;
     pointer-events: none;
     position: absolute;
-    top: 1px;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     width: var(--app-nav-state-circle-size);
   }
 
