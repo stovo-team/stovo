@@ -354,3 +354,23 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
     validate(custom.stdout, 'custom Helm output');
   }
 });
+
+test('Design issue form requires a description, screenshot, and suggested fix', () => {
+  const form = read('.github/ISSUE_TEMPLATE/design_issue.yml');
+  for (const [id, label] of [
+    ['problem', 'What is wrong with the current design?'],
+    ['screenshot', 'Screenshot'],
+    ['suggestion', 'How would you fix it?'],
+  ]) {
+    const field = form.match(new RegExp(`- type: textarea\\s+id: ${id}\\s+attributes:[\\s\\S]*?label: ${label.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}[\\s\\S]*?validations:\\s+required: true`));
+    assert.ok(field, `${label} must be a required issue form field`);
+  }
+  assert.match(form, /title:\s*"\[Design\]: "/);
+
+  const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
+  const reproduceField = bugReport.match(/- type: textarea\s+id: reproduce[\s\S]*?(?=\n  - type:|$)/);
+  assert.ok(reproduceField, 'bug report must retain its reproduction field');
+  assert.doesNotMatch(reproduceField[0], /required:\s*true/, 'reproduction steps must be optional');
+
+  assert.match(read('CONTRIBUTING.md'), /design issues/);
+});
