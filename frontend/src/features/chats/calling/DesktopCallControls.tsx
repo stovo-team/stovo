@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Maximize2,
   Mic,
-  MicOff,
   Minimize2,
   Phone,
   RotateCcw,
@@ -13,8 +12,8 @@ import {
   Video,
   VideoOff,
 } from "lucide-react";
-import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
+import { CallPopupAudioStage } from "./CallPopupAudioStage";
 import { useTranscription } from "./useTranscription";
 import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
@@ -88,11 +87,6 @@ export function DesktopCallControls() {
   const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat?.type === "group" || activeChat?.type === "family";
 
-  const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
-    activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
-    activeChat?.members?.find((m) => m.id !== currentUser?.id);
-  const peerProfilePhoto = activePeer?.profilePhoto ?? null;
-
   const callTitle = (callPeerDisplayName ?? activeCallPeerName) ?? activeChat?.title ?? (isVoiceChannel ? "Voice Channel" : "Call");
   const callTimer = session.callTimer;
   const participantGridMedia = callRemoteMedia.length > 0
@@ -100,24 +94,6 @@ export function DesktopCallControls() {
     : remoteVideoStream
       ? [{ userId: session.callPeerUserId ?? callPeerDisplayName ?? "Participant", stream: remoteVideoStream, screenStream: null, hasVideo: callType === "video" || hasRemoteVideo, hasAudio: true, hasScreenShare: false }]
       : [];
-  const activeGroupCall = activeChat
-    ? session.activeGroupCalls[activeChat.id] ?? activeChat.activeCall
-    : null;
-  const activeGroupCallParticipants = (activeGroupCall?.participants ?? []) as Array<{
-    userId: string;
-    state?: string;
-  }>;
-  const groupCallParticipantIds = isGroupCall
-    ? Array.from(new Set([
-        ...activeGroupCallParticipants
-          .filter((participant) => ["connected", "connecting", "in-call"].includes(participant.state ?? ""))
-          .map((participant) => participant.userId),
-        ...callParticipantIds,
-        session.callPeerUserId,
-        currentUser?.id,
-      ].filter((userId): userId is string => Boolean(userId))))
-    : [];
-
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
     roomId: callRoomId,
@@ -330,67 +306,7 @@ export function DesktopCallControls() {
         <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
       )}
 
-      {/* Avatar area — shown when no remote video is playing */}
-      {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && !hasRemoteVideo && !callRemoteMedia.some((m) => m.hasScreenShare) && callPhase === "in-call" && !isMobileViewport && (
-        isGroupCall ? (
-          <div className={`call-popup-group-participants voice-room-grid voice-grid--${groupCallParticipantIds.length === 1 ? "1" : groupCallParticipantIds.length === 2 ? "2" : groupCallParticipantIds.length <= 4 ? "4" : groupCallParticipantIds.length <= 6 ? "6" : "9"}`} role="list" aria-label="Group call participants">
-            {groupCallParticipantIds.map((userId) => {
-              const isSelf = userId === currentUser?.id;
-              const chatMember = activeChat?.members?.find((member) => member.id === userId);
-              const member = members.find((candidate) => candidate.id === userId) ?? chatMember;
-              const participantState = activeGroupCallParticipants.find((participant) => participant.userId === userId)?.state;
-              const isSpeaking = isSelf
-                ? isLocalSpeaking
-                : Boolean(speakingUserIds.includes(userId) || (isPeerSpeaking && groupCallParticipantIds.length <= 2));
-              const isMuted = isSelf && callAudioSettings.micMuted;
-              const displayName = isSelf ? `${currentUser?.displayName ?? "You"} (You)` : member?.displayName ?? "Member";
-              const stateLabel = participantState === "connecting"
-                ? "Connecting…"
-                : isSpeaking
-                ? "Speaking…"
-                : isMuted
-                ? "Muted"
-                : "Connected";
-
-              return (
-                <div key={userId} className={`voice-participant-card call-popup-group-participant${isSpeaking ? " is-speaking" : ""}${isSelf ? " is-self" : ""}`} role="listitem">
-                  <div className="voice-participant-avatar-wrapper voice-avatar-wrapper--md">
-                    <RealAvatar
-                      accessToken={accessToken ?? null}
-                      className="avatar voice-participant-avatar voice-avatar--md"
-                      file={member?.profilePhoto ?? null}
-                      label={member?.displayName ?? (isSelf ? currentUser?.displayName ?? "You" : "Member")}
-                    />
-                    {isMuted && <span className="voice-card-muted-badge" aria-label="Muted"><MicOff size={14} aria-hidden="true" /></span>}
-                  </div>
-                  <div className="voice-participant-meta">
-                    <span className="voice-participant-name">{displayName}</span>
-                    <span className="voice-participant-state" role="status">{stateLabel}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-        <div className={`call-popup-avatar-area${isPeerSpeaking ? " is-speaking" : ""}`}>
-          <div className="call-popup-avatar-circle">
-            <RealAvatar
-              accessToken={accessToken ?? null}
-              className="avatar call-popup-real-avatar"
-              file={peerProfilePhoto}
-              label={callPeerDisplayName ?? activeCallPeerName ?? "Call"}
-            />
-            <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
-            <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
-          </div>
-          <div className="call-popup-waveform">
-            {[0,1,2,3,4].map((i) => (
-              <div key={i} className={`call-popup-wave-bar${isPeerSpeaking ? "" : " silent"}`} />
-            ))}
-          </div>
-        </div>
-        )
-      )}
+      <CallPopupAudioStage activeChat={activeChat ?? null} />
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
