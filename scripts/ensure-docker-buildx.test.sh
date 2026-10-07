@@ -25,6 +25,15 @@ SUDO
 chmod +x "$TMP_DIR/bin/sudo"
 printf '#!/bin/sh\nexit 0\n' > "$TMP_DIR/bin/apt-get"
 chmod +x "$TMP_DIR/bin/apt-get"
+cat > "$TMP_DIR/bin/apt-cache" <<'APT_CACHE'
+#!/bin/sh
+case "$2" in
+  docker-buildx-plugin) [ "${BUILDX_TEST_PLUGIN_PACKAGE:-yes}" = yes ] ;;
+  docker-buildx) [ "${BUILDX_TEST_UBUNTU_PACKAGE:-yes}" = yes ] ;;
+  *) exit 1 ;;
+esac
+APT_CACHE
+chmod +x "$TMP_DIR/bin/apt-cache"
 
 BUILDX_TEST_INSTALLED="$TMP_DIR/installed" \
 BUILDX_TEST_LOG="$TMP_DIR/install.log" \
@@ -32,6 +41,15 @@ PATH="$TMP_DIR/bin" \
   /bin/bash "$ENSURE_SCRIPT"
 grep -Fxq 'apt-get update' "$TMP_DIR/install.log"
 grep -Fxq 'apt-get install -y docker-buildx-plugin' "$TMP_DIR/install.log"
+
+rm -f "$TMP_DIR/install.log" "$TMP_DIR/installed"
+BUILDX_TEST_INSTALLED="$TMP_DIR/installed" \
+BUILDX_TEST_LOG="$TMP_DIR/install.log" \
+BUILDX_TEST_PLUGIN_PACKAGE=no \
+BUILDX_TEST_UBUNTU_PACKAGE=yes \
+PATH="$TMP_DIR/bin" \
+  /bin/bash "$ENSURE_SCRIPT"
+grep -Fxq 'apt-get install -y docker-buildx' "$TMP_DIR/install.log"
 
 rm -f "$TMP_DIR/install.log"
 BUILDX_TEST_INSTALLED="$TMP_DIR/installed" \
