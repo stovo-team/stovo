@@ -44,6 +44,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     chatId, location, navigate, prefersReducedMotion, accessToken, currentUser, authRequest, updateCurrentUser, appearance
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
+  const [isVoiceCallExpanded, setIsVoiceCallExpanded] = useState(false);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
@@ -214,6 +215,10 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
 
   const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);
 
+  useEffect(() => {
+    setIsVoiceCallExpanded(false);
+  }, [selectedChat?.id]);
+
   return (
     <main
       className={`app-shell app-frame messenger-shell ${hasActiveChat ? "has-active-chat" : "chat-list-view"}${chatListLayoutClass(family?.minimizedChatLayout ?? false)}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${videoPipBridge.isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
@@ -227,7 +232,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
           </p>
         )}
 
-        <div className={`chat-layout ${isDetailsOpen && selectedChat ? "details-open" : ""}`}>
+        <div className={`chat-layout${isVoiceCallExpanded && selectedChat?.type === "voice" && !isCallMinimized ? " voice-call-expanded" : ""} ${isDetailsOpen && selectedChat ? "details-open" : ""}`}>
           <ChatSidebar
             familyName={family?.name ?? "Stovo"}
             familyId={family?.id ?? currentUser?.familyId ?? ""}
@@ -312,6 +317,8 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               callSession={callSession}
               canAddPeople={detailsActions.canManageSelectedChat && selectedChat?.type === "voice"}
               onOpenAddPeople={() => setAddPeopleChat(selectedChat)}
+              isVoiceCallExpanded={isVoiceCallExpanded}
+              onToggleVoiceCallExpanded={() => setIsVoiceCallExpanded((expanded) => !expanded)}
               minimizedCallHeader={
                 selectedChat && chatId && callPhase !== "idle" && isCallMinimized ? (
                   <MobileMinimizedCallBar

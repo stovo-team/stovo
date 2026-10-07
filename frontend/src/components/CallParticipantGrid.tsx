@@ -303,18 +303,16 @@ export default function CallParticipantGrid({
       className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
-        gridTemplateColumns: useScreenShareRail
-          ? "minmax(0, 1fr) minmax(120px, 22%)"
-          : isPresenting
+        gridTemplateColumns: !useScreenShareRail && isPresenting
           ? "repeat(auto-fit, minmax(120px, 1fr))"
-          : `repeat(${columns}, minmax(0, 1fr))`,
+          : !useScreenShareRail ? `repeat(${columns}, minmax(0, 1fr))` : undefined,
       }}
     >
       {presenter?.screenStream ? (
         <ParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
-            ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
+            ? { ...landscapePresenterTileStyle, gridColumn: "2", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
             : landscapePresenterTileStyle}
           label={presenter.userId}
           stream={presenter.screenStream}
@@ -328,8 +326,8 @@ export default function CallParticipantGrid({
 
       {hideParticipants ? null : useScreenShareRail ? (
         <div className="call-grid__participant-rail">
-          <div data-participant-id={localUserLabel} style={{ aspectRatio: "16 / 9" }}>{localTile}</div>
-          {remoteTiles}
+          <div className="call-grid__participant-pin" data-participant-id={localUserLabel}>{localTile}</div>
+          <div className="call-grid__remote-rail">{remoteTiles}</div>
         </div>
       ) : mobileSingleRemote ? (
         <div className={`call-grid__mobile-local-wrap ${isLocalPrimary ? "call-grid__mobile-local-wrap--primary" : "call-grid__mobile-local-wrap--pip"}`}>

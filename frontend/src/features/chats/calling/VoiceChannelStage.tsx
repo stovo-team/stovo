@@ -5,6 +5,8 @@ import {
 } from "react";
 import {
   MicOff,
+  Maximize2,
+  Minimize2,
   Settings,
   UserPlus,
   Video,
@@ -37,6 +39,8 @@ export type VoiceChannelStageProps = {
   accessToken: string | null;
   canAddPeople?: boolean;
   onOpenAddPeople?: () => void;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 };
 
 export function VoiceChannelStage({
@@ -47,6 +51,8 @@ export function VoiceChannelStage({
   accessToken,
   canAddPeople = false,
   onOpenAddPeople,
+  isExpanded = false,
+  onToggleExpanded,
 }: VoiceChannelStageProps) {
   const strings = useStrings();
   const voiceStrings = strings.chats.voiceRoom;
@@ -263,6 +269,18 @@ export function VoiceChannelStage({
         currentInterimCaption={liveCaptions.currentInterimCaption}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
+      {onToggleExpanded && (
+        <button
+          type="button"
+          className="voice-room-expand-button"
+          onClick={onToggleExpanded}
+          aria-label={isExpanded ? voiceStrings?.shrinkCall ?? "Shrink Voice Channel" : voiceStrings?.expandCall ?? "Expand Voice Channel"}
+          aria-pressed={isExpanded}
+          title={isExpanded ? voiceStrings?.shrinkCall ?? "Shrink Voice Channel" : voiceStrings?.expandCall ?? "Expand Voice Channel"}
+        >
+          {isExpanded ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}
+        </button>
+      )}
       {/* Main Stage / Participant Grid or List */}
       <CallParticipantStage className="shared-call-stage voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
