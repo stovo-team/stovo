@@ -73,7 +73,31 @@ describe("GuestMeetingLinkControl meeting chat creation", () => {
     expect(onCreateChat).toHaveBeenCalledWith("Design review");
     expect(order).toEqual(["chat", "meeting", "encrypt", "invite"]);
     expect(createGuestMeeting).toHaveBeenCalledTimes(1);
+    expect(encryptMessageContent).toHaveBeenCalledWith(
+      chat,
+      expect.stringContaining(`"url":"${window.location.origin}/meet/abc"`),
+      "host"
+    );
     expect(sendMessage).toHaveBeenCalledWith("token", "created-chat", "encrypted invite", [], null, null, null);
+  });
+
+  it("uses the current app origin while preserving the cluster route in the guest link", async () => {
+    createGuestMeeting.mockResolvedValueOnce({
+      title: "Planning",
+      meetingUrl: "http://localhost:8000/s/family-123/meet/abc",
+      admissionMode: "immediate",
+      scheduledAt: null
+    });
+    const button = await render(async () => chat);
+    await act(async () => { button.click(); });
+
+    expect(container.querySelector(".guest-link-result code")?.textContent)
+      .toBe(`${window.location.origin}/s/family-123/meet/abc`);
+    expect(encryptMessageContent).toHaveBeenCalledWith(
+      chat,
+      expect.stringContaining(`"url":"${window.location.origin}/s/family-123/meet/abc"`),
+      "host"
+    );
   });
 
   it("does not create a meeting when chat creation fails", async () => {

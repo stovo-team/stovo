@@ -42,8 +42,10 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
       let meetingUrl = meeting.meetingUrl;
       if (!Capacitor.isNativePlatform()) {
         const publicMeetingUrl = new URL(meetingUrl, window.location.origin);
-        publicMeetingUrl.origin = window.location.origin;
-        meetingUrl = publicMeetingUrl.toString();
+        meetingUrl = new URL(
+          `${publicMeetingUrl.pathname}${publicMeetingUrl.search}${publicMeetingUrl.hash}`,
+          window.location.origin
+        ).toString();
       }
       setUrl(meetingUrl);
       if (targetChat) {
