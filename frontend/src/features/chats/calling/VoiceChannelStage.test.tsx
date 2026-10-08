@@ -306,7 +306,7 @@ describe("VoiceChannelStage", () => {
     expect(container.textContent).not.toContain("Alice (You)");
   });
 
-  it("renders connected controls with a direct settings gear instead of a one-item menu", () => {
+  it("renders desktop settings directly and secondary controls in the mobile More menu", () => {
     const mockEndActiveCall = vi.fn();
     const mockApplyCallAudioPatch = vi.fn();
     const mockSetIsCallAudioPopupOpen = vi.fn();
@@ -394,14 +394,15 @@ describe("VoiceChannelStage", () => {
     expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: true });
     expect(mockAudioToggleVideo).toHaveBeenCalledWith(true);
 
-    const outputBtn = inCallToolbar!.querySelector('[aria-label="Audio output"]') as HTMLButtonElement;
-    const flipCameraBtn = inCallToolbar!.querySelector('[aria-label="Flip camera"]') as HTMLButtonElement;
-    expect(outputBtn.classList.contains("voice-mobile-only-control")).toBe(true);
-    expect(flipCameraBtn.classList.contains("voice-mobile-only-control")).toBe(true);
-    act(() => outputBtn.click());
-    act(() => flipCameraBtn.click());
+    const moreOptionsButton = inCallToolbar!.querySelector<HTMLButtonElement>('button[aria-label="More options"]');
+    expect(moreOptionsButton).not.toBeNull();
+    act(() => moreOptionsButton?.click());
+    const moreMenu = inCallToolbar!.querySelector('[role="group"][aria-label="More call options"]');
+    expect(moreMenu).not.toBeNull();
+    const outputBtn = moreMenu?.querySelector<HTMLButtonElement>('button[aria-label="Use speaker"]');
+    expect(outputBtn).not.toBeNull();
+    act(() => outputBtn?.click());
     expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ speakerMode: "large" });
-    expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraFacingMode: "environment" });
 
     // Test Screen Share button
     const shareBtn = inCallToolbar!.querySelector('[aria-label="Share Screen"]') as HTMLButtonElement;
@@ -414,6 +415,39 @@ describe("VoiceChannelStage", () => {
     // The direct settings gear opens audio settings.
     act(() => settingsButton?.click());
     expect(mockSetIsCallAudioPopupOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("keeps camera flip available on a live local video tile", () => {
+    const mockApplyCallAudioPatch = vi.fn();
+    const videoTrack = { readyState: "live", kind: "video", addEventListener() {}, removeEventListener() {} };
+    const localVideoStream = { getVideoTracks: () => [videoTrack] } as unknown as MediaStream;
+    const mockSession = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: true, screenSharing: false, speakerMode: "small", cameraFacingMode: "user" },
+      localVideoStream,
+      applyCallAudioPatch: mockApplyCallAudioPatch,
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const flipButton = container.querySelector<HTMLButtonElement>(".voice-channel-flip-camera");
+    expect(flipButton).not.toBeNull();
+    act(() => flipButton?.click());
+    expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraFacingMode: "environment" });
   });
 
   it("scales grid tiers dynamically from 1 to 2, 4, 6, 9 participants and switches to list mode for >9", () => {
