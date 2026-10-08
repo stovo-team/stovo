@@ -258,7 +258,9 @@ describe("mobile call UI unification", () => {
       expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
     }
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
-    expect(menu?.querySelector('[aria-label="Live Captions locked"] svg')).not.toBeNull();
+    const captions = menu?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions).not.toBeNull();
+    expect(captions?.disabled).toBe(true);
     expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
@@ -351,7 +353,9 @@ describe("mobile call UI unification", () => {
     act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    const captions = menu?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions).not.toBeNull();
+    expect(captions?.disabled).toBe(true);
     expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
@@ -652,7 +656,9 @@ describe("mobile call UI unification", () => {
     act(() => intelligence?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(intelligence?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    const captions = intelligence?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions).not.toBeNull();
+    expect(captions?.disabled).toBe(true);
     expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
   });
 

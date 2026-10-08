@@ -4,11 +4,11 @@
  * Houses the three core meeting capabilities:
  *  1. AI Notes (start/stop, status chip, view notes)
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
- *  3. Live Captions, with translation marked as a Premium feature
+ *  3. Live Captions, disabled as a Premium feature
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, FileText, Globe, LockKeyhole, Sparkles, Video } from "lucide-react";
+import { Check, ChevronDown, FileText, Globe, Sparkles, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -76,8 +76,6 @@ export function MeetingIntelligencePopover({
   onToggleRecording,
   isRecordingAllowed = true,
   recordingDisabledReason,
-  isCaptionsEnabled,
-  onToggleCaptions,
   isMobile = false,
   inlineMenu = false,
 }: MeetingIntelligencePopoverProps) {
@@ -151,7 +149,7 @@ export function MeetingIntelligencePopover({
       window.removeEventListener("scroll", placePopover, true);
       resizeObserver?.disconnect();
     };
-  }, [anchorElement, inlineMenu, isCaptionsEnabled, isMobile, isOpen]);
+  }, [anchorElement, inlineMenu, isMobile, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -294,7 +292,7 @@ export function MeetingIntelligencePopover({
           </div>
         </div>
 
-        {/* Live captions stay in their recognized source language. Translation is a locked Premium feature. */}
+        {/* Live Captions are currently unavailable as a Premium feature. */}
         <div className="meeting-intel-card">
           <div className="meeting-intel-card-head">
             <div className="meeting-intel-card-icon meeting-intel-card-icon--captions">
@@ -302,24 +300,20 @@ export function MeetingIntelligencePopover({
             </div>
             <div className="meeting-intel-card-info">
               <div className="meeting-intel-card-title">Live Captions</div>
-              {isMobile && <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>}
             </div>
             <div className="meeting-intel-card-action">
-              {isMobile ? <span className="meeting-intel-locked-indicator" aria-label="Live Captions locked"><LockKeyhole size={16} aria-hidden="true" /></span> : (
-                <label className="meeting-intel-switch">
-                  <input
-                    type="checkbox"
-                    checked={isCaptionsEnabled}
-                    onChange={onToggleCaptions}
-                    aria-label="Toggle Live Captions"
-                  />
-                  <span className="meeting-intel-switch-slider" />
-                </label>
-              )}
+              <label className="meeting-intel-switch">
+                <input
+                  type="checkbox"
+                  defaultChecked={false}
+                  disabled
+                  aria-label="Live Captions unavailable"
+                />
+                <span className="meeting-intel-switch-slider" />
+              </label>
+              <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>
             </div>
           </div>
-
-          {!isMobile && <div className="meeting-intel-card-subbar meeting-intel-premium-lock"><span>Caption translation</span></div>}
         </div>
       </div>}
     </div>

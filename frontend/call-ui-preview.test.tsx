@@ -293,20 +293,24 @@ describe("call UI preview interactions", () => {
       expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
     }
     expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
-    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    const captions = menu?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions).not.toBeNull();
+    expect(captions?.disabled).toBe(true);
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
-  it("keeps all three Stovo Intelligence actions available from the desktop control", () => {
+  it("keeps AI Notes and Recording available and Live Captions disabled from the desktop control", () => {
     const container = mountPreview();
     click(container, "Desktop");
     click(container, "Stovo Intelligence");
     const intelligence = document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
     expect(intelligence).not.toBeNull();
-    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+    for (const label of ["Start AI Notes", "Start Recording"]) {
       expect(intelligence?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
     }
+    const captions = intelligence?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions?.disabled).toBe(true);
   });
 
   it.each([320, 360])("keeps mobile controls circular, fixed-size and equally spaced at %ipx", (width) => {
@@ -407,7 +411,9 @@ describe("call UI preview interactions", () => {
     act(() => menu?.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
     expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(menu?.querySelector('[aria-label="Live Captions locked"]')).not.toBeNull();
+    const captions = menu?.querySelector<HTMLInputElement>('[aria-label="Live Captions unavailable"]');
+    expect(captions).not.toBeNull();
+    expect(captions?.disabled).toBe(true);
     expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
