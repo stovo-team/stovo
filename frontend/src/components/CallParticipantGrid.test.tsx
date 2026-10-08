@@ -64,7 +64,7 @@ describe("shared call participant presentation", () => {
     expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/grid-column:\s*1/);
     expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/overflow:\s*hidden/);
     expect(styleRules(css, ".call-grid__remote-rail")).toMatch(/overflow-y:\s*auto/);
-    expect(css).toMatch(/@media[^{}]*\(max-width:\s*640px\)[\s\S]*?\.call-grid--screen-share\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/);
+    expect(css).toMatch(/@media[^{}]*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/);
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__remote-rail\s*\{[^}]*overflow-x:\s*auto/);
   });
 

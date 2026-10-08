@@ -14,10 +14,12 @@ describe("desktop call device controls", () => {
     expect(desktopCalls).toContain("capabilities={callAudioCapabilities}");
   });
 
-  it("uses the same split controls in voice channels while preserving the mobile-only controls", () => {
+  it("uses shared device controls and routes secondary voice actions through the mobile More menu", () => {
     expect(voiceCalls).toContain("CallDeviceControls");
     expect(voiceCalls).toContain("voice-room-in-call-controls guest-call-controls shared-call-controls");
-    expect(voiceCalls).toContain("voice-mobile-only-control");
+    expect(voiceCalls).toContain("MobileCallMoreMenu");
+    expect(voiceCalls).toContain('action="audio-output"');
+    expect(voiceCalls).toContain('className="call-grid__flip-camera voice-channel-flip-camera"');
     expect(voiceCalls).toContain("capabilities={callAudioCapabilities}");
     expect(voiceCalls).toContain("labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }}");
     expect(voiceCalls).toContain("voiceStrings?.unmuteMic");
