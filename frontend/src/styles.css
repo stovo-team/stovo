@@ -244,9 +244,14 @@
 }
 
 .call-popup-group-call .call-popup-header-actions > .icon-button {
-  flex-basis: 36px;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
 }
 
 .call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .call-popup-ctrl-row {
@@ -290,22 +295,20 @@
 }
 
 .call-popup-group-call:not(.call-popup-minimized) .call-popup-header-actions {
-  position: absolute;
-  top: 16px;
-  left: 20px;
-  right: auto;
-  z-index: 4;
+  position: static;
+  margin: 0;
+  grid-column: 1;
+  grid-row: 1;
 }
 .call-popup-group-call:not(.call-popup-minimized) .call-popup-header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
   min-height: 40px;
-  padding-left: 52px;
-  padding-right: 150px;
+  padding: 0;
 }
-.call-popup-group-call .call-popup-ctrl-row .call-ctrl-wrap:has(.call-ctrl-btn--invite) {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-}
+.call-popup-group-call .call-popup-status { grid-column: 2; grid-row: 1; }
+.call-popup-header-invite { margin-left: 8px; flex-shrink: 0; }
+.call-popup-group-call .call-popup-header-invite { grid-column: 3; grid-row: 1; margin: 0; width: 40px; height: 40px; }
 /* The same shared stage and disabled Intelligence treatment apply to every call. */
 .call-popup-audio-stage:empty { display: none; }
 .call-popup-group-call .call-popup-audio-stage .call-popup-group-participants {
@@ -330,10 +333,10 @@
 
 @media (min-width: 681px) {
   .call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header {
-    display: flex;
+    display: grid;
     position: static;
     top: auto;
-    padding: 0 52px;
+    padding: 0;
     flex-shrink: 0;
   }
   .call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-video-area {
@@ -913,9 +916,12 @@
 }
 
 .shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
-  aspect-ratio: 16 / 9;
+  height: 100%;
+  aspect-ratio: auto;
+  align-self: stretch;
   max-height: 100%;
 }
+.call-grid__tile--screen .call-grid__video { object-position: center top; }
 
 @media (max-width: 720px) {
   .call-grid--screen-share {
@@ -4101,13 +4107,13 @@ h2 {
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
-  height: 36px;
+  height: 40px;
   justify-content: center;
   padding: 0;
   position: absolute;
   right: 12px;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
-  width: 36px;
+  width: 40px;
   z-index: 15;
 }
 
@@ -5095,9 +5101,9 @@ h2 {
   gap: 8px;
   grid-template-columns: auto 1fr auto;
   justify-self: center;
-  margin-bottom: 12px;
   width: min(260px, calc(100vw - 48px));
-  padding: 8px 12px;
+  padding: 4px 8px;
+  margin-block: 3px;
 }
 
 .call-history-message svg {
@@ -7194,8 +7200,6 @@ span.message-spoiler.is-revealed {
     padding: 14px 12px 16px;
   }
   .call-popup-group-call .call-popup-ctrl-row { flex-wrap: nowrap; gap: clamp(4px, 1.4vw, 10px); }
-  .call-popup-group-call .call-popup-ctrl-row .call-ctrl-wrap:has(.call-ctrl-btn--invite) { top: 12px; right: 12px; }
-  .call-popup-group-call:not(.call-popup-minimized) .call-popup-header-actions { top: 12px; left: 12px; }
 }
 
 /* OG previews are visual messages, not full-width conversation cards. Keep
@@ -13438,13 +13442,13 @@ span.message-spoiler.is-revealed {
   color: #ffffff;
   cursor: pointer;
   display: flex;
-  height: 36px;
+  height: 40px;
   justify-content: center;
   padding: 0;
   position: fixed;
   bottom: 32px;
   right: 32px;
-  width: 36px;
+  width: 40px;
   z-index: 90;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
 }
@@ -13525,10 +13529,10 @@ span.message-spoiler.is-revealed {
   .plans-timeline-events .plan-row { gap: 0; grid-template-columns: minmax(0, 1fr); padding: 6px; }
   .plans-create-fab {
     bottom: var(--fab-offset-bottom);
-    height: 36px;
+    height: 40px;
     position: fixed;
     right: var(--fab-offset-right);
-    width: 36px;
+    width: 40px;
   }
   .plans-dialog-times { grid-template-columns: 1fr; }
   .plan-row { gap: 8px; grid-template-columns: 48px minmax(0, 1fr); padding: 8px 0; }
@@ -25862,6 +25866,8 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 /* Shared structure and control affordances for direct/group calls, voice
    channels, and guest meetings. Surface wrappers retain their own placement. */
+.shared-call-stage .call-grid-shell { display: flex; flex-direction: column; width: 100%; min-height: 0; height: 100%; justify-content: center; }
+
 .shared-call-stage {
   color: var(--text-primary, #fff);
   min-width: 0;
@@ -25895,13 +25901,15 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 .shared-call-stage .call-grid--presenting { aspect-ratio: 19 / 9; }
 .shared-call-stage .call-grid--presenting.call-grid--screen-share {
+  width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
   max-height: 100%;
   aspect-ratio: auto;
 }
 .shared-call-stage .voice-participant-card.has-video,
 .shared-call-stage .call-grid__tile { aspect-ratio: 16 / 9; }
-.shared-call-stage .call-grid__tile--screen { aspect-ratio: 19 / 9; }
+.shared-call-stage .call-grid__tile--screen { aspect-ratio: auto; }
 
 .shared-call-stage .voice-participant-card,
 .shared-call-stage .call-grid__tile {
@@ -25916,20 +25924,14 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-stage .call-grid__tile { transition: background .2s ease; }
 .shared-call-stage .call-grid__video { object-fit: contain; }
 
-.shared-call-stage .voice-participant-card.is-speaking:not(.has-video),
-.shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) {
+.shared-call-stage .voice-participant-card.is-speaking,
+.shared-call-stage .call-grid__tile.is-speaking {
   border-color: #22c55e;
   box-shadow: 0 0 0 1px rgba(34, 197, 94, .82), 0 0 20px rgba(34, 197, 94, .18);
 }
 .shared-call-stage .voice-participant-card.is-speaking:not(.has-video) .voice-participant-avatar,
 .shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) .call-grid__avatar-circle {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, .82), 0 0 18px rgba(34, 197, 94, .24);
-}
-
-.shared-call-stage .call-grid__tile.is-speaking:not(:has(.call-grid__avatar-wrap)) {
-  border-color: rgba(255, 255, 255, .12);
-  box-shadow: none;
-  outline: none;
 }
 
 .shared-call-controls {
@@ -31057,14 +31059,7 @@ button.checklist-add-item-btn:hover,
   white-space: nowrap;
 }
 
-.guest-call-header i {
-  background: #fb923c;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(251, 146, 60, .16);
-  display: block;
-  height: .46rem;
-  width: .46rem;
-}
+
 
 .guest-call-room .voice-room-grid {
   max-width: 1440px;
@@ -31096,14 +31091,14 @@ button.checklist-add-item-btn:hover,
 }
 
 .guest-call-screen-stage {
-  align-content: center;
+  align-content: stretch;
   display: grid;
   justify-items: stretch;
 }
 
 .guest-call-screen-tile {
-  aspect-ratio: 16 / 9;
-  height: auto;
+  aspect-ratio: auto;
+  height: 100%;
   max-height: 100%;
   min-height: 0;
   width: 100%;
@@ -31111,6 +31106,7 @@ button.checklist-add-item-btn:hover,
 
 .guest-call-screen-tile .voice-participant-video-feed {
   object-fit: contain;
+  object-position: center top;
 }
 
 .guest-call-camera-rail {
@@ -31251,7 +31247,7 @@ button.checklist-add-item-btn:hover,
   .guest-prejoin-preview video { object-fit: contain; }
   .guest-call-room .guest-call-spotlight { flex: 1 1 0; height: 100%; }
   .guest-call-room .guest-call-screen-stage { min-width: 0; align-content: stretch; }
-  .guest-call-room .guest-call-screen-tile { aspect-ratio: 16 / 9 !important; height: auto; max-height: 100%; }
+  .guest-call-room .guest-call-screen-tile { aspect-ratio: auto; height: 100%; max-height: 100%; }
   .guest-call-room .voice-participant-video-feed { object-fit: contain; }
 }
 
@@ -31703,3 +31699,10 @@ button.checklist-add-item-btn:hover,
 }
 .minimized-call--video .minimized-call-controls { position: absolute; bottom: 8px; right: 8px; }
 .minimized-call--video .minimized-call-button:not(.minimized-call-button--end) { background: rgb(0 0 0 / 55%); color: #fff; }
+
+.voice-channel-room .voice-room-stage {
+  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 64px);
+}
+.voice-room-participant-content { justify-content: center; }
+.voice-room-member-invite, .voice-room-expand-button { box-sizing: border-box; flex-shrink: 0; }
+.chat-list-item:has(.chat-list-voice-participants) { padding-block: 5px; }

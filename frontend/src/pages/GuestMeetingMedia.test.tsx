@@ -34,3 +34,9 @@ describe("guest call speaking presentation", () => {
     expect(markup).not.toContain("↗");
   });
 });
+
+it.each([false, true])("marks a speaking guest tile for its green border (camera=%s)", (hasVideo) => {
+  const markup = renderToStaticMarkup(<GuestParticipantTile label="Guest" hasVideo={hasVideo} speaking />);
+  expect(markup).toMatch(/class="voice-participant-card[^"]*\bis-speaking\b/);
+  expect(renderToStaticMarkup(<GuestParticipantTile label="Guest" hasVideo={hasVideo} speaking={false} />)).not.toContain("is-speaking");
+});

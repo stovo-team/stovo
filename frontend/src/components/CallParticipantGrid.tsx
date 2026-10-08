@@ -143,7 +143,7 @@ function ParticipantTile({
 }) {
   return (
     <div
-      className={`${className}${isSpeaking ? " is-speaking" : ""}${mobilePrimary ? " call-grid__mobile-primary" : ""}${mobilePip ? " call-grid__mobile-pip mobile-active-pip" : ""}`}
+      className={`${className}${isSpeaking && !isScreen ? " is-speaking" : ""}${mobilePrimary ? " call-grid__mobile-primary" : ""}${mobilePip ? " call-grid__mobile-pip mobile-active-pip" : ""}`}
       style={style}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : isScreen ? -1 : undefined}
@@ -205,7 +205,7 @@ function ParticipantTile({
         {label}
         {isScreen ? " · Screen" : ""}
       </span>
-      {isConnected && <span className="call-grid__participant-status" role="status">{isMuted ? "Muted" : isSpeaking ? "Speaking" : "Connected"}</span>}
+      {isConnected && !isScreen && <span className="call-grid__participant-status" role="status">{isMuted ? "Muted" : isSpeaking ? "Speaking" : "Connected"}</span>}
     </div>
   );
 }
@@ -256,11 +256,6 @@ export default function CallParticipantGrid({
   const count = 1 + remoteMedia.length;
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
 
-  const isPresenterSpeaking = presenter
-    ? presenter.userId === localUserLabel
-      ? isLocalSpeaking && !isLocalMuted
-      : isCallConnected && !("isMuted" in presenter && presenter.isMuted) && (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
-    : false;
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
   const useBottomScreenShareRail = useScreenShareRail && remoteMedia.length >= 4;
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
@@ -333,7 +328,7 @@ export default function CallParticipantGrid({
           style={useScreenShareRail
             ? useBottomScreenShareRail
               ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: "100%", height: "100%", maxWidth: "none", maxHeight: "none", aspectRatio: "auto", alignSelf: "stretch", justifySelf: "stretch" }
-              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", alignSelf: "center", justifySelf: "stretch" }
+              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", height: "100%", aspectRatio: "auto", alignSelf: "stretch", justifySelf: "stretch" }
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
               : landscapePresenterTileStyle}
@@ -341,7 +336,6 @@ export default function CallParticipantGrid({
           stream={presenter.screenStream}
           showVideo
           isScreen
-          isSpeaking={isPresenterSpeaking}
           isMuted={presenter.userId === localUserLabel ? isLocalMuted : "isMuted" in presenter && Boolean(presenter.isMuted)}
           isConnected={isCallConnected}
         />

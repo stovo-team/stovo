@@ -55,6 +55,7 @@ function renderDesktopControls({
   isPeerSpeaking = false,
   isLocalSpeaking = false,
   withRemoteVideo = false,
+  sharing = false,
   callType = "video",
   activeChat = null,
   currentUser = null,
@@ -65,6 +66,7 @@ function renderDesktopControls({
   isLocalSpeaking?: boolean;
   withRemoteVideo?: boolean;
   callType?: "audio" | "video";
+  sharing?: boolean;
   activeChat?: { id: string; type: string; title: string; members: Array<{ id: string; displayName: string; profilePhoto: null }> } | null;
   currentUser?: { id: string; displayName: string; profilePhoto: null } | null;
 } = {}) {
@@ -96,7 +98,7 @@ function renderDesktopControls({
       hasScreenShare: false,
     }] : [],
     localVideoStream: null,
-    localScreenStream: null,
+    localScreenStream: sharing ? mockRemoteStream : null,
     remoteVideoStream: null,
     remoteVideoRef: { current: null },
     localVideoRef: { current: null },
@@ -177,6 +179,18 @@ describe("DesktopCallControls visibility", () => {
     expect(speakingTile?.querySelector("[role='status']")?.textContent).toContain("Speaking");
     expect(speakingTile?.querySelector("video")?.srcObject).not.toBeNull();
     expect(speakingTile?.querySelector(".speaking-wave-badge")).toBeNull();
+  });
+
+  it("keeps the invite action in the header above media", () => {
+    const host = renderDesktopControls();
+    expect(host.querySelector('.call-popup-header [aria-label="Invite people"]')).not.toBeNull();
+    expect(host.querySelector('.call-popup-ctrl-row [aria-label="Invite people"]')).toBeNull();
+  });
+
+  it("shows only the presentation stage when an audio group call shares a screen", () => {
+    const host = renderDesktopControls({ callType: "audio", sharing: true, activeChat: { id: "room", type: "group", title: "Room", members: [{ id: "self", displayName: "Self", profilePhoto: null }] }, currentUser: { id: "self", displayName: "Self", profilePhoto: null } });
+    expect(host.querySelector('.call-grid__tile--screen')).not.toBeNull();
+    expect(host.querySelector('.call-popup-group-participants')).toBeNull();
   });
 
   it("keeps desktop controls visible after 15 seconds and pointer interactions", () => {

@@ -19,8 +19,8 @@ describe("guest call stage layout", () => {
     expect(rules(".guest-call-camera-tile")).toContain("container-type: inline-size");
     expect(rules(".guest-call-camera-tile .guest-call-avatar-halo")).toMatch(/height:\s*100%/);
   });
-  it("uses the brand accent for the participant-count marker", () => {
-    expect(rules(".guest-call-header i")).toContain("#fb923c");
-    expect(rules(".guest-call-header i")).not.toContain("#22c55e");
+  it("omits the participant-count status dot", () => {
+    const source = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
+    expect(source).not.toContain('<i aria-hidden="true" />');
   });
 });

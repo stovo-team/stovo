@@ -70,6 +70,17 @@ describe("shared call participant presentation", () => {
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 clamp\(88px, 17vw, 150px\);[^}]*aspect-ratio:\s*16\s*\/\s*9/);
   });
 
+  it("keeps speech on the participant, and fills the screen stage without a fixed ratio", () => {
+    const screen = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const container = renderGrid({ localStream: null, localScreenStream: screen, remoteMedia: [], callType: "audio", isLocalSpeaking: true });
+    const tile = container.querySelector<HTMLElement>(".call-grid__tile--screen")!;
+    expect(tile.classList.contains("is-speaking")).toBe(false);
+    expect(tile.querySelector('[role="status"]')).toBeNull();
+    expect(tile.style.aspectRatio).toBe("auto");
+    expect(tile.style.height).toBe("100%");
+    expect(container.querySelector('.call-grid__tile--local.is-speaking')).not.toBeNull();
+  });
+
   it("uses the full shared stage and moves crowded screen-share participants to a compact bottom row", () => {
     const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
     const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;

@@ -11,6 +11,7 @@ import {
   Settings,
   Video,
   VideoOff,
+  UserPlus,
 } from "lucide-react";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { CallPopupAudioStage } from "./CallPopupAudioStage";
@@ -200,6 +201,11 @@ export function DesktopCallControls() {
             </button>
           )}
         </div>
+        {callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
+          <button type="button" className={`call-ctrl-btn call-ctrl-btn--invite call-popup-header-invite${isCallInviteOpen ? " is-active" : ""}`} aria-label="Invite people" title="Invite people" onClick={() => setIsCallInviteOpen((value) => !value)}>
+            <UserPlus size={20} aria-hidden="true" />
+          </button>
+        )}
       </div>
       )}
 
@@ -390,20 +396,7 @@ export function DesktopCallControls() {
                 </button>
                 <span>Settings</span>
               </div>
-              {callPhase === "in-call" && (
-                <div className="call-ctrl-wrap">
-                  <button
-                    type="button"
-                    className={`call-ctrl-btn call-ctrl-btn--invite${isCallInviteOpen ? " is-active" : ""}`}
-                    aria-label="Invite people"
-                    title="Invite people"
-                    onClick={() => setIsCallInviteOpen((v) => !v)}
-                  >
-                    <span className="ms-icon ms-icon--20" aria-hidden={true}>person_add</span>
-                  </button>
-                  <span>Invite</span>
-                </div>
-              )}
+
               {callPhase === "in-call" && (
                 <>
                   <div className="call-ctrl-wrap">
