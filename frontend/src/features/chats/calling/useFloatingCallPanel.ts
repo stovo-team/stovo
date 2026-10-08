@@ -29,7 +29,9 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
     setPosition(savedPosition ? constrain(savedPosition, false) : null);
     const resize = () => { if (savedPosition) save(constrain(savedPosition, false)); };
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    if (ref.current) observer?.observe(ref.current);
+    return () => { window.removeEventListener("resize", resize); observer?.disconnect(); };
   }, [enabled]);
   const finish = (event: React.PointerEvent<HTMLElement>, snap: boolean) => {
     const current = drag.current;

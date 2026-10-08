@@ -3,6 +3,10 @@ export const CALL_SPEAKING_RELEASE_DELAY_MS = 1_000;
 
 export type CallSpeakingState = "idle" | "speaking" | "settling";
 
+export function isCallSpeakingActive(state: CallSpeakingState) {
+  return state !== "idle";
+}
+
 /** Applies the shared voice activity threshold and release grace period. */
 export function createCallSpeakingIndicator(onStateChange: (state: CallSpeakingState) => void) {
   let currentState: CallSpeakingState = "idle";

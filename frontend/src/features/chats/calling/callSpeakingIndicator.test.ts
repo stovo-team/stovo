@@ -17,7 +17,7 @@ describe("shared call speaking indicator", () => {
     expect(callSessionSource).toMatch(/localSpeakingIndicator\s*=\s*createCallSpeakingIndicator\(/);
     expect(callSessionSource).toContain('localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity })');
     expect(callSessionSource).toContain('indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity })');
-    expect(callSessionSource).toContain('indicator && indicator.state !== "idle"');
+    expect(callSessionSource).toContain('indicator && isCallSpeakingActive(indicator.state)');
     expect(callSessionSource).toContain("peerSpeakingUserIdsCallback?.(activeSpeakingUserIds)");
     expect(callSessionSource).toContain("localSpeakingCallback?.(isSpeaking)");
     expect(callSessionSource).toContain("CALL_SPEAKING_THRESHOLD");

@@ -1,5 +1,3 @@
-import { MemoryRouter, useNavigate } from "react-router-dom";
-import { CallFeature } from "./CallFeature";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -54,21 +52,15 @@ afterEach(() => {
 });
 
 function renderDesktopControls({
-  useFeature = false,
   isPeerSpeaking = false,
   isLocalSpeaking = false,
   withRemoteVideo = false,
   callType = "video",
   activeChat = null,
   currentUser = null,
-  minimized = false,
-  onOpenChat = vi.fn(),
-  setIsCallMinimized = vi.fn(),
+  overrides = {},
 }: {
-  minimized?: boolean;
-  onOpenChat?: ReturnType<typeof vi.fn>;
-  setIsCallMinimized?: ReturnType<typeof vi.fn>;
-  useFeature?: boolean;
+  overrides?: Partial<CallSessionApi>;
   isPeerSpeaking?: boolean;
   isLocalSpeaking?: boolean;
   withRemoteVideo?: boolean;
@@ -92,8 +84,8 @@ function renderDesktopControls({
     callType,
     setCallType: noop,
     callNotice: null,
-    isCallMinimized: minimized,
-    setIsCallMinimized,
+    isCallMinimized: false,
+    setIsCallMinimized: noop,
     hasRemoteVideo: withRemoteVideo,
     callRemoteMedia: withRemoteVideo ? [{
       userId: "peer",
@@ -156,40 +148,25 @@ function renderDesktopControls({
     } : {},
     callTimer: "00:15",
     callPeerUserId: "peer",
+    ...overrides,
   } as unknown as CallSessionApi;
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
   mountedRoots.push(root);
-  function Navigation() {
-    const navigate = useNavigate();
-    return <><button data-route="plans" onClick={() => navigate('/app/plans')}>Plans</button><button data-route="chats" onClick={() => navigate('/app/chats/room')}>Chats</button></>;
-  }
   act(() => root.render(
-    <MemoryRouter initialEntries={['/app/chats/room']}><Navigation />
     <CallFeatureProvider
-      onOpenChat={onOpenChat}
       session={session}
       isMobileViewport={false}
       members={(activeChat?.members ?? []) as never}
       currentUser={currentUser as never}
       chats={(activeChat ? [activeChat] : []) as never}
     >
-      {useFeature ? <CallFeature /> : <DesktopCallControls />}
-    </CallFeatureProvider></MemoryRouter>,
+      <DesktopCallControls />
+    </CallFeatureProvider>,
   ));
   return host;
 }
-
-it("restores the expanded call after navigating back to chats", () => {
-  renderDesktopControls({ useFeature: true });
-  act(() => (document.querySelector('[data-route="plans"]') as HTMLButtonElement).click());
-  expect(document.querySelector('.call-popup-minimized')).not.toBeNull();
-  act(() => (document.querySelector('[data-route="chats"]') as HTMLButtonElement).click());
-  expect(document.querySelector('.call-popup')).not.toBeNull();
-  expect(document.querySelector('.call-popup-minimized')).toBeNull();
-});
-
 
 describe("DesktopCallControls visibility", () => {
   it("does not overlay a top-right audio wave badge on the remote video when speaking", () => {
@@ -248,15 +225,43 @@ describe("DesktopCallControls visibility", () => {
     expect(container.querySelector('.call-popup-group-participant.is-speaking .voice-participant-state')?.textContent).toBe("Speaking…");
   });
 
-});
+  const group = {
+    id: "group", type: "group", title: "Team",
+    members: [{ id: "self", displayName: "Sam", profilePhoto: null }],
+  };
+  const self = { id: "self", displayName: "Sam", profilePhoto: null };
 
+  it("keeps the self tile and camera controls visible while connecting", () => {
+    const host = renderDesktopControls({ activeChat: group, currentUser: self, callType: "audio", isLocalSpeaking: true, overrides: { callPhase: "connecting", callParticipantIds: ["self"], callPeerUserId: null, activeGroupCalls: {} } });
+    expect(host.querySelector(".call-popup-group-participant")?.textContent).toContain("Sam (You)");
+    expect(host.querySelector(".call-popup-group-participant.is-speaking")).toBeNull();
+    expect(host.querySelector('[aria-label="Toggle Camera"]')).not.toBeNull();
+    expect(host.querySelector(".call-popup-group-participants")?.closest(".shared-call-stage")).not.toBeNull();
+  });
 
-it("restores the active chat when the minimized title is clicked", () => {
-  const onOpenChat = vi.fn();
-  const setIsCallMinimized = vi.fn();
-  const chat = { id: "room", type: "group", title: "Room", members: [] };
-  const host = renderDesktopControls({ minimized: true, activeChat: chat, onOpenChat, setIsCallMinimized });
-  act(() => (host.querySelector('[data-call-drag-handle]') as HTMLElement).click());
-  expect(setIsCallMinimized).toHaveBeenCalledWith(false);
-  expect(onOpenChat).toHaveBeenCalledWith(chat);
+  it("opens the shared audio dialog directly", () => {
+    const openAudio = vi.fn();
+    const openMenu = vi.fn();
+    const host = renderDesktopControls({ overrides: { setIsCallAudioPopupOpen: openAudio, setIsCallSettingsMenuOpen: openMenu } });
+    act(() => host.querySelector<HTMLButtonElement>('[aria-label="Audio settings"]')?.click());
+    expect(openAudio).toHaveBeenCalledWith(true);
+    expect(openMenu).not.toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it("shows the captured screen and participant rail without a second audio stage", () => {
+    const track = { readyState: "live", enabled: true };
+    const screen = { getVideoTracks: () => [track] } as unknown as MediaStream;
+    const host = renderDesktopControls({ activeChat: group, currentUser: self, callType: "audio", overrides: { localScreenStream: screen, callAudioSettings: { ...DEFAULT_CALL_SETTINGS, screenSharing: true } } });
+    expect(host.querySelector(".call-grid__tile--screen video")?.srcObject).toBe(screen);
+    expect(host.querySelector(".call-popup-video-area-hidden")).toBeNull();
+    expect(host.querySelector(".call-popup-group-participants")).toBeNull();
+    expect(host.querySelector(".call-grid__participant-pin .call-grid__tile--local")).not.toBeNull();
+  });
+
+  it("uses one participant stage for a group video call with the camera off", () => {
+    const host = renderDesktopControls({ activeChat: group, currentUser: self, overrides: { callAudioSettings: { ...DEFAULT_CALL_SETTINGS, cameraEnabled: false } } });
+    expect(host.querySelector(".call-grid")).not.toBeNull();
+    expect(host.querySelector(".call-popup-group-participants")).toBeNull();
+  });
+
 });

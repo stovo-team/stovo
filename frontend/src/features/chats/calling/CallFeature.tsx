@@ -1,6 +1,7 @@
-import { useEffect } from "react";
-import { useFloatingCallPanel, resetFloatingCallPosition } from "./useFloatingCallPanel";
-import { useLocation } from "react-router-dom";
+import { useEffect, useLayoutEffect } from "react";
+import { resetFloatingCallPosition } from "./useFloatingCallPanel";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getClusterPath } from "../../../api/client";
 import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
@@ -13,7 +14,7 @@ import { GroupCallPreJoinModal } from "./GroupCallPreJoinModal";
 import { VoiceChannelStage } from "./VoiceChannelStage";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 import { MobileIncomingScreen } from "./MobileIncomingScreen";
-import { MobileMinimizedCallBar } from "./MobileMinimizedCallBar";
+import { MinimizedCallBar } from "./MinimizedCallBar";
 import { useCallTimer } from "./useCallTimer";
 import { CallFeatureProvider as CallFeatureContextProvider, useCallFeatureContext } from "./CallFeatureContext";
 
@@ -23,7 +24,7 @@ export {
   CallVideoSettingsPopup,
   CallSpeakerSheet,
   MobileActiveScreen,
-  MobileMinimizedCallBar,
+  MinimizedCallBar,
   MobileIncomingScreen,
   GroupCallActiveBanner,
   GroupCallPreJoinModal,
@@ -43,7 +44,7 @@ export { CallFeatureProvider } from "./CallFeatureContext";
 export function CallFeature() {
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const { pathname } = useLocation();
-
+  const navigate = useNavigate();
   const {
     callPhase,
     callType,
@@ -97,15 +98,13 @@ export function CallFeature() {
   const isGroupCallSharing = isGroupCall && (
     callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)
   );
-  // Voice channels use the persistent call header owned by ChatsPage when
-  // minimized. Keeping them out of the generic popup prevents minimization
-  // from looking like the room ended or from creating a second call surface.
-  const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
+  // Expanded voice channels live in the conversation. Every minimized call
+  // is owned here, outside route surfaces, so only one call bar can appear.
   const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
   const routeMinimized = callPhase !== "idle" && !isOnChatsRoute;
-  const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
-  const floating = useFloatingCallPanel<HTMLElement>(effectiveIsCallMinimized && !isMobileViewport);
   useEffect(() => { if (callPhase === "idle") resetFloatingCallPosition(); }, [callPhase]);
+  const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
+  const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
   const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
 
   const callUiSession = {
@@ -116,6 +115,13 @@ export function CallFeature() {
       session.setIsCallMinimized(nextValue);
     },
   };
+
+  // Capture success owns minimization; restoring the window must not restart capture.
+  useLayoutEffect(() => {
+    if (localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")) {
+      session.setIsCallMinimized(true);
+    }
+  }, [localScreenStream, session.setIsCallMinimized]);
 
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
@@ -140,9 +146,21 @@ export function CallFeature() {
 
   const callUi = (
     <>
-      {routeMinimized && (isMobileViewport || isVoiceChannel) && (
-        <MobileMinimizedCallBar
-          className="mobile-call-strip--global"
+      <MinimizedCallBar
+          key={session.callRoomId ?? session.activeCallChatId ?? "call"}
+          visible={effectiveIsCallMinimized}
+          soundDisabled={callAudioSettings.soundDisabled}
+          onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
+          remoteMedia={session.callRemoteMedia.length ? session.callRemoteMedia : remoteVideoStream ? [{ userId: session.callPeerUserId ?? "peer", stream: remoteVideoStream, screenStream: null, hasVideo: hasRemoteVideo, hasAudio: true, hasScreenShare: false }] : []}
+          localVideoStream={localVideoStream}
+          localScreenStream={localScreenStream}
+          cameraEnabled={callAudioSettings.cameraEnabled}
+          screenSharing={callAudioSettings.screenSharing}
+          localUserId={currentUser?.id ?? "self"}
+          speakingUserIds={session.speakingUserIds}
+          isLocalSpeaking={isLocalSpeaking}
+          isPeerSpeaking={isPeerSpeaking}
+          mirrorLocalVideo={callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user"}
           peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (activeChat?.title ?? "Call")}
           callPhase={callPhase}
           callTimer={callTimer}
@@ -151,10 +169,12 @@ export function CallFeature() {
           onEnd={() => void endActiveCall()}
           onExpand={() => {
             callUiSession.setIsCallMinimized(false);
-            if (activeChat) onOpenChat?.(activeChat);
+            if (activeChat) {
+              onOpenChat?.(activeChat);
+              if (!isOnChatsRoute) navigate(getClusterPath(`/app/chats/${encodeURIComponent(activeChat.id)}`));
+            }
           }}
         />
-      )}
       {preJoinChatId && preJoinActiveCall && preJoinChat && (
         <GroupCallPreJoinModal
           chatTitle={preJoinChat.title ?? "Group Chat"}
@@ -171,12 +191,11 @@ export function CallFeature() {
             <div className="call-popup-backdrop-overlay" aria-hidden="true" />
           )}
           <section
-            {...floating}
+            hidden={effectiveIsCallMinimized}
+            style={effectiveIsCallMinimized ? { display: "none" } : undefined}
             className={[
               "call-popup",
-              effectiveIsCallMinimized ? "call-popup-minimized" : "",
               shouldUseFullscreenSurface ? "call-popup-fullscreen" : "",
-              effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
               isGroupCall ? "call-popup-group-call" : "",
               isGroupCallSharing ? "call-popup-group-call--sharing" : "",
             ].filter(Boolean).join(" ")}

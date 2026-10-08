@@ -8,7 +8,7 @@ import {
 } from "./mediaEngineFactory";
 import type { CallQualityBitrates } from "./callQuality";
 // createCallSpeakingIndicator centralizes CALL_SPEAKING_THRESHOLD and CALL_SPEAKING_RELEASE_DELAY_MS.
-import { createCallSpeakingIndicator, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
+import { createCallSpeakingIndicator, isCallSpeakingActive, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
 import {
   CallCapabilities,
   CallDevice,
@@ -121,6 +121,7 @@ export default class CallSessionController {
   }
 
   setRoomId(id: string) {
+    if (this.roomId !== id) this.sfuConnectPromise = null;
     this.roomId = id;
     this.mesh.setRoomId(id);
   }
@@ -333,14 +334,16 @@ export default class CallSessionController {
     await this.flushPreconnectSignals();
   }
 
+  // Reuse the successful join until the room disconnects, including participant updates.
   async switchToSfu(): Promise<void> {
     if (this.sfuConnectPromise) return this.sfuConnectPromise;
     const connection = this.connectToSfu();
     this.sfuConnectPromise = connection;
     try {
       await connection;
-    } finally {
+    } catch (error) {
       if (this.sfuConnectPromise === connection) this.sfuConnectPromise = null;
+      throw error;
     }
   }
 
@@ -637,6 +640,7 @@ export default class CallSessionController {
     const endingChatId = this.chatId;
 
     this.mesh.stopAll();
+    this.sfuConnectPromise = null;
     await this.sfu.disconnect();
 
     if (!serverAlreadyNotified && endingChatId && this.socket.connected) {
@@ -740,6 +744,7 @@ export default class CallSessionController {
     };
     this.sfu.onConnected = () => this.markMediaConnected();
     this.sfu.onDisconnected = () => {
+      this.sfuConnectPromise = null;
       this.remoteMicrophoneMuted.clear();
       this.remoteMedia.clear();
       this.notifyRemoteMediaChange();
@@ -1138,7 +1143,7 @@ export default class CallSessionController {
   private registerLocalAudioSpeaking(stream: MediaStream) {
     this.localSpeakingIndicator?.dispose();
     this.localSpeakingIndicator = createCallSpeakingIndicator((state: CallSpeakingState) => {
-      const isSpeaking = state !== "idle";
+      const isSpeaking = isCallSpeakingActive(state);
       if (isSpeaking !== this.wasLocalSpeaking) {
         this.wasLocalSpeaking = isSpeaking;
         this.localSpeakingCallback?.(isSpeaking);
@@ -1207,7 +1212,7 @@ export default class CallSessionController {
         const avg = data.reduce((s, v) => s + v, 0) / data.length;
         const indicator = this.remoteSpeakingIndicators.get(uid);
         indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
-        if (indicator && indicator.state !== "idle") activeSpeakingUserIds.push(uid);
+        if (indicator && isCallSpeakingActive(indicator.state)) activeSpeakingUserIds.push(uid);
       }
 
       const anySpeaking = activeSpeakingUserIds.length > 0;

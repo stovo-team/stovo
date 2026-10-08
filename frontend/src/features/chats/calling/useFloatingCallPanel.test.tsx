@@ -58,3 +58,15 @@ it("snaps to side midpoints, retains position across remounts, and resets for a 
   act(() => root.unmount()); resetFloatingCallPosition();
   expect(mount().panel.style.left).toBe('');
 });
+
+it("keeps the controls visible when a minimized audio panel grows a video preview", () => {
+  vi.stubGlobal('innerWidth', 1000); vi.stubGlobal('innerHeight', 800);
+  let resized!: () => void;
+  vi.stubGlobal('ResizeObserver', class { constructor(callback: () => void) { resized = callback; } observe() {} disconnect() {} });
+  const { panel, handle } = mount();
+  pointer(handle, 'pointerdown', 420, 120); pointer(panel, 'pointermove', 300, 748); pointer(panel, 'pointerup', 300, 748);
+  expect(panel.style.top).toBe('728px');
+  panel.getBoundingClientRect = () => ({ left: 280, top: 728, width: 200, height: 220 } as DOMRect);
+  act(() => resized?.());
+  expect(panel.style.top).toBe('568px');
+});

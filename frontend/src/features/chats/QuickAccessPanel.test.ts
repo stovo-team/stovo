@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const panel = readFileSync(resolve(process.cwd(), "src/features/chats/QuickAccessPanel.tsx"), "utf8");
+const callFeature = readFileSync(resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"), "utf8");
 const page = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 
 describe("message archive grouped view", () => {
@@ -16,9 +17,11 @@ describe("message archive grouped view", () => {
   it("keeps the minimized call bar visible over Drafts & scheduled", () => {
     expect(panel).toContain("minimizedCallHeader?: ReactNode");
     expect(panel).toContain("{minimizedCallHeader}");
-    expect(page).toContain("minimizedCallHeader={minimizedCallHeader}");
+    expect(page).toContain("<CallFeature />");
+    expect(callFeature).toContain("createPortal(callUiWithContext, document.body)");
     expect(page).toContain("setIsDraftsAndScheduledOpen(false)");
-    expect(page).toContain("(isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== \"idle\" && isCallMinimized");
+    expect(callFeature).toContain("<MinimizedCallBar");
+    expect(callFeature).toContain("visible={effectiveIsCallMinimized}");
   });
 
   it("loads scheduled messages from the outbox instead of showing a placeholder", () => {
