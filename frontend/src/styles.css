@@ -5045,6 +5045,7 @@ h2 {
   gap: 8px;
   grid-template-columns: auto 1fr auto;
   justify-self: center;
+  margin-bottom: 12px;
   width: min(260px, calc(100vw - 48px));
   padding: 8px 12px;
 }
