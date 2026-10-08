@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import { CalendarDays, Check, Clock3, Copy, DoorOpen, Link } from "lucide-react";
 import type { Chat } from "../../../api/chats";
 import { sendMessage } from "../../../api/chats";
@@ -38,7 +39,15 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
         : sourceChat;
       if (!targetChat) throw new Error("Could not create meeting chat");
       const meeting = await createGuestMeeting(memberToken, { chatId: targetChat.id, title: title.trim(), scheduledAt, admissionMode: mode, expiresAt });
-      setUrl(meeting.meetingUrl);
+      let meetingUrl = meeting.meetingUrl;
+      if (!Capacitor.isNativePlatform()) {
+        const publicMeetingUrl = new URL(meetingUrl, window.location.origin);
+        meetingUrl = new URL(
+          `${publicMeetingUrl.pathname}${publicMeetingUrl.search}${publicMeetingUrl.hash}`,
+          window.location.origin
+        ).toString();
+      }
+      setUrl(meetingUrl);
       if (targetChat) {
         const timing = meeting.scheduledAt
           ? `Planned for ${new Date(meeting.scheduledAt).toLocaleString()}.`
@@ -53,7 +62,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
           title: meeting.title,
           timing,
           entry,
-          url: meeting.meetingUrl
+          url: meetingUrl
         })}`;
         // The meeting exists at this point. A temporary chat-sync failure must
         // not make a working meeting link appear to have failed.
@@ -71,7 +80,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
       // Clipboard permissions vary by browser and embedding context. The link
       // remains available in the scrollable field and through the Copy button.
       try {
-        await navigator.clipboard?.writeText(meeting.meetingUrl);
+        await navigator.clipboard?.writeText(meetingUrl);
       } catch {
         // Copying is a convenience, not part of creating the meeting.
       }
