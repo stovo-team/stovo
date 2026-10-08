@@ -16,7 +16,8 @@ describe("group call presentation surface", () => {
     expect(callFeature).toContain("callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)");
     expect(callFeature).toContain("isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized)");
     expect(callFeature).toContain("shouldUseFullscreenSurface ? \"call-popup-fullscreen\" : \"\"");
-    expect(callFeature).toContain("effectiveIsCallMinimized ? \"call-popup-minimized\" : \"\"");
+    expect(callFeature).toContain("hidden={effectiveIsCallMinimized}");
+    expect(callFeature).toContain("visible={effectiveIsCallMinimized}");
   });
 
   it("uses a smaller group popup and compact invite and call controls", () => {

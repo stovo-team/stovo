@@ -38,7 +38,8 @@ describe("call session route lifetime", () => {
     expect(callFeatureSource).toContain("createPortal");
     expect(callFeatureSource).toContain("useLocation");
     expect(callFeatureSource).toContain("setRouteMinimized(true)");
-    expect(callFeatureSource).toContain('className="mobile-call-strip--global"');
-    expect(styles).toContain(".mobile-call-strip--global");
+    expect(callFeatureSource).toContain("<MinimizedCallBar");
+    expect(callFeatureSource).toContain("visible={effectiveIsCallMinimized}");
+    expect(styles).toContain(".minimized-call");
   });
 });

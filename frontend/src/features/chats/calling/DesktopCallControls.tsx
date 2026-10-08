@@ -140,6 +140,9 @@ export function DesktopCallControls() {
     }
   };
 
+  // Keep recording/caption hooks mounted when the shared bar replaces the UI.
+  if (isCallMinimized) return null;
+
   return (
     <>
       <LiveCaptionsOverlay
@@ -480,50 +483,6 @@ export function DesktopCallControls() {
         </div>
       )}
 
-      {/* Minimized state: single-line chip controls (desktop only — mobile bar is in header) */}
-      {isCallMinimized && !isMobileViewport && callPhase !== "idle" && (
-        <div className="call-status-chip-controls">
-          {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
-            <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="call-ctrl-btn call-chip-btn" label={callAudioSettings.micMuted ? "Unmute" : "Mute"} iconSize={16} onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })} />
-          )}
-          {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
-            <CallControlButton
-              action="camera"
-              state={callType === "video" && callAudioSettings.cameraEnabled ? "active" : "muted"}
-              className="call-ctrl-btn call-chip-btn call-chip-video"
-              label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
-              iconSize={16}
-              onClick={() => {
-                if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
-                  setCallType("video");
-                  void audioCallRef.current?.toggleVideo(true);
-                } else {
-                  void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
-                }
-              }}
-            />
-          )}
-          {callPhase === "in-call" && (
-            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="call-ctrl-btn call-chip-btn" label={callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"} iconSize={16} onClick={() => void toggleScreenShare()} />
-          )}
-          <CallControlButton action="end-call" state="idle" className="call-ctrl-btn call-chip-btn end-btn" label={isVoiceChannel ? "Disconnect from voice channel" : "End call"} title={isVoiceChannel ? "Disconnect from voice channel" : "End call"} iconSize={16} onClick={() => void endActiveCall()} />
-          <button
-            type="button"
-            className="icon-button subtle call-chip-restore"
-            aria-label={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
-            title={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
-            onClick={() => {
-              setIsCallMinimized(false);
-              if (session.activeCallChatId && onOpenChat && chats.length > 0) {
-                const target = chats.find((c) => c.id === session.activeCallChatId);
-                if (target) onOpenChat(target);
-              }
-            }}
-          >
-            <Maximize2 aria-hidden="true" size={15} />
-          </button>
-        </div>
-      )}
     </>
   );
 }

@@ -30,6 +30,8 @@ function bundlePdfJsSupportAssets() {
 export default defineConfig({
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
+    // Self-hosted CI shares memory with other jobs; avoid a worker per CPU.
+    maxWorkers: process.env.CI ? 1 : undefined,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
