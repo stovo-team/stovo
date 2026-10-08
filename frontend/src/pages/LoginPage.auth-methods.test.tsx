@@ -76,9 +76,41 @@ describe("LoginPage authentication methods", () => {
 
     expect(container.querySelector('input[autocomplete="username"]')).not.toBeNull();
     expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
-    expect(container.textContent).toContain("Log in");
+    expect(container.textContent).toContain("Sign In");
     expect(container.textContent).toContain("Passkey");
     expect(container.textContent).toContain("QR code");
+  });
+
+  it("shows QR sign-in without login fields and offers passkey or password", async () => {
+    await renderPage();
+
+    const qrAction = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("QR code"));
+    await act(async () => qrAction?.click());
+
+    expect(container.querySelector('input[autocomplete="username"]')).toBeNull();
+    expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
+    expect(container.querySelector('.qr-login-panel img[alt="QR code to approve this browser sign-in with Stovo"]')).not.toBeNull();
+    expect(container.textContent).toContain("Sign in with Passkey");
+
+    const passwordAction = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Sign in with Password"));
+    await act(async () => passwordAction?.click());
+
+    expect(container.querySelector('input[autocomplete="username"]')).not.toBeNull();
+    expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+  });
+
+  it("groups passkey and QR actions into two columns below a centered separator", async () => {
+    await renderPage();
+
+    const separator = container.querySelector('.auth-divider[role="separator"]');
+    const methodGrid = container.querySelector(".auth-method-grid");
+    const passkeyAction = container.querySelector('[data-auth-method="passkey"]');
+    const qrAction = container.querySelector('[data-auth-method="qr"]');
+
+    expect(separator?.textContent?.trim()).toBe("or");
+    expect(methodGrid).not.toBeNull();
+    expect(methodGrid?.contains(passkeyAction)).toBe(true);
+    expect(methodGrid?.contains(qrAction)).toBe(true);
   });
 
   it("keeps the password form usable when the browser is not in a secure context", async () => {
@@ -99,7 +131,7 @@ describe("LoginPage authentication methods", () => {
 
     expect(container.textContent).toContain("Scan this code with Stovo");
     expect(container.textContent).toContain("Waiting for approval");
-    expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+    expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
   });
 
   it("completes a passkey assertion and accepts the normal Stovo auth response", async () => {

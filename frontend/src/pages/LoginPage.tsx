@@ -45,6 +45,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [qrLogin, setQrLogin] = useState<{ requestId: string; image: string; expiresAt: string; status: string } | null>(null);
+  const [authView, setAuthView] = useState<"password" | "qr">("password");
   const [isSecureContext, setIsSecureContext] = useState(() => typeof window !== "undefined" && window.isSecureContext);
 
   const activeServer = getActiveServer();
@@ -56,6 +57,7 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setLoginValue(params.get("username") ?? "");
+    setAuthView("password");
     // Passwords must never be accepted from URLs: URLs are commonly retained
     // in history, analytics, proxy logs, and copied links.
     setPassword("");
@@ -171,6 +173,8 @@ export default function LoginPage() {
 
   async function handleStartQRLogin() {
     setError(null);
+    setQrLogin(null);
+    setAuthView("qr");
     setIsSubmitting(true);
     try {
       const request = await createBrowserQRLogin();
@@ -178,6 +182,7 @@ export default function LoginPage() {
       setQrLogin({ requestId: request.requestId, image, expiresAt: request.expiresAt, status: "pending" });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not start QR sign-in");
+      setAuthView("password");
     } finally {
       setIsSubmitting(false);
     }
@@ -193,50 +198,75 @@ export default function LoginPage() {
             {serverName && <span className="auth-server-name">{serverName}</span>}
           </div>
         </div>
-        <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
-          <label>
-            Nickname
-            <input
-              required
-              autoComplete="username"
-              value={loginValue}
-              onChange={(event) => setLoginValue(event.target.value)}
-            />
-          </label>
-          {!isDeviceLogin && <label>
-            Password
-            <span className="password-input-wrap">
-              <input required type={isPasswordVisible ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              <button type="button" className="password-visibility-button" aria-label={isPasswordVisible ? "Hide password" : "Show password"} onClick={() => setIsPasswordVisible((value) => !value)}>
-                {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </span>
-          </label>}
-          {isDeviceLogin && codeRequested && <label>Verification code<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deviceCode} onChange={(event) => setDeviceCode(event.target.value.replace(/\D/g, ""))} /></label>}
-          {error && <p className="error-text">{error}</p>}
-          {isDeviceLogin ? (
-            codeRequested ? <button type="submit" disabled={isSubmitting || deviceCode.length !== 6}>{isSubmitting ? "Verifying…" : "Verify and log in"}</button> : <button type="button" disabled={isSubmitting || !loginValue.trim()} onClick={() => void handleRequestDeviceCode()}>{isSubmitting ? "Sending…" : "Send code to Message Archive"}</button>
-          ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in" : "Log in"}</button>}
-        </form>
+        {(isDeviceLogin || authView === "password") && (
+          <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
+            <label>
+              Nickname
+              <input
+                required
+                autoComplete="username"
+                value={loginValue}
+                onChange={(event) => setLoginValue(event.target.value)}
+              />
+            </label>
+            {!isDeviceLogin && <label>
+              Password
+              <span className="password-input-wrap">
+                <input required type={isPasswordVisible ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                <button type="button" className="password-visibility-button" aria-label={isPasswordVisible ? "Hide password" : "Show password"} onClick={() => setIsPasswordVisible((value) => !value)}>
+                  {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </span>
+            </label>}
+            {isDeviceLogin && codeRequested && <label>Verification code<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deviceCode} onChange={(event) => setDeviceCode(event.target.value.replace(/\D/g, ""))} /></label>}
+            {isDeviceLogin ? (
+              codeRequested ? <button type="submit" disabled={isSubmitting || deviceCode.length !== 6}>{isSubmitting ? "Verifying…" : "Verify and log in"}</button> : <button type="button" disabled={isSubmitting || !loginValue.trim()} onClick={() => void handleRequestDeviceCode()}>{isSubmitting ? "Sending…" : "Send code to Message Archive"}</button>
+            ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in…" : "Sign In"}</button>}
+          </form>
+        )}
+        {error && <p className="error-text auth-error" role="alert">{error}</p>}
         {isDeviceLogin && <p className="muted-copy">Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.</p>}
         {!isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
-          <div className="auth-divider"><span>or</span></div>
-          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-            <KeyRound aria-hidden="true" size={17} /> Sign in with Passkey
-          </button>
-          {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
-          <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
-            <QrCode aria-hidden="true" size={17} /> Sign in with QR code
-          </button>
-          {qrLogin && <div className="qr-login-panel" aria-live="polite">
-            {qrLogin.status === "pending" ? <>
-              <img src={qrLogin.image} alt="QR code to approve this browser sign-in with Stovo" />
-              <p>Scan this code with Stovo</p>
-              <p>Waiting for approval</p>
-              <p className="muted-copy">Expires {new Date(qrLogin.expiresAt).toLocaleTimeString()}</p>
-            </> : <p>{qrLogin.status === "approved" ? "Signed in" : qrLogin.status === "rejected" ? "Sign-in request rejected" : "QR code expired"}</p>}
-            {qrLogin.status !== "pending" && <button type="button" className="secondary-button" onClick={() => setQrLogin(null)}>Close</button>}
-          </div>}
+          {authView === "qr" ? <>
+            <div className="qr-login-panel" aria-live="polite">
+              {!qrLogin ? <p>Preparing your QR code…</p> : qrLogin.status === "pending" ? <>
+                <img src={qrLogin.image} alt="QR code to approve this browser sign-in with Stovo" />
+                <p>Scan this code with Stovo</p>
+                <p className="muted-copy">Waiting for approval · Expires {new Date(qrLogin.expiresAt).toLocaleTimeString()}</p>
+              </> : <p>{qrLogin.status === "approved" ? "Signed in" : qrLogin.status === "rejected" ? "Sign-in request rejected" : "QR code expired"}</p>}
+            </div>
+            <div className="auth-divider" role="separator" aria-label="or">
+              <svg aria-hidden="true" viewBox="0 0 100 2" preserveAspectRatio="none" focusable="false">
+                <path d="M0 1h43M57 1h43" />
+              </svg>
+              <span>or</span>
+            </div>
+            <div className="auth-method-grid">
+              <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+                <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+              </button>
+              <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => { setAuthView("password"); setQrLogin(null); }}>
+                <span>Sign in with Password</span>
+              </button>
+            </div>
+            {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
+          </> : <>
+            <div className="auth-divider" role="separator" aria-label="or">
+              <svg aria-hidden="true" viewBox="0 0 100 2" preserveAspectRatio="none" focusable="false">
+                <path d="M0 1h43M57 1h43" />
+              </svg>
+              <span>or</span>
+            </div>
+            <div className="auth-method-grid">
+              <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+                <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+              </button>
+              <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
+                <QrCode aria-hidden="true" size={18} /> <span>Sign in with QR code</span>
+              </button>
+            </div>
+            {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
+          </>}
         </div>}
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (

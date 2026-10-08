@@ -37,7 +37,7 @@ func (s *Server) invitePasskeyOptions(w http.ResponseWriter, r *http.Request) {
 	}
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	userID := uuid.NewString()
@@ -86,7 +86,7 @@ func (s *Server) acceptInviteWithPasskey(w http.ResponseWriter, r *http.Request)
 	}
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	user := passkeyUser{ID: ceremony.UserID, Username: registration.Username, DisplayName: registration.DisplayName}

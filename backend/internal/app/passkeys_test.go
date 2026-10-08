@@ -7,6 +7,37 @@ import (
 	"stovo-messenger/backend/internal/config"
 )
 
+func TestWebAuthnUnavailableMessageExplainsOriginConfiguration(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{
+			name: "missing secure app URL",
+			err:  errPasskeysRequireHTTPSAppURL,
+			want: "Passkeys need APP_URL set to the site's public HTTPS address.",
+		},
+		{
+			name: "insecure browser origin",
+			err:  errPasskeysRequireSecureOrigin,
+			want: "Passkeys require this page to use HTTPS (localhost is allowed for development).",
+		},
+		{
+			name: "domain mismatch",
+			err:  errPasskeyOriginMismatch,
+			want: "This site's domain doesn't match APP_URL. Set APP_URL to the site's public HTTPS address.",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := webAuthnUnavailableMessage(tc.err); got != tc.want {
+				t.Fatalf("webAuthnUnavailableMessage() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestWebAuthnOriginMustBeConfiguredAndSecure(t *testing.T) {
 	server := &Server{cfg: config.Config{AppURL: "https://chat.example.test"}}
 	for _, tc := range []struct {
