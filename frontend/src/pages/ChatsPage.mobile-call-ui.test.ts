@@ -59,17 +59,17 @@ describe("mobile active video call UI", () => {
     expect(callFeatureSource).not.toContain('      ? "Video call"\n      : "Audio call"');
   });
 
-  it("keeps a minimized voice channel in the persistent call header", () => {
+  it("keeps a minimized voice channel in the shared portal surface", () => {
     expect(callFeatureSource).toContain('callPhase !== "idle" && !isVoiceChannel');
-    expect(chatsPageSource).toContain('callPhase !== "idle" && isCallMinimized && !chatId');
-    expect(chatsPageSource).toContain('(isDraftsAndScheduledOpen || (selectedChat && chatId)) && callPhase !== "idle" && isCallMinimized');
+    expect(callFeatureSource).toContain("<MinimizedCallBar");
+    expect(callFeatureSource).toContain("visible={effectiveIsCallMinimized}");
+    expect(chatsPageSource).not.toContain("<MobileMinimizedCallBar");
     expect(conversationPanelSource).toContain('callSession?.setIsCallMinimized(true);');
     expect(conversationPanelSource).not.toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
     expect(conversationPanelSource).toContain('const isShowingVoiceTextChat');
     expect(conversationPanelSource).toContain('selectedChat.type === "voice" && !isShowingVoiceTextChat');
     expect(conversationPanelSource).toContain('message.type !== "call"');
-    expect(chatsPageSource).toContain('className="mobile-call-strip--chat-header"');
-    expect(styles).toContain('.mobile-call-strip--chat-header');
+    expect(styles).toContain(".minimized-call");
   });
 
   it("uses compact spacing for the bottom app navigation", () => {
