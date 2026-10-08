@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
+import { QuickAccessPanel } from "../QuickAccessPanel";
 import { CallFeature } from "./CallFeature";
 import { CallFeatureProvider } from "./CallFeatureContext";
 import { DEFAULT_CALL_SETTINGS } from "../../../realtime/call/types";
@@ -25,9 +26,14 @@ for (const type of ["direct", "group", "family", "voice"] as const) {
           localVideoStream: null, localScreenStream: null, remoteVideoStream: null,
           activeGroupCalls: {}, callAudioCapabilities: {}, setIsCallMinimized: expand, applyCallAudioPatch: patch, endActiveCall: end,
         } as unknown as CallSessionApi;
+        const showDrafts = type === "voice" && !mobile && route.includes("chats");
         const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-        act(() => root.render(<MemoryRouter initialEntries={[route]}><CallFeatureProvider session={session} isMobileViewport={mobile} members={[]} currentUser={null} chats={[chat]} onOpenChat={open}><CallFeature /></CallFeatureProvider></MemoryRouter>));
+        act(() => root.render(<MemoryRouter initialEntries={[route]}><CallFeatureProvider session={session} isMobileViewport={mobile} members={[]} currentUser={null} chats={[chat]} onOpenChat={open}>{showDrafts && <QuickAccessPanel accessToken={null} chats={[]} onOpenChat={open} />}<CallFeature /></CallFeatureProvider></MemoryRouter>));
         expect(document.querySelectorAll('[aria-label="Minimized call"]')).toHaveLength(1);
+        if (showDrafts) {
+          expect(host.querySelector('[aria-label="Drafts and scheduled messages"]')).not.toBeNull();
+          expect(host.querySelector('[aria-label="Minimized call"]')).toBeNull();
+        }
         expect(document.querySelector<HTMLElement>(".call-popup")?.hidden ?? true).toBe(true);
         expect(document.body.textContent).toContain("Call title · 00:42");
         act(() => document.querySelector<HTMLButtonElement>('[aria-label="Mute speaker"]')!.click());
