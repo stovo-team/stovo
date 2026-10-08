@@ -22,6 +22,12 @@ import (
 
 const passkeyCeremonyTTL = 5 * time.Minute
 
+var (
+	errPasskeysRequireHTTPSAppURL  = errors.New("passkeys require a configured HTTPS app origin")
+	errPasskeysRequireSecureOrigin = errors.New("passkeys require a secure origin")
+	errPasskeyOriginMismatch       = errors.New("origin does not match configured relying party")
+)
+
 type storedPasskeyCeremony struct {
 	ID              string
 	Purpose         string
@@ -46,7 +52,7 @@ func (u passkeyUser) WebAuthnCredentials() []webauthnlib.Credential { return u.C
 func (s *Server) webAuthnForRequest(r *http.Request) (*webauthnlib.WebAuthn, error) {
 	configured, err := url.Parse(strings.TrimSpace(s.cfg.AppURL))
 	if err != nil || configured.Hostname() == "" || (configured.Scheme != "https" && configured.Hostname() != "localhost" && configured.Hostname() != "127.0.0.1") {
-		return nil, errors.New("passkeys require a configured HTTPS app origin")
+		return nil, errPasskeysRequireHTTPSAppURL
 	}
 	originURL, err := url.Parse(strings.TrimSpace(r.Header.Get("Origin")))
 	if err != nil || originURL.Host == "" || originURL.User != nil || originURL.RawQuery != "" || originURL.Fragment != "" {
@@ -54,11 +60,11 @@ func (s *Server) webAuthnForRequest(r *http.Request) (*webauthnlib.WebAuthn, err
 	}
 	rpID := configured.Hostname()
 	if originURL.Scheme != "https" && originURL.Hostname() != "localhost" && originURL.Hostname() != "127.0.0.1" {
-		return nil, errors.New("passkeys require a secure origin")
+		return nil, errPasskeysRequireSecureOrigin
 	}
 	origin := originURL.Scheme + "://" + originURL.Host
 	if !s.isAllowedWebAuthnOrigin(origin, rpID) {
-		return nil, errors.New("origin does not match configured relying party")
+		return nil, errPasskeyOriginMismatch
 	}
 	return webauthnlib.New(&webauthnlib.Config{
 		RPDisplayName: "Stovo",
@@ -89,6 +95,22 @@ func (s *Server) isAllowedWebAuthnOrigin(origin, rpID string) bool {
 		}
 	}
 	return false
+}
+
+func webAuthnUnavailableMessage(err error) string {
+	if err == nil {
+		return "Passkeys are unavailable for this origin."
+	}
+	switch {
+	case errors.Is(err, errPasskeysRequireHTTPSAppURL):
+		return "Passkeys need APP_URL set to the site's public HTTPS address."
+	case errors.Is(err, errPasskeysRequireSecureOrigin):
+		return "Passkeys require this page to use HTTPS (localhost is allowed for development)."
+	case errors.Is(err, errPasskeyOriginMismatch):
+		return "This site's domain doesn't match APP_URL. Set APP_URL to the site's public HTTPS address."
+	default:
+		return "Passkeys are unavailable for this origin. Check APP_URL and origin configuration."
+	}
 }
 
 func (s *Server) loadPasskeyUser(ctx context.Context, id, familyID string) (userPublic, passkeyUser, error) {
@@ -146,7 +168,7 @@ func (s *Server) consumePasskeyCeremony(ctx context.Context, rawID, purpose stri
 func (s *Server) passkeyRegistrationOptions(w http.ResponseWriter, r *http.Request, actor userPublic) {
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	_, user, err := s.loadPasskeyUser(r.Context(), actor.ID, actor.FamilyID)
@@ -183,7 +205,7 @@ func (s *Server) passkeyRegistrationVerify(w http.ResponseWriter, r *http.Reques
 	}
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	_, user, err := s.loadPasskeyUser(r.Context(), actor.ID, actor.FamilyID)
@@ -217,7 +239,7 @@ func (s *Server) passkeyAuthenticationOptions(w http.ResponseWriter, r *http.Req
 	}
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	assertion, session, err := wa.BeginDiscoverableLogin()
@@ -253,7 +275,7 @@ func (s *Server) passkeyAuthenticationVerify(w http.ResponseWriter, r *http.Requ
 	}
 	wa, err := s.webAuthnForRequest(r)
 	if err != nil {
-		writeMessageDetail(w, http.StatusBadRequest, "Passkeys are unavailable for this origin")
+		writeMessageDetail(w, http.StatusBadRequest, webAuthnUnavailableMessage(err))
 		return
 	}
 	credentialRequest := requestWithJSON(r, request.Response)
