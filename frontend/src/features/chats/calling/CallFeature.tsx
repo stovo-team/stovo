@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect } from "react";
 import { resetFloatingCallPosition } from "./useFloatingCallPanel";
-import { useLocation, useNavigate } from "react-router-dom";
-import { getClusterPath } from "../../../api/client";
+import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
@@ -44,7 +43,6 @@ export { CallFeatureProvider } from "./CallFeatureContext";
 export function CallFeature() {
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const {
     callPhase,
     callType,
@@ -169,10 +167,7 @@ export function CallFeature() {
           onEnd={() => void endActiveCall()}
           onExpand={() => {
             callUiSession.setIsCallMinimized(false);
-            if (activeChat) {
-              onOpenChat?.(activeChat);
-              if (!isOnChatsRoute) navigate(getClusterPath(`/app/chats/${encodeURIComponent(activeChat.id)}`));
-            }
+            if (activeChat) onOpenChat?.(activeChat);
           }}
         />
       {preJoinChatId && preJoinActiveCall && preJoinChat && (

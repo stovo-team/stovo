@@ -1,6 +1,7 @@
+import { navigateToSelectedChat } from "../shared/chatNavigation";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, useNavigate } from "react-router-dom";
+import { MemoryRouter, useNavigate, useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { QuickAccessPanel } from "../QuickAccessPanel";
 import { CallFeature } from "./CallFeature";
@@ -68,7 +69,7 @@ it("restores the expanded call when returning from another page to chats", () =>
   expect(document.querySelector<HTMLElement>('.call-popup')?.hidden).toBe(false);
 });
 
-it("restores from another page even when the cached chat callback does not navigate", () => {
+it("restores from another page through the cached chat navigation", () => {
   const open = vi.fn();
   const chat = { id: "cached-chat", type: "group", title: "Cached", members: [] } as unknown as Chat;
   const session = {
@@ -77,7 +78,16 @@ it("restores from another page even when the cached chat callback does not navig
     callRemoteMedia: [], speakingUserIds: [], localScreenStream: null, setIsCallMinimized: vi.fn(),
   } as unknown as CallSessionApi;
   const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-  act(() => root.render(<MemoryRouter initialEntries={['/app/settings']}><CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[chat]} onOpenChat={open}><CallFeature /></CallFeatureProvider></MemoryRouter>));
+  function CachedChatPage() {
+    const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const openChat = (target: Chat) => {
+      open(target);
+      navigateToSelectedChat(target.id, chat.id, pathname, () => navigate(`/app/chats/${target.id}`));
+    };
+    return <CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[chat]} onOpenChat={openChat}><CallFeature /></CallFeatureProvider>;
+  }
+  act(() => root.render(<MemoryRouter initialEntries={['/app/settings']}><CachedChatPage /></MemoryRouter>));
   act(() => document.querySelector<HTMLButtonElement>('[aria-label="Restore call"]')!.click());
   expect(open).toHaveBeenCalledWith(chat);
   expect(document.querySelector('[aria-label="Minimized call"]')).toBeNull();

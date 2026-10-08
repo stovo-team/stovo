@@ -1,3 +1,4 @@
+import { navigateToSelectedChat } from "./shared/chatNavigation";
 import { requestCallChatReveal } from "./sidebar/useCallChatReveal";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
@@ -375,8 +376,7 @@ export function useChatsPageController({
       }
     }
 
-    if (chat.id === chatId) return;
-    navigateToChat(chat);
+    navigateToSelectedChat(chat.id, chatId, location.pathname, () => navigateToChat(chat));
   }
 
   function closeActiveChat() {
