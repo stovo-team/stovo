@@ -81,6 +81,20 @@ describe("LoginPage authentication methods", () => {
     expect(container.textContent).toContain("QR code");
   });
 
+  it("groups passkey and QR actions into two columns below a centered separator", async () => {
+    await renderPage();
+
+    const separator = container.querySelector('.auth-divider[role="separator"]');
+    const methodGrid = container.querySelector(".auth-method-grid");
+    const passkeyAction = container.querySelector('[data-auth-method="passkey"]');
+    const qrAction = container.querySelector('[data-auth-method="qr"]');
+
+    expect(separator?.textContent?.trim()).toBe("or");
+    expect(methodGrid).not.toBeNull();
+    expect(methodGrid?.contains(passkeyAction)).toBe(true);
+    expect(methodGrid?.contains(qrAction)).toBe(true);
+  });
+
   it("keeps the password form usable when the browser is not in a secure context", async () => {
     Object.defineProperty(window, "isSecureContext", { configurable: true, value: false });
     await renderPage();

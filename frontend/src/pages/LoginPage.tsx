@@ -220,14 +220,21 @@ export default function LoginPage() {
         </form>
         {isDeviceLogin && <p className="muted-copy">Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.</p>}
         {!isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
-          <div className="auth-divider"><span>or</span></div>
-          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-            <KeyRound aria-hidden="true" size={17} /> Sign in with Passkey
-          </button>
+          <div className="auth-divider" role="separator" aria-label="or">
+            <svg aria-hidden="true" viewBox="0 0 100 2" preserveAspectRatio="none" focusable="false">
+              <path d="M0 1h43M57 1h43" />
+            </svg>
+            <span>or</span>
+          </div>
+          <div className="auth-method-grid">
+            <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+              <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+            </button>
+            <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
+              <QrCode aria-hidden="true" size={18} /> <span>Sign in with QR code</span>
+            </button>
+          </div>
           {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
-          <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
-            <QrCode aria-hidden="true" size={17} /> Sign in with QR code
-          </button>
           {qrLogin && <div className="qr-login-panel" aria-live="polite">
             {qrLogin.status === "pending" ? <>
               <img src={qrLogin.image} alt="QR code to approve this browser sign-in with Stovo" />

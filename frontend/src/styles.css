@@ -77,6 +77,7 @@
   --motion-fade-duration: 180ms;
   --motion-surface-duration: 260ms;
   --radius-control: 8px;
+  --radius-input: 18px;
   --radius-card: 8px;
   --radius-bubble: 18px;
   --float-outer-gap: 16px;
@@ -1686,7 +1687,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-input);
   color: var(--text-primary);
   min-height: 42px;
   padding: 0 12px;
@@ -3145,7 +3146,7 @@ h2 {
 
 .auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .auth-panel select {
-  border-radius: 18px;
+  border-radius: var(--radius-input);
   min-height: 48px;
   padding: 0 16px;
 }
@@ -3156,7 +3157,74 @@ h2 {
   justify-self: stretch;
   min-height: 48px;
   padding: 0 20px;
+  font-size: 1.05rem;
   width: 100%;
+}
+
+.auth-method-options {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.auth-divider {
+  align-items: center;
+  color: var(--text-secondary);
+  display: grid;
+  font-size: 0.92rem;
+  grid-template: 1fr / 1fr;
+  justify-items: center;
+  line-height: 1;
+  min-height: 22px;
+  position: relative;
+  width: 100%;
+}
+
+.auth-divider svg {
+  height: 2px;
+  inset: 50% 0 auto;
+  overflow: visible;
+  position: absolute;
+  transform: translateY(-50%);
+  width: 100%;
+}
+
+.auth-divider path {
+  fill: none;
+  stroke: var(--border-default);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.auth-divider span {
+  background: #151b26;
+  padding: 0 10px;
+  position: relative;
+}
+
+.auth-method-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.auth-panel .auth-method-grid .secondary-button {
+  border-radius: 999px;
+  font-size: 0.9rem;
+  gap: 8px;
+  justify-self: stretch;
+  min-height: 48px;
+  padding: 8px 12px;
+  width: 100%;
+}
+
+.auth-method-grid .secondary-button svg {
+  flex: 0 0 auto;
+}
+
+.auth-method-grid .secondary-button span {
+  min-width: 0;
 }
 
 .auth-panel .summary-band {
