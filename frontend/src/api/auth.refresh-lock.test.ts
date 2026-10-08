@@ -30,7 +30,7 @@ describe("refreshSession", () => {
     vi.stubGlobal("fetch", fetchMock);
   });
 
-  it("does not wait on its own refresh promise when a prior lock remains", async () => {
+  it("ignores a legacy refresh marker and still starts the refresh request", async () => {
     void refreshSession().catch(() => undefined);
 
     await Promise.resolve();
