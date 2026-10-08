@@ -10,7 +10,7 @@ describe("desktop call device controls", () => {
   it("uses the guest meeting split device controls for direct and group calls", () => {
     expect(desktopCalls).toContain("CallDeviceControls");
     expect(desktopCalls).toContain("call-ctrl-row call-popup-ctrl-row shared-call-controls guest-call-controls");
-    expect(desktopCalls).toContain("showCamera={callPhase === \"in-call\"}");
+    expect(desktopCalls).toContain("showCamera={true}");
     expect(desktopCalls).toContain("capabilities={callAudioCapabilities}");
   });
 
