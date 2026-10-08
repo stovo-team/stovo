@@ -106,10 +106,16 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
           });
         }
 
+        const joiningSession = activeCallSessionIdRef.current;
+        const generation = audioController.sessionGeneration;
+        const isCurrentJoin = () => activeCallChatIdRef.current === payload.chatId &&
+          activeCallSessionIdRef.current === joiningSession && callPhaseRef.current !== "idle" &&
+          audioController.sessionGeneration === generation;
         const joinMedia = async () => {
           if (payload.topology === "sfu") {
             try {
               await audioController.switchToSfu();
+              if (!isCurrentJoin()) return;
               if (isVoiceChannel) {
                 void audioController.prepareForCall("audio").catch((mediaErr) => {
                   console.warn("[call:accepted] voice channel microphone unavailable; remaining listen-only:", mediaErr);
@@ -117,6 +123,7 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
               }
               return;
             } catch (sfuErr) {
+              if (!isCurrentJoin()) return;
               console.warn("[call:accepted] SFU join failed, attempting mesh fallback:", sfuErr);
               if (isVoiceChannel) throw sfuErr;
               setCallTopology("mesh");
@@ -146,12 +153,14 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
 
         void joinMedia()
           .then(() => {
+            if (!isCurrentJoin()) return;
             console.log("[call:accepted] media join resolved");
             setCallPhase("in-call");
             callPhaseRef.current = "in-call";
             setCallNotice(null);
           })
           .catch(async (err) => {
+            if (!isCurrentJoin()) return;
             console.error("[call:accepted] media join threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId, roomId: payload.roomId });
             await resetCallState(getMediaJoinFailureNotice(err), true, false);

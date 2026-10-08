@@ -1,5 +1,5 @@
 import { Socket } from "socket.io-client";
-import { getApiUrl } from "../../api/client";
+import { getSfuToken } from "./sfuToken";
 import {
   defaultMediaEngineFactory,
   type MediaEngineFactory,
@@ -8,7 +8,7 @@ import {
 } from "./mediaEngineFactory";
 import type { CallQualityBitrates } from "./callQuality";
 // createCallSpeakingIndicator centralizes CALL_SPEAKING_THRESHOLD and CALL_SPEAKING_RELEASE_DELAY_MS.
-import { createCallSpeakingIndicator, isCallSpeakingActive, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
+import { createCallLevelSampler, createCallSpeakingIndicator, isCallSpeakingActive, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
 import {
   CallCapabilities,
   CallDevice,
@@ -78,6 +78,9 @@ export default class CallSessionController {
   private peerSpeakingUserIdsCallback: ((userIds: string[]) => void) | null = null;
   private speakingAnimFrame: number | null = null;
   private speakingContext: AudioContext | null = null;
+  private cleanupPromise: Promise<void> | null = null;
+  private sessionRevision = 0;
+  get sessionGeneration() { return this.sessionRevision; }
   private wasSpeaking = false;
   private wasLocalSpeaking = false;
   private localSpeakingAnalyser: AnalyserNode | null = null;
@@ -348,29 +351,17 @@ export default class CallSessionController {
   }
 
   private async connectToSfu(): Promise<void> {
+    const revision = this.sessionRevision;
     if (!this.roomId) throw new Error("roomId required for SFU");
-    const res = await fetch(`${getApiUrl()}/api/calls/${this.roomId}/sfu-token`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      credentials: "include",
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(detail || `SFU token request failed (${res.status})`);
-    }
-    const payload = (await res.json()) as { url?: string; token?: string };
-    if (!payload.url || !payload.token) {
-      throw new Error("SFU token response missing url/token");
-    }
+    const payload = await getSfuToken(this.roomId, this.accessToken);
+    if (revision !== this.sessionRevision || this.tearingDown) return;
 
     this.mesh.stopAll();
     this.peerReady = false;
     this.clearExtraAudio();
 
     await this.sfu.connect({ url: payload.url, token: payload.token });
+    if (revision !== this.sessionRevision || this.tearingDown) return;
     if (this.localStream) {
       await this.sfu.publishLocalStream(this.localStream);
       this.sfu.setMicMuted(this.settings.micMuted);
@@ -380,6 +371,7 @@ export default class CallSessionController {
     if (screenTrack) {
       await this.sfu.publishScreenShare(screenTrack);
     }
+    if (revision !== this.sessionRevision || this.tearingDown) return;
     this.setTopology("sfu");
     this.markMediaConnected();
   }
@@ -631,8 +623,19 @@ export default class CallSessionController {
 
   // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-  async cleanup(serverAlreadyNotified = false) {
-    if (this.tearingDown) return;
+  cleanup(serverAlreadyNotified = false): Promise<void> {
+    if (this.cleanupPromise) return this.cleanupPromise;
+    this.sessionRevision++;
+    this.sfuConnectPromise = null;
+    const closing = this.cleanupSession(serverAlreadyNotified);
+    this.cleanupPromise = closing;
+    void closing.finally(() => {
+      if (this.cleanupPromise === closing) this.cleanupPromise = null;
+    }).catch(() => undefined);
+    return closing;
+  }
+
+  private async cleanupSession(serverAlreadyNotified: boolean) {
     this.tearingDown = true;
     this.mediaConnected = false;
     this.peerReady = false;
@@ -668,7 +671,6 @@ export default class CallSessionController {
     this.clearExtraAudio();
     this.closeAudioProcessor();
     this.stopSpeakingDetection();
-    this.speakingCallback = null;
 
     this.settings = { ...DEFAULT_CALL_SETTINGS };
     this.chatId = null;
@@ -1193,23 +1195,19 @@ export default class CallSessionController {
 
   private ensureSpeakingPolling() {
     if (this.speakingAnimFrame !== null) return;
-    const data = new Uint8Array(128);
-
-    const poll = (now: number) => {
-      // 1. Local speaking
+    const level = createCallLevelSampler();
+    let previousSpeakingIds: string[] = [];
+    const poll = () => {
       if (this.localSpeakingAnalyser && !this.settings.micMuted) {
-        this.localSpeakingAnalyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        const avg = this.speakingContext?.state === "running" ? level(this.localSpeakingAnalyser) : 0;
         this.localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
       } else {
         this.localSpeakingIndicator?.update({ microphoneEnabled: false, level: 0 });
       }
 
-      // 2. Remote peer speaking
       const activeSpeakingUserIds: string[] = [];
       for (const [uid, analyser] of this.remoteAnalysers.entries()) {
-        analyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        const avg = this.speakingContext?.state === "running" ? level(analyser) : 0;
         const indicator = this.remoteSpeakingIndicators.get(uid);
         indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
         if (indicator && isCallSpeakingActive(indicator.state)) activeSpeakingUserIds.push(uid);
@@ -1220,14 +1218,16 @@ export default class CallSessionController {
         this.wasSpeaking = anySpeaking;
         this.speakingCallback?.(anySpeaking);
       }
-      this.peerSpeakingUserIdsCallback?.(activeSpeakingUserIds);
+      if (activeSpeakingUserIds.length !== previousSpeakingIds.length || activeSpeakingUserIds.some((id, index) => id !== previousSpeakingIds[index])) {
+        previousSpeakingIds = activeSpeakingUserIds;
+        this.peerSpeakingUserIdsCallback?.(activeSpeakingUserIds);
+      }
 
       this.speakingAnimFrame = requestAnimationFrame(poll);
     };
 
     this.speakingAnimFrame = requestAnimationFrame(poll);
   }
-
   private stopSpeakingDetection() {
     if (this.speakingAnimFrame !== null) {
       cancelAnimationFrame(this.speakingAnimFrame);

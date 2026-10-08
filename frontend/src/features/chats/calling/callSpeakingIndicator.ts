@@ -43,3 +43,13 @@ export function createCallSpeakingIndicator(onStateChange: (state: CallSpeakingS
     },
   };
 }
+
+/** Samples waveform amplitude around digital silence, excluding DC offset. */
+export function createCallLevelSampler() {
+  const data = new Uint8Array(256);
+  return (analyser: AnalyserNode) => {
+    analyser.getByteTimeDomainData(data);
+    const mean = data.reduce((sum, value) => sum + value, 0) / data.length;
+    return Math.sqrt(data.reduce((sum, value) => sum + (value - mean) ** 2, 0) / data.length);
+  };
+}

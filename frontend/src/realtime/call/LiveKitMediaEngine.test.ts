@@ -73,3 +73,57 @@ describe("LiveKitMediaEngine video quality", () => {
     await engine.disconnect();
   });
 });
+
+
+describe("LiveKit reconnect isolation", () => {
+  it("waits for the previous websocket to close before joining again", async () => {
+    const engine = new LiveKitMediaEngine();
+    await engine.connect({ url: "wss://calls.example", token: "first" });
+    const old = livekit.roomInstances.at(-1)!;
+    let finish!: () => void;
+    old.disconnect.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const leaving = engine.disconnect();
+    const rejoining = engine.connect({ url: "wss://calls.example", token: "second" });
+    await Promise.resolve(); await Promise.resolve();
+    expect(livekit.roomInstances.at(-1)).toBe(old);
+    finish();
+    await leaving; await rejoining;
+    expect(livekit.roomInstances.at(-1)).not.toBe(old);
+    await engine.disconnect();
+  });
+
+  it("ignores a delayed disconnect event from a room already left", async () => {
+    const engine = new LiveKitMediaEngine();
+    const disconnected = vi.fn();
+    engine.onDisconnected = disconnected;
+    await engine.connect({ url: "wss://calls.example", token: "first" });
+    const old = livekit.roomInstances.at(-1)!;
+    await engine.disconnect();
+    await engine.connect({ url: "wss://calls.example", token: "second" });
+    const handler = old.on.mock.calls.find(([event]) => event === "disconnected")![1];
+    handler();
+    expect(disconnected).not.toHaveBeenCalled();
+    await engine.disconnect();
+  });
+});
+
+it("does not report connected after leaving a room with a pending handshake", async () => {
+  const engine = new LiveKitMediaEngine();
+  const connected = vi.fn(); engine.onConnected = connected;
+  await engine.connect({ url: "wss://calls.example", token: "initial" });
+  connected.mockClear();
+  await engine.disconnect();
+  let finish!: () => void;
+  // Delay the transport boundary, keeping room creation and engine logic real.
+  const create = vi.spyOn(engine as never, 'loadLiveKit' as never).mockImplementation(async () => ({
+    ...livekit,
+    Room: class extends livekit.Room {
+      constructor() { super(); this.connect = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })); }
+    },
+  }) as never);
+  const joining = engine.connect({ url: "wss://calls.example", token: "pending" });
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  await engine.disconnect(); finish(); await joining;
+  expect(connected).not.toHaveBeenCalled();
+  create.mockRestore();
+});

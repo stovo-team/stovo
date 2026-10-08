@@ -11,6 +11,8 @@ type RemoteStreamMap = Map<string, MediaStream>;
 type LiveKitModule = typeof import("livekit-client");
 
 export default class LiveKitMediaEngine {
+  private connectionRevision = 0;
+  private disconnectPromise: Promise<void> | null = null;
   private room: import("livekit-client").Room | null = null;
   private remoteStreams: RemoteStreamMap = new Map();
   private remoteScreenStreams: RemoteStreamMap = new Map();
@@ -28,9 +30,13 @@ export default class LiveKitMediaEngine {
   onDisconnected?: () => void;
 
   async connect(opts: { url: string; token: string }): Promise<void> {
+    const revision = ++this.connectionRevision;
+    await this.disconnectPromise;
     const lk = await this.loadLiveKit();
+    if (revision !== this.connectionRevision) return;
     if (this.room) {
-      await this.disconnect();
+      await this.closeRoom();
+      if (revision !== this.connectionRevision) return;
     }
 
     const room = new lk.Room({
@@ -44,22 +50,26 @@ export default class LiveKitMediaEngine {
     };
 
     room.on(lk.RoomEvent.ParticipantConnected, (participant) => {
+      if (this.room !== room) return;
       reportMicrophoneState(participant);
     });
 
     room.on(lk.RoomEvent.TrackMuted, (publication, participant) => {
+      if (this.room !== room) return;
       if (publication.source === lk.Track.Source.Microphone) {
         this.onRemoteMicrophoneMuteChange?.(participant.identity, true);
       }
     });
 
     room.on(lk.RoomEvent.TrackUnmuted, (publication, participant) => {
+      if (this.room !== room) return;
       if (publication.source === lk.Track.Source.Microphone) {
         this.onRemoteMicrophoneMuteChange?.(participant.identity, false);
       }
     });
 
     room.on(lk.RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+      if (this.room !== room) return;
       const userId = participant.identity;
       if (track.source === lk.Track.Source.ScreenShare) {
         let stream = this.remoteScreenStreams.get(userId);
@@ -88,6 +98,7 @@ export default class LiveKitMediaEngine {
     });
 
     room.on(lk.RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+      if (this.room !== room) return;
       const userId = participant.identity;
       if (track.source === lk.Track.Source.ScreenShare) {
         const stream = this.remoteScreenStreams.get(userId);
@@ -116,6 +127,7 @@ export default class LiveKitMediaEngine {
     });
 
     room.on(lk.RoomEvent.ParticipantDisconnected, (participant) => {
+      if (this.room !== room) return;
       const userId = participant.identity;
       this.onRemoteParticipantDisconnected?.(userId);
       if (this.remoteStreams.has(userId)) {
@@ -129,6 +141,7 @@ export default class LiveKitMediaEngine {
     });
 
     room.on(lk.RoomEvent.Disconnected, () => {
+      if (this.room !== room) return;
       for (const participant of room.remoteParticipants.values()) {
         this.onRemoteParticipantDisconnected?.(participant.identity);
       }
@@ -138,6 +151,7 @@ export default class LiveKitMediaEngine {
     });
 
     await room.connect(resolveLiveKitUrl(opts.url), opts.token);
+    if (this.room !== room || revision !== this.connectionRevision) return;
     for (const participant of room.remoteParticipants.values()) reportMicrophoneState(participant);
     this.onConnected?.();
   }
@@ -236,20 +250,27 @@ export default class LiveKitMediaEngine {
     return new Map(this.remoteScreenStreams);
   }
 
-  async disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
+    this.connectionRevision++;
+    return this.closeRoom();
+  }
+
+  private closeRoom(): Promise<void> {
+    if (this.disconnectPromise) return this.disconnectPromise;
     const room = this.room;
     this.room = null;
     this.publishedStream = null;
     this.screenPublication = null;
     this.remoteStreams.clear();
     this.remoteScreenStreams.clear();
-    if (room) {
-      try {
-        await room.disconnect();
-      } catch {
-        /* ignore */
-      }
-    }
+    const closing = (async () => {
+      try { await room?.disconnect(); } catch { /* already closed */ }
+    })();
+    this.disconnectPromise = closing;
+    void closing.finally(() => {
+      if (this.disconnectPromise === closing) this.disconnectPromise = null;
+    });
+    return closing;
   }
 
   private async loadLiveKit(): Promise<LiveKitModule> {

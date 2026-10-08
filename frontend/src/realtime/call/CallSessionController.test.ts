@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import CallSessionController from "./CallSessionController";
 import type { MediaEngineFactory } from "./mediaEngineFactory";
 
@@ -147,6 +147,64 @@ describe("CallSessionController call quality", () => {
 });
 
 
+describe("call speech sampling", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  it("stops speaking after silence and does not publish unchanged peer lists every frame", () => {
+    vi.useFakeTimers();
+    let frame: FrameRequestCallback = () => undefined;
+    let amplitude = 32;
+    const analyser = {
+      fftSize: 256,
+      getByteTimeDomainData: (data: Uint8Array) => { for (let i = 0; i < data.length; i++) data[i] = 128 + (i % 2 ? amplitude : -amplitude); },
+      // Frequency energy can remain nonzero for a stationary background hum.
+      getByteFrequencyData: (data: Uint8Array) => data.fill(20),
+    };
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal("AudioContext", class {
+      state = "running";
+      createMediaStreamSource() { return { connect() {} }; }
+      createAnalyser() { return analyser; }
+    });
+    const controller = new CallSessionController({} as never, { } as never, {
+      createMesh: () => ({}), createSFU: () => ({}),
+    } as unknown as MediaEngineFactory);
+    Object.assign(controller, { sourceStream: { getAudioTracks: () => [{ enabled: true, readyState: "live" }] } });
+    const speaking = vi.fn();
+    const peers = vi.fn();
+    controller.onLocalSpeakingChange(speaking);
+    controller.onPeerSpeakingUserIdsChange(peers);
+    frame(0);
+    expect(speaking).toHaveBeenLastCalledWith(true);
+    amplitude = 0;
+    frame(16);
+    vi.advanceTimersByTime(1_000);
+    frame(1_016);
+    expect(speaking).toHaveBeenLastCalledWith(false);
+    for (let n = 0; n < 60; n++) frame(1_032 + n * 16);
+    expect(peers.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+});
+
+it("does not reopen the SFU after leaving while its token request is pending", async () => {
+  let deliver!: (response: Response) => void;
+  vi.stubGlobal("fetch", () => new Promise<Response>((resolve) => { deliver = resolve; }));
+  const sfu = { connect: vi.fn(), disconnect: vi.fn(async () => undefined) };
+  const mesh = { stopAll() {}, setChatId() {}, setRoomId() {} };
+  const controller = new CallSessionController({ connected: true, emit: vi.fn() } as never, "token", {
+    createMesh: () => mesh, createSFU: () => sfu,
+  } as unknown as MediaEngineFactory);
+  controller.setRoomId("room-left");
+  const joining = controller.switchToSfu();
+  const generation = controller.sessionGeneration;
+  await controller.cleanup(true);
+  expect(controller.sessionGeneration).not.toBe(generation);
+  deliver(new Response(JSON.stringify({ url: "wss://calls.example", token: "expired-session" })));
+  await joining;
+  expect(sfu.connect).not.toHaveBeenCalled();
+  vi.unstubAllGlobals();
+});
 describe("SFU participant updates", () => {
   it("connects once when promoting mesh and keeps SFU connected on participant updates", async () => {
     const connect = vi.fn(async () => undefined);
