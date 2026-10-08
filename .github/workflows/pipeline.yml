@@ -822,25 +822,50 @@ jobs:
             SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
           else
             PROMPT=$(printf 'Write short release notes for the Stovo family messenger Android app.\nAudience: family members, not developers.\nFormat: plain text, 2-5 bullet points, friendly tone. Match the language of the commits.\nNo markdown headers, no hype.\n\nCommits:\n%s' "$COMMITS")
-            RESPONSE=$(curl -fsSL https://api.openai.com/v1/chat/completions \
-              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d "$(jq -n \
-                --arg model "${MODEL}" \
-                --arg prompt "$PROMPT" \
-                '{
-                  model: $model,
-                  max_tokens: 280,
-                  temperature: 0.4,
-                  messages: [
-                    {role: "system", content: "You write concise mobile app release notes."},
-                    {role: "user", content: $prompt}
-                  ]
-                }')")
-            SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+            REQUEST_BODY=$(jq -n \
+              --arg model "${MODEL}" \
+              --arg prompt "$PROMPT" \
+              '{
+                model: $model,
+                max_tokens: 280,
+                temperature: 0.4,
+                messages: [
+                  {role: "system", content: "You write concise mobile app release notes."},
+                  {role: "user", content: $prompt}
+                ]
+              }')
+            MAX_ATTEMPTS=3
+            attempt=1
+            REQUEST_SUCCEEDED=0
+            RESPONSE=""
+            while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+              if RESPONSE=$(curl -fsSL https://api.openai.com/v1/chat/completions \
+                -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+                -H "Content-Type: application/json" \
+                -d "$REQUEST_BODY"); then
+                REQUEST_SUCCEEDED=1
+                break
+              fi
+
+              echo "OpenAI release notes request failed (attempt ${attempt}/${MAX_ATTEMPTS})" >&2
+              if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+                BASE_DELAY=$((1 << (attempt - 1)))
+                JITTER_MS=$((RANDOM % 1000))
+                DELAY=$(printf '%d.%03d' "$BASE_DELAY" "$JITTER_MS")
+                echo "Retrying release notes request in ${DELAY}s" >&2
+                sleep "$DELAY"
+              fi
+              attempt=$((attempt + 1))
+            done
+
+            if [ "$REQUEST_SUCCEEDED" -eq 1 ]; then
+              SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+            else
+              echo "OpenAI request failed after ${MAX_ATTEMPTS} attempts — using commit list" >&2
+              SUMMARY=""
+            fi
             if [ -z "$SUMMARY" ]; then
               echo "OpenAI call failed, falling back to commit list" >&2
-              echo "$RESPONSE" >&2
               SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
             fi
           fi
