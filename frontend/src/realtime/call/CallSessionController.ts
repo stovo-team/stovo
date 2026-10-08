@@ -8,7 +8,7 @@ import {
 } from "./mediaEngineFactory";
 import type { CallQualityBitrates } from "./callQuality";
 // createCallSpeakingIndicator centralizes CALL_SPEAKING_THRESHOLD and CALL_SPEAKING_RELEASE_DELAY_MS.
-import { createCallSpeakingIndicator, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
+import { createCallSpeakingIndicator, isCallSpeakingActive, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
 import {
   CallCapabilities,
   CallDevice,
@@ -1138,7 +1138,7 @@ export default class CallSessionController {
   private registerLocalAudioSpeaking(stream: MediaStream) {
     this.localSpeakingIndicator?.dispose();
     this.localSpeakingIndicator = createCallSpeakingIndicator((state: CallSpeakingState) => {
-      const isSpeaking = state !== "idle";
+      const isSpeaking = isCallSpeakingActive(state);
       if (isSpeaking !== this.wasLocalSpeaking) {
         this.wasLocalSpeaking = isSpeaking;
         this.localSpeakingCallback?.(isSpeaking);
@@ -1207,7 +1207,7 @@ export default class CallSessionController {
         const avg = data.reduce((s, v) => s + v, 0) / data.length;
         const indicator = this.remoteSpeakingIndicators.get(uid);
         indicator?.update({ microphoneEnabled: true, level: avg, threshold: this.settings.speakingSensitivity });
-        if (indicator && indicator.state !== "idle") activeSpeakingUserIds.push(uid);
+        if (indicator && isCallSpeakingActive(indicator.state)) activeSpeakingUserIds.push(uid);
       }
 
       const anySpeaking = activeSpeakingUserIds.length > 0;
