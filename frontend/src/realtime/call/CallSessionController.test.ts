@@ -145,3 +145,26 @@ describe("CallSessionController call quality", () => {
     expect(onRemoteMediaChange).toHaveBeenLastCalledWith([expect.objectContaining({ userId: "peer", isMuted: false })]);
   });
 });
+
+
+describe("SFU participant updates", () => {
+  it("connects once when promoting mesh and keeps SFU connected on participant updates", async () => {
+    const connect = vi.fn(async () => undefined);
+    const sfu = { connect, onDisconnected: undefined as (() => void) | undefined };
+    const factory = { createMesh: () => ({ setRoomId: vi.fn(), stopAll: vi.fn() }), createSFU: () => sfu } as unknown as MediaEngineFactory;
+    const controller = new CallSessionController({} as never, "token", factory);
+    controller.setRoomId("room");
+    controller.setTopology("sfu");
+    Object.assign(controller, { mediaConnected: true });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ url: "wss://example.test", token: "test" }), { status: 200 }));
+    try {
+      await controller.switchToSfu();
+      await controller.switchToSfu();
+      expect(connect).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      sfu.onDisconnected?.();
+      await controller.switchToSfu();
+      expect(connect).toHaveBeenCalledTimes(2);
+    } finally { fetchSpy.mockRestore(); }
+  });
+});

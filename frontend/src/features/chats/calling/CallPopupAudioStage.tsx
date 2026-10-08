@@ -13,6 +13,7 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
     callPhase,
     callType,
     isCallMinimized,
+    localScreenStream,
     hasRemoteVideo,
     callRemoteMedia,
     callAudioSettings,
@@ -27,20 +28,22 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
     accessToken,
   } = session;
 
+  const isGroupCall = activeChat?.type === "group" || activeChat?.type === "family";
   const hasScreenShare = callRemoteMedia.some((media) => media.hasScreenShare);
   if (
     isCallMinimized ||
-    (callType !== "audio" && callAudioSettings.cameraEnabled) ||
+    callType !== "audio" ||
     hasRemoteVideo ||
-    hasScreenShare || callAudioSettings.screenSharing || session.localScreenStream ||
-    callPhase !== "in-call" ||
+    callRemoteMedia.length > 1 ||
+    hasScreenShare ||
+    Boolean(localScreenStream) ||
+    (callPhase !== "in-call" && !(isGroupCall && callPhase === "connecting")) ||
     isMobileViewport
   ) return null;
 
   const activePeer = members.find((member) => member.id === callPeerUserId) ||
     activeChat?.members?.find((member) => member.id === callPeerUserId) ||
     activeChat?.members?.find((member) => member.id !== currentUser?.id);
-  const isGroupCall = activeChat?.type === "group" || activeChat?.type === "family";
 
   if (isGroupCall) {
     const activeCall = activeGroupCalls[activeChat.id] ?? activeChat.activeCall;
@@ -64,18 +67,18 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
       : "9";
 
     return (
-      <div className={`call-popup-group-participants shared-call-stage voice-room-grid voice-grid--${gridTier}`} role="list" aria-label="Group call participants">
+      <div className={`call-popup-group-participants voice-room-grid voice-grid--${gridTier}`} role="list" aria-label="Group call participants">
         {participantIds.map((userId) => {
           const isSelf = userId === currentUser?.id;
           const member = members.find((candidate) => candidate.id === userId) ??
             activeChat.members.find((candidate) => candidate.id === userId);
           const participantState = activeParticipants.find((participant) => participant.userId === userId)?.state;
-          const isSpeaking = isSelf
+          const isSpeaking = callPhase === "in-call" && (isSelf
             ? isLocalSpeaking
-            : Boolean(speakingUserIds.includes(userId) || (isPeerSpeaking && participantIds.length <= 2));
+            : Boolean(speakingUserIds.includes(userId) || (isPeerSpeaking && participantIds.length <= 2)));
           const isMuted = isSelf && callAudioSettings.micMuted;
           const displayName = isSelf ? `${currentUser?.displayName ?? "You"} (You)` : member?.displayName ?? "Member";
-          const stateLabel = participantState === "connecting"
+          const stateLabel = callPhase === "connecting" || participantState === "connecting"
             ? "Connecting…"
             : isSpeaking
             ? "Speaking…"

@@ -19,7 +19,7 @@ import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
 import { GuestParticipantTile, LocalStreamVideo, RemoteVideo } from "./GuestMeetingMedia";
-import { createCallSpeakingIndicator, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
+import { createCallSpeakingIndicator, isCallSpeakingActive, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
 import {
   createGuestMeetingSession,
   getGuestMeetingIntelligence,
@@ -121,7 +121,7 @@ export default function GuestMeetingPage() {
         indicator = createCallSpeakingIndicator((nextState) => {
           setRemoteSpeakingUserIds((previous) => {
             const next = new Set(previous);
-            if (nextState === "idle") next.delete(id);
+            if (!isCallSpeakingActive(nextState)) next.delete(id);
             else next.add(id);
             return [...next];
           });
@@ -647,7 +647,7 @@ export default function GuestMeetingPage() {
   async function leaveForEmptyRoomTimeout() { setWasDisconnectedForEmptyRoom(true); await leave({ dueToEmptyRoom: true }); }
   function stayInEmptyRoom() { setEmptyRoomWarning(false); emptyRoomTimeoutRef.current?.stay(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
-  const isSpeaking = speakingIndicatorState === "speaking";
+  const isSpeaking = isCallSpeakingActive(speakingIndicatorState);
   const audioSettingsPopup = settingsOpen && <GuestMeetingAudioSettings
     popupRef={audioPopupRef} isMobile={isMobile} localStream={localStreamRef.current}
     settings={{ ...audioProcessing, inputGain, outputVolume, inputDeviceId: microphoneDeviceId, outputDeviceId: speakerDeviceId, micMuted: !microphoneEnabled, soundDisabled: !speakerEnabled }}

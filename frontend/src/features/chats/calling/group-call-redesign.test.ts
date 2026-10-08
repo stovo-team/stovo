@@ -16,14 +16,26 @@ describe("group call presentation surface", () => {
     expect(callFeature).toContain("callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)");
     expect(callFeature).toContain("isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized)");
     expect(callFeature).toContain("shouldUseFullscreenSurface ? \"call-popup-fullscreen\" : \"\"");
-    expect(callFeature).toContain("effectiveIsCallMinimized ? \"call-popup-minimized\" : \"\"");
+    expect(callFeature).toContain("hidden={effectiveIsCallMinimized}");
+    expect(callFeature).toContain("visible={effectiveIsCallMinimized}");
   });
 
   it("uses a smaller group popup and compact invite and call controls", () => {
-    expect(rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/width:\s*min\(840px,/);
+    expect(rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/width:\s*min\(640px,/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/width:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/height:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn--invite")).toMatch(/width:\s*40px/);
+  });
+
+  it("keeps participant tiles at 16:9 and controls from shrinking", () => {
+    expect(rule(".call-popup-group-participant")).toMatch(/aspect-ratio:\s*16 \/ 9/);
+    expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/flex-shrink:\s*0/);
+    expect(rule(".call-popup-group-call .call-popup-header-invite")).toMatch(/grid-column:\s*3/);
+  });
+
+  it("keeps the desktop sharing stage and header visible", () => {
+    expect(rule(".call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-video-area")).toMatch(/display:\s*flex/);
+    expect(rule(".call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header")).toMatch(/display:\s*grid/);
   });
 
   it("keeps audio settings above the expanded call and uses the audio-channel popup", () => {

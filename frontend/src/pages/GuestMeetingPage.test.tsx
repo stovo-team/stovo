@@ -162,7 +162,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(spotlight).toMatch(/flex:\s*1\s+1\s+0/);
     expect(screen).toMatch(/height:\s*100%/);
     expect(screen).toMatch(/aspect-ratio:\s*auto/);
-    expect(css).toContain(".guest-call-screen-tile .voice-participant-video-feed { object-position: center top; }");
+    expect(css.match(/\.guest-call-screen-tile \.voice-participant-video-feed\s*\{([^}]*)\}/)?.[1]).toMatch(/object-position:\s*center top/);
     expect(pageSource).toContain('guest-call-screen-tile" style={{ aspectRatio: "auto" }}');
   });
 

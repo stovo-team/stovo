@@ -44,6 +44,9 @@ describe("meeting intelligence popover design", () => {
     expect(captionsCard).toContain('aria-label="Live Captions unavailable"');
     expect(captionsCard).toContain("defaultChecked={false}");
     expect(captionsCard).toContain("disabled");
+    expect(captionsCard).toContain('aria-disabled="true"');
+    expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-title')).toMatch(/color:\s*var\(--text-muted\)/);
+    expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-icon')).toMatch(/color:\s*var\(--text-muted\)/);
     expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf('aria-label="Premium feature"'));
     expect(captionsCard).not.toContain("Caption translation");
     expect(captionsCard).not.toContain("meeting-intel-card-subbar");
