@@ -205,11 +205,14 @@ describe("VoiceChannelStage", () => {
         accessToken="test-token"
         canAddPeople
         onOpenAddPeople={onOpenAddPeople}
+        onToggleExpanded={vi.fn()}
       />
     );
 
     const inviteButton = container.querySelector(".voice-room-member-invite") as HTMLButtonElement;
+    const expandButton = container.querySelector(".voice-room-expand-button") as HTMLButtonElement;
     expect(inviteButton).not.toBeNull();
+    expect(expandButton).not.toBeNull();
     act(() => inviteButton.click());
     expect(onOpenAddPeople).toHaveBeenCalledOnce();
   });
@@ -252,10 +255,11 @@ describe("VoiceChannelStage", () => {
 
     const emptyState = container.querySelector(".voice-room-empty-state");
     const inviteButton = container.querySelector(".voice-room-member-invite");
+    const expandButton = container.querySelector(".voice-room-expand-button");
     expect(emptyState).not.toBeNull();
-    expect(inviteButton).not.toBeNull();
+    expect(inviteButton).toBeNull();
+    expect(expandButton).toBeNull();
     expect(emptyState?.parentElement?.classList.contains("voice-room-empty-content")).toBe(true);
-    expect(inviteButton?.getAttribute("aria-label")).toBe("Add people");
 
     // Ensure there is only 1 join button on the whole screen (no duplicate button)
     const joinButtons = container.querySelectorAll("button");

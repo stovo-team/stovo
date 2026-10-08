@@ -270,7 +270,7 @@ export function VoiceChannelStage({
         currentInterimCaption={liveCaptions.currentInterimCaption}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
-      {onToggleExpanded && (
+      {participantCount > 0 && onToggleExpanded && (
         <button
           type="button"
           className="voice-room-expand-button"
@@ -456,7 +456,7 @@ export function VoiceChannelStage({
         </div>
       </CallParticipantStage>
 
-      {canAddPeople && onOpenAddPeople && (
+      {participantCount > 0 && canAddPeople && onOpenAddPeople && (
         <button
           type="button"
           className="voice-room-member-invite"
