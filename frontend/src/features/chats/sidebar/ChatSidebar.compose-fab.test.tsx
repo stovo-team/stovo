@@ -155,7 +155,7 @@ describe("ChatSidebar compose action", () => {
     const icon = composeFab.querySelector("svg");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
     expect(icon?.classList.contains("lucide-plus")).toBe(true);
-    expect(icon?.getAttribute("width")).toBe("20");
+    expect(icon?.getAttribute("width")).toBe("16");
     expect(composeFab.textContent).not.toContain("edit_square");
     expect(composeFab.querySelector("svg path")).not.toBeNull();
     expect(composeFab.querySelector(".ms-icon")).toBeNull();

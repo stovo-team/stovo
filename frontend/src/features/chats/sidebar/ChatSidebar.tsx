@@ -277,7 +277,7 @@ export function ChatSidebar({
         title="Start a chat"
         onClick={openNewChatScreen}
       >
-        <Plus aria-hidden={true} size={20} />
+        <Plus aria-hidden={true} size={16} />
       </button>
     </aside>
   );
