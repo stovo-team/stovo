@@ -113,6 +113,18 @@ awk '
   }
 ' .github/workflows/pipeline.yml
 
+notes_retry_contract=$(sed -n '/      - name: Generate release notes/,/      - name: Publish Android release to Telegram/p' .github/workflows/pipeline.yml)
+for required in 'MAX_ATTEMPTS=3' '-le "$MAX_ATTEMPTS"' 'BASE_DELAY=$((1 << (attempt - 1)))' 'RANDOM' 'sleep "$DELAY"' 'curl -fsSL https://api.openai.com/v1/chat/completions'; do
+  if ! grep -Fq -- "$required" <<< "$notes_retry_contract"; then
+    echo "Android release notes must retry the OpenAI request up to three times with exponential jittered delays ($required)." >&2
+    exit 1
+  fi
+done
+if ! grep -Fq 'SUMMARY=$(printf '\''Что нового:\n%s'\'' "$COMMITS")' <<< "$notes_retry_contract"; then
+  echo "Android release notes must retain the commit-list fallback after retries are exhausted." >&2
+  exit 1
+fi
+
 grep -Fq 'RUN --mount=type=cache,target=/root/.npm \' frontend/Dockerfile || {
   echo "The frontend npm dependency install must retain its BuildKit cache mount." >&2
   exit 1
