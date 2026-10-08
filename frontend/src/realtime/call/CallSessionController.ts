@@ -121,6 +121,7 @@ export default class CallSessionController {
   }
 
   setRoomId(id: string) {
+    if (this.roomId !== id) this.sfuConnectPromise = null;
     this.roomId = id;
     this.mesh.setRoomId(id);
   }
@@ -333,14 +334,16 @@ export default class CallSessionController {
     await this.flushPreconnectSignals();
   }
 
+  // Reuse the successful join until the room disconnects, including participant updates.
   async switchToSfu(): Promise<void> {
     if (this.sfuConnectPromise) return this.sfuConnectPromise;
     const connection = this.connectToSfu();
     this.sfuConnectPromise = connection;
     try {
       await connection;
-    } finally {
+    } catch (error) {
       if (this.sfuConnectPromise === connection) this.sfuConnectPromise = null;
+      throw error;
     }
   }
 
@@ -637,6 +640,7 @@ export default class CallSessionController {
     const endingChatId = this.chatId;
 
     this.mesh.stopAll();
+    this.sfuConnectPromise = null;
     await this.sfu.disconnect();
 
     if (!serverAlreadyNotified && endingChatId && this.socket.connected) {
@@ -740,6 +744,7 @@ export default class CallSessionController {
     };
     this.sfu.onConnected = () => this.markMediaConnected();
     this.sfu.onDisconnected = () => {
+      this.sfuConnectPromise = null;
       this.remoteMicrophoneMuted.clear();
       this.remoteMedia.clear();
       this.notifyRemoteMediaChange();

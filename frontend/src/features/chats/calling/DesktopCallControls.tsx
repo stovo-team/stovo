@@ -185,7 +185,7 @@ export function DesktopCallControls() {
           {isParticipantFocused && !isCallMinimized && (
             <button type="button" className="icon-button subtle call-participant-focus-back" aria-label="Back to participants" onClick={() => closeParticipantFocusRef.current()}><ArrowLeft aria-hidden="true" size={16} /></button>
           )}
-          {callPhase !== "incoming" && !isCallMinimized && (isParticipantFocused || session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
+          {callPhase !== "incoming" && !isCallMinimized && (isGroupCall || isParticipantFocused || session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
             <button
               type="button"
               className="icon-button subtle"
@@ -204,9 +204,10 @@ export function DesktopCallControls() {
       )}
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-      <CallParticipantStage className={`shared-call-stage call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
-        {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized ? (
+      <CallParticipantStage className={`shared-call-stage call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && !localScreenStream && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+        {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare)) && (callPhase === "in-call" || (isGroupCall && callPhase === "connecting")) && !isCallMinimized ? (
           <CallParticipantGrid
+            isCallConnected={callPhase === "in-call"}
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
             remoteMedia={participantGridMedia}
@@ -309,7 +310,9 @@ export function DesktopCallControls() {
         <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
       )}
 
-      <CallPopupAudioStage activeChat={activeChat ?? null} />
+      <CallParticipantStage className="shared-call-stage call-popup-audio-stage">
+        <CallPopupAudioStage activeChat={activeChat ?? null} />
+      </CallParticipantStage>
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
@@ -341,7 +344,7 @@ export function DesktopCallControls() {
                 capabilities={callAudioCapabilities}
                 controlClassName="call-ctrl-btn"
                 cameraActive={callType === "video" && callAudioSettings.cameraEnabled}
-                showCamera={callPhase === "in-call"}
+                showCamera={true}
                 onPatch={(patch) => void applyCallAudioPatch(patch)}
                 onToggleCamera={() => {
                   if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
@@ -378,7 +381,8 @@ export function DesktopCallControls() {
                       setIsCallAudioPopupOpen(false);
                       setIsCallSettingsMenuOpen(false);
                     } else {
-                      setIsCallSettingsMenuOpen((v) => !v);
+                      setIsCallSettingsMenuOpen(false);
+                      setIsCallAudioPopupOpen(true);
                     }
                   }}
                 >

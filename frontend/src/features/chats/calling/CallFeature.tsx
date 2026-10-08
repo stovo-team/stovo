@@ -121,6 +121,13 @@ export function CallFeature() {
     },
   };
 
+  // Capture success owns minimization; restoring the window must not restart capture.
+  useLayoutEffect(() => {
+    if (localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")) {
+      session.setIsCallMinimized(true);
+    }
+  }, [localScreenStream, session.setIsCallMinimized]);
+
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id !== currentUser?.id);
