@@ -1,4 +1,5 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -42,7 +43,6 @@ export { CallFeatureProvider } from "./CallFeatureContext";
 export function CallFeature() {
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const { pathname } = useLocation();
-  const [routeMinimized, setRouteMinimized] = useState(false);
   const {
     callPhase,
     callType,
@@ -98,25 +98,18 @@ export function CallFeature() {
   );
   // Expanded voice channels live in the conversation. Every minimized call
   // is owned here, outside route surfaces, so only one call bar can appear.
+  const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
+  const routeMinimized = callPhase !== "idle" && !isOnChatsRoute;
+  useEffect(() => { if (callPhase === "idle") resetFloatingCallPosition(); }, [callPhase]);
   const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
   const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
   const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
-
-  const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
-  useLayoutEffect(() => {
-    if (callPhase === "idle") {
-      setRouteMinimized(false);
-    } else if (!isOnChatsRoute) {
-      setRouteMinimized(true);
-    }
-  }, [callPhase, isOnChatsRoute]);
 
   const callUiSession = {
     ...session,
     isCallMinimized: isCallMinimized || routeMinimized,
     setIsCallMinimized: (value: boolean | ((current: boolean) => boolean)) => {
       const nextValue = typeof value === "function" ? value(isCallMinimized || routeMinimized) : value;
-      setRouteMinimized(false);
       session.setIsCallMinimized(nextValue);
     },
   };

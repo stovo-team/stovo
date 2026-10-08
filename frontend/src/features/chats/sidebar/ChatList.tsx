@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 
 import { Chat, updateChatPreferences } from "../../../api/chats";
 import type { ChatFilter, ChatSectionKey } from "../shared/types";
+import { useCallChatReveal } from "./useCallChatReveal";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
@@ -89,6 +90,7 @@ export function ChatList({
 }: ChatListProps) {
   const strings = useStrings();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useCallChatReveal(() => setCollapsed({}));
   const [folderState, setFolderState] = useState(() => ({ familyId, folders: loadChatFolders(familyId) }));
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null | undefined>(undefined);
   const [defaultSectionNames, setDefaultSectionNames] = useState<DefaultChatSectionNames>(() => loadDefaultChatSectionNames(familyId));

@@ -50,9 +50,9 @@ frontend/src/features/chats/details/ChatDetailsPanel.tsx	1411
 frontend/src/features/chats/outbox/messageOutboxProcessor.ts	482
 frontend/src/features/chats/outbox/messageOutboxStore.ts	403
 frontend/src/features/chats/shared/messagePresentation.ts	473
-frontend/src/features/chats/sidebar/ChatList.tsx	848
+frontend/src/features/chats/sidebar/ChatList.tsx	850
 frontend/src/features/chats/sidebar/useChatDataLoader.ts	591
-frontend/src/features/chats/useChatsPageController.ts	428
+frontend/src/features/chats/useChatsPageController.ts	430
 frontend/src/messageMarkdown.tsx	724
 frontend/src/pages/ChatsPage.tsx	469
 frontend/src/pages/ChecklistPage.tsx	780

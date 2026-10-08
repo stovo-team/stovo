@@ -80,3 +80,19 @@ it("falls back immediately when a camera track mutes or ends", () => {
   act(() => { track.readyState = "ended"; track.dispatchEvent(new Event("ended")); });
   expect(host.querySelector("video")?.srcObject).toBe(alice);
 });
+
+it("restores by title click and suppresses restoration after a title drag", () => {
+  const restore = vi.fn();
+  const host = render({ onExpand: restore });
+  const panel = host.querySelector<HTMLElement>('.minimized-call')!;
+  panel.getBoundingClientRect = () => ({ left: 400, top: 100, width: 200, height: 60 } as DOMRect);
+  const title = host.querySelector<HTMLElement>('.minimized-call-metadata')!;
+  act(() => title.click());
+  expect(restore).toHaveBeenCalledOnce();
+  for (const [target, type, x, y] of [[title, 'pointerdown', 420, 120], [panel, 'pointermove', 300, 300], [panel, 'pointerup', 300, 300]] as const) {
+    act(() => target.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0 })));
+  }
+  expect(panel.style.left).toBe('280px');
+  act(() => title.click());
+  expect(restore).toHaveBeenCalledOnce();
+});

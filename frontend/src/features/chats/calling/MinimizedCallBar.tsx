@@ -1,3 +1,4 @@
+import { useFloatingCallPanel } from "./useFloatingCallPanel";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import type { CallPhase } from "../shared/types";
@@ -33,6 +34,7 @@ const hasVideo = (stream: MediaStream | null) => stream?.getVideoTracks().some(
 /** The single minimized surface for every call type, kept mounted to remember speakers. */
 export function MinimizedCallBar({ visible = true, ...props }: Props) {
   const { remoteMedia, localVideoStream, localScreenStream, localUserId } = props;
+  const floating = useFloatingCallPanel<HTMLElement>(visible && props.callPhase !== "idle");
   const [lastSpeaker, setLastSpeaker] = useState<string | null>(null);
   const [, refreshTracks] = useReducer(value => value + 1, 0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -67,13 +69,15 @@ export function MinimizedCallBar({ visible = true, ...props }: Props) {
   const status = props.callPhase === "in-call" ? props.callTimer :
     props.callPhase === "incoming" ? "Incoming…" : props.callPhase === "outgoing" ? "Calling…" : "Connecting…";
   return (
-    <section className={`minimized-call${preview ? " minimized-call--video" : ""}`} role="status" aria-label="Minimized call">
+    <section {...floating} className={`minimized-call${preview ? " minimized-call--video" : ""}`} role="status" aria-label="Minimized call">
       {preview && <video ref={videoRef} className={mirrored ? "is-mirrored" : ""} autoPlay playsInline muted />}
       <div className="minimized-call-heading">
         <button type="button" className="minimized-call-button" aria-label="Restore call" onClick={props.onExpand}>
           <Maximize2 size={18} aria-hidden="true" />
         </button>
-        <div className="minimized-call-metadata">
+        <div className="minimized-call-metadata" data-call-drag-handle role="button" tabIndex={0}
+          onClick={props.onExpand}
+          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); props.onExpand(); } }}>
           <span className="minimized-call-title" title={props.peerName}>{props.peerName}</span>
           <span className="minimized-call-duration"> · {status}</span>
         </div>

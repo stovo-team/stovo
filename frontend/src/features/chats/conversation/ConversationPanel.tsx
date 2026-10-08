@@ -505,7 +505,7 @@ export function ConversationPanel({
               </button>
             </div>
           )}
-          {selectedChat.type === "voice" && isShowingVoiceTextChat && (
+          {selectedChat.type === "voice" && isShowingVoiceTextChat && !isActiveVoiceChannel && (
             <VoiceLiveCallBanner chat={selectedChat} session={callSession} isActive={isActiveVoiceChannel} members={(members ?? selectedChat.members) as User[]} currentUser={currentUser} accessToken={accessToken} />
           )}
           <MessageList

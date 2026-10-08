@@ -37,7 +37,7 @@ describe("call session route lifetime", () => {
 
     expect(callFeatureSource).toContain("createPortal");
     expect(callFeatureSource).toContain("useLocation");
-    expect(callFeatureSource).toContain("setRouteMinimized(true)");
+    expect(callFeatureSource).toContain('const routeMinimized = callPhase !== "idle" && !isOnChatsRoute;');
     expect(callFeatureSource).toContain("<MinimizedCallBar");
     expect(callFeatureSource).toContain("visible={effectiveIsCallMinimized}");
     expect(styles).toContain(".minimized-call");
