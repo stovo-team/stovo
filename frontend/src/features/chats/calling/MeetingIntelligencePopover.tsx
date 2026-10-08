@@ -293,7 +293,7 @@ export function MeetingIntelligencePopover({
         </div>
 
         {/* Live Captions are currently unavailable as a Premium feature. */}
-        <div className="meeting-intel-card">
+        <div className="meeting-intel-card" aria-disabled="true">
           <div className="meeting-intel-card-head">
             <div className="meeting-intel-card-icon meeting-intel-card-icon--captions">
               <Globe size={18} />

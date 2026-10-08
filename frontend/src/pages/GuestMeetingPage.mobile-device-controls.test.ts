@@ -27,6 +27,8 @@ describe("guest meeting responsive device-control source contract", () => {
   it("uses the shared speaking-indicator contract rather than a guest-only threshold", () => {
     expect(/createCallSpeakingIndicator\s*\(/.test(guestMeeting)).toBe(true);
     expect(/callSpeakingIndicator/.test(guestMeeting)).toBe(true);
+    expect(guestMeeting).toContain("const isSpeaking = isCallSpeakingActive(speakingIndicatorState)");
+    expect(guestMeeting).toContain("if (!isCallSpeakingActive(nextState)) next.delete(id)");
   });
 
   it("declares mobile audio-output switching and camera-rotation controls", () => {

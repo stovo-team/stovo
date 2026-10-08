@@ -154,7 +154,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(connectingLinkRule).toMatch(/bottom:/);
   });
 
-  it("keeps the shared-screen frame 16:9 and centered instead of stretching to the desktop stage", () => {
+  it("fills the available desktop stage while keeping the shared-screen frame 16:9", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
     const desktopSpotlightRules = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]);
@@ -163,7 +163,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(screenTileRule).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
     expect(css.match(/\.guest-call-spotlight\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/margin-inline:\s*auto/);
     expect(pageSource).toMatch(/guest-call-screen-tile" style=\{\{ aspectRatio: "16 \/ 9" \}\}/);
-    expect(desktopSpotlightRules.every((rule) => !/flex:\s*1(?:\s|;|$)/.test(rule))).toBe(true);
+    expect(desktopSpotlightRules.some((rule) => /flex:\s*1\s+1\s+0/.test(rule))).toBe(true);
     expect(desktopScreenTileRules.every((rule) => !/(?:^|[;\n])\s*height:\s*100%/.test(rule))).toBe(true);
   });
 
