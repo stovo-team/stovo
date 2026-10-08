@@ -15108,6 +15108,12 @@ span.message-spoiler.is-revealed {
   gap: 10px;
 }
 
+.meeting-intel-card-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .meeting-intel-card-icon {
   width: 36px;
   height: 36px;
@@ -15261,21 +15267,17 @@ span.message-spoiler.is-revealed {
   transition: 0.2s;
 }
 
+.meeting-intel-switch input:disabled + .meeting-intel-switch-slider {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .meeting-intel-switch input:checked + .meeting-intel-switch-slider {
   background: var(--accent-primary, #6366f1);
 }
 
 .meeting-intel-switch input:checked + .meeting-intel-switch-slider:before {
   transform: translateX(16px);
-}
-
-.meeting-intel-premium-lock {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-tertiary);
-  font-size: 0.72rem;
 }
 
 /* ── Live Captions Floating Subtitle Overlay ─────────────────────── */
@@ -30641,7 +30643,6 @@ button.checklist-add-item-btn:hover,
   color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left;
 }
 .meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
-.meeting-intel-card:has(.meeting-intel-restricted-badge[aria-label="Premium feature"]) .meeting-intel-card-info { flex-direction: row; align-items: center; gap: 8px; }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
   width: auto; min-width: 58px; height: 32px; min-height: 32px; flex: 0 0 auto;
   padding: 0 12px; border-radius: 9px; font-size: .78rem;

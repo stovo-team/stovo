@@ -39,9 +39,14 @@ describe("meeting intelligence popover design", () => {
     expect(button).toMatch(/flex:\s*0 0 auto/);
   });
 
-  it("keeps the blue Premium badge inside the Live Captions card", () => {
-    const captionsCard = component.slice(component.indexOf("{/* Live captions"));
-    expect(captionsCard.indexOf("aria-label=\"Premium feature\"")).toBeLessThan(captionsCard.indexOf("meeting-intel-card-subbar"));
+  it("keeps Live Captions disabled and places its Premium badge beside the switch", () => {
+    const captionsCard = component.slice(component.indexOf("{/* Live Captions"));
+    expect(captionsCard).toContain('aria-label="Live Captions unavailable"');
+    expect(captionsCard).toContain("defaultChecked={false}");
+    expect(captionsCard).toContain("disabled");
+    expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf('aria-label="Premium feature"'));
+    expect(captionsCard).not.toContain("Caption translation");
+    expect(captionsCard).not.toContain("meeting-intel-card-subbar");
     expect(ruleFor('.meeting-intel-restricted-badge[aria-label="Premium feature"]')).toMatch(/#bfdbfe/);
   });
 
