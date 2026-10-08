@@ -262,6 +262,7 @@ export default function CallParticipantGrid({
       : isCallConnected && !("isMuted" in presenter && presenter.isMuted) && (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
     : false;
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
+  const useBottomScreenShareRail = useScreenShareRail && remoteMedia.length >= 4;
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
   const hasLongMobileParticipantRow = useMobilePresentationRow && remoteMedia.length >= 5;
 
@@ -314,7 +315,7 @@ export default function CallParticipantGrid({
     <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
   ) : (
     <div
-      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
+      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
         gridTemplateColumns: useScreenShareRail
@@ -330,7 +331,9 @@ export default function CallParticipantGrid({
         <ParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
-            ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", alignSelf: "center", justifySelf: "stretch" }
+            ? useBottomScreenShareRail
+              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: "100%", height: "100%", maxWidth: "none", maxHeight: "none", aspectRatio: "auto", alignSelf: "stretch", justifySelf: "stretch" }
+              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", alignSelf: "center", justifySelf: "stretch" }
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
               : landscapePresenterTileStyle}

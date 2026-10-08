@@ -2,6 +2,14 @@ import type { Socket } from "socket.io-client";
 import CallController, { type CallTopology } from "../../../realtime/CallController";
 import type { CallSignalingDependencies } from "./useCallSignaling";
 
+export function getMediaJoinFailureNotice(error: unknown): string {
+  const name = error instanceof Error ? error.name : "";
+  if (["NotAllowedError", "NotFoundError", "NotReadableError", "OverconstrainedError", "SecurityError"].includes(name)) {
+    return "Camera/mic permission or device failed";
+  }
+  return "Could not connect to the call. Check your connection and try again.";
+}
+
 export function registerCallAcceptedHandler(socket: Socket, audioController: CallController, dependencies: CallSignalingDependencies) {
   const {
     currentUser,
@@ -146,7 +154,7 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
           .catch(async (err) => {
             console.error("[call:accepted] media join threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId, roomId: payload.roomId });
-            await resetCallState("Camera/mic permission or device failed", true, false);
+            await resetCallState(getMediaJoinFailureNotice(err), true, false);
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       });

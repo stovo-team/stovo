@@ -757,7 +757,7 @@
 }
 
 .call-grid--screen-share {
-  grid-template-columns: minmax(0, 1fr) minmax(112px, 22%);
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 18%);
   grid-template-rows: minmax(0, 1fr);
   align-items: center;
 }
@@ -808,12 +808,58 @@
   aspect-ratio: 16 / 9;
 }
 
+.call-grid--screen-share-bottom {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.call-grid--screen-share-bottom .call-grid__tile--screen {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.call-grid--screen-share-bottom .call-grid__participant-rail {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  height: clamp(76px, 14vh, 112px);
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.call-grid--screen-share-bottom .call-grid__participant-pin,
+.call-grid--screen-share-bottom .call-grid__remote-rail > [data-participant-id] {
+  flex: 0 0 clamp(84px, 12vw, 128px);
+  height: 100% !important;
+  aspect-ratio: auto;
+}
+
+.call-grid--screen-share-bottom .call-grid__remote-rail {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .call-grid__participant-rail .call-grid__tile,
 .call-grid__remote-rail .call-grid__tile {
   width: 100%;
   height: 100%;
   min-height: 0;
   aspect-ratio: 16 / 9;
+}
+
+.call-grid__participant-rail .call-grid__avatar-circle,
+.call-grid__remote-rail .call-grid__avatar-circle {
+  width: 48px;
+  height: 48px;
 }
 
 .shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
@@ -25604,7 +25650,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 .voice-list-row-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -25797,6 +25843,11 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-self: center;
 }
 .shared-call-stage .call-grid--presenting { aspect-ratio: 19 / 9; }
+.shared-call-stage .call-grid--presenting.call-grid--screen-share {
+  height: 100% !important;
+  max-height: 100%;
+  aspect-ratio: auto;
+}
 .shared-call-stage .voice-participant-card.has-video,
 .shared-call-stage .call-grid__tile { aspect-ratio: 16 / 9; }
 .shared-call-stage .call-grid__tile--screen { aspect-ratio: 19 / 9; }
