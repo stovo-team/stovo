@@ -178,6 +178,7 @@ export function CallFeature() {
           <section
             className={[
               "call-popup",
+              !isMobileViewport ? "call-popup-desktop" : "",
               effectiveIsCallMinimized ? "call-popup-minimized" : "",
               shouldUseFullscreenSurface ? "call-popup-fullscreen" : "",
               effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",

@@ -32,7 +32,7 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
     isCallMinimized ||
     (callType !== "audio" && callAudioSettings.cameraEnabled) ||
     hasRemoteVideo ||
-    hasScreenShare ||
+    hasScreenShare || callAudioSettings.screenSharing || session.localScreenStream ||
     callPhase !== "in-call" ||
     isMobileViewport
   ) return null;
@@ -64,7 +64,7 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
       : "9";
 
     return (
-      <div className={`call-popup-group-participants voice-room-grid voice-grid--${gridTier}`} role="list" aria-label="Group call participants">
+      <div className={`call-popup-group-participants shared-call-stage voice-room-grid voice-grid--${gridTier}`} role="list" aria-label="Group call participants">
         {participantIds.map((userId) => {
           const isSelf = userId === currentUser?.id;
           const member = members.find((candidate) => candidate.id === userId) ??

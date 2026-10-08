@@ -8,8 +8,8 @@ const chatSidebar = readFileSync(resolve(process.cwd(), "src/features/chats/side
 
 describe("floating action buttons", () => {
   it("uses matching compact dimensions, icons, and hover feedback on chats and plans", () => {
-    expect(styles).toMatch(/\.compose-fab\s*\{[^}]*height:\s*36px;[^}]*width:\s*36px;/s);
-    expect(styles).toMatch(/\.plans-create-fab\s*\{[^}]*height:\s*36px;[^}]*width:\s*36px;/s);
+    expect(styles).toMatch(/\.compose-fab\s*\{[^}]*height:\s*40px;[^}]*width:\s*40px;/s);
+    expect(styles).toMatch(/\.plans-create-fab\s*\{[^}]*height:\s*40px;[^}]*width:\s*40px;/s);
     expect(chatSidebar).toContain("<Plus aria-hidden={true} size={16} />");
     expect(plansPage).toContain('<Plus size={16} aria-hidden="true" />');
     expect(styles).toMatch(/\.compose-fab:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--accent-primary-hover, var\(--accent-primary\)\);[^}]*transform:\s*scale\(1\.08\);/s);

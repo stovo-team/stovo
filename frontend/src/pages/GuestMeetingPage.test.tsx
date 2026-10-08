@@ -154,17 +154,16 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(connectingLinkRule).toMatch(/bottom:/);
   });
 
-  it("keeps the shared-screen frame 16:9 and centered instead of stretching to the desktop stage", () => {
+  it("fills the desktop presentation stage and aligns screen content to its top", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
-    const desktopSpotlightRules = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]);
-    const desktopScreenTileRules = Array.from(css.matchAll(/\.guest-call-room \.guest-call-screen-tile\s*\{([^}]*)\}/g), (match) => match[1]);
-    const screenTileRule = css.match(/\.guest-call-screen-tile\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(screenTileRule).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
-    expect(css.match(/\.guest-call-spotlight\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/margin-inline:\s*auto/);
-    expect(pageSource).toMatch(/guest-call-screen-tile" style=\{\{ aspectRatio: "16 \/ 9" \}\}/);
-    expect(desktopSpotlightRules.every((rule) => !/flex:\s*1(?:\s|;|$)/.test(rule))).toBe(true);
-    expect(desktopScreenTileRules.every((rule) => !/(?:^|[;\n])\s*height:\s*100%/.test(rule))).toBe(true);
+    const spotlight = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
+    const screen = Array.from(css.matchAll(/\.guest-call-room \.guest-call-screen-tile\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
+    expect(spotlight).toMatch(/flex:\s*1\s+1\s+0/);
+    expect(screen).toMatch(/height:\s*100%/);
+    expect(screen).toMatch(/aspect-ratio:\s*auto/);
+    expect(css).toContain(".guest-call-screen-tile .voice-participant-video-feed { object-position: center top; }");
+    expect(pageSource).toContain('guest-call-screen-tile" style={{ aspectRatio: "auto" }}');
   });
 
   it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {
