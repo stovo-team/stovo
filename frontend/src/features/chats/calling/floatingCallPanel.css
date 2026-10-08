@@ -1,0 +1,3 @@
+.call-popup.call-popup-minimized { top: 96px; }
+[data-call-drag-handle] { touch-action: none; cursor: grab; user-select: none; }
+[data-call-drag-handle]:active { cursor: grabbing; }

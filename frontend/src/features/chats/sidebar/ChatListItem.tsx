@@ -95,6 +95,7 @@ export function ChatListItem({
 
   return (
     <div
+      data-chat-id={chat.id}
       role="button"
       tabIndex={0}
       className={`chat-list-item ${isActive ? "active" : ""} ${isDragging ? "is-dragging" : ""}`}

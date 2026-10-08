@@ -132,6 +132,12 @@ export function DesktopCallControls() {
     stopTranscription,
   } = transcription;
 
+  const restoreCall = () => {
+    setIsCallMinimized(false);
+    const target = chats.find((chat) => chat.id === session.activeCallChatId);
+    if (target) onOpenChat?.(target);
+  };
+
   const handleToggleAiNotes = () => {
     if (transcriptState === "idle" || transcriptState === "failed") {
       void startTranscription();
@@ -154,7 +160,10 @@ export function DesktopCallControls() {
       <div className="call-popup-header">
           <>
             {!(callPhase === "in-call" && callType === "video" && !isCallMinimized) && (
-            <strong className="call-popup-status">
+            <strong className="call-popup-status" data-call-drag-handle={isCallMinimized || undefined}
+              role={isCallMinimized ? "button" : undefined} tabIndex={isCallMinimized ? 0 : undefined}
+              onClick={isCallMinimized ? restoreCall : undefined}
+              onKeyDown={isCallMinimized ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); restoreCall(); } } : undefined}>
               {isCallMinimized
                 ? (callPhase === "in-call"
                     ? `${callTitle} · ${callTimer}`
@@ -512,13 +521,7 @@ export function DesktopCallControls() {
             className="icon-button subtle call-chip-restore"
             aria-label={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
             title={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
-            onClick={() => {
-              setIsCallMinimized(false);
-              if (session.activeCallChatId && onOpenChat && chats.length > 0) {
-                const target = chats.find((c) => c.id === session.activeCallChatId);
-                if (target) onOpenChat(target);
-              }
-            }}
+            onClick={restoreCall}
           >
             <Maximize2 aria-hidden="true" size={15} />
           </button>

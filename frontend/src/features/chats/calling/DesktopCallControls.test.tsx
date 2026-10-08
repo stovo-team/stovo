@@ -1,3 +1,5 @@
+import { MemoryRouter, useNavigate } from "react-router-dom";
+import { CallFeature } from "./CallFeature";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -52,13 +54,21 @@ afterEach(() => {
 });
 
 function renderDesktopControls({
+  useFeature = false,
   isPeerSpeaking = false,
   isLocalSpeaking = false,
   withRemoteVideo = false,
   callType = "video",
   activeChat = null,
   currentUser = null,
+  minimized = false,
+  onOpenChat = vi.fn(),
+  setIsCallMinimized = vi.fn(),
 }: {
+  minimized?: boolean;
+  onOpenChat?: ReturnType<typeof vi.fn>;
+  setIsCallMinimized?: ReturnType<typeof vi.fn>;
+  useFeature?: boolean;
   isPeerSpeaking?: boolean;
   isLocalSpeaking?: boolean;
   withRemoteVideo?: boolean;
@@ -82,8 +92,8 @@ function renderDesktopControls({
     callType,
     setCallType: noop,
     callNotice: null,
-    isCallMinimized: false,
-    setIsCallMinimized: noop,
+    isCallMinimized: minimized,
+    setIsCallMinimized,
     hasRemoteVideo: withRemoteVideo,
     callRemoteMedia: withRemoteVideo ? [{
       userId: "peer",
@@ -151,19 +161,35 @@ function renderDesktopControls({
   document.body.appendChild(host);
   const root = createRoot(host);
   mountedRoots.push(root);
+  function Navigation() {
+    const navigate = useNavigate();
+    return <><button data-route="plans" onClick={() => navigate('/app/plans')}>Plans</button><button data-route="chats" onClick={() => navigate('/app/chats/room')}>Chats</button></>;
+  }
   act(() => root.render(
+    <MemoryRouter initialEntries={['/app/chats/room']}><Navigation />
     <CallFeatureProvider
+      onOpenChat={onOpenChat}
       session={session}
       isMobileViewport={false}
       members={(activeChat?.members ?? []) as never}
       currentUser={currentUser as never}
       chats={(activeChat ? [activeChat] : []) as never}
     >
-      <DesktopCallControls />
-    </CallFeatureProvider>,
+      {useFeature ? <CallFeature /> : <DesktopCallControls />}
+    </CallFeatureProvider></MemoryRouter>,
   ));
   return host;
 }
+
+it("restores the expanded call after navigating back to chats", () => {
+  renderDesktopControls({ useFeature: true });
+  act(() => (document.querySelector('[data-route="plans"]') as HTMLButtonElement).click());
+  expect(document.querySelector('.call-popup-minimized')).not.toBeNull();
+  act(() => (document.querySelector('[data-route="chats"]') as HTMLButtonElement).click());
+  expect(document.querySelector('.call-popup')).not.toBeNull();
+  expect(document.querySelector('.call-popup-minimized')).toBeNull();
+});
+
 
 describe("DesktopCallControls visibility", () => {
   it("does not overlay a top-right audio wave badge on the remote video when speaking", () => {
@@ -222,4 +248,15 @@ describe("DesktopCallControls visibility", () => {
     expect(container.querySelector('.call-popup-group-participant.is-speaking .voice-participant-state')?.textContent).toBe("Speaking…");
   });
 
+});
+
+
+it("restores the active chat when the minimized title is clicked", () => {
+  const onOpenChat = vi.fn();
+  const setIsCallMinimized = vi.fn();
+  const chat = { id: "room", type: "group", title: "Room", members: [] };
+  const host = renderDesktopControls({ minimized: true, activeChat: chat, onOpenChat, setIsCallMinimized });
+  act(() => (host.querySelector('[data-call-drag-handle]') as HTMLElement).click());
+  expect(setIsCallMinimized).toHaveBeenCalledWith(false);
+  expect(onOpenChat).toHaveBeenCalledWith(chat);
 });

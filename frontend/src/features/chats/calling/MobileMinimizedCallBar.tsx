@@ -1,3 +1,4 @@
+import { useFloatingCallPanel } from "./useFloatingCallPanel";
 import type { CallPhase } from "../shared/types";
 
 export function MobileMinimizedCallBar({
@@ -19,6 +20,7 @@ export function MobileMinimizedCallBar({
   onExpand: () => void;
   className?: string;
 }) {
+  const floating = useFloatingCallPanel(true);
   const statusLabel =
     callPhase === "in-call"
       ? callTimer
@@ -27,7 +29,7 @@ export function MobileMinimizedCallBar({
         : "Connecting…";
 
   return (
-    <div className={`mobile-call-strip ${className}`.trim()} role="status" aria-live="polite">
+    <div {...floating} className={`mobile-call-strip ${className}`.trim()} role="status" aria-live="polite">
       <button
         type="button"
         className={`mobile-call-strip-btn${micMuted ? " is-muted" : ""}`}
@@ -44,6 +46,7 @@ export function MobileMinimizedCallBar({
       <button
         type="button"
         className="mobile-call-strip-main"
+        data-call-drag-handle
         aria-label="Restore call"
         onClick={onExpand}
       >

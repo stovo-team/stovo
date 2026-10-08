@@ -1,3 +1,4 @@
+import { requestCallChatReveal } from "./sidebar/useCallChatReveal";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import type { Location, NavigateFunction } from "react-router-dom";
@@ -339,6 +340,7 @@ export function useChatsPageController({
   }
 
   function openChat(chat: Chat) {
+    if (callSession.activeCallChatId === chat.id) requestCallChatReveal(chat.id);
     if (callSession.callPhase !== "idle" && callSession.activeCallChatId !== chat.id) {
       callSession.setIsCallMinimized(true);
     }

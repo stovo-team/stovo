@@ -1,4 +1,5 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect } from "react";
+import { useFloatingCallPanel, resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -42,7 +43,7 @@ export { CallFeatureProvider } from "./CallFeatureContext";
 export function CallFeature() {
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const { pathname } = useLocation();
-  const [routeMinimized, setRouteMinimized] = useState(false);
+
   const {
     callPhase,
     callType,
@@ -100,24 +101,18 @@ export function CallFeature() {
   // minimized. Keeping them out of the generic popup prevents minimization
   // from looking like the room ended or from creating a second call surface.
   const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
-  const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
-  const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
-
   const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
-  useLayoutEffect(() => {
-    if (callPhase === "idle") {
-      setRouteMinimized(false);
-    } else if (!isOnChatsRoute) {
-      setRouteMinimized(true);
-    }
-  }, [callPhase, isOnChatsRoute]);
+  const routeMinimized = callPhase !== "idle" && !isOnChatsRoute;
+  const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
+  const floating = useFloatingCallPanel<HTMLElement>(effectiveIsCallMinimized && !isMobileViewport);
+  useEffect(() => { if (callPhase === "idle") resetFloatingCallPosition(); }, [callPhase]);
+  const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
 
   const callUiSession = {
     ...session,
     isCallMinimized: isCallMinimized || routeMinimized,
     setIsCallMinimized: (value: boolean | ((current: boolean) => boolean)) => {
       const nextValue = typeof value === "function" ? value(isCallMinimized || routeMinimized) : value;
-      setRouteMinimized(false);
       session.setIsCallMinimized(nextValue);
     },
   };
@@ -145,7 +140,7 @@ export function CallFeature() {
 
   const callUi = (
     <>
-      {routeMinimized && (isMobileViewport || isVoiceChannel) && callPhase !== "idle" && (
+      {routeMinimized && (isMobileViewport || isVoiceChannel) && (
         <MobileMinimizedCallBar
           className="mobile-call-strip--global"
           peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (activeChat?.title ?? "Call")}
@@ -176,6 +171,7 @@ export function CallFeature() {
             <div className="call-popup-backdrop-overlay" aria-hidden="true" />
           )}
           <section
+            {...floating}
             className={[
               "call-popup",
               effectiveIsCallMinimized ? "call-popup-minimized" : "",
