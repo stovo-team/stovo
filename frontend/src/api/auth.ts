@@ -170,20 +170,6 @@ export function changePassword(accessToken: string, payload: ChangePasswordPaylo
 }
 
 const refreshSessionInFlight = new Map<string, Promise<AuthResponse>>();
-const REFRESH_LOCK_KEY = "familyMessenger.refreshLock";
-
-async function acquireRefreshLock(): Promise<void> {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
-}
-
-function releaseRefreshLock(): void {
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(REFRESH_LOCK_KEY);
-  }
-}
 
 export function refreshSession() {
   const serverUrl = getApiUrl();
@@ -200,17 +186,20 @@ export function refreshSession() {
   }
   let request!: Promise<AuthResponse>;
   request = (async () => {
+    const executeRefresh = () => apiRequest<AuthResponse>("/api/auth/refresh", {
+      method: "POST",
+      headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
+    });
     try {
-      await acquireRefreshLock();
-      return await apiRequest<AuthResponse>("/api/auth/refresh", {
-        method: "POST",
-        headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
-      });
+      // A refresh rotates the HttpOnly cookie. Web Locks prevents another tab
+      // from submitting the same cookie before the first response installs
+      // its replacement.
+      const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+      return locks?.request
+        ? await locks.request(`stovo:refresh:${serverUrl}`, { mode: "exclusive" }, executeRefresh)
+        : await executeRefresh();
     } finally {
-      releaseRefreshLock();
-      if (refreshSessionInFlight.get(serverUrl) === request) {
-        refreshSessionInFlight.delete(serverUrl);
-      }
+      if (refreshSessionInFlight.get(serverUrl) === request) refreshSessionInFlight.delete(serverUrl);
     }
   })();
   refreshSessionInFlight.set(serverUrl, request);
