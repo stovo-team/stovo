@@ -93,11 +93,15 @@ export function CallFeature() {
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat ? activeChat.type === "group" || activeChat.type === "family" : false;
+  const isGroupCallSharing = isGroupCall && (
+    callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)
+  );
   // Voice channels use the persistent call header owned by ChatsPage when
   // minimized. Keeping them out of the generic popup prevents minimization
   // from looking like the room ended or from creating a second call surface.
   const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
   const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
+  const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
 
   const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
   useLayoutEffect(() => {
@@ -175,10 +179,10 @@ export function CallFeature() {
             className={[
               "call-popup",
               effectiveIsCallMinimized ? "call-popup-minimized" : "",
-              isMobileViewport ? "call-popup-fullscreen" : "",
+              shouldUseFullscreenSurface ? "call-popup-fullscreen" : "",
               effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
               isGroupCall ? "call-popup-group-call" : "",
-              isGroupCall && (callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)) ? "call-popup-group-call--sharing" : "",
+              isGroupCallSharing ? "call-popup-group-call--sharing" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"

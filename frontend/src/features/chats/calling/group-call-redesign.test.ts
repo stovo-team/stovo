@@ -1,0 +1,34 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const callFeature = readFileSync("src/features/chats/calling/CallFeature.tsx", "utf8");
+const audioSettingsPopup = readFileSync("src/features/chats/calling/CallAudioSettingsPopup.tsx", "utf8");
+const styles = readFileSync("src/styles.css", "utf8").replace(/\r\n/g, "\n");
+
+function rule(selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(styles.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).join("\n");
+}
+
+describe("group call presentation surface", () => {
+  it("expands the desktop group call surface while local or remote sharing is active", () => {
+    expect(callFeature).toContain("const isGroupCallSharing = isGroupCall && (");
+    expect(callFeature).toContain("callAudioSettings.screenSharing || session.callRemoteMedia.some((media) => media.hasScreenShare)");
+    expect(callFeature).toContain("isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized)");
+    expect(callFeature).toContain("shouldUseFullscreenSurface ? \"call-popup-fullscreen\" : \"\"");
+    expect(callFeature).toContain("effectiveIsCallMinimized ? \"call-popup-minimized\" : \"\"");
+  });
+
+  it("uses a smaller group popup and compact invite and call controls", () => {
+    expect(rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/width:\s*min\(840px,/);
+    expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/width:\s*40px/);
+    expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/height:\s*40px/);
+    expect(rule(".call-popup-group-call .call-ctrl-btn--invite")).toMatch(/width:\s*40px/);
+  });
+
+  it("keeps audio settings above the expanded call and uses the audio-channel popup", () => {
+    expect(rule(".call-audio-popup-backdrop")).toMatch(/z-index:\s*2600/);
+    expect(audioSettingsPopup).toContain("className=\"call-audio-popup\"");
+    expect(styles).toContain(".call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share");
+  });
+});

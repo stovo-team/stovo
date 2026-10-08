@@ -211,7 +211,7 @@
 }
 
 .call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
-  width: min(960px, calc(100vw - 40px));
+  width: min(840px, calc(100vw - 40px));
   max-height: calc(100dvh - 40px);
   box-sizing: border-box;
   padding: 20px 24px 24px;
@@ -227,8 +227,36 @@
 
 .call-popup-group-call .call-popup-ctrl-row {
   flex-wrap: nowrap;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
+}
+
+.call-popup-group-call .call-ctrl-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.call-popup-group-call .call-ctrl-btn--invite {
+  width: 40px;
+  height: 40px;
+}
+
+.call-popup-group-call .call-popup-header-actions > .icon-button {
+  flex-basis: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .call-popup-ctrl-row {
+  gap: 14px;
+}
+
+.call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100%;
+  aspect-ratio: auto;
 }
 
 .call-popup-group-call .call-popup-ctrl-row .call-ctrl-wrap > span {
@@ -728,21 +756,24 @@
 }
 
 .call-grid--screen-share {
-  grid-template-columns: minmax(120px, 22%) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 22%);
   grid-template-rows: minmax(0, 1fr);
+  align-items: center;
 }
 
 .call-grid--screen-share > .call-grid__tile--screen {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
-  aspect-ratio: auto;
+  aspect-ratio: 16 / 9;
+  align-self: center;
+  justify-self: stretch;
 }
 
 .call-grid__participant-rail {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   min-width: 0;
   min-height: 0;
@@ -784,9 +815,14 @@
   aspect-ratio: 16 / 9;
 }
 
+.shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
+}
+
 @media (max-width: 720px) {
   .call-grid--screen-share {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 1fr) auto;
   }
 
@@ -803,6 +839,7 @@
 
   .call-grid--screen-share .call-grid__participant-rail {
     display: flex;
+    align-items: center;
     grid-column: 1;
     grid-row: 2;
     height: 92px;
@@ -811,8 +848,9 @@
 
   .call-grid--screen-share .call-grid__participant-pin,
   .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
-    flex: 0 0 clamp(112px, 28vw, 164px);
-    height: 100%;
+    flex: 0 0 clamp(88px, 17vw, 150px);
+    height: auto !important;
+    aspect-ratio: 16 / 9;
   }
 
   .call-grid--screen-share .call-grid__participant-pin .call-grid__avatar-circle,
@@ -823,6 +861,7 @@
 
   .call-grid--screen-share .call-grid__remote-rail {
     display: flex;
+    align-items: center;
     height: 100%;
     min-width: 0;
     overflow-x: auto;
@@ -1109,7 +1148,7 @@
 /* ── Call settings context menu ── */
 .call-settings-context-menu {
   position: fixed;
-  z-index: 60;
+  z-index: 2600;
   background: var(--surface-card);
   border: 1px solid var(--border-default);
   border-radius: 10px;
@@ -1146,7 +1185,7 @@
   position: fixed;
   right: 0;
   top: 0;
-  z-index: 70;
+  z-index: 2600;
 }
 
 .call-audio-popup {

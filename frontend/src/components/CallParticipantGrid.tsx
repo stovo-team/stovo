@@ -50,8 +50,8 @@ const tileStyle: CSSProperties = {
 
 const landscapePresenterTileStyle: CSSProperties = {
   ...tileStyle,
-  aspectRatio: "19 / 9",
-  minHeight: "180px",
+  aspectRatio: "16 / 9",
+  minHeight: 0,
   gridColumn: "1 / -1",
 };
 
@@ -318,7 +318,7 @@ export default function CallParticipantGrid({
       style={{
         ...gridStyle,
         gridTemplateColumns: useScreenShareRail
-          ? "minmax(0, 1fr) minmax(120px, 22%)"
+          ? undefined
           : useMobilePresentationRow
           ? "minmax(0, 1fr)"
           : isPresenting
@@ -330,7 +330,7 @@ export default function CallParticipantGrid({
         <ParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
-            ? { ...landscapePresenterTileStyle, gridColumn: "2", gridRow: "1", maxWidth: "none", minHeight: 0, aspectRatio: "auto", justifySelf: "stretch" }
+            ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", alignSelf: "center", justifySelf: "stretch" }
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
               : landscapePresenterTileStyle}
