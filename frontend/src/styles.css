@@ -25145,6 +25145,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   justify-content: center;
   margin: auto;
+  border: none;
 }
 
 .voice-room-empty-content .voice-room-empty-state {

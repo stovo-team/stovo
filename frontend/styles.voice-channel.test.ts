@@ -14,6 +14,7 @@ describe("voice channel empty state presentation", () => {
     expect(content).toContain("display: flex;");
     expect(content).toContain("align-items: center;");
     expect(content).toContain("justify-content: center;");
+    expect(content).toContain("border: none;");
   });
 
   it("removes the stage border and join button glow", () => {
