@@ -165,15 +165,13 @@ export function VoiceChannelStage({
 
   const handleToggleVideo = () => {
     const isCurrentlyActive = callAudioSettings.cameraEnabled;
-    if (!isCurrentlyActive) {
-      const controller = audioCallRef?.current;
-      if (controller && setCallType) {
-        void enableCallCamera(controller, setCallType, applyCallAudioPatch);
-      }
-    } else {
+    if (isCurrentlyActive) {
       void applyCallAudioPatch({ cameraEnabled: false });
       void audioCallRef?.current?.toggleVideo(false);
+      return;
     }
+    const controller = audioCallRef?.current;
+    if (controller && setCallType) void enableCallCamera(controller, setCallType, applyCallAudioPatch);
   };
 
   const handleToggleScreenShare = () => {

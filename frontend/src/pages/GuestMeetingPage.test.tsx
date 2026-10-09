@@ -157,6 +157,7 @@ describe("GuestMeetingPage pre-join controls", () => {
   it("keeps the screen presentation 16:9 and supports a participant row below it", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
+    const stageSource = readFileSync("src/features/chats/calling/CallParticipantStage.tsx", "utf8");
     const spotlight = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
     const screen = Array.from(css.matchAll(/\.guest-call-room \.guest-call-screen-tile\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
     expect(spotlight).toMatch(/flex:\s*1\s+1\s+0/);
@@ -167,7 +168,8 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(css).toMatch(/\.guest-call-spotlight--bottom \.guest-call-camera-rail\s*\{[^}]*overflow-x:\s*auto/);
     expect(css.match(/\.guest-call-screen-tile \.voice-participant-video-feed\s*\{([^}]*)\}/)?.[1]).toMatch(/object-position:\s*center top/);
     expect(pageSource).toContain('guest-call-screen-tile"');
-    expect(pageSource).toContain('getScreenShareLayout');
+    expect(pageSource).toContain("useScreenShareStageSize");
+    expect(stageSource).toContain("getScreenShareLayout");
   });
 
   it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {

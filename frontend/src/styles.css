@@ -31204,7 +31204,7 @@ button.checklist-add-item-btn:hover,
 .guest-call-spotlight--bottom .guest-call-camera-rail {
   align-content: center;
   display: flex;
-  flex: 0 0 clamp(72px, 11vh, 90px);
+  flex: 0 0 clamp(80px, 11vh, 90px);
   grid-column: 1;
   grid-row: 2;
   overflow-x: auto;
@@ -31222,7 +31222,7 @@ button.checklist-add-item-btn:hover,
   width: 100%;
   padding: 6px;
   gap: 4px;
-  min-height: 72px;
+  min-height: 80px;
   container-type: inline-size;
 }
 
@@ -31367,7 +31367,7 @@ button.checklist-add-item-btn:hover,
   .guest-call-controls .guest-device-control { width: 48px; }
   .guest-call-settings .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; bottom: auto; }
   .guest-call-spotlight { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .guest-call-spotlight .guest-call-camera-rail { align-content: center; display: flex; flex: 0 0 clamp(72px, 11vh, 90px); grid-column: 1; grid-row: 2; overflow-x: auto; overflow-y: hidden; }
+  .guest-call-spotlight .guest-call-camera-rail { align-content: center; display: flex; flex: 0 0 clamp(80px, 11vh, 90px); grid-column: 1; grid-row: 2; overflow-x: auto; overflow-y: hidden; }
   .guest-call-spotlight .guest-call-camera-tile { flex: 0 0 clamp(112px, 30vw, 144px); height: 100%; max-height: 100%; }
 }
 

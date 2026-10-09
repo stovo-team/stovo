@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getScreenShareLayout, getScreenSharePresenterSize } from "./screenShareLayout";
+import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "./screenShareLayout";
 
 describe("screen share layout", () => {
   it("uses the side rail when the 16:9 presenter and participant cards fit", () => {
@@ -22,7 +22,8 @@ describe("screen share layout", () => {
     expect(side.width / side.height).toBeCloseTo(16 / 9);
 
     const bottom = getScreenSharePresenterSize(1200, 150, "bottom");
-    expect(bottom.height).toBeLessThanOrEqual(150 - 72 - 12);
+    expect(getScreenShareBottomRailHeight(150)).toBe(80);
+    expect(bottom.height).toBeLessThanOrEqual(150 - 80 - 12);
     expect(bottom.width / bottom.height).toBeCloseTo(16 / 9);
   });
 });

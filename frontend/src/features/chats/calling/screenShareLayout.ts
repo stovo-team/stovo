@@ -3,7 +3,7 @@ export type ScreenShareLayout = "side" | "bottom";
 export type ScreenSharePresenterSize = { width: number; height: number };
 
 export function getScreenShareBottomRailHeight(viewportHeight: number): number {
-  return Math.min(90, Math.max(72, viewportHeight * 0.11));
+  return Math.min(90, Math.max(80, viewportHeight * 0.11));
 }
 
 export function getScreenSharePresenterSize(
@@ -29,7 +29,7 @@ export function getScreenShareLayout(width: number, height: number, participantC
   const gap = 12;
   const presenterWidth = width - railWidth - gap;
   const presenterHeight = presenterWidth * (9 / 16);
-  const cardHeight = Math.max(72, railWidth * (9 / 16));
+  const cardHeight = Math.max(80, railWidth * (9 / 16));
   const visibleCardCount = Math.max(1, participantCount);
   const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
   const minimumPresenterWidth = 360;

@@ -13,8 +13,7 @@ import { LiveCaptionsOverlay } from "../features/chats/calling/LiveCaptionsOverl
 import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingIntelligencePopover";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
-import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
-import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
+import { CallParticipantStage, useScreenShareStageSize } from "../features/chats/calling/CallParticipantStage";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
 import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
@@ -99,8 +98,7 @@ export default function GuestMeetingPage() {
   const [speakingIndicatorState, setSpeakingIndicatorState] = useState<CallSpeakingState>("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
   const localRef = useRef<HTMLVideoElement>(null);
-  const callStageRef = useRef<HTMLDivElement>(null);
-  const [callStageSize, setCallStageSize] = useState<{ width: number; height: number } | null>(null);
+  const { stageRef: callStageRef, useBottomScreenShareRail, screenPresenterSize } = useScreenShareStageSize(state === "joined", remoteStreams.length + 1, isMobile, window.innerHeight);
   const roomRef = useRef<Room | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const sourceAudioStreamRef = useRef<MediaStream | null>(null);
@@ -179,33 +177,6 @@ export default function GuestMeetingPage() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-
-  useEffect(() => {
-    const stage = callStageRef.current;
-    if (!stage) return;
-
-    const updateSize = (width: number, height: number) => {
-      if (!width || !height) return;
-      setCallStageSize((current) => current?.width === width && current.height === height ? current : { width, height });
-    };
-
-    if (typeof ResizeObserver !== "undefined") {
-      const observer = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (entry) updateSize(entry.contentRect.width, entry.contentRect.height);
-      });
-      observer.observe(stage);
-      return () => observer.disconnect();
-    }
-
-    const measure = () => {
-      const { width, height } = stage.getBoundingClientRect();
-      updateSize(width, height);
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [state]);
 
   useEffect(() => {
     audioProcessorRef.current?.update(audioProcessing);
@@ -700,18 +671,6 @@ export default function GuestMeetingPage() {
       { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
       ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
     ];
-    const useBottomScreenShareRail = callStageSize
-      ? isMobile || getScreenShareLayout(callStageSize.width, callStageSize.height, cameraTiles.length) === "bottom"
-      : false;
-    const screenPresenterSize = callStageSize
-      ? getScreenSharePresenterSize(
-        Math.min(callStageSize.width, 1440),
-        callStageSize.height,
-        useBottomScreenShareRail ? "bottom" : "side",
-        getScreenShareBottomRailHeight(window.innerHeight),
-      )
-      : null;
-
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
