@@ -222,6 +222,7 @@
 }
 .call-popup.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) {
   width: min(1120px, calc(100vw - 40px));
+  height: min(760px, calc(100dvh - 40px));
   padding: 22px 26px 26px;
   gap: 20px;
 }
@@ -252,6 +253,15 @@
   padding: 0;
   border-radius: 50%;
   box-sizing: border-box;
+}
+
+.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-video-area {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-ctrl-row {
+  flex: 0 0 auto;
 }
 
 .call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .call-popup-ctrl-row {
@@ -25355,7 +25365,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .voice-room-stage {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -25363,7 +25373,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px) 16px 16px;
   overflow: hidden;
   min-height: 0;
-  height: 100%;
+  height: auto;
   width: 100%;
   box-sizing: border-box;
   background: #000000;
@@ -26016,6 +26026,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: 14px 20px;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
   z-index: 10;
   width: 100%;
   box-sizing: border-box;
@@ -31705,7 +31716,7 @@ button.checklist-add-item-btn:hover,
 .minimized-call--video .minimized-call-button:not(.minimized-call-button--end) { background: rgb(0 0 0 / 55%); color: #fff; }
 
 .voice-channel-room .voice-room-stage {
-  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 64px);
+  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px);
 }
 .voice-room-participant-content { justify-content: center; }
 .voice-room-member-invite, .voice-room-expand-button { box-sizing: border-box; flex-shrink: 0; }
