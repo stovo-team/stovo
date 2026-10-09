@@ -3,7 +3,7 @@ import type { RemoteMedia } from "../realtime/call/types";
 import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
-import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
+import { CallParticipantTile } from "./CallParticipantTile";
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -55,42 +55,6 @@ const landscapePresenterTileStyle: CSSProperties = {
   gridColumn: "1 / -1",
 };
 
-const videoStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  objectFit: "contain",
-  display: "block",
-  background: "#000",
-};
-
-const screenVideoStyle: CSSProperties = {
-  ...videoStyle,
-  objectFit: "contain",
-};
-
-const avatarStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#ccc",
-  fontSize: "1.25rem",
-  letterSpacing: "0.02em",
-};
-
-const labelStyle: CSSProperties = {
-  position: "absolute",
-  left: 8,
-  bottom: 8,
-  padding: "2px 8px",
-  borderRadius: 4,
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  fontSize: 12,
-  zIndex: 3,
-};
-
 function fitsScreenShareSideRail(width: number, height: number, participantCount: number): boolean {
   const railWidth = Math.min(168, Math.max(112, width * 0.16));
   const cardHeight = railWidth * (9 / 16);
@@ -104,123 +68,10 @@ function fitsScreenShareSideRail(width: number, height: number, participantCount
     && height >= Math.max(minimumPresenterHeight, requiredRailHeight);
 }
 
-function initial(label: string): string {
-  const t = label.trim();
-  return t ? t.charAt(0).toUpperCase() : "?";
-}
-
 function bindStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: MediaStream | null) {
   if (el && stream && el.srcObject !== stream) {
     el.srcObject = stream;
   }
-}
-
-function ParticipantTile({
-  label,
-  stream,
-  showVideo,
-  mirror,
-  isScreen,
-  isSpeaking,
-  isMuted = false,
-  className,
-  style,
-  onFlipCamera,
-  isFlippingCamera,
-  localVideoPlaceholder,
-  mobilePrimary,
-  mobilePip,
-  onClick,
-  isConnected = true,
-  accessToken,
-  profilePhoto,
-}: {
-  label: string;
-  stream: MediaStream | null;
-  showVideo: boolean;
-  mirror?: boolean;
-  isScreen?: boolean;
-  isSpeaking?: boolean;
-  isMuted?: boolean;
-  className: string;
-  style: CSSProperties;
-  onFlipCamera?: () => void;
-  isFlippingCamera?: boolean;
-  localVideoPlaceholder?: ReactNode;
-  mobilePrimary?: boolean;
-  mobilePip?: boolean;
-  onClick?: () => void;
-  isConnected?: boolean;
-  accessToken?: string | null;
-  profilePhoto?: FamilyFile | null;
-}) {
-  return (
-    <div
-      className={`${className}${isSpeaking && !isScreen ? " is-speaking" : ""}${mobilePrimary ? " call-grid__mobile-primary" : ""}${mobilePip ? " call-grid__mobile-pip mobile-active-pip" : ""}`}
-      style={style}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : isScreen ? -1 : undefined}
-      aria-label={onClick ? `${label} video tile` : undefined}
-      onClick={onClick}
-      onKeyDown={(event) => {
-        if (!onClick || event.target !== event.currentTarget) return;
-        if (event.key === "Enter" || event.key === " ") event.preventDefault();
-        if (event.key === "Enter") {
-          onClick();
-        }
-      }}
-      onKeyUp={(event) => {
-        if (!onClick || event.target !== event.currentTarget) return;
-        if (event.key === " ") {
-          event.preventDefault();
-          onClick();
-        }
-      }}
-    >
-      {showVideo && stream ? (
-        <>
-          <video
-            className={`call-grid__video${mobilePrimary ? " mobile-active-fullscreen-video" : ""}${mobilePip ? " mobile-active-pip-video" : ""}`}
-            style={{
-              ...(isScreen ? screenVideoStyle : videoStyle),
-              transform: mirror ? "scaleX(-1)" : undefined,
-            }}
-            autoPlay
-            playsInline
-            muted
-            ref={(el) => bindStream(el, stream)}
-          />
-        </>
-      ) : localVideoPlaceholder ? (
-        localVideoPlaceholder
-      ) : (
-        <div className="call-grid__avatar-wrap">
-          {profilePhoto ? <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar" file={profilePhoto} label={label} /> : (
-            <div className="call-grid__avatar-circle">
-              <div className="call-grid__avatar" style={avatarStyle}>{initial(label)}</div>
-            </div>
-          )}
-        </div>
-      )}
-      {onFlipCamera && showVideo && (
-        <CallControlButton
-          action="flip-camera"
-          label="Flip camera"
-          state="idle"
-          iconSize={16}
-          className="call-grid__flip-camera"
-          disabled={isFlippingCamera}
-          onKeyDown={(event) => event.stopPropagation()}
-          onClick={(event) => { event.stopPropagation(); onFlipCamera(); }}
-        />
-      )}
-      <span className="call-grid__label" style={labelStyle}>
-        {label}
-        {isScreen ? " · Screen" : ""}
-      </span>
-      {isConnected && !isScreen && <span className="call-grid__participant-status" role="status">{isMuted ? "Muted" : isSpeaking ? "Speaking" : "Connected"}</span>}
-    </div>
-  );
 }
 
 export default function CallParticipantGrid({
@@ -319,7 +170,7 @@ export default function CallParticipantGrid({
   };
 
   const localTile = (
-    <ParticipantTile
+    <CallParticipantTile
       className="call-grid__tile call-grid__tile--local"
       style={mobileSingleRemote ? { ...tileStyle, width: "100%", height: "100%", minHeight: 0, aspectRatio: "auto" } : tileStyle}
       label={localUserLabel}
@@ -348,7 +199,7 @@ export default function CallParticipantGrid({
     const isRemoteSpeaking = isCallConnected && !remote.isMuted && (speakingUserIds.includes(remote.userId) || (isPeerSpeaking && remoteMedia.length === 1));
     return (
       <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", width: "100%", height: "100%", aspectRatio: isPresenting && !mobileSingleRemote ? "16 / 9" : undefined }}>
-        <ParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
+        <CallParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
       </div>
     );
   });
@@ -370,7 +221,7 @@ export default function CallParticipantGrid({
       }}
     >
       {presenter?.screenStream ? (
-        <ParticipantTile
+        <CallParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? useBottomScreenShareRail
