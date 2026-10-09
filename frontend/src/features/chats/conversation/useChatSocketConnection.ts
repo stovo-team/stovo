@@ -109,6 +109,7 @@ export function useChatSocketConnection({
   }, [chatId, socketRef]);
 
   useEffect(() => {
+    if (import.meta.env.DEV && import.meta.env.MODE === "mock") return;
     if (!hasSession) {
       return;
     }

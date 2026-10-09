@@ -80,7 +80,8 @@ export function isMasterOrchestratorUrl(url: string | null | undefined): boolean
     const parsed = new URL(url.trim());
     const pathname = parsed.pathname.replace(/\/$/, "");
     const isRootPath = pathname === "" || pathname === "/";
-    return (
+    const isReservedLocalMockOrigin = parsed.hostname === "127.0.0.1" && parsed.port === "5174";
+    return !isReservedLocalMockOrigin && (
       ((parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") || parsed.hostname === CLUSTER_REDIRECTOR_HOST) &&
       isRootPath
     );

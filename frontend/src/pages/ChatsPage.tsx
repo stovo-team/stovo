@@ -34,7 +34,8 @@ function loadMessageArchiveView(userId?: string): MessageArchiveView {
 }
 
 export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}) {
-  const chatId = routeChatId ?? useParams().chatId;
+  const routeParams = useParams();
+  const chatId = routeChatId ?? routeParams.chatId;
   const location = useLocation();
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();

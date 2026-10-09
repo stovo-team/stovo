@@ -146,6 +146,18 @@ The chart requires you to build or obtain backend and frontend images and push t
 
 Stovo is developed as a Go backend and a React/TypeScript web client. The production backend is one application, not a collection of separately deployed feature services.
 
+#### Fast frontend preview with synthetic chat data
+
+To inspect the real chats page without starting the backend or Docker services, install the frontend dependencies once and start the mock mode:
+
+```sh
+cd frontend
+npm ci # only needed once, or after package-lock.json changes
+npm run dev:mock
+```
+
+Open [http://127.0.0.1:5174/app/chats](http://127.0.0.1:5174/app/chats). This serves the actual app, routes, and styles with a synthetic Stovo Demo account and sample direct, group, and channel chats. Messages sent in the preview stay local to the current page session; reload the page to restore the fixture data. Mock mode uses its own loopback origin and does not require backend services.
+
 ```sh
 # Start the local development stack
 docker compose -f docker-compose.dev.yml up -d --build
