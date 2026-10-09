@@ -37,7 +37,10 @@
 - Modify: `backend/internal/features/identity/auth_methods.go`
 - Modify: `backend/internal/adapters/authmethods/postgres.go`
 - Create: `backend/migrations/20261009120000_add_android_qr_login_grants.sql`
+- Modify: `backend/migrations/atlas.sum`
 - Modify: `backend/internal/transport/http/auth_routes.go`
+- Modify: `backend/internal/transport/http/middleware.go`
+- Test: `backend/internal/transport/http/middleware_test.go`
 - Modify: `backend/internal/app/routes.go`
 - Modify: `backend/internal/app/qr_login.go`
 - Test: `backend/internal/app/android_qr_login_test.go`
@@ -49,7 +52,7 @@
 
 - [ ] **Step 1: Write failing route and lifecycle integration tests**
 
-Add tests asserting unauthenticated creation is rejected; authenticated creation returns a code and a two-minute expiry; both endpoints enforce 8/minute limits; successful redemption creates a native session for the bound user; browser-origin redemption omits the refresh token from JSON; expired, reused, inactive-user, blocked-IP, wrong-family, and unknown-on-another-server grants fail; and two concurrent redemptions yield exactly one success. Use the existing `newTestServer` PostgreSQL/Redis integration setup.
+Add tests asserting unauthenticated creation is rejected; authenticated creation returns a code and a two-minute expiry; both endpoints enforce 8/minute limits; successful redemption creates a native session for the bound user; browser-origin redemption omits the refresh token from JSON; expired, reused, inactive-user, blocked-IP, wrong-family, and unknown-on-another-server grants fail; and two concurrent redemptions yield exactly one success. Use the existing `newTestServer` PostgreSQL/Redis integration setup. Add a request-logging regression test proving the dynamic redemption code is redacted from the logged path.
 
 - [ ] **Step 2: Run the focused tests and verify the new route/behavior is missing**
 
@@ -58,7 +61,7 @@ Expected: the tests fail to compile or fail because the Android QR routes and gr
 
 - [ ] **Step 3: Implement the Android grant storage and routes**
 
-Add a purpose-specific table with hashed ID, user/family foreign keys, expiry and consumed timestamp. Generate the raw ID with `randomToken`, store `tokenHash(s.cfg.RefreshTokenSecret, rawID)`, set expiry to `time.Now().Add(2*time.Minute)`, and enforce 8/minute creation and redemption limits. On redemption atomically consume first, reload and validate the active account and family, reject a blocked receiving IP, create the normal refresh/access session, and call `writeAuthSuccess`.
+Add a purpose-specific table with hashed ID, user/family foreign keys, expiry and consumed timestamp. Generate the raw ID with `randomToken`, store `tokenHash(s.cfg.RefreshTokenSecret, rawID)`, set expiry to `time.Now().Add(2*time.Minute)`, and enforce 8/minute creation and redemption limits. On redemption atomically consume first, reload and validate the active account and family, reject a blocked receiving IP, create the normal refresh/access session, and call `writeAuthSuccess`. In `RequestLogging`, replace the dynamic code segment on this route with a fixed placeholder before logging.
 
 - [ ] **Step 4: Run focused backend tests and verify the lifecycle contract**
 
