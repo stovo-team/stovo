@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (file) => readFileSync(path.join(root, file), 'utf8');
-const cli = (command, args) => spawnSync(command, args, { cwd: root, encoding: 'utf8', windowsHide: true });
+const cli = (command, args, env = process.env) => spawnSync(command, args, { cwd: root, encoding: 'utf8', windowsHide: true, env });
 const requireSecretKey = (yaml, secretName, key) => assert.match(
   yaml,
   new RegExp(`secretKeyRef:[\\s\\S]{0,160}name:\\s*${secretName}[\\s\\S]{0,80}key:\\s*${key}\\b[\\s\\S]{0,50}optional:\\s*false`),
@@ -233,11 +233,22 @@ test('documented Compose filenames and backticked config names match repository 
 });
 
 test('Compose production and external-storage overlays resolve with the documented services', (t) => {
-  const base = cli('docker', ['compose', '--project-directory', '.', '--env-file', '.env.example', '-f', 'deploy/compose/production-bluegreen.yml', 'config', '--format', 'json']);
+  const composeEnvironment = { ...process.env };
+  delete composeEnvironment.ACTIVE_BACKEND;
+  delete composeEnvironment.BACKEND_UPSTREAMS;
+  const base = cli('docker', ['compose', '--project-directory', '.', '--env-file', '.env.example', '-f', 'deploy/compose/production-bluegreen.yml', 'config', '--format', 'json'], composeEnvironment);
   if (base.error?.code === 'ENOENT') return t.skip('Docker Compose CLI is unavailable');
   assert.equal(base.status, 0, base.stderr);
   const defaultConfig = JSON.parse(base.stdout);
   const defaultServices = Object.keys(defaultConfig.services);
+  assert.equal(
+    defaultConfig.services.caddy.environment.BACKEND_UPSTREAMS,
+    'backend-blue:8000',
+    'Caddy must target the Compose backend service DNS name directly',
+  );
+  assert.ok(Object.hasOwn(defaultConfig.services.caddy.networks, 'default'), 'Caddy must share the default service network');
+  assert.ok(Object.hasOwn(defaultConfig.services['backend-blue'].networks, 'default'), 'backend must share the default service network');
+  assert.match(read('deploy/caddy/Caddyfile'), /handle \/api\/\* \{[\s\S]*?reverse_proxy \{\$BACKEND_UPSTREAMS:backend-blue:8000\}/);
   assert.ok(defaultServices.includes('backend-blue'));
   assert.ok(defaultServices.includes('redis-jobs'));
   assert.ok(!defaultServices.includes('backend-green'));
@@ -245,6 +256,14 @@ test('Compose production and external-storage overlays resolve with the document
   const defaultBackendDeps = Object.keys(defaultConfig.services['backend-blue'].depends_on || {});
   for (const dependency of ['backend-migrate', 'redis-jobs', 'ntfy', 'minio-init']) assert.ok(defaultBackendDeps.includes(dependency), `default backend must depend on ${dependency}`);
   assert.ok(defaultServices.includes('postgres'), 'default stack must include postgres');
+
+  const greenEnvironment = { ...composeEnvironment, ACTIVE_BACKEND: 'backend-green' };
+  const green = cli('docker', ['compose', '--project-directory', '.', '--profile', 'bluegreen', '--env-file', '.env.example', '-f', 'deploy/compose/production-bluegreen.yml', 'config', '--format', 'json'], greenEnvironment);
+  assert.equal(green.status, 0, green.stderr);
+  const greenConfig = JSON.parse(green.stdout);
+  assert.equal(greenConfig.services.caddy.environment.BACKEND_UPSTREAMS, 'backend-green:8000');
+  assert.ok(Object.hasOwn(greenConfig.services.caddy.networks, 'default'));
+  assert.ok(Object.hasOwn(greenConfig.services['backend-green'].networks, 'default'));
 
   const withCache = cli('docker', ['compose', '--project-directory', '.', '--profile', 'disabled', '--env-file', '.env.example', '-f', 'deploy/compose/production-bluegreen.yml', 'config', '--format', 'json']);
   assert.equal(withCache.status, 0, withCache.stderr);

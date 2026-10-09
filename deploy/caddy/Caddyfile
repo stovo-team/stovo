@@ -28,7 +28,7 @@
 	}
 
 	handle /api/* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s
@@ -36,7 +36,7 @@
 	}
 
 	handle /mcp* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s
@@ -44,7 +44,7 @@
 	}
 
 	handle /socket.io* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s
