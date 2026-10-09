@@ -10,6 +10,13 @@
 - [Backend and frontend subsystem map](architecture/subsystems.md): ownership and entry points for backend features, adapters, transports, and the web client.
 - [Authentication feature test plan](architecture/authentication-test-plan.md): scenarios and test layers for web passkey, QR sign-in, and guest-invite registration.
 
+## Agent workflows
+
+- [Bug and issue fixes](agent-workflows/bug-fixes.md): reproduction-first fixes with a required regression test for every bug or defect issue.
+- [Feature development](agent-workflows/feature-development.md): feature and test plans, test-first implementation, and relevant verification.
+- [Testing and verification](agent-workflows/testing.md): test-layer selection, test quality, isolation, and reporting.
+- [Task isolation and delivery](agent-workflows/isolation-and-delivery.md): branches, worktrees, pull requests, publication authorization, and cleanup.
+
 ## Project references
 
 - [Repository README](../README.md): project overview and quick start.
