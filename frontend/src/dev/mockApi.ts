@@ -217,4 +217,3 @@ export function installMockApi(options: { origin?: string } = {}): () => void {
   globalThis.fetch = wrappedFetch;
   return installation.cleanup;
 }
-
