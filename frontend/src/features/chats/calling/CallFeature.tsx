@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
@@ -114,13 +114,6 @@ export function CallFeature() {
       session.setIsCallMinimized(nextValue);
     },
   };
-
-  // Capture success owns minimization; restoring the window must not restart capture.
-  useLayoutEffect(() => {
-    if (localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")) {
-      session.setIsCallMinimized(true);
-    }
-  }, [localScreenStream, session.setIsCallMinimized]);
 
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||

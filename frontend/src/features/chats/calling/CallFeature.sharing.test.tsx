@@ -9,9 +9,10 @@ import type { CallSessionApi } from "./useCallSession";
 
 vi.mock("./DesktopCallControls", () => ({ DesktopCallControls: () => null }));
 let root: Root;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => { act(() => root?.unmount()); document.body.innerHTML = ""; });
 
-it("minimizes once after successful local capture without ending or restarting the call", () => {
+it("keeps the call expanded after successful local screen capture", () => {
   const minimize = vi.fn(), end = vi.fn();
   const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   const session = {
@@ -30,9 +31,6 @@ it("minimizes once after successful local capture without ending or restarting t
   expect(minimize).not.toHaveBeenCalled();
   session.localScreenStream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
   render();
-  expect(minimize).toHaveBeenCalledExactlyOnceWith(true);
-  session.isCallMinimized = false;
-  render();
-  expect(minimize).toHaveBeenCalledTimes(1);
+  expect(minimize).not.toHaveBeenCalled();
   expect(end).not.toHaveBeenCalled();
 });
