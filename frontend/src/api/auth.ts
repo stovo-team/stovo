@@ -220,3 +220,10 @@ export function logout() {
     headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
   });
 }
+
+export function redeemAndroidQRLogin(apiUrl: string, requestId: string): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>(`/api/auth/android-qr-login/${encodeURIComponent(requestId)}/redeem`, {
+    method: "POST",
+    apiBaseUrl: apiUrl,
+  });
+}

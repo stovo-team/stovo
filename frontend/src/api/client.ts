@@ -270,10 +270,13 @@ export class ApiError extends Error {
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   accessToken?: string | null;
+  apiBaseUrl?: string;
 }
 
 export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
-  const apiUrl = getApiUrl();
+  const { apiBaseUrl, ...requestOptions } = options;
+  const apiUrl = apiBaseUrl === undefined ? getApiUrl() : normalizeApiUrl(apiBaseUrl);
+  if (!apiUrl) throw new Error("Invalid API base URL");
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (isTunnelApiUrl(apiUrl)) {
@@ -301,7 +304,7 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
     let response: Response;
     try {
       response = await fetch(`${apiUrl}${endpoint}`, {
-        ...options,
+        ...requestOptions,
         body,
         headers,
         credentials: "include"

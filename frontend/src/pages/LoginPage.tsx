@@ -11,12 +11,15 @@ import {
   fetchSetupStatus,
   finishPasskeyAuthentication,
   getBrowserQRLoginStatus,
+  redeemAndroidQRLogin,
   requestDeviceLoginCode,
   verifyDeviceLoginCode,
 } from "../api/auth";
 import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api/client";
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
+import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
+import { scanAndroidLoginQR } from "../native/androidQrScanner";
 import StovoLogo from "../components/StovoLogo";
 
 export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
@@ -45,6 +48,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [qrLogin, setQrLogin] = useState<{ requestId: string; image: string; expiresAt: string; status: string } | null>(null);
+  const [androidQR, setAndroidQR] = useState<AndroidLoginQR | null>(null);
   const [authView, setAuthView] = useState<"password" | "qr">("password");
   const [isSecureContext, setIsSecureContext] = useState(() => typeof window !== "undefined" && window.isSecureContext);
 
@@ -171,6 +175,35 @@ export default function LoginPage() {
     }
   }
 
+  async function handleScanAndroidQR() {
+    setError(null);
+    setAndroidQR(null);
+    setIsSubmitting(true);
+    try {
+      const value = await scanAndroidLoginQR();
+      if (value !== null) setAndroidQR(parseAndroidLoginQR(value));
+    } catch {
+      setError("Could not scan a desktop sign-in QR code. Try again or use your password.");
+    } finally { setIsSubmitting(false); }
+  }
+
+  async function handleConfirmAndroidQR() {
+    if (!androidQR || isSubmitting) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await redeemAndroidQRLogin(androidQR.apiUrl, androidQR.requestId);
+      setApiUrlOverride(androidQR.apiUrl);
+      acceptAuthResponse(response);
+      navigate(`${getClusterPrefix()}/app/chats`, { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "QR sign-in failed. Try again or use your password.");
+    } finally {
+      setAndroidQR(null);
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleStartQRLogin() {
     setError(null);
     setQrLogin(null);
@@ -268,6 +301,18 @@ export default function LoginPage() {
             {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
           </>}
         </div>}
+        {!isDeviceLogin && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
+          <div className="auth-method-options">
+            {androidQR ? <div className="qr-login-panel" role="region" aria-label="Confirm scanned server">
+              <p>Sign in to <strong>{new URL(androidQR.apiUrl).host}</strong>?</p>
+              <p className="muted-copy">Confirm that this is your space address: {androidQR.apiUrl}</p>
+              <button type="button" disabled={isSubmitting} onClick={() => void handleConfirmAndroidQR()}>Confirm sign-in</button>
+              <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => setAndroidQR(null)}>Cancel</button>
+            </div> : <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
+              <QrCode aria-hidden="true" size={18} /> <span>Scan desktop QR</span>
+            </button>}
+          </div>
+        )}
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">
