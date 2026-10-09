@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
 import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
@@ -90,6 +90,19 @@ const labelStyle: CSSProperties = {
   fontSize: 12,
   zIndex: 3,
 };
+
+function fitsScreenShareSideRail(width: number, height: number, participantCount: number): boolean {
+  const railWidth = Math.min(168, Math.max(112, width * 0.16));
+  const cardHeight = railWidth * (9 / 16);
+  const visibleCardCount = Math.max(1, participantCount);
+  const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
+  const minimumPresenterWidth = 360;
+  const minimumPresenterHeight = 160;
+  const gap = 12;
+
+  return width >= minimumPresenterWidth + railWidth + gap
+    && height >= Math.max(minimumPresenterHeight, requiredRailHeight);
+}
 
 function initial(label: string): string {
   const t = label.trim();
@@ -235,6 +248,36 @@ export default function CallParticipantGrid({
   accessToken,
 }: CallParticipantGridProps) {
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
+  const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const updateSize = (width: number, height: number) => {
+      if (!width || !height) return;
+      setStageSize((current) => current?.width === width && current.height === height ? current : { width, height });
+    };
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) updateSize(entry.contentRect.width, entry.contentRect.height);
+      });
+      observer.observe(stage);
+      return () => observer.disconnect();
+    }
+
+    const measure = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      updateSize(width, height);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   // Voice channels may keep their audio call type while a local camera track
   // is live. The presentation/PiP grid must follow the actual track, otherwise
   // it replaces the user's camera with an avatar during a screen share.
@@ -257,7 +300,11 @@ export default function CallParticipantGrid({
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
 
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
-  const useBottomScreenShareRail = useScreenShareRail && remoteMedia.length >= 4;
+  const useBottomScreenShareRail = useScreenShareRail && (
+    stageSize
+      ? !fitsScreenShareSideRail(stageSize.width, stageSize.height, remoteMedia.length + 1)
+      : remoteMedia.length >= 4
+  );
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
   const hasLongMobileParticipantRow = useMobilePresentationRow && remoteMedia.length >= 5;
 
@@ -374,7 +421,7 @@ export default function CallParticipantGrid({
   );
 
   return (
-    <div className="call-grid-shell">
+    <div className="call-grid-shell" ref={stageRef}>
       {stageContent}
       <div className="call-grid__audio-pool" aria-hidden="true">
         {remoteMedia.map((remote) => {
