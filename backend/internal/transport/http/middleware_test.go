@@ -1,8 +1,10 @@
 package http
 
 import (
+	"fmt"
 	stdhttp "net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -108,5 +110,27 @@ func TestRequestLoggingRecordsCompletedStatus(t *testing.T) {
 	}
 	if logger.args[0] != stdhttp.MethodPost || logger.args[1] != "/api/messages" || logger.args[2] != stdhttp.StatusAccepted || logger.args[3] != "127.0.0.1:4444" {
 		t.Fatalf("log args = %#v", logger.args)
+	}
+}
+
+type androidQRRequestLogger struct{ message string }
+
+func (l *androidQRRequestLogger) Infof(_ string, format string, args ...any) {
+	l.message = fmt.Sprintf(format, args...)
+}
+
+func TestAndroidQRLoginRequestLoggingRedactsBearerCode(t *testing.T) {
+	logger := &androidQRRequestLogger{}
+	handler := RequestLogging(logger)(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) { w.WriteHeader(stdhttp.StatusUnauthorized) }))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, "/api/auth/android-qr-login/raw-bearer-code/redeem", nil))
+	if strings.Contains(logger.message, "raw-bearer-code") {
+		t.Fatal("request log exposed Android QR bearer code")
+	}
+	if !strings.Contains(logger.message, "path=/api/auth/android-qr-login/[redacted]/redeem") {
+		t.Fatalf("request path was not usefully redacted: %s", logger.message)
+	}
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, "/api/auth/android-qr-login", nil))
+	if !strings.Contains(logger.message, "path=/api/auth/android-qr-login status=") {
+		t.Fatal("creation path logging changed")
 	}
 }

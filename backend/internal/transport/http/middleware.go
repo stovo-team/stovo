@@ -120,7 +120,11 @@ func RequestLogging(logger RequestLogger) func(stdhttp.Handler) stdhttp.Handler 
 			started := time.Now()
 			recorder := &statusRecorder{ResponseWriter: w, statusCode: stdhttp.StatusOK}
 			next.ServeHTTP(recorder, r)
-			logger.Infof("http", "HTTP request completed method=%s path=%s status=%d client=%s duration_ms=%.2f", r.Method, r.URL.Path, recorder.statusCode, r.RemoteAddr, float64(time.Since(started).Microseconds())/1000.0)
+			path := r.URL.Path
+			if strings.HasPrefix(path, "/api/auth/android-qr-login/") && strings.HasSuffix(path, "/redeem") {
+				path = "/api/auth/android-qr-login/[redacted]/redeem"
+			}
+			logger.Infof("http", "HTTP request completed method=%s path=%s status=%d client=%s duration_ms=%.2f", r.Method, path, recorder.statusCode, r.RemoteAddr, float64(time.Since(started).Microseconds())/1000.0)
 		})
 	}
 }
