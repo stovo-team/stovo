@@ -121,7 +121,15 @@ func RequestLogging(logger RequestLogger) func(stdhttp.Handler) stdhttp.Handler 
 			recorder := &statusRecorder{ResponseWriter: w, statusCode: stdhttp.StatusOK}
 			next.ServeHTTP(recorder, r)
 			path := r.URL.Path
-			if strings.HasPrefix(path, "/api/auth/android-qr-login/") && strings.HasSuffix(path, "/redeem") {
+			endpointPath := path
+			if strings.HasPrefix(endpointPath, "/s/") {
+				if _, remainder, found := strings.Cut(strings.TrimPrefix(endpointPath, "/s/"), "/"); found {
+					endpointPath = "/" + remainder
+				}
+			}
+			// Invalid suffixes can still contain a live bearer code. Redact the
+			// entire endpoint subtree, even when the request did not match a route.
+			if strings.HasPrefix(endpointPath, "/api/auth/android-qr-login/") {
 				path = "/api/auth/android-qr-login/[redacted]/redeem"
 			}
 			logger.Infof("http", "HTTP request completed method=%s path=%s status=%d client=%s duration_ms=%.2f", r.Method, path, recorder.statusCode, r.RemoteAddr, float64(time.Since(started).Microseconds())/1000.0)

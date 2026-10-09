@@ -120,17 +120,28 @@ func (l *androidQRRequestLogger) Infof(_ string, format string, args ...any) {
 }
 
 func TestAndroidQRLoginRequestLoggingRedactsBearerCode(t *testing.T) {
-	logger := &androidQRRequestLogger{}
-	handler := RequestLogging(logger)(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) { w.WriteHeader(stdhttp.StatusUnauthorized) }))
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, "/api/auth/android-qr-login/raw-bearer-code/redeem", nil))
-	if strings.Contains(logger.message, "raw-bearer-code") {
-		t.Fatal("request log exposed Android QR bearer code")
-	}
-	if !strings.Contains(logger.message, "path=/api/auth/android-qr-login/[redacted]/redeem") {
-		t.Fatalf("request path was not usefully redacted: %s", logger.message)
-	}
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, "/api/auth/android-qr-login", nil))
-	if !strings.Contains(logger.message, "path=/api/auth/android-qr-login status=") {
-		t.Fatal("creation path logging changed")
+	for _, prefix := range []string{"", "/s/family-space"} {
+		for _, suffix := range []string{"/redeem", "/redeem/", "", "/", "/redeem/extra", "/invalid-suffix"} {
+			path := prefix + "/api/auth/android-qr-login/raw-bearer-code" + suffix
+			t.Run(path, func(t *testing.T) {
+				logger := &androidQRRequestLogger{}
+				handler := RequestLogging(logger)(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) { w.WriteHeader(stdhttp.StatusUnauthorized) }))
+				handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, path, nil))
+				if strings.Contains(logger.message, "raw-bearer-code") {
+					t.Fatal("request log exposed Android QR bearer code")
+				}
+				if !strings.Contains(logger.message, "path=/api/auth/android-qr-login/[redacted]/redeem status=") {
+					t.Fatalf("request path did not use fixed safe placeholder: %s", logger.message)
+				}
+			})
+		}
+		t.Run(prefix+"/creation", func(t *testing.T) {
+			logger := &androidQRRequestLogger{}
+			handler := RequestLogging(logger)(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) { w.WriteHeader(stdhttp.StatusUnauthorized) }))
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(stdhttp.MethodPost, prefix+"/api/auth/android-qr-login", nil))
+			if !strings.Contains(logger.message, "path="+prefix+"/api/auth/android-qr-login status=") {
+				t.Fatal("creation path logging changed")
+			}
+		})
 	}
 }
