@@ -155,6 +155,13 @@ export function createBrowserQRLogin() {
   });
 }
 
+export function createAndroidQRLogin(accessToken: string): Promise<{ requestId: string; expiresAt: string }> {
+  return apiRequest<{ requestId: string; expiresAt: string }>("/api/auth/android-qr-login", {
+    method: "POST",
+    accessToken,
+  });
+}
+
 export function getBrowserQRLoginStatus(requestId: string) {
   return apiRequest<BrowserQRLoginStatus>(`/api/auth/qr-login/${encodeURIComponent(requestId)}`);
 }
