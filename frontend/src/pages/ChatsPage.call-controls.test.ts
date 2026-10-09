@@ -13,7 +13,7 @@ const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8").re
 describe("Voice Channel call layout restoration", () => {
   it("captures the expanded state for the active voice chat and restores it after call end", () => {
     expect(chatsPageSource.includes("voiceCallLayoutSnapshotRef")).toBe(true);
-    expect(/snapshot\?\.chatId === selectedChat\?\.id/.test(chatsPageSource)).toBe(true);
+    expect(/if\s*\(snapshot\s*&&\s*snapshot\.chatId === selectedChat\?\.id\)/.test(chatsPageSource)).toBe(true);
     expect(/setIsVoiceCallExpanded\(snapshot\.isExpanded\)/.test(chatsPageSource)).toBe(true);
   });
 });

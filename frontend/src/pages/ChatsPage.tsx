@@ -223,7 +223,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     if (callPhase === "idle") {
       const snapshot = voiceCallLayoutSnapshotRef.current;
       voiceCallLayoutSnapshotRef.current = null;
-      if (snapshot?.chatId === selectedChat?.id) {
+      if (snapshot && snapshot.chatId === selectedChat?.id) {
         setIsVoiceCallExpanded(snapshot.isExpanded);
       }
       return;
