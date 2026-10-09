@@ -30,6 +30,7 @@ import { useCallFeatureContext } from "./CallFeatureContext";
 import { CallControlButton } from "./CallControlButton";
 import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
+import { enableCallCamera } from "./callCamera";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -354,8 +355,7 @@ export function DesktopCallControls() {
                 onPatch={(patch) => void applyCallAudioPatch(patch)}
                 onToggleCamera={() => {
                   if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
-                    setCallType("video");
-                    void audioCallRef.current?.toggleVideo(true);
+                    void enableCallCamera(audioCallRef.current, setCallType, applyCallAudioPatch);
                   } else {
                     void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                   }

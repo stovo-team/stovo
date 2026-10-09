@@ -16,6 +16,7 @@ import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MinimizedCallBar } from "./MinimizedCallBar";
 import { useCallTimer } from "./useCallTimer";
 import { CallFeatureProvider as CallFeatureContextProvider, useCallFeatureContext } from "./CallFeatureContext";
+import { enableCallCamera } from "./callCamera";
 
 export {
   CallSettingsContextMenu,
@@ -244,8 +245,7 @@ export function CallFeature() {
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleCamera={() => {
                   if (!hasLiveLocalVideo(localVideoStream)) {
-                    setCallType("video");
-                    void audioCallRef.current?.toggleVideo(true);
+                    void enableCallCamera(audioCallRef.current, setCallType, applyCallAudioPatch);
                   } else {
                     void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                   }

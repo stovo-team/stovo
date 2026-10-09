@@ -44,6 +44,7 @@ vi.mock("./MeetingIntelligencePopover", () => ({
 }));
 
 const mountedRoots: Root[] = [];
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
   while (mountedRoots.length) act(() => mountedRoots.pop()?.unmount());
@@ -251,6 +252,58 @@ describe("DesktopCallControls visibility", () => {
     expect(host.querySelector(".call-popup-group-participant.is-speaking")).toBeNull();
     expect(host.querySelector('[aria-label="Toggle Camera"]')).not.toBeNull();
     expect(host.querySelector(".call-popup-group-participants")?.closest(".shared-call-stage")).not.toBeNull();
+  });
+
+  it("marks the camera enabled after the first camera request produces a live track", async () => {
+    const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const toggleVideo = vi.fn(async () => undefined);
+    const applyCallAudioPatch = vi.fn(async () => undefined);
+    const setCallType = vi.fn();
+    const host = renderDesktopControls({
+      activeChat: group,
+      currentUser: self,
+      callType: "audio",
+      overrides: {
+        audioCallRef: { current: { toggleVideo, getLocalStream: () => stream } } as never,
+        applyCallAudioPatch,
+        setCallType,
+        callAudioSettings: { ...DEFAULT_CALL_SETTINGS, cameraEnabled: false },
+      },
+    });
+    const cameraButton = host.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+    expect(cameraButton?.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      cameraButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(setCallType).toHaveBeenCalledWith("video");
+    expect(toggleVideo).toHaveBeenCalledWith(true);
+    expect(applyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: true });
+  });
+
+  it("keeps the camera setting off when the first camera request produces no live track", async () => {
+    const toggleVideo = vi.fn(async () => undefined);
+    const applyCallAudioPatch = vi.fn(async () => undefined);
+    const host = renderDesktopControls({
+      activeChat: group,
+      currentUser: self,
+      callType: "audio",
+      overrides: {
+        audioCallRef: { current: { toggleVideo, getLocalStream: () => null } } as never,
+        applyCallAudioPatch,
+        callAudioSettings: { ...DEFAULT_CALL_SETTINGS, cameraEnabled: false },
+      },
+    });
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]')?.click();
+      await Promise.resolve();
+    });
+
+    expect(toggleVideo).toHaveBeenCalledWith(true);
+    expect(applyCallAudioPatch).not.toHaveBeenCalledWith({ cameraEnabled: true });
   });
 
   it("opens the shared audio dialog directly", () => {
