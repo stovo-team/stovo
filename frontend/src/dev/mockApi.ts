@@ -24,8 +24,8 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 
-function errorResponse(status: number, error: string): Response {
-  return jsonResponse({ error }, status);
+function errorResponse(status: number, detail: string): Response {
+  return jsonResponse({ detail }, status);
 }
 
 function findMessage(messageId: string): Message | undefined {

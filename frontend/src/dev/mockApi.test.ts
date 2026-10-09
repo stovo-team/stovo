@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiRequest } from "../api/client";
 import type { AuthResponse } from "../api/auth";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import { installMockApi, resetMockData } from "./mockApi";
+import { seedMockSession } from "./mockBootstrap";
 
 const MOCK_ORIGIN = "http://127.0.0.1:5174";
 const FIRST_CHAT_ID = "chat-planning-team";
@@ -104,11 +106,20 @@ describe("local mock chat API", () => {
     vi.stubGlobal("fetch", networkFetch);
     restoreMockApi = installMockApi({ origin: MOCK_ORIGIN });
 
-    const { response, body } = await request<{ error: string }>("/api/route-not-in-the-mock");
+    const { response, body } = await request<{ detail: string }>("/api/route-not-in-the-mock");
 
     expect(response.status).toBe(501);
-    expect(body.error).toMatch(/not implemented/i);
+    expect(body.detail).toMatch(/not implemented/i);
     expect(networkFetch).not.toHaveBeenCalled();
+  });
+
+  it("preserves the mock route explanation through the real API client", async () => {
+    seedMockSession(MOCK_ORIGIN);
+
+    await expect(apiRequest("/api/route-not-in-the-mock")).rejects.toMatchObject({
+      status: 501,
+      message: "Mock API route not implemented: GET /api/route-not-in-the-mock",
+    });
   });
 
   it("does not install a second fetch wrapper when mock bootstrap runs again", () => {
