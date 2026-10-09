@@ -146,7 +146,7 @@ The chart requires you to build or obtain backend and frontend images and push t
 
 Stovo is developed as a Go backend and a React/TypeScript web client. The production backend is one application, not a collection of separately deployed feature services.
 
-#### Fast frontend preview with synthetic chat data
+#### Fast frontend preview with synthetic data
 
 To inspect the real chats page without starting the backend or Docker services, install the frontend dependencies once and start the mock mode:
 
@@ -156,7 +156,20 @@ npm ci # only needed once, or after package-lock.json changes
 npm run dev:mock
 ```
 
-Open [http://127.0.0.1:5174/app/chats](http://127.0.0.1:5174/app/chats). This serves the actual app, routes, and styles with a synthetic Stovo Demo account and sample direct, group, and channel chats. Messages sent in the preview stay local to the current page session; reload the page to restore the fixture data. Mock mode uses its own loopback origin and does not require backend services.
+Open [http://127.0.0.1:5174/app/chats](http://127.0.0.1:5174/app/chats). This serves the actual app, routes, and styles with a synthetic Stovo Demo account and sample direct, group, and channel chats.
+
+To simulate multiple people, open separate tabs on the same mock origin and select an identity with **mockUser**:
+
+| Demo user | URL |
+| --- | --- |
+| Stovo Demo | [Open Stovo Demo](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-stovo-demo) |
+| Alex Rivera | [Open Alex Rivera](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-alex-rivera) |
+| Maya Chen | [Open Maya Chen](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-maya-chen) |
+| Sam Patel | [Open Sam Patel](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-sam-patel) |
+
+Calls ring, accept, decline, and update participant tiles across tabs through the real call interface. Participant video is shown with fixture avatars; microphone, camera, and speaker settings are simulated locally. Mock calls do not request media permissions, play call audio, open Socket.IO, or connect to LiveKit/WebRTC.
+
+Files uploaded from chat attachments or the Files page use the app's upload flow and are stored in browser IndexedDB. The file list and bytes are shared by all demo users on this origin and survive reloads. Sent messages return to fixture data after reload; uploaded files remain in Files. Clear site data for 127.0.0.1:5174 to remove local files. Features that need external providers or server processing, such as recording and transcription, remain unavailable in this preview.
 
 ```sh
 # Start the local development stack
