@@ -1,5 +1,6 @@
 import { hashServerUrl, setActiveServerId, upsertServer } from "../api/serverRegistry";
-import { demoUser, MOCK_ORIGIN } from "./mockFixtures";
+import { clearOutbox } from "../features/chats/outbox/messageOutboxStore";
+import { DEMO_USER_ID, demoUser, MOCK_ORIGIN } from "./mockFixtures";
 
 export function isMockMode(dev: boolean, mode: string): boolean {
   return dev && mode === "mock";
@@ -23,4 +24,9 @@ export function seedMockSession(origin: string): void {
     unreadCount: 0,
   });
   setActiveServerId(server.id);
+}
+
+export async function prepareMockSession(origin: string): Promise<void> {
+  seedMockSession(origin);
+  await clearOutbox(DEMO_USER_ID);
 }

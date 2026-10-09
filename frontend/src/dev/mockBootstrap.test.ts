@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadServerState } from "../api/serverRegistry";
-import { isMockMode, seedMockSession } from "./mockBootstrap";
+import { DEMO_USER_ID } from "./mockFixtures";
+import { isMockMode, prepareMockSession, seedMockSession } from "./mockBootstrap";
 
 beforeEach(() => {
   localStorage.clear();
@@ -39,5 +40,19 @@ describe("local mock session bootstrap", () => {
     expect(isMockMode(true, "development")).toBe(false);
     expect(isMockMode(false, "mock")).toBe(false);
     expect(isMockMode(false, "production")).toBe(false);
+  });
+
+  it("clears only the demo account outbox before starting the mock session", async () => {
+    const demoQueueKey = "stovo_outbox_queue_" + DEMO_USER_ID;
+    const otherQueueKey = "stovo_outbox_queue_local-dev";
+    localStorage.setItem(demoQueueKey, JSON.stringify([{ id: "scheduled-demo" }]));
+    localStorage.setItem(otherQueueKey, JSON.stringify([{ id: "unrelated-dev-message" }]));
+
+    await prepareMockSession("http://127.0.0.1:5174");
+
+    expect(localStorage.getItem(demoQueueKey)).toBeNull();
+    expect(localStorage.getItem(otherQueueKey)).toBe(JSON.stringify([{ id: "unrelated-dev-message" }]));
+    const state = loadServerState();
+    expect(state.servers[state.activeServerId!]).toMatchObject({ user: { displayName: "Stovo Demo" } });
   });
 });
