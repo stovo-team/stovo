@@ -3468,7 +3468,7 @@ h2 {
 }
 
 .chat-layout.details-open {
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(340px, 420px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(240px, 280px);
 }
 
 .chat-layout.voice-call-expanded,
@@ -3489,6 +3489,7 @@ h2 {
   border-radius: var(--float-radius-panel);
   box-shadow: var(--float-shadow);
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -17788,7 +17789,7 @@ button.attachment-nav-item:focus-visible {
   align-items: center;
   display: flex;
   flex-shrink: 0;
-  padding: max(8px, env(safe-area-inset-top)) var(--mobile-edge-inset-x, 12px) 4px;
+  padding: max(6px, env(safe-area-inset-top)) 8px 4px;
   position: relative;
 }
 
@@ -17809,11 +17810,11 @@ button.attachment-nav-item:focus-visible {
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
-  height: 40px;
+  height: 34px;
   justify-content: center;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
-  width: 40px;
+  width: 34px;
 }
 
 .chat-info-back {
@@ -17824,10 +17825,10 @@ button.attachment-nav-item:focus-visible {
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
-  height: 40px;
+  height: 34px;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  width: 40px;
+  width: 34px;
 }
 
 .chat-info-back:hover,
@@ -17956,31 +17957,31 @@ button.chat-info-title-edit:active:not(:disabled) {
 .chat-info-hero {
   align-items: center;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   justify-items: center;
-  padding: 4px var(--mobile-edge-inset-x, 12px) 18px;
+  padding: 4px 8px 12px;
   text-align: center;
 }
 
 .chat-info-avatar-wrap {
   display: inline-block;
-  height: 120px;
-  margin-bottom: 6px;
+  height: 80px;
+  margin-bottom: 2px;
   position: relative;
-  width: 120px;
+  width: 80px;
 }
 
 .chat-info-avatar-wrap .avatar,
 .chat-info-avatar-wrap .avatar-xl {
-  font-size: 2.75rem;
+  font-size: 2rem;
   font-weight: 700;
-  height: 120px;
+  height: 80px;
   letter-spacing: 0.02em;
   max-height: none;
   max-width: none;
-  min-height: 120px;
-  min-width: 120px;
-  width: 120px;
+  min-height: 80px;
+  min-width: 80px;
+  width: 80px;
 }
 
 .chat-info-avatar-edit {
@@ -17992,20 +17993,20 @@ button.chat-info-title-edit:active:not(:disabled) {
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
-  height: 40px;
+  height: 30px;
   justify-content: center;
   position: absolute;
   right: 2px;
-  width: 40px;
+  width: 30px;
 }
 
 .chat-info-avatar-edit .ms-icon {
-  font-size: 22px;
+  font-size: 18px;
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
 .chat-info-hero h3 {
-  font-size: 1.35rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
   margin: 0;
@@ -18125,41 +18126,43 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-actions {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 18px;
-  padding: 0 var(--mobile-edge-inset-x, 12px);
+  margin-bottom: 12px;
+  padding: 0 8px;
 }
 
 .chat-info-action {
   align-items: center;
   background: var(--island-surface);
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   justify-content: center;
-  min-height: 68px;
-  padding: 12px 6px;
+  min-height: 44px;
+  padding: 8px 4px;
 }
 
 .chat-info-action-icon {
   color: var(--text-primary);
+  height: 18px;
   stroke-linecap: round;
   stroke-linejoin: round;
+  width: 18px;
 }
 
 .chat-info-action > span:last-child {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.1;
 }
 
 .chat-info-section {
-  margin: 0 var(--mobile-edge-inset-x, 12px) 16px;
+  margin: 0 8px 12px;
 }
 
 .chat-info-section-label {
@@ -19266,29 +19269,29 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen .chat-info-avatar-wrap .chat-avatar {
-    height: 88px;
-    max-height: 88px;
-    max-width: 88px;
-    min-height: 88px;
-    min-width: 88px;
-    width: 88px;
+    height: 72px;
+    max-height: 72px;
+    max-width: 72px;
+    min-height: 72px;
+    min-width: 72px;
+    width: 72px;
   }
 
   .chat-info-screen .chat-info-avatar-wrap {
-    height: 88px;
+    height: 72px;
     margin-bottom: 2px;
-    width: 88px;
+    width: 72px;
   }
 
   .chat-info-screen .chat-info-avatar-edit {
     bottom: 0;
-    height: 32px;
+    height: 28px;
     right: -4px;
-    width: 32px;
+    width: 28px;
   }
 
   .chat-info-screen .chat-info-avatar-edit .ms-icon {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .chat-info-screen .chat-info-hero {
@@ -19297,7 +19300,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen .chat-info-hero h3 {
-    font-size: 1.125rem;
+    font-size: 1rem;
   }
 
   .chat-info-screen .chat-info-subtitle,
@@ -19313,8 +19316,8 @@ button.chat-info-title-edit:active:not(:disabled) {
   .chat-info-screen .chat-info-action {
     border-radius: 10px;
     gap: 6px;
-    min-height: 52px;
-    padding: 8px 4px;
+    min-height: 44px;
+    padding: 6px 4px;
   }
 
   .chat-info-screen .chat-info-action > span:last-child {
@@ -31631,8 +31634,6 @@ button.checklist-add-item-btn:hover,
 /* One content-sized minimized surface for DM, group and voice calls. */
 .minimized-call {
   position: fixed;
-  top: calc(max(4px, env(safe-area-inset-top)) + var(--chat-floating-header-overlap, 60px) + 8px);
-  right: max(16px, env(safe-area-inset-right));
   z-index: 2500;
   display: flex;
   align-items: center;
