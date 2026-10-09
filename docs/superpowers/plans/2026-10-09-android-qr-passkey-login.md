@@ -225,7 +225,7 @@ Remove the blanket native-platform exclusion for Android only; gate the existing
 
 - [ ] **Step 5: Run frontend tests/build and assemble the Android debug app**
 
-Run from `frontend`: `npm test -- src/pages/LoginPage.auth-methods.test.tsx src/pages/SettingsPage.profile.test.tsx` and `npm run build`. Then run `./gradlew assembleDebug` from `frontend/android`.
+Run from `frontend`: `npm test -- src/pages/LoginPage.auth-methods.test.tsx src/pages/SettingsPage.profile.test.tsx` and `npm run build`. Then run `bash ./gradlew assembleDebug` from `frontend/android` (the checked-in wrapper is not marked executable).
 Expected: focused UI tests pass, the frontend builds, and the Android debug APK assembles. On a supported WebView with the published signing certificate and HTTPS `APP_URL`, manually verify passkey enrollment and sign-in; on an unsupported WebView, verify password and QR remain available.
 
 - [ ] **Step 6: Commit Android WebAuthn support**
@@ -236,5 +236,5 @@ Commit as `[Feature] enable passkeys in Android WebView`.
 
 - [ ] Run `go test ./...` from `backend`.
 - [ ] Run `npm test`, `npm run lint`, and `npm run build` from `frontend`.
-- [ ] Run `./gradlew assembleDebug` from `frontend/android` and complete the supported-device passkey check from Task 5.
+- [ ] Run `bash ./gradlew assembleDebug` from `frontend/android` and complete the supported-device passkey check from Task 5.
 - [ ] Review the final diff against the approved spec, especially that browser QR behavior and existing browser WebAuthn origins are unchanged.
