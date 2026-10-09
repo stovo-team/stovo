@@ -22,6 +22,7 @@ import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
+import { advanceVoiceCallLayoutSnapshot, type VoiceCallLayoutSnapshot } from "./voiceCallLayoutSnapshot";
 
 function loadMessageArchiveView(userId?: string): MessageArchiveView {
   if (!userId || typeof window === "undefined") return "all";
@@ -45,7 +46,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isVoiceCallExpanded, setIsVoiceCallExpanded] = useState(false);
-  const voiceCallLayoutSnapshotRef = useRef<{ chatId: string; isExpanded: boolean } | null>(null);
+  const voiceCallLayoutSnapshotRef = useRef<VoiceCallLayoutSnapshot | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
@@ -220,27 +221,18 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   }, [selectedChat?.id]);
 
   useEffect(() => {
-    if (callPhase === "idle") {
-      const snapshot = voiceCallLayoutSnapshotRef.current;
-      voiceCallLayoutSnapshotRef.current = null;
-      if (snapshot && snapshot.chatId === selectedChat?.id) {
-        setIsVoiceCallExpanded(snapshot.isExpanded);
-      }
-      return;
-    }
-
     const callChat = chats.find((chat) => chat.id === activeCallChatId)
       ?? (selectedChat?.id === activeCallChatId ? selectedChat : null);
-    if (!activeCallChatId || callChat?.type !== "voice") {
-      voiceCallLayoutSnapshotRef.current = null;
-      return;
-    }
-
-    if (voiceCallLayoutSnapshotRef.current?.chatId !== activeCallChatId) {
-      voiceCallLayoutSnapshotRef.current = {
-        chatId: activeCallChatId,
-        isExpanded: isVoiceCallExpanded,
-      };
+    const transition = advanceVoiceCallLayoutSnapshot(voiceCallLayoutSnapshotRef.current, {
+      callPhase,
+      activeCallChatId,
+      activeCallChatType: callChat?.type ?? null,
+      selectedChatId: selectedChat?.id,
+      isExpanded: isVoiceCallExpanded,
+    });
+    voiceCallLayoutSnapshotRef.current = transition.snapshot;
+    if (transition.restoreExpanded !== null) {
+      setIsVoiceCallExpanded(transition.restoreExpanded);
     }
   }, [callPhase, activeCallChatId, chats, selectedChat, isVoiceCallExpanded]);
 
