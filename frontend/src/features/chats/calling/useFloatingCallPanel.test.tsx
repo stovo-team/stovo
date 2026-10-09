@@ -76,6 +76,19 @@ describe("floating call panel", () => {
     expect(panel.style.top).toBe("272px");
   });
 
+  it("tracks an in-place chat id change on the reused header element", async () => {
+    vi.stubGlobal("innerWidth", 1200); vi.stubGlobal("innerHeight", 900);
+    const { panel } = mount("chat-1");
+    const header = document.querySelector<HTMLElement>('[data-call-header-chat-id="chat-1"]')!;
+    await act(async () => { header.dataset.callHeaderChatId = "other-chat"; await Promise.resolve(); });
+    expect(panel.style.left).toBe("988px");
+    expect(panel.style.top).toBe("96px");
+
+    await act(async () => { header.dataset.callHeaderChatId = "chat-1"; await Promise.resolve(); });
+    expect(panel.style.left).toBe("600px");
+    expect(panel.style.top).toBe("112px");
+  });
+
   it("falls back to a safe viewport position when the active header is unavailable", () => {
     vi.stubGlobal("innerWidth", 1000); vi.stubGlobal("innerHeight", 800);
     const { panel } = mount("missing-chat", false);

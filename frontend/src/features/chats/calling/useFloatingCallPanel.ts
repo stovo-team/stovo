@@ -98,7 +98,7 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["class", "hidden", "aria-hidden"],
+      attributeFilter: ["class", "hidden", "aria-hidden", "data-call-header-chat-id"],
     });
     syncAnchorObservation();
     return () => {
