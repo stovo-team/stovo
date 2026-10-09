@@ -146,6 +146,7 @@ export function CallFeature() {
     <>
       <MinimizedCallBar
           key={session.callRoomId ?? session.activeCallChatId ?? "call"}
+          anchorChatId={session.activeCallChatId ?? undefined}
           visible={effectiveIsCallMinimized}
           soundDisabled={callAudioSettings.soundDisabled}
           onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}

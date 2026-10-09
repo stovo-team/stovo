@@ -434,7 +434,7 @@ export function ChatDetailsPanel({
         aria-modal="true"
         aria-labelledby="chat-settings-title"
       >
-        <header className="chat-info-topbar">
+        <header className="chat-info-topbar" data-call-header-chat-id={chat.id} data-call-header-kind="details">
           <BackButton
             className="chat-info-back"
             ariaLabel={strings.chats.details.backToChat}
@@ -972,7 +972,7 @@ export function ChatDetailsPanel({
 
   return (
     <aside className="chat-details-panel chat-info-screen" role="dialog" aria-modal="true" aria-labelledby="chat-info-title">
-      <header className="chat-info-topbar">
+      <header className="chat-info-topbar" data-call-header-chat-id={chat.id} data-call-header-kind="details">
         <BackButton className="chat-info-back" ariaLabel={strings.chats.details.backToChat} onClick={onClose} />
         <h2 id="chat-info-title" className="visually-hidden">
           {chatName}
@@ -1408,4 +1408,3 @@ export function ChatDetailsPanel({
     </aside>
   );
 }
-
