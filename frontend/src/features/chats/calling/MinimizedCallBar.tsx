@@ -26,6 +26,7 @@ type Props = {
   isLocalSpeaking: boolean;
   isPeerSpeaking: boolean;
   mirrorLocalVideo: boolean;
+  anchorChatId?: string;
 };
 const hasVideo = (stream: MediaStream | null) => stream?.getVideoTracks().some(
   track => track.readyState !== "ended" && track.enabled !== false && !track.muted,
@@ -34,7 +35,7 @@ const hasVideo = (stream: MediaStream | null) => stream?.getVideoTracks().some(
 /** The single minimized surface for every call type, kept mounted to remember speakers. */
 export function MinimizedCallBar({ visible = true, ...props }: Props) {
   const { remoteMedia, localVideoStream, localScreenStream, localUserId } = props;
-  const floating = useFloatingCallPanel<HTMLElement>(visible && props.callPhase !== "idle");
+  const floating = useFloatingCallPanel<HTMLElement>(visible && props.callPhase !== "idle", props.anchorChatId);
   const [lastSpeaker, setLastSpeaker] = useState<string | null>(null);
   const [, refreshTracks] = useReducer(value => value + 1, 0);
   const videoRef = useRef<HTMLVideoElement>(null);

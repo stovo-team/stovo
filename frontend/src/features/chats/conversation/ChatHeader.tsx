@@ -140,7 +140,7 @@ export function ChatHeader({
       : onBack;
 
   return (
-    <div className="chat-detail-header chat-detail-header--floating">
+    <div className="chat-detail-header chat-detail-header--floating" data-call-header-chat-id={selectedChat.id}>
       <BackButton
         className={isArchiveGroup ? "archive-group-back-button" : "mobile-back-button"}
         ariaLabel={isArchiveGroup ? "Back to grouped Message Archive" : threadRootMessage ? "Back to chat" : "Back to chats"}

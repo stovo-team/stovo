@@ -25,14 +25,27 @@ describe("mobile chat details sizing", () => {
     const mobileStyles = mobileChatDetailsStyles();
 
     expect(mobileStyles).toContain(".chat-info-avatar-wrap");
-    expect(mobileStyles).toContain("height: 88px;");
-    expect(mobileStyles).toContain("width: 88px;");
+    expect(mobileStyles).toContain("height: 72px;");
+    expect(mobileStyles).toContain("width: 72px;");
     expect(mobileStyles).toContain(".chat-info-hero h3");
-    expect(mobileStyles).toContain("font-size: 1.125rem;");
+    expect(mobileStyles).toContain("font-size: 1rem;");
     expect(mobileStyles).toContain(".chat-info-add-description-btn");
     expect(mobileStyles).toContain("padding: 9px 14px;");
     expect(mobileStyles).toContain(".chat-info-action");
-    expect(mobileStyles).toContain("min-height: 52px;");
-    expect(mobileStyles).toContain("padding: 8px 4px;");
+    expect(mobileStyles).toContain("min-height: 44px;");
+    expect(mobileStyles).toContain("padding: 6px 4px;");
+    expect(mobileStyles).toContain("position: fixed;");
+    expect(mobileStyles).toContain("inset: 0;");
+    expect(mobileStyles).toContain("width: 100%;");
+  });
+
+  it("keeps desktop chat details in a compact grid column beside the message pane", () => {
+    expect(styles).toMatch(/\.chat-layout\.details-open\s*\{\s*grid-template-columns:\s*minmax\(280px, 320px\)\s+minmax\(0, 1fr\)\s+minmax\(240px, 280px\);/);
+    expect(styles).toContain(".chat-detail {\n  display: flex;\n  flex-direction: column;\n  min-width: 0;");
+    expect(styles).toContain(".chat-info-avatar-wrap {\n  display: inline-block;\n  height: 80px;");
+    expect(styles).toContain(".chat-info-hero h3 {\n  font-size: 1rem;");
+    expect(styles).toContain(".chat-info-action {\n  align-items: center;");
+    expect(styles).toContain("min-height: 44px;");
+    expect(styles).toContain(".chat-info-action-icon {\n  color: var(--text-primary);\n  height: 18px;");
   });
 });
