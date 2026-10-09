@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 import { App } from "@capacitor/app";
@@ -45,6 +45,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isVoiceCallExpanded, setIsVoiceCallExpanded] = useState(false);
+  const voiceCallLayoutSnapshotRef = useRef<{ chatId: string; isExpanded: boolean } | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
@@ -217,6 +218,31 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   useEffect(() => {
     setIsVoiceCallExpanded(false);
   }, [selectedChat?.id]);
+
+  useEffect(() => {
+    if (callPhase === "idle") {
+      const snapshot = voiceCallLayoutSnapshotRef.current;
+      voiceCallLayoutSnapshotRef.current = null;
+      if (snapshot?.chatId === selectedChat?.id) {
+        setIsVoiceCallExpanded(snapshot.isExpanded);
+      }
+      return;
+    }
+
+    const callChat = chats.find((chat) => chat.id === activeCallChatId)
+      ?? (selectedChat?.id === activeCallChatId ? selectedChat : null);
+    if (!activeCallChatId || callChat?.type !== "voice") {
+      voiceCallLayoutSnapshotRef.current = null;
+      return;
+    }
+
+    if (voiceCallLayoutSnapshotRef.current?.chatId !== activeCallChatId) {
+      voiceCallLayoutSnapshotRef.current = {
+        chatId: activeCallChatId,
+        isExpanded: isVoiceCallExpanded,
+      };
+    }
+  }, [callPhase, activeCallChatId, chats, selectedChat, isVoiceCallExpanded]);
 
   return (
     <main
