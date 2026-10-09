@@ -42,6 +42,20 @@ describe("local mock chat API", () => {
     });
   });
 
+  it("uses the tab-selected fixture user for refresh and sent messages", async () => {
+    seedMockSession(MOCK_ORIGIN, "user-alex-rivera");
+
+    const refreshed = await request<AuthResponse>("/api/auth/refresh", { method: "POST" });
+    const sent = await request<Message>("/api/chats/" + FIRST_CHAT_ID + "/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "text", content: "Sent as Alex." }),
+    });
+
+    expect(refreshed.body.user).toMatchObject({ id: "user-alex-rivera", displayName: "Alex Rivera" });
+    expect(sent.body).toMatchObject({ senderId: "user-alex-rivera", senderDisplayName: "Alex Rivera" });
+  });
+
   it("serves typed overview and selected chat data for the real chats route", async () => {
     const [familyResponse, membersResponse, chatsResponse, detailResponse, historyResponse, pinsResponse, manifestResponse] = await Promise.all([
       request<Family>("/api/family"),

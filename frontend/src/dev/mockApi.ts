@@ -1,7 +1,8 @@
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
-import { createMockData, createMockManifest, DEMO_USER_ID } from "./mockFixtures";
+import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
+import { getMockUserId } from "./mockBootstrap";
 
 const MOCK_API_STATE_KEY = Symbol.for("stovo.localMockApi.installation");
 type FetchInput = RequestInfo | URL;
@@ -33,11 +34,12 @@ function findMessage(messageId: string): Message | undefined {
 }
 
 function responseForRefresh(): AuthResponse {
+  const currentUserId = getMockUserId();
   return {
     accessToken: "local-mock-access-token",
     tokenType: "Bearer",
     expiresInSeconds: 3600,
-    user: structuredClone(mockData.users.find((user) => user.id === DEMO_USER_ID)!),
+    user: structuredClone(mockData.users.find((user) => user.id === currentUserId)!),
   };
 }
 
@@ -95,12 +97,13 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       const body = await requestBody(input, init);
       const chat = mockData.chats.find((item) => item.id === chatId)!;
       const sentAt = new Date().toISOString();
+      const currentUserId = getMockUserId();
       const content = typeof body.content === "string" ? body.content : null;
       const message: Message = {
         id: `msg-local-${nextLocalMessageId++}`,
         chatId,
-        senderId: DEMO_USER_ID,
-        senderDisplayName: mockData.users.find((user) => user.id === DEMO_USER_ID)?.displayName ?? "Stovo Demo",
+        senderId: currentUserId,
+        senderDisplayName: mockData.users.find((user) => user.id === currentUserId)?.displayName ?? "Stovo Demo",
         type: body.type === "mixed" ? "mixed" : "text",
         content,
         encryptionProtocol: "legacy_plaintext",
@@ -116,14 +119,14 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
         deletedAt: null,
         isEdited: false,
         forwardedFrom: null,
-        statuses: [{ userId: DEMO_USER_ID, status: "sent", createdAt: sentAt }],
+        statuses: [{ userId: currentUserId, status: "sent", createdAt: sentAt }],
         reactions: [],
         attachments: [],
         ...(typeof body.clientMessageId === "string" ? { clientMessageId: body.clientMessageId } : {}),
       };
       mockData.messages[chatId] = [...(mockData.messages[chatId] ?? []), message];
       chat.lastMessageId = message.id;
-      chat.lastMessageSenderId = DEMO_USER_ID;
+      chat.lastMessageSenderId = currentUserId;
       chat.lastMessageSenderDisplayName = message.senderDisplayName;
       chat.lastMessageContent = content;
       chat.lastMessageType = message.type;
@@ -142,13 +145,14 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "PATCH" && readMessageMatch) {
     const message = findMessage(readMessageMatch[1]);
     if (!message) return errorResponse(404, "Mock message not found.");
-    const existing = message.statuses.find((status) => status.userId === DEMO_USER_ID);
+    const currentUserId = getMockUserId();
+    const existing = message.statuses.find((status) => status.userId === currentUserId);
     const readAt = new Date().toISOString();
     if (existing) {
       existing.status = "read";
       existing.createdAt = readAt;
     } else {
-      message.statuses.push({ userId: DEMO_USER_ID, status: "read", createdAt: readAt });
+      message.statuses.push({ userId: currentUserId, status: "read", createdAt: readAt });
     }
     return jsonResponse(message);
   }
@@ -156,11 +160,12 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "PATCH" && path === "/api/auth/me") {
     const body = await requestBody(input, init);
     const publicKey = typeof body.publicKey === "string" ? body.publicKey : null;
-    const currentUser = mockData.users.find((user) => user.id === DEMO_USER_ID)!;
+    const currentUserId = getMockUserId();
+    const currentUser = mockData.users.find((user) => user.id === currentUserId)!;
     currentUser.publicKey = publicKey;
     for (const chat of mockData.chats) {
       for (const member of chat.members) {
-        if (member.id === DEMO_USER_ID) member.publicKey = publicKey;
+        if (member.id === currentUserId) member.publicKey = publicKey;
       }
     }
     return jsonResponse(currentUser);

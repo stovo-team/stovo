@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadServerState } from "../api/serverRegistry";
 import { DEMO_USER_ID } from "./mockFixtures";
-import { isMockMode, prepareMockSession, seedMockSession } from "./mockBootstrap";
+import { getMockUserId, isMockMode, prepareMockSession, resolveMockUserId, seedMockSession } from "./mockBootstrap";
 
 beforeEach(() => {
   localStorage.clear();
@@ -40,6 +40,20 @@ describe("local mock session bootstrap", () => {
     expect(isMockMode(true, "development")).toBe(false);
     expect(isMockMode(false, "mock")).toBe(false);
     expect(isMockMode(false, "production")).toBe(false);
+  });
+
+  it("keeps the selected demo identity in this tab's session", () => {
+    const selectedUserId = resolveMockUserId("?mockUser=user-alex-rivera");
+
+    seedMockSession("http://127.0.0.1:5174", selectedUserId);
+
+    expect(getMockUserId()).toBe("user-alex-rivera");
+    const state = loadServerState();
+    expect(state.servers[state.activeServerId!]).toMatchObject({ user: { id: "user-alex-rivera", displayName: "Alex Rivera" } });
+  });
+
+  it("falls back to the default demo identity for unknown user IDs", () => {
+    expect(resolveMockUserId("?mockUser=not-a-fixture-user")).toBe(DEMO_USER_ID);
   });
 
   it("clears only the demo account outbox before starting the mock session", async () => {
