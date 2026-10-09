@@ -22,6 +22,10 @@ import (
 
 const passkeyCeremonyTTL = 5 * time.Minute
 
+// The SHA-256 fingerprint of the published Android signing certificate, encoded
+// as unpadded base64url rather than the colon-separated hex used in asset links.
+const androidPasskeyCredentialOrigin = "android:apk-key-hash:GHz0pWhVAaCHx-QJWbM2nCwZ2dLDAIdyCJJEgUCRN_k"
+
 var (
 	errPasskeysRequireHTTPSAppURL  = errors.New("passkeys require a configured HTTPS app origin")
 	errPasskeysRequireSecureOrigin = errors.New("passkeys require a secure origin")
@@ -59,10 +63,14 @@ func (s *Server) webAuthnForRequest(r *http.Request) (*webauthnlib.WebAuthn, err
 		return nil, errors.New("invalid webauthn origin")
 	}
 	rpID := configured.Hostname()
-	if originURL.Scheme != "https" && originURL.Hostname() != "localhost" && originURL.Hostname() != "127.0.0.1" {
+	origin := originURL.Scheme + "://" + originURL.Host
+	// Native HTTP request origins identify permitted clients; their signed
+	// WebAuthn client data instead carries the Android certificate origin.
+	if s.isNativeClientOrigin(r.Header.Get("Origin")) {
+		origin = androidPasskeyCredentialOrigin
+	} else if originURL.Scheme != "https" && (originURL.Scheme != "http" || (originURL.Hostname() != "localhost" && originURL.Hostname() != "127.0.0.1")) {
 		return nil, errPasskeysRequireSecureOrigin
 	}
-	origin := originURL.Scheme + "://" + originURL.Host
 	if !s.isAllowedWebAuthnOrigin(origin, rpID) {
 		return nil, errPasskeyOriginMismatch
 	}
@@ -77,7 +85,12 @@ func (s *Server) webAuthnForRequest(r *http.Request) (*webauthnlib.WebAuthn, err
 	})
 }
 
+// isAllowedWebAuthnOrigin checks credential origins, independently of native
+// HTTP request admission performed by webAuthnForRequest.
 func (s *Server) isAllowedWebAuthnOrigin(origin, rpID string) bool {
+	if origin == androidPasskeyCredentialOrigin {
+		return true
+	}
 	configured, err := url.Parse(strings.TrimSpace(s.cfg.AppURL))
 	if err == nil && configured.Host != "" && configured.Scheme+"://"+configured.Host == origin {
 		return true
