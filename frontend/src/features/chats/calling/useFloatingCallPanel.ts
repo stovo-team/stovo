@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttribu
 
 type Position = { x: number; y: number };
 type SavedPosition = { chatId: string; offsetX: number; offsetY: number } | { chatId: null; x: number; y: number };
+const PANEL_EDGE_GAP = 12;
 const HEADER_GAP = 12;
 let savedPosition: SavedPosition | null = null;
 export function resetFloatingCallPosition() { savedPosition = null; }
@@ -27,11 +28,11 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
   const drag = useRef<{ pointer: number; x: number; y: number; origin: Position; moved: boolean; capture: Element } | null>(null);
   const suppressClick = useRef(false);
 
-  const constrain = (point: Position, snap: boolean, minimumTop = 96): Position => {
+  const constrain = (point: Position, snap: boolean): Position => {
     const box = ref.current?.getBoundingClientRect();
     const right = Math.max(12, window.innerWidth - (box?.width ?? 0) - 12);
     const bottom = Math.max(0, window.innerHeight - (box?.height ?? 0) - 12);
-    const top = Math.min(minimumTop, bottom);
+    const top = Math.min(PANEL_EDGE_GAP, bottom);
     const axis = (value: number, min: number, max: number) => {
       const clamped = Math.max(min, Math.min(max, value));
       const anchor = [min, (min + max) / 2, max].find((candidate) => Math.abs(candidate - clamped) <= 24);
@@ -48,8 +49,7 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
 
   const save = (next: Position, snap: boolean) => {
     const anchor = findVisibleHeader(anchorChatId);
-    const minimumTop = anchor ? HEADER_GAP : 96;
-    const constrained = constrain(next, snap, minimumTop);
+    const constrained = constrain(next, snap);
     if (anchor && anchorChatId) {
       const base = anchorPosition(anchor);
       savedPosition = { chatId: anchorChatId, offsetX: constrained.x - base.x, offsetY: constrained.y - base.y };
@@ -62,11 +62,40 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
   useLayoutEffect(() => {
     if (!enabled) return;
 
+    let reservedDetailsBody: HTMLElement | null = null;
+    let previousSlotHeight = "";
+    let previousMinimizedCallClass = false;
+
+    const clearDetailsReservation = () => {
+      if (!reservedDetailsBody) return;
+      if (!previousMinimizedCallClass) reservedDetailsBody.classList.remove("has-minimized-call");
+      if (previousSlotHeight) reservedDetailsBody.style.setProperty("--minimized-call-slot-height", previousSlotHeight);
+      else reservedDetailsBody.style.removeProperty("--minimized-call-slot-height");
+      reservedDetailsBody = null;
+    };
+
     const update = () => {
       const anchor = findVisibleHeader(anchorChatId);
+      const nextDetailsBody = anchor?.dataset.callHeaderKind === "details"
+        ? anchor.parentElement?.querySelector<HTMLElement>(".chat-info-body") ?? null
+        : null;
+      if (nextDetailsBody !== reservedDetailsBody) {
+        clearDetailsReservation();
+        if (nextDetailsBody) {
+          reservedDetailsBody = nextDetailsBody;
+          previousSlotHeight = nextDetailsBody.style.getPropertyValue("--minimized-call-slot-height");
+          previousMinimizedCallClass = nextDetailsBody.classList.contains("has-minimized-call");
+        }
+      }
+      if (reservedDetailsBody) {
+        reservedDetailsBody.classList.add("has-minimized-call");
+        const panelHeight = ref.current?.getBoundingClientRect().height ?? 0;
+        reservedDetailsBody.style.setProperty("--minimized-call-slot-height", `${Math.ceil(panelHeight + HEADER_GAP)}px`);
+      }
+
       const base = anchor ? anchorPosition(anchor) : {
         x: window.innerWidth - (ref.current?.getBoundingClientRect().width ?? 0) - 12,
-        y: 96,
+        y: PANEL_EDGE_GAP,
       };
       const saved = savedPosition;
       const desired = anchor && anchorChatId && saved?.chatId === anchorChatId
@@ -74,7 +103,7 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
         : !anchor && saved?.chatId === null
           ? { x: saved.x, y: saved.y }
           : base;
-      setPosition(constrain(desired, false, anchor ? HEADER_GAP : 96));
+      setPosition(constrain(desired, false));
     };
 
     let observedAnchor: HTMLElement | null = null;
@@ -106,6 +135,7 @@ export function useFloatingCallPanel<T extends HTMLElement = HTMLDivElement>(ena
       window.removeEventListener("scroll", syncAnchorObservation, true);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
+      clearDetailsReservation();
     };
   }, [enabled, anchorChatId]);
 

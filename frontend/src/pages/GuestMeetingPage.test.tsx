@@ -154,16 +154,20 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(connectingLinkRule).toMatch(/bottom:/);
   });
 
-  it("fills the desktop presentation stage and aligns screen content to its top", () => {
+  it("keeps the screen presentation 16:9 and supports a participant row below it", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
     const spotlight = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
     const screen = Array.from(css.matchAll(/\.guest-call-room \.guest-call-screen-tile\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
     expect(spotlight).toMatch(/flex:\s*1\s+1\s+0/);
-    expect(screen).toMatch(/height:\s*100%/);
-    expect(screen).toMatch(/aspect-ratio:\s*auto/);
+    expect(screen).toMatch(/height:\s*auto/);
+    expect(screen).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
+    expect(screen).toMatch(/max-height:\s*100%/);
+    expect(css).toMatch(/\.guest-call-spotlight--bottom\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+    expect(css).toMatch(/\.guest-call-spotlight--bottom \.guest-call-camera-rail\s*\{[^}]*overflow-x:\s*auto/);
     expect(css.match(/\.guest-call-screen-tile \.voice-participant-video-feed\s*\{([^}]*)\}/)?.[1]).toMatch(/object-position:\s*center top/);
-    expect(pageSource).toContain('guest-call-screen-tile" style={{ aspectRatio: "auto" }}');
+    expect(pageSource).toContain('guest-call-screen-tile"');
+    expect(pageSource).toContain('getScreenShareLayout');
   });
 
   it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {

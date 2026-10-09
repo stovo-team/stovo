@@ -14,6 +14,7 @@ import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingInt
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
 import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
+import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
 import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
@@ -98,6 +99,8 @@ export default function GuestMeetingPage() {
   const [speakingIndicatorState, setSpeakingIndicatorState] = useState<CallSpeakingState>("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
   const localRef = useRef<HTMLVideoElement>(null);
+  const callStageRef = useRef<HTMLDivElement>(null);
+  const [callStageSize, setCallStageSize] = useState<{ width: number; height: number } | null>(null);
   const roomRef = useRef<Room | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const sourceAudioStreamRef = useRef<MediaStream | null>(null);
@@ -176,6 +179,33 @@ export default function GuestMeetingPage() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
+
+  useEffect(() => {
+    const stage = callStageRef.current;
+    if (!stage) return;
+
+    const updateSize = (width: number, height: number) => {
+      if (!width || !height) return;
+      setCallStageSize((current) => current?.width === width && current.height === height ? current : { width, height });
+    };
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) updateSize(entry.contentRect.width, entry.contentRect.height);
+      });
+      observer.observe(stage);
+      return () => observer.disconnect();
+    }
+
+    const measure = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      updateSize(width, height);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [state]);
 
   useEffect(() => {
     audioProcessorRef.current?.update(audioProcessing);
@@ -670,6 +700,17 @@ export default function GuestMeetingPage() {
       { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
       ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
     ];
+    const useBottomScreenShareRail = callStageSize
+      ? isMobile || getScreenShareLayout(callStageSize.width, callStageSize.height, cameraTiles.length) === "bottom"
+      : false;
+    const screenPresenterSize = callStageSize
+      ? getScreenSharePresenterSize(
+        Math.min(callStageSize.width, 1440),
+        callStageSize.height,
+        useBottomScreenShareRail ? "bottom" : "side",
+        getScreenShareBottomRailHeight(window.innerHeight),
+      )
+      : null;
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
@@ -684,10 +725,10 @@ export default function GuestMeetingPage() {
         <header className="guest-call-header">
           <div><strong>{preview?.title || "Guest meeting"}</strong><span>{participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
         </header>
-        <CallParticipantStage className="shared-call-stage voice-room-stage">
-          {hasScreenShare ? <div className={`guest-call-spotlight${cameraTiles.length > 3 ? " guest-call-spotlight--grid" : ""}`} aria-label="Shared screen and cameras">
+        <CallParticipantStage ref={callStageRef} className="shared-call-stage voice-room-stage">
+          {hasScreenShare ? <div className={`guest-call-spotlight${useBottomScreenShareRail ? " guest-call-spotlight--bottom" : ""}`} aria-label="Shared screen and cameras">
             <div className="guest-call-screen-stage">
-              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "auto" }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: "auto" }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
             </div>
             <aside className="guest-call-camera-rail" aria-label="Participant cameras">
               {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : participant.speaking ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>

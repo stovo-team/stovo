@@ -4,6 +4,7 @@ import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
+import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -54,19 +55,6 @@ const landscapePresenterTileStyle: CSSProperties = {
   minHeight: 0,
   gridColumn: "1 / -1",
 };
-
-function fitsScreenShareSideRail(width: number, height: number, participantCount: number): boolean {
-  const railWidth = Math.min(168, Math.max(112, width * 0.16));
-  const cardHeight = railWidth * (9 / 16);
-  const visibleCardCount = Math.max(1, participantCount);
-  const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
-  const minimumPresenterWidth = 360;
-  const minimumPresenterHeight = 160;
-  const gap = 12;
-
-  return width >= minimumPresenterWidth + railWidth + gap
-    && height >= Math.max(minimumPresenterHeight, requiredRailHeight);
-}
 
 function bindStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: MediaStream | null) {
   if (el && stream && el.srcObject !== stream) {
@@ -153,9 +141,17 @@ export default function CallParticipantGrid({
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
   const useBottomScreenShareRail = useScreenShareRail && (
     stageSize
-      ? !fitsScreenShareSideRail(stageSize.width, stageSize.height, remoteMedia.length + 1)
+      ? getScreenShareLayout(stageSize.width, stageSize.height, remoteMedia.length + 1) === "bottom"
       : remoteMedia.length >= 4
   );
+  const screenPresenterSize = useScreenShareRail && stageSize
+    ? getScreenSharePresenterSize(
+      stageSize.width,
+      stageSize.height,
+      useBottomScreenShareRail ? "bottom" : "side",
+      getScreenShareBottomRailHeight(window.innerHeight),
+    )
+    : null;
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
   const hasLongMobileParticipantRow = useMobilePresentationRow && remoteMedia.length >= 5;
 
@@ -225,8 +221,8 @@ export default function CallParticipantGrid({
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? useBottomScreenShareRail
-              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: "100%", height: "100%", maxWidth: "none", maxHeight: "none", aspectRatio: "auto", alignSelf: "stretch", justifySelf: "stretch" }
-              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", maxWidth: "none", height: "100%", aspectRatio: "auto", alignSelf: "stretch", justifySelf: "stretch" }
+              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
+              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
               : landscapePresenterTileStyle}

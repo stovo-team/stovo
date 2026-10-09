@@ -882,17 +882,18 @@
 .call-grid--screen-share-bottom .call-grid__tile--screen {
   grid-column: 1;
   grid-row: 1;
-  align-self: stretch;
-  height: 100%;
-  max-height: none;
-  aspect-ratio: auto;
+  align-self: center;
+  height: auto;
+  max-height: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 .call-grid--screen-share-bottom .call-grid__participant-rail {
   grid-column: 1;
   grid-row: 2;
   display: flex;
-  height: clamp(68px, 11vh, 88px);
+  height: clamp(72px, 11vh, 90px);
   align-items: flex-start;
   gap: 6px;
   overflow-x: auto;
@@ -930,10 +931,11 @@
 }
 
 .shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
-  height: 100%;
-  aspect-ratio: auto;
-  align-self: stretch;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  align-self: center;
   max-height: 100%;
+  max-width: 100%;
 }
 .call-grid__tile--screen .call-grid__video { object-position: center top; }
 
@@ -959,7 +961,7 @@
     align-items: flex-start;
     grid-column: 1;
     grid-row: 2;
-    height: clamp(68px, 12vh, 88px);
+    height: clamp(72px, 11vh, 90px);
     overflow: hidden;
   }
 
@@ -986,7 +988,7 @@
   }
 }
 
-.call-grid--presenting .call-grid__tile--screen {
+.call-grid--presenting:not(.call-grid--screen-share) .call-grid__tile--screen {
   max-height: min(52vh, 420px);
 }
 
@@ -1025,8 +1027,28 @@
 }
 
 .call-ctrl-btn.end-btn:hover {
-  background: #b91c1c;
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
   opacity: 1;
+  transform: none;
+}
+
+.call-ctrl-btn.end-btn:active {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+  opacity: 1;
+  transform: none;
+}
+
+.call-popup.call-popup-fullscreen .call-ctrl-btn.end-btn:hover,
+.call-popup.call-popup-fullscreen .call-ctrl-btn.end-btn:active {
+  background: #e53e3e;
+  border-color: transparent;
+  color: #fff;
+  opacity: 1;
+  transform: none;
 }
 
 /* ── AI Transcript control button ── */
@@ -15192,6 +15214,15 @@ span.message-spoiler.is-revealed {
   border-color: transparent;
 }
 
+button.mobile-active-ctrl-btn.end:hover:not(:disabled),
+button.mobile-active-ctrl-btn.end:active:not(:disabled) {
+  background: #ff3b30;
+  border-color: transparent;
+  color: #fff;
+  opacity: 1;
+  transform: none;
+}
+
 .mobile-active-ctrl-btn svg {
   width: 18px;
   height: 18px;
@@ -17966,6 +17997,10 @@ button.chat-info-title-edit:active:not(:disabled) {
   overflow-x: hidden;
   padding-bottom: max(20px, env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
+}
+
+.chat-info-body.has-minimized-call {
+  padding-top: var(--minimized-call-slot-height, 88px);
 }
 
 .chat-info-hero {
@@ -26114,9 +26149,15 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-color: transparent !important;
 }
 
-.voice-dock-btn--disconnect:hover {
-  background: #dc2626 !important;
-  transform: scale(1.05);
+button.voice-dock-btn--disconnect:hover:not(:disabled),
+button.voice-dock-btn--disconnect:active:not(:disabled) {
+  background: #ef4444 !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -31087,12 +31128,13 @@ button.checklist-add-item-btn:hover,
   background: #0c0c0e;
 }
 
-/* A shared screen remains the focus. Cameras stay in an equal-size rail on the
-   right, then become a compact grid only after the rail has more than 3 tiles. */
+/* A shared screen remains the focus. Participant tiles use a side rail or a
+   bottom row based on the measured stage space. */
 .guest-call-spotlight {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) clamp(180px, 16vw, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(112px, min(16%, 168px));
+  grid-template-rows: minmax(0, 1fr);
   height: auto;
   max-height: 100%;
   min-height: 0;
@@ -31109,16 +31151,20 @@ button.checklist-add-item-btn:hover,
 }
 
 .guest-call-screen-stage {
-  align-content: stretch;
+  align-content: center;
   display: grid;
   justify-items: stretch;
+  min-width: 0;
 }
 
 .guest-call-screen-tile {
-  aspect-ratio: auto;
-  height: 100%;
+  aspect-ratio: 16 / 9;
+  align-self: center;
+  height: auto;
+  justify-self: center;
   max-height: 100%;
   min-height: 0;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -31129,7 +31175,7 @@ button.checklist-add-item-btn:hover,
 
 .guest-call-camera-rail {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   align-content: start;
   grid-auto-flow: row;
   grid-auto-rows: auto;
@@ -31137,8 +31183,38 @@ button.checklist-add-item-btn:hover,
   overflow-y: auto;
 }
 
-.guest-call-spotlight--grid .guest-call-camera-rail {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.guest-call-spotlight--bottom {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.guest-call-spotlight--bottom .guest-call-screen-stage {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.guest-call-spotlight--bottom .guest-call-screen-tile {
+  align-self: center;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  max-height: 100%;
+  width: 100%;
+}
+
+.guest-call-spotlight--bottom .guest-call-camera-rail {
+  align-content: center;
+  display: flex;
+  flex: 0 0 clamp(72px, 11vh, 90px);
+  grid-column: 1;
+  grid-row: 2;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.guest-call-spotlight--bottom .guest-call-camera-tile {
+  flex: 0 0 clamp(112px, 12vw, 144px);
+  height: 100%;
+  max-height: 100%;
 }
 
 .guest-call-camera-tile {
@@ -31146,7 +31222,7 @@ button.checklist-add-item-btn:hover,
   width: 100%;
   padding: 6px;
   gap: 4px;
-  min-height: 80px;
+  min-height: 72px;
   container-type: inline-size;
 }
 
@@ -31265,7 +31341,7 @@ button.checklist-add-item-btn:hover,
   .guest-prejoin-preview video { object-fit: contain; }
   .guest-call-room .guest-call-spotlight { flex: 1 1 0; height: 100%; }
   .guest-call-room .guest-call-screen-stage { min-width: 0; align-content: stretch; }
-  .guest-call-room .guest-call-screen-tile { aspect-ratio: auto; height: 100%; max-height: 100%; }
+  .guest-call-room .guest-call-screen-tile { aspect-ratio: 16 / 9; height: auto; max-height: 100%; max-width: 100%; }
   .guest-call-room .voice-participant-video-feed { object-fit: contain; }
 }
 
@@ -31290,9 +31366,9 @@ button.checklist-add-item-btn:hover,
   .guest-call-controls .guest-device-select { display: none; }
   .guest-call-controls .guest-device-control { width: 48px; }
   .guest-call-settings .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; bottom: auto; }
-  .guest-call-spotlight { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(112px, 28%); }
-  .guest-call-camera-rail { align-content: stretch; grid-auto-flow: column; grid-auto-columns: minmax(112px, 1fr); grid-auto-rows: 1fr; grid-template-columns: none; overflow-x: auto; overflow-y: hidden; }
-  .guest-call-spotlight--grid .guest-call-camera-rail { grid-template-columns: none; }
+  .guest-call-spotlight { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .guest-call-spotlight .guest-call-camera-rail { align-content: center; display: flex; flex: 0 0 clamp(72px, 11vh, 90px); grid-column: 1; grid-row: 2; overflow-x: auto; overflow-y: hidden; }
+  .guest-call-spotlight .guest-call-camera-tile { flex: 0 0 clamp(112px, 30vw, 144px); height: 100%; max-height: 100%; }
 }
 
 @media (max-height: 700px) {
@@ -31696,6 +31772,14 @@ button.checklist-add-item-btn:hover,
 .minimized-call-button.is-active { color: var(--stovo-primary); }
 .minimized-call-button.is-muted { color: var(--text-muted); }
 .minimized-call .minimized-call-button--end { background: #ff3b30; color: #fff; }
+button.minimized-call-button--end:hover:not(:disabled),
+button.minimized-call-button--end:active:not(:disabled) {
+  background: #ff3b30;
+  border-color: transparent;
+  color: #fff;
+  opacity: 1;
+  transform: none;
+}
 .minimized-call--video {
   width: min(360px, calc(100vw - 32px));
   aspect-ratio: 16 / 9;

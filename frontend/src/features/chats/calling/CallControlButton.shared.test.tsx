@@ -110,4 +110,15 @@ describe("shared call control button", () => {
       expect(host.querySelector("button")?.hasAttribute("aria-pressed")).toBe(false);
     }
   });
+
+  it("keeps end-call controls visually static while hovered or pressed", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const endCallRules = css.match(/(?:\.call-ctrl-btn\.end-btn|\.mobile-active-ctrl-btn\.end|\.voice-dock-btn--disconnect|\.minimized-call-button--end)(?::hover|:active)[^{]*\{[^}]*\}/g)?.join("\n") ?? "";
+
+    expect(endCallRules).toContain(":hover");
+    expect(endCallRules).toContain(":active");
+    expect(endCallRules).toMatch(/transform:\s*none/);
+    expect(endCallRules).not.toMatch(/transform:\s*scale/);
+    expect(endCallRules).not.toMatch(/background:\s*(?:#b91c1c|rgba\(255,\s*255,\s*255)/i);
+  });
 });
