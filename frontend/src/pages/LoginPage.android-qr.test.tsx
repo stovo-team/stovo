@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ platform: "android", scan: vi.fn(), accept: vi.fn(), login: vi.fn() }));
 vi.mock("@capacitor/core", async (importOriginal) => ({ ...await importOriginal<typeof import("@capacitor/core")>(), Capacitor: { isNativePlatform: () => true, getPlatform: () => mocks.platform } }));
-vi.mock("../native/androidQrScanner", () => ({ scanAndroidLoginQR: mocks.scan }));
+vi.mock("../native/androidQrScanner", async (importOriginal) => ({ ...await importOriginal<typeof import("../native/androidQrScanner")>(), scanAndroidLoginQR: mocks.scan }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ currentUser: null, login: mocks.login, acceptAuthResponse: mocks.accept }) }));
 import LoginPage from "./LoginPage";
 import { getApiUrl } from "../api/client";
@@ -76,6 +76,18 @@ describe("Android QR login", () => {
         expectNoRedemption();
         expect(getApiUrl()).toBe(selected);
         expect(mocks.accept).not.toHaveBeenCalled();
+        expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
+    });
+    it("shows scanner installation guidance while retaining password sign-in", async () => {
+        mocks.scan.mockRejectedValueOnce(new Error("QR scanner is being installed. Try again shortly or use your password."));
+        await render();
+        const selected = getApiUrl();
+        await click("Scan desktop QR");
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain("QR scanner is being installed");
+        expect(container.textContent).toContain("Try again shortly");
+        expectPassword();
+        expectNoRedemption();
+        expect(getApiUrl()).toBe(selected);
         expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
     });
     it("hides scanner on iOS", async () => { mocks.platform = "ios"; await render(); expect(container.textContent).not.toContain("Scan desktop QR"); expectPassword(); });

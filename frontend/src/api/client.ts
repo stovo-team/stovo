@@ -113,7 +113,9 @@ function cacheProfileId() {
 }
 
 function canCacheRequest(endpoint: string, options: ApiRequestOptions) {
-  return (options.method ?? "GET").toUpperCase() === "GET" &&
+  // Explicit destinations must never share the selected server's account cache.
+  return options.apiBaseUrl === undefined &&
+    (options.method ?? "GET").toUpperCase() === "GET" &&
     Boolean(options.accessToken) &&
     !endpoint.startsWith("/api/auth/");
 }

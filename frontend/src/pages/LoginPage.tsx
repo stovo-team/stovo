@@ -19,7 +19,7 @@ import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
 import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
-import { scanAndroidLoginQR } from "../native/androidQrScanner";
+import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, scanAndroidLoginQR } from "../native/androidQrScanner";
 import StovoLogo from "../components/StovoLogo";
 
 export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
@@ -182,8 +182,10 @@ export default function LoginPage() {
     try {
       const value = await scanAndroidLoginQR();
       if (value !== null) setAndroidQR(parseAndroidLoginQR(value));
-    } catch {
-      setError("Could not scan a desktop sign-in QR code. Try again or use your password.");
+    } catch (err) {
+      setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
+        ? ANDROID_QR_SCANNER_INSTALLING_MESSAGE
+        : "Could not scan a desktop sign-in QR code. Try again or use your password.");
     } finally { setIsSubmitting(false); }
   }
 

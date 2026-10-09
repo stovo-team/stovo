@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redeemAndroidQRLogin } from "../api/auth";
 import { parseAndroidLoginQR } from "./androidQrLogin";
 import { scanAndroidLoginQR } from "./androidQrScanner";
-import { apiRequest, getApiUrl } from "../api/client";
+import { apiRequest, getApiUrl, setApiUrlOverride } from "../api/client";
+import { getActiveServer, upsertServer } from "../api/serverRegistry";
+import { clearApiResponseCache, peekApiResponseCache, saveApiResponseCache } from "../api/apiResponseCache";
 const code = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop0";
 const payload = (apiUrl = "https://space.example/s/family/") => `stovo://auth/android-login?version=1&apiUrl=${encodeURIComponent(apiUrl)}&code=${code}`;
 describe("Android QR parser", () => {
@@ -63,5 +65,42 @@ describe("Android scanner boundary", () => {
         scannerMocks.platform = "ios";
         expect(await scanAndroidLoginQR()).toBeNull();
         expect(scannerMocks.scan).not.toHaveBeenCalled();
+    });
+});
+
+
+describe("explicit API server cache isolation", () => {
+    const profileId = "cache-isolation-user";
+    beforeEach(async () => {
+        localStorage.clear();
+        await clearApiResponseCache(profileId);
+        setApiUrlOverride("https://selected.example");
+        upsertServer({ ...getActiveServer()!, user: {
+            id: profileId, familyId: "family", username: "sam", displayName: "Sam",
+            role: "member", isActive: true, publicKey: null, profilePhoto: null,
+            profileVisibility: "family", lastSeenVisibility: "family", readReceiptsEnabled: true,
+        } });
+        vi.stubGlobal("fetch", vi.fn());
+    });
+    it("does not return the selected server cache when an explicit-server GET fails", async () => {
+        await saveApiResponseCache(profileId, "/api/family", { name: "Selected family" });
+        vi.mocked(fetch).mockRejectedValueOnce(new Error("Scanned server offline"));
+        await expect(apiRequest("/api/family", { accessToken: "scanned-access", apiBaseUrl: "https://scanned.example" })).rejects.toThrow("Scanned server offline");
+    });
+    it("does not replace the selected server cache after a successful explicit-server GET", async () => {
+        await saveApiResponseCache(profileId, "/api/family", { name: "Selected family" });
+        vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ name: "Scanned family" }), { status: 200 }));
+        expect(await apiRequest("/api/family", { accessToken: "scanned-access", apiBaseUrl: "https://scanned.example" })).toEqual({ name: "Scanned family" });
+        expect(peekApiResponseCache(profileId, "/api/family")).toEqual({ name: "Selected family" });
+    });
+    it("does not share an in-flight selected-server GET with an explicit-server GET", async () => {
+        let resolveSelected!: (response: Response) => void;
+        vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>(resolve => { resolveSelected = resolve; }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ name: "Scanned family" }), { status: 200 }));
+        const selected = apiRequest("/api/family", { accessToken: "selected-access" });
+        const scanned = apiRequest("/api/family", { accessToken: "scanned-access", apiBaseUrl: "https://scanned.example" });
+        resolveSelected(new Response(JSON.stringify({ name: "Selected family" }), { status: 200 }));
+        expect(await Promise.all([selected, scanned])).toEqual([{ name: "Selected family" }, { name: "Scanned family" }]);
+        expect(fetch).toHaveBeenCalledTimes(2);
     });
 });
