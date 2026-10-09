@@ -154,7 +154,8 @@ func TestHandleUnfurlHandler(t *testing.T) {
 	}
 
 	// 3. Test caching behavior directly
-	targetURL := "https://example.com/article"
+	// A documentation IP keeps this cache-path test independent of external DNS.
+	targetURL := "https://203.0.113.10/article"
 	parsedURL, _ := url.Parse(targetURL)
 	mockRes := parseOpenGraphHTML(parsedURL, `<html><head><meta property="og:title" content="Cached Title"/></head></html>`)
 	jsonBytes, _ := json.Marshal(mockRes)
