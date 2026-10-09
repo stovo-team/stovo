@@ -26,11 +26,28 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>
-);
+async function startApp() {
+  if (import.meta.env.DEV && import.meta.env.MODE === "mock") {
+    const [{ installMockApi }, { clearRecentChatHistory }, { isMockMode, seedMockSession }] = await Promise.all([
+      import("./dev/mockApi"),
+      import("./chatHistoryCache"),
+      import("./dev/mockBootstrap"),
+    ]);
+    if (isMockMode(import.meta.env.DEV, import.meta.env.MODE)) {
+      await clearRecentChatHistory();
+      seedMockSession(window.location.origin);
+      installMockApi({ origin: window.location.origin });
+    }
+  }
+
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </StrictMode>
+  );
+}
+
+void startApp();
 
