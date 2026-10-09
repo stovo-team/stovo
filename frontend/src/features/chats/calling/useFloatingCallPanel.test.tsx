@@ -63,6 +63,25 @@ describe("floating call panel", () => {
     expect(panel.style.top).toBe("272px");
   });
 
+  it("reserves the minimized panel height in Chat Details content", () => {
+    vi.stubGlobal("innerWidth", 1200); vi.stubGlobal("innerHeight", 900);
+    const details = document.createElement("aside");
+    details.className = "chat-details-panel";
+    const header = document.createElement("header");
+    header.dataset.callHeaderChatId = "chat-1";
+    header.dataset.callHeaderKind = "details";
+    header.getBoundingClientRect = () => ({ left: 300, top: 20, right: 700, bottom: 70, width: 400, height: 50 } as DOMRect);
+    const body = document.createElement("div");
+    body.className = "chat-info-body";
+    details.append(header, body);
+    document.body.append(details);
+
+    mount("chat-1", false);
+
+    expect(body.classList.contains("has-minimized-call")).toBe(true);
+    expect(body.style.getPropertyValue("--minimized-call-slot-height")).toBe("72px");
+  });
+
   it("reattaches when the active header is replaced by Chat Details", async () => {
     vi.stubGlobal("innerWidth", 1200); vi.stubGlobal("innerHeight", 900);
     const { panel } = mount("chat-1");
@@ -82,7 +101,7 @@ describe("floating call panel", () => {
     const header = document.querySelector<HTMLElement>('[data-call-header-chat-id="chat-1"]')!;
     await act(async () => { header.dataset.callHeaderChatId = "other-chat"; await Promise.resolve(); });
     expect(panel.style.left).toBe("988px");
-    expect(panel.style.top).toBe("96px");
+    expect(panel.style.top).toBe("12px");
 
     await act(async () => { header.dataset.callHeaderChatId = "chat-1"; await Promise.resolve(); });
     expect(panel.style.left).toBe("600px");
@@ -93,7 +112,16 @@ describe("floating call panel", () => {
     vi.stubGlobal("innerWidth", 1000); vi.stubGlobal("innerHeight", 800);
     const { panel } = mount("missing-chat", false);
     expect(panel.style.left).toBe("788px");
-    expect(panel.style.top).toBe("96px");
+    expect(panel.style.top).toBe("12px");
+  });
+
+  it("can be dragged to the same top inset on pages without a chat header", () => {
+    vi.stubGlobal("innerWidth", 1000); vi.stubGlobal("innerHeight", 800);
+    const { panel, handle } = mount("missing-chat", false);
+    pointer(handle, "pointerdown", 420, 120);
+    pointer(panel, "pointermove", 420, 3);
+    pointer(panel, "pointerup", 420, 3);
+    expect(panel.style.top).toBe("12px");
   });
 
   it("allows free placement, suppresses restore after dragging, and keeps controls clickable", () => {
@@ -106,8 +134,8 @@ describe("floating call panel", () => {
   });
   it("snaps to corners and clamps when the viewport shrinks", () => {
     const { panel, handle } = mount();
-    pointer(handle, 'pointerdown', 420, 120); pointer(panel, 'pointermove', 35, 125); pointer(panel, 'pointerup', 35, 125);
-    expect(panel.style.left).toBe('12px'); expect(panel.style.top).toBe('96px');
+    pointer(handle, 'pointerdown', 420, 120); pointer(panel, 'pointermove', 35, 32); pointer(panel, 'pointerup', 35, 32);
+    expect(panel.style.left).toBe('12px'); expect(panel.style.top).toBe('12px');
     vi.stubGlobal('innerWidth', 210); vi.stubGlobal('innerHeight', 150);
     act(() => window.dispatchEvent(new Event('resize')));
     expect(parseFloat(panel.style.left)).toBeLessThanOrEqual(12);
@@ -123,11 +151,11 @@ describe("floating call panel", () => {
 it("snaps to side midpoints, retains position across remounts, and resets for a new call", () => {
   vi.stubGlobal('innerWidth', 1000); vi.stubGlobal('innerHeight', 800);
   const { panel, handle } = mount();
-  pointer(handle, 'pointerdown', 420, 120); pointer(panel, 'pointermove', 30, 442); pointer(panel, 'pointerup', 30, 442);
-  expect(panel.style.left).toBe('12px'); expect(panel.style.top).toBe('412px');
+  pointer(handle, 'pointerdown', 420, 120); pointer(panel, 'pointermove', 30, 390); pointer(panel, 'pointerup', 30, 390);
+  expect(panel.style.left).toBe('12px'); expect(panel.style.top).toBe('370px');
   act(() => root.unmount());
   const second = mount();
-  expect(second.panel.style.left).toBe('12px'); expect(second.panel.style.top).toBe('412px');
+  expect(second.panel.style.left).toBe('12px'); expect(second.panel.style.top).toBe('370px');
   act(() => root.unmount()); resetFloatingCallPosition();
   expect(mount().panel.style.left).not.toBe('12px');
 });

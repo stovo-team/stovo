@@ -71,6 +71,7 @@ describe("shared call participant presentation", () => {
     expect(css).toMatch(/@media[^{}]*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/);
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__remote-rail\s*\{[^}]*overflow-x:\s*auto/);
     expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
+    expect(styleRules(css, ".shared-call-stage .call-grid--screen-share > .call-grid__tile--screen")).toMatch(/max-height:\s*100%/);
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 clamp\(72px, 10vw, 112px\);[^}]*height:\s*100% !important/);
   });
 
@@ -103,6 +104,12 @@ describe("shared call participant presentation", () => {
     stage = { width: 450, height: 720 };
     act(() => observers.forEach((resize) => resize(stage)));
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);
+    const presenter = grid.querySelector<HTMLElement>(".call-grid__tile--screen")!;
+    const presenterWidth = Number.parseFloat(presenter.style.width);
+    const presenterHeight = Number.parseFloat(presenter.style.height);
+    expect(presenterWidth).toBeLessThanOrEqual(stage.width);
+    expect(presenterHeight).toBeLessThanOrEqual(stage.height);
+    expect(presenterWidth / presenterHeight).toBeCloseTo(16 / 9);
 
     stage = { width: 1200, height: 150 };
     act(() => observers.forEach((resize) => resize(stage)));
@@ -113,14 +120,14 @@ describe("shared call participant presentation", () => {
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
   });
 
-  it("keeps speech on the participant, and fills the screen stage without a fixed ratio", () => {
+  it("keeps speech on the participant and preserves the screen tile's 16:9 ratio", () => {
     const screen = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
     const container = renderGrid({ localStream: null, localScreenStream: screen, remoteMedia: [], callType: "audio", isLocalSpeaking: true });
     const tile = container.querySelector<HTMLElement>(".call-grid__tile--screen")!;
     expect(tile.classList.contains("is-speaking")).toBe(false);
     expect(tile.querySelector('[role="status"]')).toBeNull();
-    expect(tile.style.aspectRatio).toBe("auto");
-    expect(tile.style.height).toBe("100%");
+    expect(tile.style.aspectRatio).toBe("16 / 9");
+    expect(tile.style.maxHeight).toBe("100%");
     expect(container.querySelector('.call-grid__tile--local.is-speaking')).not.toBeNull();
   });
 
@@ -137,6 +144,7 @@ describe("shared call participant presentation", () => {
 
     const css = readFileSync("src/styles.css", "utf8");
     expect(css).toMatch(/\.shared-call-stage \.call-grid--presenting\.call-grid--screen-share\s*\{[^}]*height:\s*100%\s*!important;[^}]*aspect-ratio:\s*auto/);
+    expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__tile--screen\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2/);
     expect(css).toMatch(/\.call-grid--screen-share\s*\{[^}]*minmax\(112px,\s*min\(16%,\s*168px\)\)/);
   });

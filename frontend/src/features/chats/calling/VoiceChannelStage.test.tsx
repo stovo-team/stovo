@@ -310,7 +310,7 @@ describe("VoiceChannelStage", () => {
     expect(container.textContent).not.toContain("Alice (You)");
   });
 
-  it("renders desktop settings directly and secondary controls in the mobile More menu", () => {
+  it("renders desktop settings directly and secondary controls in the mobile More menu", async () => {
     const mockEndActiveCall = vi.fn();
     const mockApplyCallAudioPatch = vi.fn();
     const mockSetIsCallAudioPopupOpen = vi.fn();
@@ -318,6 +318,7 @@ describe("VoiceChannelStage", () => {
     const mockSetIsCallMinimized = vi.fn();
     const mockSession = {
       callPhase: "in-call",
+      setCallType: vi.fn(),
       activeCallChatId: "voice-chat-1",
       callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false, speakerMode: "small", cameraFacingMode: "user" },
       callAudioCapabilities: { canShareScreen: true },
@@ -334,7 +335,10 @@ describe("VoiceChannelStage", () => {
       setIsCallAudioPopupOpen: mockSetIsCallAudioPopupOpen,
       setIsCallMinimized: mockSetIsCallMinimized,
       audioCallRef: {
-        current: { toggleVideo: mockAudioToggleVideo }
+        current: {
+          toggleVideo: mockAudioToggleVideo,
+          getLocalStream: () => ({ getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream),
+        }
       }
     } as unknown as CallSessionApi;
 
@@ -392,8 +396,10 @@ describe("VoiceChannelStage", () => {
 
     const videoBtn = deviceControls[2]?.querySelector(".voice-dock-btn") as HTMLButtonElement;
     expect(videoBtn).toBeDefined();
-    act(() => {
+    await act(async () => {
       videoBtn.click();
+      await Promise.resolve();
+      await Promise.resolve();
     });
     expect(mockApplyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: true });
     expect(mockAudioToggleVideo).toHaveBeenCalledWith(true);
@@ -896,5 +902,49 @@ describe("VoiceChannelStage", () => {
     );
 
     expect(container.querySelector(".call-grid__tile--local .call-grid__video")).not.toBeNull();
+  });
+
+  it("does not report camera enabled during screen sharing when no video track was acquired", async () => {
+    let settings = { micMuted: false, cameraEnabled: false, screenSharing: true, mirrorLocalVideo: false };
+    const mockApplyCallAudioPatch = vi.fn(async (patch: { cameraEnabled?: boolean }) => {
+      settings = { ...settings, ...patch };
+    });
+    const mockToggleVideo = vi.fn(async () => undefined);
+    const session = {
+      callPhase: "in-call",
+      callType: "audio",
+      setCallType: vi.fn(),
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: settings,
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: mockApplyCallAudioPatch,
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      isLocalSpeaking: false,
+      speakingUserIds: [],
+      localVideoStream: null,
+      localScreenStream: { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream,
+      callRemoteMedia: [],
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: { current: { toggleVideo: mockToggleVideo, getLocalStream: () => null } },
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />,
+    );
+    const cameraButton = container.querySelector<HTMLButtonElement>(".voice-room-in-call-controls .guest-device-control:nth-child(3) button");
+
+    await act(async () => {
+      cameraButton?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockToggleVideo).toHaveBeenCalledWith(true);
+    expect(mockApplyCallAudioPatch).not.toHaveBeenCalledWith({ cameraEnabled: true });
   });
 });

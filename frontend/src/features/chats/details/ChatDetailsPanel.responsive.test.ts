@@ -48,4 +48,8 @@ describe("mobile chat details sizing", () => {
     expect(styles).toContain("min-height: 44px;");
     expect(styles).toContain(".chat-info-action-icon {\n  color: var(--text-primary);\n  height: 18px;");
   });
+
+  it("reserves space in Details content while a minimized call is present", () => {
+    expect(styles).toMatch(/\.chat-info-body\.has-minimized-call\s*\{[^}]*padding-top:\s*var\(--minimized-call-slot-height/);
+  });
 });

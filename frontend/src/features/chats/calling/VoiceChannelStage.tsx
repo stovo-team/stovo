@@ -30,6 +30,7 @@ import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
+import { enableCallCamera } from "./callCamera";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 
 export type VoiceChannelStageProps = {
@@ -164,14 +165,13 @@ export function VoiceChannelStage({
 
   const handleToggleVideo = () => {
     const isCurrentlyActive = callAudioSettings.cameraEnabled;
-    if (!isCurrentlyActive) {
-      if (setCallType) setCallType("video");
-      void applyCallAudioPatch({ cameraEnabled: true });
-      void audioCallRef?.current?.toggleVideo(true);
-    } else {
+    if (isCurrentlyActive) {
       void applyCallAudioPatch({ cameraEnabled: false });
       void audioCallRef?.current?.toggleVideo(false);
+      return;
     }
+    const controller = audioCallRef?.current;
+    if (controller && setCallType) void enableCallCamera(controller, setCallType, applyCallAudioPatch);
   };
 
   const handleToggleScreenShare = () => {
