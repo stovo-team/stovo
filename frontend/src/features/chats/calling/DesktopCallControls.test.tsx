@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallFeatureProvider } from "./CallFeatureContext";
@@ -44,6 +44,7 @@ vi.mock("./MeetingIntelligencePopover", () => ({
 }));
 
 const mountedRoots: Root[] = [];
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
   while (mountedRoots.length) act(() => mountedRoots.pop()?.unmount());
@@ -57,6 +58,7 @@ function renderDesktopControls({
   withRemoteVideo = false,
   sharing = false,
   callType = "video",
+  statefulCamera = false,
   activeChat = null,
   currentUser = null,
   overrides = {},
@@ -66,6 +68,7 @@ function renderDesktopControls({
   isLocalSpeaking?: boolean;
   withRemoteVideo?: boolean;
   callType?: "audio" | "video";
+  statefulCamera?: boolean;
   sharing?: boolean;
   activeChat?: { id: string; type: string; title: string; members: Array<{ id: string; displayName: string; profilePhoto: null }> } | null;
   currentUser?: { id: string; displayName: string; profilePhoto: null } | null;
@@ -156,17 +159,35 @@ function renderDesktopControls({
   document.body.appendChild(host);
   const root = createRoot(host);
   mountedRoots.push(root);
-  act(() => root.render(
-    <CallFeatureProvider
-      session={session}
-      isMobileViewport={false}
-      members={(activeChat?.members ?? []) as never}
-      currentUser={currentUser as never}
-      chats={(activeChat ? [activeChat] : []) as never}
-    >
-      <DesktopCallControls />
-    </CallFeatureProvider>,
-  ));
+  function ControlsHarness() {
+    const [stateCallType, setStateCallType] = useState(callType);
+    const [stateCallAudioSettings, setStateCallAudioSettings] = useState(overrides.callAudioSettings ?? DEFAULT_CALL_SETTINGS);
+    const statefulSession = statefulCamera ? {
+      ...session,
+      callType: stateCallType,
+      setCallType: (next: "audio" | "video") => {
+        overrides.setCallType?.(next);
+        setStateCallType(next);
+      },
+      callAudioSettings: stateCallAudioSettings,
+      applyCallAudioPatch: async (patch: Parameters<CallSessionApi["applyCallAudioPatch"]>[0]) => {
+        await overrides.applyCallAudioPatch?.(patch);
+        setStateCallAudioSettings((current) => ({ ...current, ...patch }));
+      },
+    } as CallSessionApi : session;
+    return (
+      <CallFeatureProvider
+        session={statefulSession}
+        isMobileViewport={false}
+        members={(activeChat?.members ?? []) as never}
+        currentUser={currentUser as never}
+        chats={(activeChat ? [activeChat] : []) as never}
+      >
+        <DesktopCallControls />
+      </CallFeatureProvider>
+    );
+  }
+  act(() => root.render(<ControlsHarness />));
   return host;
 }
 
@@ -251,6 +272,69 @@ describe("DesktopCallControls visibility", () => {
     expect(host.querySelector(".call-popup-group-participant.is-speaking")).toBeNull();
     expect(host.querySelector('[aria-label="Toggle Camera"]')).not.toBeNull();
     expect(host.querySelector(".call-popup-group-participants")?.closest(".shared-call-stage")).not.toBeNull();
+  });
+
+  it("updates the visible camera state after the first live camera track, then toggles it off", async () => {
+    const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const toggleVideo = vi.fn(async () => undefined);
+    const applyCallAudioPatch = vi.fn(async () => undefined);
+    const setCallType = vi.fn();
+    const host = renderDesktopControls({
+      activeChat: group,
+      currentUser: self,
+      callType: "audio",
+      statefulCamera: true,
+      overrides: {
+        audioCallRef: { current: { toggleVideo, getLocalStream: () => stream } } as never,
+        localVideoStream: stream,
+        applyCallAudioPatch,
+        setCallType,
+        callAudioSettings: { ...DEFAULT_CALL_SETTINGS, cameraEnabled: false },
+      },
+    });
+    const cameraButton = host.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+    expect(cameraButton?.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      cameraButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(setCallType).toHaveBeenCalledWith("video");
+    expect(toggleVideo).toHaveBeenCalledWith(true);
+    expect(applyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: true });
+    expect(cameraButton?.getAttribute("aria-pressed")).toBe("true");
+
+    await act(async () => {
+      cameraButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(applyCallAudioPatch).toHaveBeenCalledWith({ cameraEnabled: false });
+    expect(cameraButton?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("keeps the camera setting off when the first camera request produces no live track", async () => {
+    const toggleVideo = vi.fn(async () => undefined);
+    const applyCallAudioPatch = vi.fn(async () => undefined);
+    const host = renderDesktopControls({
+      activeChat: group,
+      currentUser: self,
+      callType: "audio",
+      overrides: {
+        audioCallRef: { current: { toggleVideo, getLocalStream: () => null } } as never,
+        applyCallAudioPatch,
+        callAudioSettings: { ...DEFAULT_CALL_SETTINGS, cameraEnabled: false },
+      },
+    });
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]')?.click();
+      await Promise.resolve();
+    });
+
+    expect(toggleVideo).toHaveBeenCalledWith(true);
+    expect(applyCallAudioPatch).not.toHaveBeenCalledWith({ cameraEnabled: true });
   });
 
   it("opens the shared audio dialog directly", () => {

@@ -1,10 +1,11 @@
 import { act } from "react";
 import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import CallParticipantGrid from "./CallParticipantGrid";
 
 const mountedRoots: Root[] = [];
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
   while (mountedRoots.length > 0) {
@@ -12,6 +13,7 @@ afterEach(() => {
     act(() => root?.unmount());
   }
   document.body.innerHTML = "";
+  vi.unstubAllGlobals();
 });
 function renderGrid(props: React.ComponentProps<typeof CallParticipantGrid>) {
   const container = document.createElement("div");
@@ -59,15 +61,56 @@ describe("shared call participant presentation", () => {
 
     const css = readFileSync("src/styles.css", "utf8");
     expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:/);
-    expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(96px,\s*18%\)/);
+    expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(112px,\s*min\(16%,\s*168px\)\)/);
     expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/grid-column:\s*1/);
     expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/grid-column:\s*2/);
     expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/overflow:\s*hidden/);
+    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/align-self:\s*stretch/);
+    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/align-content:\s*start/);
     expect(styleRules(css, ".call-grid__remote-rail")).toMatch(/overflow-y:\s*auto/);
     expect(css).toMatch(/@media[^{}]*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/);
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__remote-rail\s*\{[^}]*overflow-x:\s*auto/);
     expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
-    expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 clamp\(88px, 17vw, 150px\);[^}]*aspect-ratio:\s*16\s*\/\s*9/);
+    expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 clamp\(72px, 10vw, 112px\);[^}]*height:\s*100% !important/);
+  });
+
+  it("chooses the screen-share rail from measured stage width and height and updates on resize", () => {
+    let stage = { width: 1200, height: 720 };
+    const observers: Array<(size: { width: number; height: number }) => void> = [];
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        observers.push((size) => {
+          const rect = { x: 0, y: 0, top: 0, left: 0, width: size.width, height: size.height, right: size.width, bottom: size.height, toJSON: () => ({}) } as DOMRectReadOnly;
+          const entry = { target, contentRect: rect, borderBoxSize: [], contentBoxSize: [], devicePixelContentBoxSize: [] } as unknown as ResizeObserverEntry;
+          this.callback([entry], this as unknown as ResizeObserver);
+        });
+        observers.at(-1)?.(stage);
+      }
+      disconnect() {}
+    });
+    const screen = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const container = renderGrid({
+      localStream: null,
+      localScreenStream: screen,
+      remoteMedia: [{ userId: "peer", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      callType: "video",
+    });
+    const grid = container.querySelector<HTMLElement>(".call-grid")!;
+    expect(observers).toHaveLength(1);
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
+
+    stage = { width: 450, height: 720 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);
+
+    stage = { width: 1200, height: 150 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);
+
+    stage = { width: 1200, height: 720 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
   });
 
   it("keeps speech on the participant, and fills the screen stage without a fixed ratio", () => {
@@ -95,7 +138,7 @@ describe("shared call participant presentation", () => {
     const css = readFileSync("src/styles.css", "utf8");
     expect(css).toMatch(/\.shared-call-stage \.call-grid--presenting\.call-grid--screen-share\s*\{[^}]*height:\s*100%\s*!important;[^}]*aspect-ratio:\s*auto/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2/);
-    expect(css).toMatch(/\.call-grid--screen-share\s*\{[^}]*minmax\(96px,\s*18%\)/);
+    expect(css).toMatch(/\.call-grid--screen-share\s*\{[^}]*minmax\(112px,\s*min\(16%,\s*168px\)\)/);
   });
 
   it("shows the same speaking status on local and remote participants", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
@@ -16,6 +16,7 @@ import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MinimizedCallBar } from "./MinimizedCallBar";
 import { useCallTimer } from "./useCallTimer";
 import { CallFeatureProvider as CallFeatureContextProvider, useCallFeatureContext } from "./CallFeatureContext";
+import { enableCallCamera } from "./callCamera";
 
 export {
   CallSettingsContextMenu,
@@ -113,13 +114,6 @@ export function CallFeature() {
       session.setIsCallMinimized(nextValue);
     },
   };
-
-  // Capture success owns minimization; restoring the window must not restart capture.
-  useLayoutEffect(() => {
-    if (localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")) {
-      session.setIsCallMinimized(true);
-    }
-  }, [localScreenStream, session.setIsCallMinimized]);
 
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
     activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
@@ -244,8 +238,7 @@ export function CallFeature() {
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleCamera={() => {
                   if (!hasLiveLocalVideo(localVideoStream)) {
-                    setCallType("video");
-                    void audioCallRef.current?.toggleVideo(true);
+                    void enableCallCamera(audioCallRef.current, setCallType, applyCallAudioPatch);
                   } else {
                     void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                   }

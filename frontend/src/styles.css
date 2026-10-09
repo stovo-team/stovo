@@ -222,6 +222,7 @@
 }
 .call-popup.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) {
   width: min(1120px, calc(100vw - 40px));
+  height: min(760px, calc(100dvh - 40px));
   padding: 22px 26px 26px;
   gap: 20px;
 }
@@ -252,6 +253,15 @@
   padding: 0;
   border-radius: 50%;
   box-sizing: border-box;
+}
+
+.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-video-area {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-ctrl-row {
+  flex: 0 0 auto;
 }
 
 .call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .call-popup-ctrl-row {
@@ -810,9 +820,10 @@
 }
 
 .call-grid--screen-share {
-  grid-template-columns: minmax(0, 1fr) minmax(96px, 18%);
+  grid-template-columns: minmax(0, 1fr) minmax(112px, min(16%, 168px));
   grid-template-rows: minmax(0, 1fr);
-  align-items: center;
+  align-items: stretch;
+  gap: 12px;
 }
 
 .call-grid--screen-share > .call-grid__tile--screen {
@@ -822,7 +833,7 @@
   height: auto;
   min-height: 0;
   aspect-ratio: 16 / 9;
-  align-self: center;
+  align-self: stretch;
   justify-self: stretch;
 }
 
@@ -833,6 +844,8 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  align-self: stretch;
+  align-content: start;
   gap: 8px;
   overflow: hidden;
 }
@@ -879,7 +892,8 @@
   grid-column: 1;
   grid-row: 2;
   display: flex;
-  height: clamp(76px, 14vh, 112px);
+  height: clamp(68px, 11vh, 88px);
+  align-items: flex-start;
   gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -911,8 +925,8 @@
 
 .call-grid__participant-rail .call-grid__avatar-circle,
 .call-grid__remote-rail .call-grid__avatar-circle {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
 }
 
 .shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
@@ -942,24 +956,24 @@
 
   .call-grid--screen-share .call-grid__participant-rail {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     grid-column: 1;
     grid-row: 2;
-    height: 92px;
+    height: clamp(68px, 12vh, 88px);
     overflow: hidden;
   }
 
   .call-grid--screen-share .call-grid__participant-pin,
   .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
-    flex: 0 0 clamp(88px, 17vw, 150px);
-    height: auto !important;
-    aspect-ratio: 16 / 9;
+    flex: 0 0 clamp(72px, 10vw, 112px);
+    height: 100% !important;
+    aspect-ratio: auto;
   }
 
   .call-grid--screen-share .call-grid__participant-pin .call-grid__avatar-circle,
   .call-grid--screen-share .call-grid__remote-rail .call-grid__avatar-circle {
-    width: 52px;
-    height: 52px;
+    width: 36px;
+    height: 36px;
   }
 
   .call-grid--screen-share .call-grid__remote-rail {
@@ -25351,7 +25365,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .voice-room-stage {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -25359,7 +25373,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px) 16px 16px;
   overflow: hidden;
   min-height: 0;
-  height: 100%;
+  height: auto;
   width: 100%;
   box-sizing: border-box;
   background: #000000;
@@ -26012,6 +26026,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: 14px 20px;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
   z-index: 10;
   width: 100%;
   box-sizing: border-box;
@@ -31701,7 +31716,7 @@ button.checklist-add-item-btn:hover,
 .minimized-call--video .minimized-call-button:not(.minimized-call-button--end) { background: rgb(0 0 0 / 55%); color: #fff; }
 
 .voice-channel-room .voice-room-stage {
-  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 64px);
+  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px);
 }
 .voice-room-participant-content { justify-content: center; }
 .voice-room-member-invite, .voice-room-expand-button { box-sizing: border-box; flex-shrink: 0; }
