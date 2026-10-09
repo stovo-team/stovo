@@ -80,6 +80,20 @@ describe("serverRegistry", () => {
     expect(getActiveServer()?.name).toBe("Stakhov Family");
   });
 
+  it("keeps the reserved local mock preview origin in the server registry", () => {
+    upsertServer({
+      id: "srv_local_mock",
+      url: "http://127.0.0.1:5174",
+      name: "Stovo Demo",
+      accessToken: null,
+      refreshToken: null,
+      healthStatus: "online",
+      unreadCount: 0
+    });
+
+    expect(getActiveServer()).toMatchObject({ url: "http://127.0.0.1:5174", name: "Stovo Demo" });
+  });
+
   it("supports adding and hot-swapping multiple servers", () => {
     const s1 = upsertServer({
       id: "srv_family",

@@ -111,6 +111,14 @@ describe("local mock chat API", () => {
     expect(networkFetch).not.toHaveBeenCalled();
   });
 
+  it("does not install a second fetch wrapper when mock bootstrap runs again", () => {
+    const installedFetch = globalThis.fetch;
+
+    installMockApi({ origin: MOCK_ORIGIN });
+
+    expect(globalThis.fetch).toBe(installedFetch);
+  });
+
   it("restores the previous fetch implementation during cleanup", () => {
     const interceptedFetch = globalThis.fetch;
     expect(interceptedFetch).not.toBe(originalFetch);

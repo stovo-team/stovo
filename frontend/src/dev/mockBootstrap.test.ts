@@ -13,7 +13,7 @@ describe("local mock session bootstrap", () => {
       servers: {
         "local-dev": {
           id: "local-dev",
-          url: "http://localhost:5173",
+          url: "https://dev.stovo.test",
           name: "Local Dev",
           addedAt: "2026-01-01T00:00:00.000Z",
           lastActiveAt: "2026-01-01T00:00:00.000Z",
@@ -30,7 +30,7 @@ describe("local mock session bootstrap", () => {
 
     const state = loadServerState();
     const active = state.activeServerId ? state.servers[state.activeServerId] : null;
-    expect(Object.values(state.servers).map((server) => server.url)).toContain("http://localhost:5173");
+    expect(Object.values(state.servers).map((server) => server.url)).toContain("https://dev.stovo.test");
     expect(active).toMatchObject({ url: "http://127.0.0.1:5174", name: "Stovo Demo", user: { displayName: "Stovo Demo" } });
   });
 
