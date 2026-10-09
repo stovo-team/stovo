@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 import { App } from "@capacitor/app";
@@ -22,6 +22,7 @@ import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
+import { advanceVoiceCallLayoutSnapshot, type VoiceCallLayoutSnapshot } from "./voiceCallLayoutSnapshot";
 
 function loadMessageArchiveView(userId?: string): MessageArchiveView {
   if (!userId || typeof window === "undefined") return "all";
@@ -45,6 +46,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isVoiceCallExpanded, setIsVoiceCallExpanded] = useState(false);
+  const voiceCallLayoutSnapshotRef = useRef<VoiceCallLayoutSnapshot | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
@@ -217,6 +219,22 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   useEffect(() => {
     setIsVoiceCallExpanded(false);
   }, [selectedChat?.id]);
+
+  useEffect(() => {
+    const callChat = chats.find((chat) => chat.id === activeCallChatId)
+      ?? (selectedChat?.id === activeCallChatId ? selectedChat : null);
+    const transition = advanceVoiceCallLayoutSnapshot(voiceCallLayoutSnapshotRef.current, {
+      callPhase,
+      activeCallChatId,
+      activeCallChatType: callChat?.type ?? null,
+      selectedChatId: selectedChat?.id,
+      isExpanded: isVoiceCallExpanded,
+    });
+    voiceCallLayoutSnapshotRef.current = transition.snapshot;
+    if (transition.restoreExpanded !== null) {
+      setIsVoiceCallExpanded(transition.restoreExpanded);
+    }
+  }, [callPhase, activeCallChatId, chats, selectedChat, isVoiceCallExpanded]);
 
   return (
     <main
