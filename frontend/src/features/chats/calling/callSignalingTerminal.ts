@@ -129,10 +129,19 @@ export function registerCallTerminalHandlers(socket: Socket, audioController: Ca
           console.error("[call:sync] resumeSignaling failed:", err);
         });
       });
-      socket.on("call:error", (payload: { message?: string }) => {
+      socket.on("call:error", (payload: { chatId?: string; message?: string }) => {
         const message = payload.message ?? "Call failed";
         console.error("[call:error] received:", payload);
         stopCallRingtone();
+        if (
+          message === "call already in progress for this chat" &&
+          payload.chatId &&
+          payload.chatId === activeCallChatIdRef.current &&
+          callPhaseRef.current !== "idle"
+        ) {
+          socket.emit("call:join", { chatId: payload.chatId, callType: callTypeRef.current });
+          return;
+        }
         // Late call:end / call:signal on an already-cleared session is harmless noise.
         if (message === "Call not available") {
           if (callPhaseRef.current === "idle") return;
