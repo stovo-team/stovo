@@ -167,7 +167,7 @@ export default function LoginPage() {
       acceptAuthResponse(await finishPasskeyAuthentication(options.ceremonyId, response));
       navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
-      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
+      if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
         setError(err instanceof ApiError ? String(err.message) : "Passkey sign-in failed. Try again or use your password.");
       }
     } finally {
@@ -305,6 +305,10 @@ export default function LoginPage() {
         </div>}
         {!isDeviceLogin && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
           <div className="auth-method-options">
+            <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+              <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+            </button>
+            {!isSecureContext ? <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">Passkeys require a supported Android WebView. Update Android System WebView or use your password or QR.</p>}
             {androidQR ? <div className="qr-login-panel" role="region" aria-label="Confirm scanned server">
               <p>Sign in to <strong>{new URL(androidQR.apiUrl).host}</strong>?</p>
               <p className="muted-copy">Confirm that this is your space address: {androidQR.apiUrl}</p>

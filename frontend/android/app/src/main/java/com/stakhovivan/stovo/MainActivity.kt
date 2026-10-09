@@ -5,6 +5,8 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewFeature
 import com.getcapacitor.BridgeActivity
 
 class MainActivity : BridgeActivity() {
@@ -21,6 +23,12 @@ class MainActivity : BridgeActivity() {
         registerPlugin(NativeSharePlugin::class.java)
         registerPlugin(ScreenCapturePlugin::class.java)
         super.onCreate(savedInstanceState)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)) {
+            WebSettingsCompat.setWebAuthenticationSupport(
+                bridge.webView.settings,
+                WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP
+            )
+        }
         ShareReceiverPlugin.captureIntent(this, intent)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
