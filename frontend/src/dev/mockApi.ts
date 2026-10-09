@@ -3,6 +3,18 @@ import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
+import {
+  associateMockFileWithMessage,
+  completeMockFileUpload,
+  deleteMockFile,
+  downloadMockFile,
+  getMockFile,
+  getMockFileUpload,
+  listMockFiles,
+  reserveMockFileUpload,
+  transferMockFileUpload,
+  updateMockFilePreferences,
+} from "./mockFileStore";
 
 const MOCK_API_STATE_KEY = Symbol.for("stovo.localMockApi.installation");
 type FetchInput = RequestInfo | URL;
@@ -54,6 +66,28 @@ async function requestBody(input: FetchInput, init?: RequestInit): Promise<Recor
   }
 }
 
+async function requestBlob(input: FetchInput, init?: RequestInit): Promise<Blob | null> {
+  const body = init?.body ?? (typeof Request !== "undefined" && input instanceof Request ? input.body : null);
+  if (typeof Blob !== "undefined" && body instanceof Blob) return body;
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    try {
+      return await input.clone().blob();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Promise<Response> {
+  const headers = new Headers({
+    "Content-Type": mimeType,
+    "Cache-Control": "no-store",
+  });
+  if (fileName) headers.set("Content-Disposition", "attachment; filename*=UTF-8''" + encodeURIComponent(fileName));
+  return new Response(await blob.arrayBuffer(), { status: 200, headers });
+}
+
 async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit): Promise<Response> {
   const path = decodeURI(url.pathname);
   if (method === "POST" && path === "/api/auth/refresh") {
@@ -73,6 +107,122 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   }
   if (method === "GET" && path === "/api/chats") {
     return jsonResponse(mockData.chats);
+  }
+
+  if (method === "GET" && path === "/api/files") {
+    return jsonResponse(await listMockFiles());
+  }
+
+  if (method === "POST" && path === "/api/files/uploads") {
+    const body = await requestBody(input, init);
+    const originalName = typeof body.originalName === "string" ? body.originalName.trim() : "";
+    const mimeType = typeof body.mimeType === "string" && body.mimeType ? body.mimeType : "application/octet-stream";
+    const sizeBytes = typeof body.sizeBytes === "number" ? body.sizeBytes : -1;
+    if (!originalName || !Number.isSafeInteger(sizeBytes) || sizeBytes < 0) {
+      return errorResponse(422, "A file name and non-negative file size are required.");
+    }
+    const chatId = typeof body.chatId === "string" ? body.chatId : null;
+    const chat = chatId ? mockData.chats.find((item) => item.id === chatId) : null;
+    if (chatId && !chat) return errorResponse(404, "Mock chat not found.");
+    const idempotencyKey = new Headers(
+      init?.headers ?? (typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined),
+    ).get("Idempotency-Key");
+    let upload;
+    try {
+      upload = await reserveMockFileUpload({
+        originalName,
+        mimeType,
+        sizeBytes,
+        checksum: typeof body.checksum === "string" ? body.checksum : null,
+        idempotencyKey,
+        chatId,
+        uploadedBy: getMockUserId(),
+        familyId: mockData.family.id,
+        chatTitle: chat?.title ?? null,
+        chatType: chat?.type ?? null,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Idempotency key")) {
+        return errorResponse(409, error.message);
+      }
+      throw error;
+    }
+    return jsonResponse(upload, 201);
+  }
+
+  const transferMatch = path.match(/^\/api\/files\/uploads\/([^/]+)\/content$/);
+  if (method === "PUT" && transferMatch) {
+    const blob = await requestBlob(input, init);
+    if (!blob) return errorResponse(400, "Local file transfer did not include a file body.");
+    const transferred = await transferMockFileUpload(transferMatch[1], blob);
+    return transferred ? new Response(null, { status: 204 }) : errorResponse(409, "Upload reservation is missing or file size does not match.");
+  }
+
+  const completeUploadMatch = path.match(/^\/api\/files\/uploads\/([^/]+)\/complete$/);
+  if (method === "POST" && completeUploadMatch) {
+    const upload = await completeMockFileUpload(completeUploadMatch[1]);
+    return upload ? jsonResponse(upload) : errorResponse(409, "Transfer the complete file before finishing this upload.");
+  }
+
+  const uploadStatusMatch = path.match(/^\/api\/files\/uploads\/([^/]+)$/);
+  if (method === "GET" && uploadStatusMatch) {
+    const upload = await getMockFileUpload(uploadStatusMatch[1]);
+    return upload ? jsonResponse(upload) : errorResponse(404, "Mock upload not found.");
+  }
+
+  const directAccessMatch = path.match(/^\/api\/files\/([^/]+)\/access$/);
+  if (method === "POST" && directAccessMatch) {
+    const file = await getMockFile(directAccessMatch[1]);
+    return file
+      ? jsonResponse({
+        fileId: file.id,
+        url: "/api/files/" + encodeURIComponent(file.id) + "/download",
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        checksum: file.checksum ?? undefined,
+      })
+      : errorResponse(404, "Mock file not found.");
+  }
+
+  const playbackTokenMatch = path.match(/^\/api\/files\/([^/]+)\/playback-token$/);
+  if (method === "POST" && playbackTokenMatch) {
+    const file = await getMockFile(playbackTokenMatch[1]);
+    return file
+      ? jsonResponse({ token: "local-mock-playback-" + file.id, expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() })
+      : errorResponse(404, "Mock file not found.");
+  }
+
+  const downloadMatch = path.match(/^\/api\/files\/([^/]+)\/download$/);
+  if (method === "GET" && downloadMatch) {
+    const [file, blob] = await Promise.all([getMockFile(downloadMatch[1]), downloadMockFile(downloadMatch[1])]);
+    return file && blob ? await blobResponse(blob, file.mimeType, file.originalName) : errorResponse(404, "Mock file not found.");
+  }
+
+  const filePreferencesMatch = path.match(/^\/api\/files\/([^/]+)\/preferences$/);
+  if (method === "PATCH" && filePreferencesMatch) {
+    const body = await requestBody(input, init);
+    const preferences = typeof body.isFavorite === "boolean" ? { isFavorite: body.isFavorite } : {};
+    const file = await updateMockFilePreferences(filePreferencesMatch[1], preferences);
+    return file ? jsonResponse(file) : errorResponse(404, "Mock file not found.");
+  }
+
+  const fileMatch = path.match(/^\/api\/files\/([^/]+)$/);
+  if (fileMatch) {
+    if (method === "GET") {
+      const file = await getMockFile(fileMatch[1]);
+      return file ? jsonResponse(file) : errorResponse(404, "Mock file not found.");
+    }
+    if (method === "DELETE") {
+      const deleted = await deleteMockFile(fileMatch[1]);
+      return deleted ? new Response(null, { status: 204 }) : errorResponse(404, "Mock file not found.");
+    }
+  }
+
+  const mediaMatch = path.match(/^\/api\/media\/([^/]+)$/);
+  if (method === "GET" && mediaMatch) {
+    const [file, blob] = await Promise.all([getMockFile(mediaMatch[1]), downloadMockFile(mediaMatch[1])]);
+    return file && blob ? await blobResponse(blob, file.mimeType) : errorResponse(404, "Mock file not found.");
   }
 
   const chatMessageMatch = path.match(/^\/api\/chats\/([^/]+)\/messages$/);
@@ -99,12 +249,17 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       const sentAt = new Date().toISOString();
       const currentUserId = getMockUserId();
       const content = typeof body.content === "string" ? body.content : null;
+      const fileIds = Array.isArray(body.fileIds) ? [...new Set(body.fileIds.filter((id): id is string => typeof id === "string"))] : [];
+      const messageId = "msg-local-" + nextLocalMessageId;
+      const attachments = (await Promise.all(fileIds.map((fileId) =>
+        associateMockFileWithMessage(fileId, chat, messageId),
+      ))).filter((file): file is NonNullable<typeof file> => file !== null);
       const message: Message = {
         id: `msg-local-${nextLocalMessageId++}`,
         chatId,
         senderId: currentUserId,
         senderDisplayName: mockData.users.find((user) => user.id === currentUserId)?.displayName ?? "Stovo Demo",
-        type: body.type === "mixed" ? "mixed" : "text",
+        type: body.type === "mixed" || attachments.length ? "mixed" : "text",
         content,
         encryptionProtocol: "legacy_plaintext",
         ciphertext: null,
@@ -121,7 +276,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
         forwardedFrom: null,
         statuses: [{ userId: currentUserId, status: "sent", createdAt: sentAt }],
         reactions: [],
-        attachments: [],
+        attachments,
         ...(typeof body.clientMessageId === "string" ? { clientMessageId: body.clientMessageId } : {}),
       };
       mockData.messages[chatId] = [...(mockData.messages[chatId] ?? []), message];
@@ -134,6 +289,25 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       chat.updatedAt = sentAt;
       return jsonResponse(message, 201);
     }
+  }
+
+  const attachFilesMatch = path.match(/^\/api\/messages\/([^/]+)\/attachments$/);
+  if (method === "POST" && attachFilesMatch) {
+    const message = findMessage(attachFilesMatch[1]);
+    if (!message) return errorResponse(404, "Mock message not found.");
+    const chat = mockData.chats.find((item) => item.id === message.chatId);
+    if (!chat) return errorResponse(404, "Mock chat not found.");
+    const body = await requestBody(input, init);
+    const fileIds = Array.isArray(body.fileIds) ? [...new Set(body.fileIds.filter((id): id is string => typeof id === "string"))] : [];
+    const attachments = (await Promise.all(fileIds.map((fileId) =>
+      associateMockFileWithMessage(fileId, chat, message.id),
+    ))).filter((file): file is NonNullable<typeof file> => file !== null);
+    message.attachments = [...message.attachments, ...attachments.filter((file) =>
+      !message.attachments.some((existing) => existing.id === file.id),
+    )];
+    if (message.attachments.length) message.type = "mixed";
+    message.updatedAt = new Date().toISOString();
+    return jsonResponse(message);
   }
 
   const pinsMatch = path.match(/^\/api\/chats\/([^/]+)\/pins$/);

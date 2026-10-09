@@ -39,6 +39,28 @@ import { useCallSessionMediaEffects } from "./useCallSessionMediaEffects";
 import { useCallSessionNativeEffects } from "./useCallSessionNativeEffects";
 import { useCallInviteControls } from "./useCallInviteControls";
 import { useCallSignaling } from "./useCallSignaling";
+import {
+  acceptMockCall,
+  createMockCall,
+  declineMockCall,
+  inviteMockCallUsers,
+  leaveMockCall,
+  publishMockCallSnapshot,
+  readMockCallSnapshot,
+  subscribeToMockCallChanges,
+  type MockCallSnapshot,
+} from "../../../dev/mockCallBroker";
+
+const isLocalMockCallMode = import.meta.env.DEV && import.meta.env.MODE === "mock";
+
+function createEmptyMockMediaStream(): MediaStream {
+  return {
+    active: false,
+    getTracks: () => [],
+    getAudioTracks: () => [],
+    getVideoTracks: () => [],
+  } as unknown as MediaStream;
+}
 
 export type UseCallSessionParams = {
   accessToken: string | null;
@@ -197,6 +219,9 @@ export function useCallSession({
   const activeCallSessionIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const applyMockCallSnapshotRef = useRef<(call: MockCallSnapshot | null) => void>(() => undefined);
   const pictureInPictureActiveRef = useRef(false);
   const soundDisabledRef = useRef(callAudioSettings.soundDisabled);
   const callSettingsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -520,6 +545,126 @@ export function useCallSession({
     setCallNotice(notice === "Call ended" ? null : notice ?? null);
   }
 
+  applyMockCallSnapshotRef.current = (call) => {
+    if (!call) return;
+    const isCurrentCall =
+      activeCallSessionIdRef.current === call.id || callRoomIdRef.current === call.id;
+    if (call.status === "ended") {
+      setActiveGroupCalls((current) => {
+        if (!current[call.chatId]) return current;
+        const next = { ...current };
+        delete next[call.chatId];
+        return next;
+      });
+      if (isCurrentCall) void resetCallState("Call ended", true, false);
+      return;
+    }
+
+    const activeUser = currentUserRef.current;
+    if (!activeUser) return;
+    const self = call.participants.find((participant) => participant.userId === activeUser.id);
+    if (!self) return;
+    if (self.state === "declined" || self.state === "left") {
+      if (isCurrentCall) {
+        void resetCallState(self.state === "declined" ? "Call declined" : "Call ended", true, false);
+      }
+      return;
+    }
+
+    const callChat = chatsRef.current.find((chat) => chat.id === call.chatId);
+    if (!callChat) return;
+    const isNewCall = activeCallSessionIdRef.current !== call.id;
+    const isGroupCall = callChat.type === "group" || callChat.type === "family";
+    const connectedIds = call.participants
+      .filter((participant) => participant.state === "connected")
+      .map((participant) => participant.userId);
+    const remoteUsers = call.participants
+      .filter((participant) => participant.userId !== activeUser.id && participant.state === "connected")
+      .map((participant) => participant.userId);
+    const peerId = call.participants.find((participant) =>
+      participant.userId !== activeUser.id &&
+      participant.state !== "declined" &&
+      participant.state !== "left"
+    )?.userId ?? null;
+    const peer = members.find((member) => member.id === peerId) ??
+      callChat.members.find((member) => member.id === peerId);
+    const phase: CallPhase = self.state === "ringing"
+      ? "incoming"
+      : call.status === "ringing" && call.callerId === activeUser.id
+        ? "outgoing"
+        : call.status === "active"
+          ? "in-call"
+          : "connecting";
+
+    activeCallSessionIdRef.current = call.id;
+    activeCallChatIdRef.current = call.chatId;
+    callRoomIdRef.current = call.id;
+    callTypeRef.current = call.callType;
+    setCallPhase(phase);
+    callPhaseRef.current = phase;
+    setActiveCallChatId(call.chatId);
+    setCallRoomId(call.id);
+    setCallPeerUserId(peerId);
+    setCallPeerDisplayName(isGroupCall ? (callChat.title ?? "Group call") : (peer?.displayName ?? "Call"));
+    setCallType(call.callType);
+    setCallTopology(isGroupCall ? "sfu" : "mesh");
+    setCallParticipantIds(connectedIds);
+    setCallRemoteMedia(remoteUsers.map((userId) => ({
+      userId,
+      stream: createEmptyMockMediaStream(),
+      screenStream: null,
+      hasVideo: false,
+      hasAudio: false,
+      hasScreenShare: false,
+      isMuted: true,
+    })));
+    setHasRemoteVideo(call.callType === "video" && remoteUsers.length > 0);
+    setRemoteVideoStream(null);
+    setIsLocalSpeaking(false);
+    setIsPeerSpeaking(false);
+    setSpeakingUserIds([]);
+    if (isNewCall) {
+      setCallAudioSettings((current) => ({
+        ...current,
+        micMuted: true,
+        soundDisabled: true,
+        cameraEnabled: false,
+        screenSharing: false,
+      }));
+      setCallNotice("Mock call: audio and camera devices are disabled");
+    }
+    if (isGroupCall) {
+      setActiveGroupCalls((current) => ({
+        ...current,
+        [call.chatId]: {
+          roomId: call.id,
+          topology: "sfu",
+          callType: call.callType,
+          participants: call.participants.map(({ userId, state }) => ({ userId, state })),
+        },
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (!isLocalMockCallMode || !currentUser?.id) return;
+    const unsubscribe = subscribeToMockCallChanges((call) => applyMockCallSnapshotRef.current(call));
+    applyMockCallSnapshotRef.current(readMockCallSnapshot());
+    const leaveOnPageHide = () => {
+      const call = readMockCallSnapshot();
+      if (!call || call.status === "ended") return;
+      const participant = call.participants.find((item) => item.userId === currentUser.id);
+      if (!participant || (participant.state !== "connected" && participant.state !== "ringing")) return;
+      const updated = leaveMockCall(call, currentUser.id);
+      if (updated) publishMockCallSnapshot(updated);
+    };
+    window.addEventListener("pagehide", leaveOnPageHide);
+    return () => {
+      window.removeEventListener("pagehide", leaveOnPageHide);
+      unsubscribe();
+    };
+  }, [currentUser?.id]);
+
   async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
     console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
     if (callPhaseRef.current !== "idle") {
@@ -532,6 +677,39 @@ export function useCallSession({
       (selectedChat.type === "direct" || selectedChat.type === "group" || selectedChat.type === "family");
     if (!canCall || !selectedChat || !currentUser) {
       console.warn("[CALL] startDirectCall: guard failed — selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
+      return;
+    }
+    if (isLocalMockCallMode) {
+      let callChat = selectedChat;
+      let peers = callChat.members.filter((member) => member.id !== currentUser.id);
+      if (peers.length === 0 && accessToken) {
+        try {
+          callChat = await getChat(accessToken, selectedChat.id);
+          setSelectedChat(callChat);
+          peers = callChat.members.filter((member) => member.id !== currentUser.id);
+        } catch {
+          // The local fixtures are authoritative for mock calls.
+        }
+      }
+      if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
+        setError("This chat has no other members to call.");
+        return;
+      }
+      const invitees = inviteUserIds && inviteUserIds.length > 0
+        ? inviteUserIds
+        : callChat.type === "direct"
+          ? peers.slice(0, 1).map((peer) => peer.id)
+          : peers.map((peer) => peer.id);
+      const mockCall = createMockCall({
+        id: "mock-call-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8),
+        chatId: callChat.id,
+        callType: type,
+        callerId: currentUser.id,
+        inviteeIds: invitees,
+      });
+      setError(null);
+      publishMockCallSnapshot(mockCall);
+      applyMockCallSnapshotRef.current(mockCall);
       return;
     }
     const socket = socketRef.current;
@@ -627,7 +805,13 @@ export function useCallSession({
     audioCallRef,
     callInviteSelection,
     setCallInviteSelection,
-    setIsCallInviteOpen
+    setIsCallInviteOpen,
+    onInvite: isLocalMockCallMode ? (userIds) => {
+      const call = readMockCallSnapshot();
+      if (!call) return;
+      const updated = inviteMockCallUsers(call, userIds);
+      if (updated) publishMockCallSnapshot(updated);
+    } : undefined,
   });
 
   async function loadCallQuality(profile: CallQualityProfile) {
@@ -644,6 +828,13 @@ export function useCallSession({
   }
 
   async function acceptIncomingCall() {
+    if (isLocalMockCallMode && currentUser) {
+      const call = readMockCallSnapshot();
+      if (!call || call.id !== callRoomIdRef.current) return;
+      const accepted = acceptMockCall(call, currentUser.id);
+      if (accepted) publishMockCallSnapshot(accepted);
+      return;
+    }
     const socket = socketRef.current;
     if (!socket || !activeCallChatId || !callPeerUserId) {
       return;
@@ -705,6 +896,14 @@ export function useCallSession({
     activeCall: Record<string, any>,
     settings: { micMuted: boolean; cameraEnabled: boolean }
   ) {
+    if (isLocalMockCallMode && currentUser) {
+      setPreJoinChatId(null);
+      const call = readMockCallSnapshot();
+      if (!call || call.chatId !== targetChat.id) return;
+      const joined = acceptMockCall(call, currentUser.id);
+      if (joined) publishMockCallSnapshot(joined);
+      return;
+    }
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
       return;
@@ -778,6 +977,24 @@ export function useCallSession({
     targetChat: Chat,
     settings: { micMuted?: boolean; cameraEnabled?: boolean } = { micMuted: false, cameraEnabled: false }
   ) {
+    if (isLocalMockCallMode && currentUser) {
+      const invitees = targetChat.members
+        .filter((member) => member.id !== currentUser.id)
+        .map((member) => member.id);
+      const call = createMockCall({
+        id: "mock-call-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8),
+        chatId: targetChat.id,
+        callType: "audio",
+        callerId: currentUser.id,
+        inviteeIds: invitees,
+      });
+      const joined = acceptMockCall(call, currentUser.id);
+      if (joined) {
+        publishMockCallSnapshot(joined);
+        applyMockCallSnapshotRef.current(joined);
+      }
+      return;
+    }
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
       return;
@@ -838,6 +1055,13 @@ export function useCallSession({
   }
 
   function declineIncomingCall() {
+    if (isLocalMockCallMode && currentUser) {
+      const call = readMockCallSnapshot();
+      if (!call || call.id !== callRoomIdRef.current) return;
+      const declined = declineMockCall(call, currentUser.id);
+      if (declined) publishMockCallSnapshot(declined);
+      return;
+    }
     const declineChatId = activeCallChatId ?? activeCallChatIdRef.current;
     if (!socketRef.current || !declineChatId) {
       return;
@@ -852,6 +1076,13 @@ export function useCallSession({
   }
 
   async function endActiveCall() {
+    if (isLocalMockCallMode && currentUser) {
+      const call = readMockCallSnapshot();
+      if (!call || call.id !== callRoomIdRef.current) return;
+      const left = leaveMockCall(call, currentUser.id);
+      if (left) publishMockCallSnapshot(left);
+      return;
+    }
     if (!socketRef.current || !activeCallChatId) {
       return;
     }

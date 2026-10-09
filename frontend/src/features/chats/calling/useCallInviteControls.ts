@@ -7,6 +7,7 @@ type CallInviteControlsParams = {
   callInviteSelection: string[];
   setCallInviteSelection: Dispatch<SetStateAction<string[]>>;
   setIsCallInviteOpen: Dispatch<SetStateAction<boolean>>;
+  onInvite?: (userIds: string[]) => void;
 };
 
 /** Encapsulates invite-sheet submission without exposing controller details to UI. */
@@ -14,15 +15,17 @@ export function useCallInviteControls({
   audioCallRef,
   callInviteSelection,
   setCallInviteSelection,
-  setIsCallInviteOpen
+  setIsCallInviteOpen,
+  onInvite
 }: CallInviteControlsParams) {
   return useCallback(() => {
     if (!callInviteSelection.length) {
       setIsCallInviteOpen(false);
       return;
     }
-    audioCallRef.current?.inviteUsers(callInviteSelection);
+    if (onInvite) onInvite(callInviteSelection);
+    else audioCallRef.current?.inviteUsers(callInviteSelection);
     setIsCallInviteOpen(false);
     setCallInviteSelection([]);
-  }, [audioCallRef, callInviteSelection, setCallInviteSelection, setIsCallInviteOpen]);
+  }, [audioCallRef, callInviteSelection, setCallInviteSelection, setIsCallInviteOpen, onInvite]);
 }

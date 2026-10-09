@@ -3,6 +3,9 @@ import { apiRequest } from "../api/client";
 import type { AuthResponse } from "../api/auth";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
+import { sendMessage } from "../api/chats";
+import { deleteFile, downloadFileBlob, getFile, getFiles, uploadFile, updateFilePreferences } from "../api/files";
+import { resetMockFileStore } from "./mockFileStore";
 import { installMockApi, resetMockData } from "./mockApi";
 import { seedMockSession } from "./mockBootstrap";
 
@@ -17,9 +20,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<{ response:
   return { response, body: await response.json() as T };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   originalFetch = globalThis.fetch;
   resetMockData();
+  await resetMockFileStore();
   restoreMockApi = installMockApi({ origin: MOCK_ORIGIN });
 });
 
@@ -40,6 +44,45 @@ describe("local mock chat API", () => {
       expiresInSeconds: expect.any(Number),
       user: { id: expect.any(String), displayName: "Stovo Demo" },
     });
+  });
+
+  it("uploads, attaches, shares, downloads, favorites, and deletes a local file", async () => {
+    seedMockSession(MOCK_ORIGIN, "user-alex-rivera");
+    const uploaded = await uploadFile(
+      "local-mock-access-token",
+      new File(["A local attachment for the planning chat."], "meeting-notes.txt", { type: "text/plain" }),
+      FIRST_CHAT_ID,
+      "upload-planning-notes",
+    );
+
+    expect(uploaded).toMatchObject({
+      uploadedBy: "user-alex-rivera",
+      chatId: FIRST_CHAT_ID,
+      chatTitle: "Planning Team",
+      originalName: "meeting-notes.txt",
+      mimeType: "text/plain",
+      sizeBytes: 41,
+      storageProvider: "local",
+    });
+
+    seedMockSession(MOCK_ORIGIN, "user-maya-chen");
+    const listed = await getFiles("local-mock-access-token");
+    expect(listed.map((file) => file.id)).toContain(uploaded.id);
+
+    const downloaded = await downloadFileBlob("local-mock-access-token", uploaded.id);
+    await expect(downloaded.text()).resolves.toBe("A local attachment for the planning chat.");
+
+    const attachedMessage = await sendMessage("local-mock-access-token", FIRST_CHAT_ID, "See the notes.", [uploaded.id]);
+    expect(attachedMessage).toMatchObject({
+      type: "mixed",
+      attachments: [expect.objectContaining({ id: uploaded.id, originMessageId: expect.any(String) })],
+    });
+
+    const favorited = await updateFilePreferences("local-mock-access-token", uploaded.id, { isFavorite: true });
+    expect(favorited.isFavorite).toBe(true);
+    await deleteFile("local-mock-access-token", uploaded.id);
+    await expect(getFile("local-mock-access-token", uploaded.id)).rejects.toMatchObject({ status: 404 });
+    await expect(getFiles("local-mock-access-token")).resolves.toEqual([]);
   });
 
   it("uses the tab-selected fixture user for refresh and sent messages", async () => {
@@ -127,6 +170,23 @@ describe("local mock chat API", () => {
     expect(networkFetch).not.toHaveBeenCalled();
   });
 
+  it("accepts a direct file upload reservation in local mock storage", async () => {
+    const response = await fetch(`${MOCK_ORIGIN}/api/files/uploads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ originalName: "meeting-notes.txt", mimeType: "text/plain", sizeBytes: 12 }),
+    });
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      uploadId: expect.any(String),
+      fileId: expect.any(String),
+      state: "reserved",
+      expectedMimeType: "text/plain",
+      expectedSizeBytes: 12,
+    });
+  });
+
   it("preserves the mock route explanation through the real API client", async () => {
     seedMockSession(MOCK_ORIGIN);
 
@@ -152,5 +212,56 @@ describe("local mock chat API", () => {
     restoreMockApi = null;
 
     expect(globalThis.fetch).toBe(originalFetch);
+  });
+
+  it("reuses upload reservations for matching idempotency keys and rejects mismatched retries", async () => {
+    const headers = { "Content-Type": "application/json", "Idempotency-Key": "same-local-operation" };
+    const body = JSON.stringify({ originalName: "meeting-notes.txt", mimeType: "text/plain", sizeBytes: 12 });
+    const first = await fetch(MOCK_ORIGIN + "/api/files/uploads", { method: "POST", headers, body });
+    const firstReservation = await first.json() as { uploadId: string };
+    const retry = await fetch(MOCK_ORIGIN + "/api/files/uploads", { method: "POST", headers, body });
+    const retryReservation = await retry.json() as { uploadId: string };
+    const conflict = await fetch(MOCK_ORIGIN + "/api/files/uploads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ originalName: "different.txt", mimeType: "text/plain", sizeBytes: 12 }),
+    });
+
+    expect(firstReservation.uploadId).toBe(retryReservation.uploadId);
+    expect(conflict.status).toBe(409);
+  });
+
+  it("rejects a transfer whose byte count does not match its reservation", async () => {
+    const reserved = await fetch(MOCK_ORIGIN + "/api/files/uploads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ originalName: "expected.txt", mimeType: "text/plain", sizeBytes: 12 }),
+    });
+    const reservation = await reserved.json() as { uploadId: string; uploadUrl: string };
+    const transferred = await fetch(MOCK_ORIGIN + reservation.uploadUrl, {
+      method: "PUT",
+      body: new Blob(["too short"]),
+    });
+    const completed = await fetch(MOCK_ORIGIN + "/api/files/uploads/" + reservation.uploadId + "/complete", {
+      method: "POST",
+    });
+
+    expect(transferred.status).toBe(409);
+    expect(completed.status).toBe(409);
+  });
+
+  it("accepts and downloads an empty local file", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const uploaded = await uploadFile(
+      "local-mock-access-token",
+      new File([], "empty.txt", { type: "text/plain" }),
+      null,
+      "upload-empty-file",
+    );
+    const response = await fetch(MOCK_ORIGIN + "/api/files/" + uploaded.id + "/download");
+
+    expect(uploaded.sizeBytes).toBe(0);
+    expect(response.status).toBe(200);
+    expect((await response.arrayBuffer()).byteLength).toBe(0);
   });
 });
