@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   acceptMockCall,
   createMockCall,
@@ -6,6 +6,11 @@ import {
   endMockCall,
   inviteMockCallUsers,
   leaveMockCall,
+  MOCK_CALL_STORAGE_KEY,
+  readMockCallSnapshot,
+  startMockCallScreenShare,
+  stopMockCallScreenShare,
+  type MockCallSnapshot,
 } from "./mockCallBroker";
 
 const callInput = {
@@ -16,6 +21,15 @@ const callInput = {
   inviteeIds: ["user-alex-rivera", "user-maya-chen"],
   now: new Date("2026-10-09T10:00:00.000Z"),
 };
+
+afterEach(() => {
+  localStorage.removeItem(MOCK_CALL_STORAGE_KEY);
+});
+
+function activeCall() {
+  const started = createMockCall({ ...callInput, inviteeIds: ["user-alex-rivera"] });
+  return acceptMockCall(started, "user-alex-rivera")!;
+}
 
 describe("local mock call transitions", () => {
   it("starts with the caller connected and invitees ringing", () => {
@@ -88,5 +102,70 @@ describe("local mock call transitions", () => {
 
     expect(leaveMockCall(accepted!, "user-alex-rivera")?.status).toBe("ended");
     expect(endMockCall(accepted!)?.status).toBe("ended");
+  });
+
+  it("reads legacy snapshots without a screen-share owner as not sharing", () => {
+    const legacySnapshot = { ...activeCall() } as MockCallSnapshot & { screenShareUserId?: string | null };
+    delete legacySnapshot.screenShareUserId;
+    localStorage.setItem(MOCK_CALL_STORAGE_KEY, JSON.stringify(legacySnapshot));
+
+    expect(readMockCallSnapshot()?.screenShareUserId).toBeNull();
+  });
+
+  it("normalizes malformed and disconnected screen-share owners to null", () => {
+    const call = activeCall();
+    const disconnectedOwner = {
+      ...call,
+      screenShareUserId: call.callerId,
+      participants: call.participants.map((participant) =>
+        participant.userId === call.callerId ? { ...participant, state: "left" as const } : participant,
+      ),
+    };
+
+    for (const snapshot of [
+      { ...call, screenShareUserId: 42 },
+      { ...call, screenShareUserId: "user-outside-call" },
+      disconnectedOwner,
+    ]) {
+      localStorage.setItem(MOCK_CALL_STORAGE_KEY, JSON.stringify(snapshot));
+      expect(readMockCallSnapshot()?.screenShareUserId).toBeNull();
+    }
+  });
+
+  it("allows one connected participant to start sharing only in an active call", () => {
+    const ringing = createMockCall({ ...callInput, inviteeIds: ["user-alex-rivera"] });
+    const active = activeCall();
+    const now = new Date("2026-10-09T10:05:00.000Z");
+    const sharing = startMockCallScreenShare(active, active.callerId, now);
+
+    expect(startMockCallScreenShare(ringing, ringing.callerId)).toBeNull();
+    expect(startMockCallScreenShare(active, "user-outside-call")).toBeNull();
+    expect(sharing).toMatchObject({
+      screenShareUserId: active.callerId,
+      version: active.version + 1,
+      updatedAt: now.toISOString(),
+    });
+    expect(startMockCallScreenShare(sharing!, "user-alex-rivera")).toBeNull();
+  });
+
+  it("lets only the connected owner stop their screen share", () => {
+    const active = activeCall();
+    const sharing = startMockCallScreenShare(active, active.callerId)!;
+    const now = new Date("2026-10-09T10:06:00.000Z");
+
+    expect(stopMockCallScreenShare(sharing, "user-alex-rivera")).toBeNull();
+    expect(stopMockCallScreenShare(sharing, active.callerId, now)).toMatchObject({
+      screenShareUserId: null,
+      version: sharing.version + 1,
+      updatedAt: now.toISOString(),
+    });
+  });
+
+  it("clears screen sharing when the owner leaves or the call ends", () => {
+    const active = activeCall();
+    const sharing = startMockCallScreenShare(active, active.callerId)!;
+
+    expect(leaveMockCall(sharing, active.callerId)?.screenShareUserId).toBeNull();
+    expect(endMockCall(sharing).screenShareUserId).toBeNull();
   });
 });
