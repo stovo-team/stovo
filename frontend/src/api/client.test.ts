@@ -1,6 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const platform = vi.hoisted(() => ({ native: false }));
+const cacheMocks = vi.hoisted(() => ({
+  save: vi.fn(async () => undefined),
+  load: vi.fn(async () => null),
+}));
+vi.mock("./apiResponseCache", () => ({
+  deduplicateRequest: (_profileId: string | null | undefined, _endpoint: string, factory: () => Promise<unknown>) => factory(),
+  loadApiResponseCache: cacheMocks.load,
+  saveApiResponseCache: cacheMocks.save,
+}));
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
     isNativePlatform: () => platform.native
@@ -8,8 +17,12 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => ({})
 }));
 
-import { getApiUrl, getClusterPath, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride, storeApiUrlFromInviteLink } from "./client";
+import { apiRequest, getApiUrl, getClusterPath, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride, storeApiUrlFromInviteLink } from "./client";
 import { getActiveServer } from "./serverRegistry";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("getApiUrl", () => {
   const storage = new Map<string, string>();
@@ -72,6 +85,27 @@ describe("getApiUrl", () => {
     expect(storeApiUrlFromInviteLink(window.location.search)).toBeNull();
     expect(getApiUrl()).toBe(window.location.origin);
     expect(storage.get("familyMessenger.apiUrl")).toBeUndefined();
+  });
+});
+
+describe("apiRequest Intelligence cache policy", () => {
+  beforeEach(() => {
+    cacheMocks.save.mockClear();
+    cacheMocks.load.mockClear();
+  });
+
+  it("does not cache no-store v2 consent or connection responses in local API caches", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ connections: [] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest("/api/v2/intelligence/connections", { accessToken: "synthetic-session" });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(cacheMocks.save).not.toHaveBeenCalled();
+    expect(cacheMocks.load).not.toHaveBeenCalled();
   });
 });
 

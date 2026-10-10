@@ -95,9 +95,23 @@ type Config struct {
 	// Messenger source API. Installation and connection gates are additional
 	// requirements resolved by the source credential store.
 	IntelligenceSourceEnabled bool
-	MinIOCallsBucket          string
-	SolutionProfile           SolutionProfile
-	FeatureMatrix             FeatureMatrix
+	// IntelligenceSourceV2RestoreEpoch is deployment state kept outside the
+	// database backup. Rotating it before a restore keeps stale snapshots closed
+	// until the tombstone replay is completed.
+	IntelligenceSourceV2RestoreEpoch string
+	// IntelligenceOIDCEnabled is a separate default-off gate for the registered
+	// Intelligence relying party. It does not enable source data access.
+	IntelligenceOIDCEnabled              bool
+	IntelligenceOIDCIssuer               string
+	IntelligenceOIDCClientID             string
+	IntelligenceOIDCClientSecret         string
+	IntelligenceOIDCRedirectURIs         []string
+	IntelligenceOIDCSigningKeyID         string
+	IntelligenceOIDCSigningPrivateKeyPEM string
+	IntelligenceOIDCPreviousSigningKeys  []IntelligenceOIDCSigningPublicKey
+	MinIOCallsBucket                     string
+	SolutionProfile                      SolutionProfile
+	FeatureMatrix                        FeatureMatrix
 }
 
 func Load() (Config, error) {
@@ -238,6 +252,9 @@ func Load() (Config, error) {
 		FeatureMatrix:              GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
 	}
 
+	if err := cfg.loadIntelligenceOIDCFromEnvironment(); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
 }
 

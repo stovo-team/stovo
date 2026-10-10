@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 import { Clock3, ChevronRight, LockKeyhole, Mail, UserPlus, UsersRound, UserRound, UserRoundX, Volume2 } from "lucide-react";
 import type { AppStrings } from "../../config/strings";
 import type { User } from "../../api/auth";
+import type { IntelligenceAuthRequest } from "../../api/intelligence";
+import { IntelligenceConnectionsSettings } from "./IntelligenceConnectionsSettings";
 
-export type PrivacyDetail = "overview" | "profile" | "lastSeen" | "blocked" | "invitations" | "directMessages" | "groupInvites" | "channelInvites" | "voiceInvites";
+export type PrivacyDetail = "overview" | "profile" | "lastSeen" | "blocked" | "invitations" | "directMessages" | "groupInvites" | "channelInvites" | "voiceInvites" | "intelligence";
 
 interface PrivacySecuritySettingsProps {
   strings: AppStrings;
+  authRequest: IntelligenceAuthRequest;
   currentUser: User | null;
   members: User[];
   blockedMemberIds: string[];
@@ -23,6 +26,7 @@ interface PrivacySecuritySettingsProps {
 
 export function PrivacySecuritySettings({
   strings,
+  authRequest,
   currentUser,
   members,
   blockedMemberIds,
@@ -83,6 +87,11 @@ export function PrivacySecuritySettings({
           <span><strong>{strings.privacy.blockedMembers}</strong></span>
           <ChevronRight aria-hidden="true" />
         </button>
+        <button type="button" className="privacy-row" onClick={() => onDetailChange("intelligence")}>
+          <UsersRound aria-hidden="true" />
+          <span><strong>{strings.intelligence.connectionsTitle}</strong><small>{strings.intelligence.connectionsDescription}</small></span>
+          <ChevronRight aria-hidden="true" />
+        </button>
       </div>
     );
   }
@@ -105,6 +114,8 @@ export function PrivacySecuritySettings({
             );
           })}
         </section>
+      ) : detail === "intelligence" ? (
+        <IntelligenceConnectionsSettings strings={strings} authRequest={authRequest} />
       ) : detail === "invitations" ? (
         <section className="settings-toggle-groups">
           <button type="button" className="privacy-row" onClick={() => onDetailChange("directMessages")}><Mail aria-hidden="true" /><span><strong>{strings.privacy.directMessages}</strong><small>{strings.privacy.directMessagesHelp}</small></span><ChevronRight aria-hidden="true" /></button>
@@ -139,7 +150,7 @@ function inviteSummary(strings: AppStrings, value: User["groupInvitePermission"]
   return value === "nobody" ? strings.privacy.noOne : value === "selected" ? strings.privacy.selectedPeople : value === "request" ? strings.privacy.inviteRequests : strings.privacy.everyone;
 }
 
-function PrivacyContactRule({ detail, currentUser, members, isSaving, onUpdatePrivacy, strings }: Pick<PrivacySecuritySettingsProps, "currentUser" | "members" | "isSaving" | "onUpdatePrivacy" | "strings"> & { detail: Exclude<PrivacyDetail, "overview" | "profile" | "lastSeen" | "blocked" | "invitations"> }) {
+function PrivacyContactRule({ detail, currentUser, members, isSaving, onUpdatePrivacy, strings }: Pick<PrivacySecuritySettingsProps, "currentUser" | "members" | "isSaving" | "onUpdatePrivacy" | "strings"> & { detail: Exclude<PrivacyDetail, "overview" | "profile" | "lastSeen" | "blocked" | "invitations" | "intelligence"> }) {
   const isDM = detail === "directMessages";
   const key = isDM ? "directMessagePermission" : detail === "groupInvites" ? "groupInvitePermission" : detail === "channelInvites" ? "channelInvitePermission" : "voiceInvitePermission";
   const value = currentUser?.[key] ?? (isDM ? "family" : "allow");

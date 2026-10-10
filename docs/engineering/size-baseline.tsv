@@ -11,10 +11,10 @@ backend/internal/app/helpers.go	437
 backend/internal/app/mcp_operations.go	1068
 backend/internal/app/recording_operations.go	577
 backend/internal/app/routes.go	1371
-backend/internal/app/server.go	606
+backend/internal/app/server.go	612
 backend/internal/app/transcription_operations.go	638
 backend/internal/app/types.go	513
-backend/internal/config/config.go	439
+backend/internal/config/config.go	461
 backend/internal/orchestrator/routes.go	774
 backend/internal/repository/auth.go	435
 backend/internal/repository/chats.go	527
@@ -34,8 +34,8 @@ frontend/src/components/RealStovoDemo.tsx	1278
 frontend/src/components/RichCanvasPreview.tsx	792
 frontend/src/components/StovoFeaturePreviews.tsx	693
 frontend/src/components/VideoPlayer.tsx	506
-frontend/src/config/strings/english.ts	1162
-frontend/src/config/strings/russian.ts	1191
+frontend/src/config/strings/english.ts	1196
+frontend/src/config/strings/russian.ts	1225
 frontend/src/features/chats/calling/DesktopCallControls.tsx	552
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	660
 frontend/src/features/chats/calling/useCallSession.ts	1055
@@ -59,7 +59,7 @@ frontend/src/pages/ChecklistPage.tsx	780
 frontend/src/pages/FilesPage.tsx	900
 frontend/src/pages/GuestMeetingPage.tsx	807
 frontend/src/pages/MembersPage.tsx	450
-frontend/src/pages/MultiAdminPage.tsx	1046
+frontend/src/pages/MultiAdminPage.tsx	1055
 frontend/src/pages/PlansPage.tsx	798
 frontend/src/pages/settings/KeyboardShortcutsSettings.tsx	423
 frontend/src/pages/SettingsPage.tsx	613

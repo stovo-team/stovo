@@ -100,6 +100,29 @@ func (s *Server) startMemberIPBanSweep() {
 	})
 }
 
+func (s *Server) startIntelligenceSourceV2RetentionWorker() {
+	if s.sqlDB == nil {
+		return
+	}
+	s.lifecycle.Go(func(ctx context.Context) {
+		if _, err := s.cleanupIntelligenceSourceV2Retention(ctx, time.Now().UTC()); err != nil {
+			s.logger.Warnf("intelligence-source-v2-retention", "initial retention cleanup failed")
+		}
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				if _, err := s.cleanupIntelligenceSourceV2Retention(ctx, now.UTC()); err != nil {
+					s.logger.Warnf("intelligence-source-v2-retention", "scheduled retention cleanup failed")
+				}
+			}
+		}
+	})
+}
+
 func (s *Server) processFileValidationJob(ctx context.Context, eventID, payload string) error {
 	var job struct {
 		UploadID string `json:"uploadId"`
