@@ -279,7 +279,13 @@ jobs:
             get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
 
             docker_with_space_recovery() {
-              deploy_log="$(mktemp)"
+              if ! deploy_log="$(mktemp 2>/dev/null)"; then
+                echo "Could not create deployment log in the default temp directory; falling back to /dev/shm." >&2
+                if ! deploy_log="$(mktemp /dev/shm/stovo-deploy.XXXXXX 2>/dev/null)"; then
+                  echo "Could not create deployment log in the default temp directory or /dev/shm." >&2
+                  return 1
+                fi
+              fi
               if "$@" >"$deploy_log" 2>&1; then
                 cat "$deploy_log"
                 rm -f "$deploy_log"
@@ -396,7 +402,13 @@ jobs:
             }
 
             docker_with_space_recovery() {
-              deploy_log="$(mktemp)"
+              if ! deploy_log="$(mktemp 2>/dev/null)"; then
+                echo "Could not create deployment log in the default temp directory; falling back to /dev/shm." >&2
+                if ! deploy_log="$(mktemp /dev/shm/stovo-deploy.XXXXXX 2>/dev/null)"; then
+                  echo "Could not create deployment log in the default temp directory or /dev/shm." >&2
+                  return 1
+                fi
+              fi
               if "$@" >"$deploy_log" 2>&1; then
                 cat "$deploy_log"
                 rm -f "$deploy_log"
