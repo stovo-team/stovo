@@ -1,4 +1,4 @@
-h1:TEuk2E9uU7w66/BhyDtV9lg8Amdn/9SgNejA+24CoB0=
+h1:T4nWft5NGY8T4s+o19yPO5fQGQ0HNQ4jTRhEdmTSVI8=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -40,3 +40,4 @@ h1:TEuk2E9uU7w66/BhyDtV9lg8Amdn/9SgNejA+24CoB0=
 20261006120000_add_intelligence_source.sql h1:UTV7mlee9MFEmY/cFJpbCovyloip/lnD/Y5xoMCNLlg=
 20261010100000_add_intelligence_oidc_identity.sql h1:S7XrKmWtfFK/RQhYzrvxGVi3Prff1axrJdnscc/I0zA=
 20261010105000_add_intelligence_oidc_authorization_codes.sql h1:AHKtE7FmemlUhYEj/9jhQ3/ofxLaORmdm07Mig2Zq7E=
+20261010110000_add_intelligence_source_v2_consent.sql h1:HN6+AYFs58gGUgNWqUwMZAsGbYsi393slHXC3CO0MiQ=

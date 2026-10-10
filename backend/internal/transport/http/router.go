@@ -11,25 +11,26 @@ import (
 // frontend fallback in the HTTP transport while allowing callers to supply
 // already-authenticated handlers without importing Chi.
 type RouteComposition struct {
-	AppURL             string
-	CORSAllowedOrigins []string
-	RefreshCookieName  string
-	Logger             RequestLogger
-	Socket             stdhttp.Handler
-	Calls              CallRoutes
-	GuestMeetings      stdhttp.Handler
-	Core               CoreRoutes
-	Auth               AuthRoutes
-	Family             FamilyRoutes
-	Invites            InviteRoutes
-	Chats              ChatRoutes
-	Files              FileRoutes
-	Admin              AdminRoutes
-	MCP                stdhttp.Handler
-	IntelligenceOIDC   stdhttp.Handler
-	IntelligenceSource stdhttp.Handler
-	Plugins            stdhttp.Handler
-	FrontendFallback   stdhttp.Handler
+	AppURL                      string
+	CORSAllowedOrigins          []string
+	RefreshCookieName           string
+	Logger                      RequestLogger
+	Socket                      stdhttp.Handler
+	Calls                       CallRoutes
+	GuestMeetings               stdhttp.Handler
+	Core                        CoreRoutes
+	Auth                        AuthRoutes
+	Family                      FamilyRoutes
+	Invites                     InviteRoutes
+	Chats                       ChatRoutes
+	Files                       FileRoutes
+	Admin                       AdminRoutes
+	MCP                         stdhttp.Handler
+	IntelligenceOIDC            stdhttp.Handler
+	IntelligenceSource          stdhttp.Handler
+	IntelligenceSourceV2Consent stdhttp.Handler
+	Plugins                     stdhttp.Handler
+	FrontendFallback            stdhttp.Handler
 }
 
 // NewRouter installs the stable HTTP surface in its historical order.
@@ -53,6 +54,9 @@ func NewRouter(routes RouteComposition) stdhttp.Handler {
 	RegisterMCPRoutes(router, routes.MCP)
 	if routes.IntelligenceSource != nil {
 		router.Mount("/api/v1/intelligence/source", routes.IntelligenceSource)
+	}
+	if routes.IntelligenceSourceV2Consent != nil {
+		router.Mount("/api/v2/intelligence", routes.IntelligenceSourceV2Consent)
 	}
 	if routes.IntelligenceOIDC != nil {
 		router.MethodFunc(stdhttp.MethodGet, "/.well-known/openid-configuration", routes.IntelligenceOIDC.ServeHTTP)
