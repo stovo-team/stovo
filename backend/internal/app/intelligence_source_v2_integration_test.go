@@ -10,10 +10,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -113,6 +115,15 @@ func TestIntelligenceSourceV2AuthorizationUsesCurrentScopedOperationGrants(t *te
 	if decision := sourceV2AuthorizationDecision(t, fixture, credential, messageID, "read"); !decision.Allowed || decision.ValidUntil.After(credentialExpiresAt) {
 		t.Errorf("authorization decision outlives source credential: %#v credential_expires_at=%s", decision, credentialExpiresAt)
 	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `INSERT INTO public.message_user_deletions(message_id,user_id,deleted_at) VALUES($1,$2,$3)`, messageID, fixture.userID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("hide synthetic message from current principal: %v", err)
+	}
+	if decision := sourceV2AuthorizationDecision(t, fixture, credential, messageID, "read"); decision.Allowed {
+		t.Errorf("read was allowed after current principal hid the message: %#v", decision)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `DELETE FROM public.message_user_deletions WHERE message_id=$1 AND user_id=$2`, messageID, fixture.userID); err != nil {
+		t.Fatalf("restore synthetic message visibility: %v", err)
+	}
 	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `DELETE FROM public.chat_members WHERE chat_id=$1 AND user_id=$2`, fixture.chatID, fixture.userID); err != nil {
 		t.Fatalf("remove synthetic current membership: %v", err)
 	}
@@ -124,6 +135,491 @@ func TestIntelligenceSourceV2AuthorizationUsesCurrentScopedOperationGrants(t *te
 	if legacy.StatusCode != http.StatusUnauthorized {
 		body, _ := io.ReadAll(legacy.Body)
 		t.Fatalf("v2 credential was accepted by v1 source route: status=%d body=%s", legacy.StatusCode, body)
+	}
+}
+
+func TestIntelligenceSourceV2BackfillAndFenceReplayPreserveExactSnapshots(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	plaintextID := "source-v2-sync-plaintext-" + uuid.NewString()
+	serverEncryptedID := "source-v2-sync-server-encrypted-" + uuid.NewString()
+	e2eID := "source-v2-sync-e2e-" + uuid.NewString()
+	serverCiphertext, serverNonce, err := fixture.server.encryptServerAtRest(fixture.familyID, "Секрет 🌙")
+	if err != nil {
+		t.Fatalf("encrypt synthetic server-at-rest message: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)
+		VALUES($1,$2,$3,'text','История 🌍',$4,$4)`, plaintextID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic plaintext history: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,ciphertext,nonce,key_version,encryption_protocol,created_at,updated_at)
+		VALUES($1,$2,$3,'text',NULL,$4,$5,1,'server_at_rest',$6,$6)`, serverEncryptedID, fixture.chatID, fixture.userID, serverCiphertext, serverNonce, createdAt); err != nil {
+		t.Fatalf("insert synthetic server-at-rest history: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,ciphertext,nonce,encryption_protocol,created_at,updated_at)
+		VALUES($1,$2,$3,'text',NULL,'synthetic-e2e-ciphertext','synthetic-e2e-nonce','end_to_end',$4,$4)`, e2eID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic E2E history: %v", err)
+	}
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+
+	start := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/backfills", credential, map[string]any{})
+	defer func() { _ = start.Body.Close() }()
+	startBody, _ := io.ReadAll(start.Body)
+	var started struct {
+		SchemaVersion  string `json:"schema_version"`
+		BackfillID     string `json:"backfill_id"`
+		SnapshotCursor string `json:"snapshot_cursor"`
+		ScopeReset     bool   `json:"scope_reset"`
+	}
+	if start.StatusCode != http.StatusOK || start.Header.Get("Cache-Control") != "no-store" || json.Unmarshal(startBody, &started) != nil || started.SchemaVersion != "v2" || started.BackfillID == "" || started.SnapshotCursor == "" || !started.ScopeReset {
+		t.Fatalf("backfill start status=%d cache=%q body=%s", start.StatusCode, start.Header.Get("Cache-Control"), startBody)
+	}
+
+	snapshotURL := fixture.serverURL + "/api/v2/intelligence/source/backfills/" + url.PathEscape(started.BackfillID) + "/snapshots?cursor=" + url.QueryEscape(started.SnapshotCursor)
+	snapshotResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, snapshotURL, credential, nil)
+	snapshotBody, err := io.ReadAll(snapshotResponse.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = snapshotResponse.Body.Close()
+	var snapshots struct {
+		SchemaVersion string `json:"schema_version"`
+		Snapshots     []struct {
+			TenantID     string         `json:"tenant_id"`
+			ConnectionID string         `json:"connection_id"`
+			PrincipalID  string         `json:"principal_id"`
+			ResourceID   string         `json:"resource_id"`
+			RevisionID   string         `json:"revision_id"`
+			Content      string         `json:"content"`
+			Metadata     map[string]any `json:"metadata"`
+		} `json:"snapshots"`
+		NextSnapshotCursor string `json:"next_snapshot_cursor"`
+		HasMore            bool   `json:"has_more"`
+		FenceCursor        string `json:"fence_cursor"`
+	}
+	if snapshotResponse.StatusCode != http.StatusOK || snapshotResponse.Header.Get("Cache-Control") != "no-store" || json.Unmarshal(snapshotBody, &snapshots) != nil || snapshots.SchemaVersion != "v2" || len(snapshots.Snapshots) != 2 || snapshots.HasMore || snapshots.FenceCursor == "" {
+		t.Fatalf("snapshot page status=%d cache=%q body=%s", snapshotResponse.StatusCode, snapshotResponse.Header.Get("Cache-Control"), snapshotBody)
+	}
+	var exactRevision string
+	seenPlaintext, seenServerAtRest := false, false
+	for _, snapshot := range snapshots.Snapshots {
+		if snapshot.TenantID == "" || snapshot.ConnectionID != connectionID || snapshot.PrincipalID != fixture.userID || snapshot.RevisionID == "" {
+			t.Errorf("snapshot lacks credential-bound identity/revision: %#v", snapshot)
+		}
+		switch snapshot.ResourceID {
+		case plaintextID:
+			seenPlaintext = snapshot.Content == "История 🌍"
+			exactRevision = snapshot.RevisionID
+		case serverEncryptedID:
+			seenServerAtRest = snapshot.Content == "Секрет 🌙"
+		}
+		if strings.Contains(string(snapshotBody), serverCiphertext) || strings.Contains(string(snapshotBody), serverNonce) || strings.Contains(string(snapshotBody), "synthetic-e2e-ciphertext") {
+			t.Fatal("ciphertext or nonce appeared in snapshot response")
+		}
+	}
+	if !seenPlaintext || !seenServerAtRest || exactRevision == "" {
+		t.Fatalf("backfill omitted supported history plaintext=%v server_at_rest=%v snapshots=%#v", seenPlaintext, seenServerAtRest, snapshots.Snapshots)
+	}
+	if strings.Contains(string(snapshotBody), e2eID) {
+		t.Fatalf("E2E resource appeared in backfill snapshot: %s", snapshotBody)
+	}
+
+	exactURL := fixture.serverURL + "/api/v2/intelligence/source/resources/" + url.PathEscape(plaintextID) + "/snapshot?revision_id=" + url.QueryEscape(exactRevision)
+	exactResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, exactURL, credential, nil)
+	var exact struct {
+		SchemaVersion string `json:"schema_version"`
+		RevisionID    string `json:"revision_id"`
+		Content       string `json:"content"`
+	}
+	if exactResponse.StatusCode != http.StatusOK || json.NewDecoder(exactResponse.Body).Decode(&exact) != nil || exact.SchemaVersion != "v2" || exact.RevisionID != exactRevision || exact.Content != "История 🌍" {
+		body, _ := io.ReadAll(exactResponse.Body)
+		_ = exactResponse.Body.Close()
+		t.Fatalf("exact snapshot status=%d body=%s result=%#v", exactResponse.StatusCode, body, exact)
+	}
+	_ = exactResponse.Body.Close()
+
+	citation := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/citations:resolve", credential, map[string]any{
+		"schema_version": "v2", "resource_id": plaintextID, "revision_id": exactRevision,
+		"locator": map[string]any{"kind": "text", "start": 8, "end": 9},
+	})
+	var citationResult struct {
+		SchemaVersion string `json:"schema_version"`
+		RevisionID    string `json:"revision_id"`
+		Excerpt       string `json:"excerpt"`
+	}
+	if citation.StatusCode != http.StatusOK || json.NewDecoder(citation.Body).Decode(&citationResult) != nil || citationResult.SchemaVersion != "v2" || citationResult.RevisionID != exactRevision || citationResult.Excerpt != "🌍" {
+		body, _ := io.ReadAll(citation.Body)
+		_ = citation.Body.Close()
+		t.Fatalf("Unicode citation status=%d body=%s result=%#v", citation.StatusCode, body, citationResult)
+	}
+	_ = citation.Body.Close()
+
+	newMessageID := "source-v2-sync-created-after-fence-" + uuid.NewString()
+	createdAfterFence := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET content='Изменено 🌍',updated_at=$2 WHERE id=$1`, plaintextID, createdAfterFence); err != nil {
+		t.Fatalf("edit synthetic message after fence: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','Создано после fence',$4,$4)`, newMessageID, fixture.chatID, fixture.userID, createdAfterFence); err != nil {
+		t.Fatalf("create synthetic message after fence: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, serverEncryptedID, createdAfterFence); err != nil {
+		t.Fatalf("delete synthetic message after fence: %v", err)
+	}
+
+	cursor := snapshots.FenceCursor
+	var replayed []struct {
+		SchemaVersion  string `json:"schema_version"`
+		EventID        string `json:"event_id"`
+		TenantID       string `json:"tenant_id"`
+		ConnectionID   string `json:"connection_id"`
+		PrincipalID    string `json:"principal_id"`
+		ResourceID     string `json:"resource_id"`
+		RevisionID     string `json:"revision_id"`
+		OrderToken     string `json:"order_token"`
+		SourceSequence int64  `json:"source_sequence"`
+		Kind           string `json:"kind"`
+		Tombstone      bool   `json:"tombstone"`
+	}
+	for page := 0; page < 5; page++ {
+		eventURL := fixture.serverURL + "/api/v2/intelligence/source/events?cursor=" + url.QueryEscape(cursor) + "&limit=1"
+		eventResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, eventURL, credential, nil)
+		eventBody, err := io.ReadAll(eventResponse.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = eventResponse.Body.Close()
+		var events struct {
+			SchemaVersion string `json:"schema_version"`
+			Events        []struct {
+				SchemaVersion  string `json:"schema_version"`
+				EventID        string `json:"event_id"`
+				TenantID       string `json:"tenant_id"`
+				ConnectionID   string `json:"connection_id"`
+				PrincipalID    string `json:"principal_id"`
+				ResourceID     string `json:"resource_id"`
+				RevisionID     string `json:"revision_id"`
+				OrderToken     string `json:"order_token"`
+				SourceSequence int64  `json:"source_sequence"`
+				Kind           string `json:"kind"`
+				Tombstone      bool   `json:"tombstone"`
+			} `json:"events"`
+			NextCursor string `json:"next_cursor"`
+			HasMore    bool   `json:"has_more"`
+		}
+		if eventResponse.StatusCode != http.StatusOK || eventResponse.Header.Get("Cache-Control") != "no-store" || json.Unmarshal(eventBody, &events) != nil || events.SchemaVersion != "v2" {
+			t.Fatalf("event page status=%d cache=%q body=%s", eventResponse.StatusCode, eventResponse.Header.Get("Cache-Control"), eventBody)
+		}
+		if strings.Contains(string(eventBody), serverCiphertext) || strings.Contains(string(eventBody), serverNonce) || strings.Contains(string(eventBody), "synthetic-e2e-ciphertext") {
+			t.Fatalf("event body contains ciphertext or nonce: %s", eventBody)
+		}
+		if page == 0 {
+			duplicateResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, eventURL, credential, nil)
+			duplicateBody, err := io.ReadAll(duplicateResponse.Body)
+			_ = duplicateResponse.Body.Close()
+			var duplicatePage struct {
+				Events []struct {
+					EventID string `json:"event_id"`
+				} `json:"events"`
+			}
+			if err != nil || duplicateResponse.StatusCode != http.StatusOK || json.Unmarshal(duplicateBody, &duplicatePage) != nil || len(duplicatePage.Events) != len(events.Events) || len(events.Events) == 0 || duplicatePage.Events[0].EventID != events.Events[0].EventID {
+				t.Fatalf("replaying the same event cursor was not at-least-once stable: status=%d first=%s retry=%s", duplicateResponse.StatusCode, eventBody, duplicateBody)
+			}
+		}
+		for _, event := range events.Events {
+			if event.SchemaVersion != "v2" || event.EventID == "" || event.TenantID == "" || event.ConnectionID != connectionID || event.PrincipalID != fixture.userID || event.ResourceID == "" || event.RevisionID == "" || event.OrderToken == "" || event.SourceSequence <= 0 {
+				t.Errorf("event lacks stable identity/order fields: %#v", event)
+			}
+			replayed = append(replayed, event)
+		}
+		if !events.HasMore {
+			break
+		}
+		if events.NextCursor == "" || len(events.Events) != 1 {
+			t.Fatalf("event page omitted cursor/ordered item: %#v", events)
+		}
+		cursor = events.NextCursor
+	}
+	if len(replayed) != 3 {
+		t.Fatalf("replay returned %d events, want create/edit/delete: %#v", len(replayed), replayed)
+	}
+	kindsByResource := map[string]string{}
+	for _, event := range replayed {
+		kindsByResource[event.ResourceID] = event.Kind
+	}
+	if kindsByResource[plaintextID] != "update" || kindsByResource[newMessageID] != "create" || kindsByResource[serverEncryptedID] != "delete" || !replayed[2].Tombstone {
+		t.Fatalf("replayed lifecycle events = %#v", replayed)
+	}
+	for i := 1; i < len(replayed); i++ {
+		if replayed[i].SourceSequence <= replayed[i-1].SourceSequence {
+			t.Fatalf("event sequence not strictly increasing: %#v", replayed)
+		}
+	}
+}
+
+func TestIntelligenceSourceV2BackfillCursorBindingExpiryRetryAndReset(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	resourceIDs := []string{"source-v2-cursor-a-" + uuid.NewString(), "source-v2-cursor-b-" + uuid.NewString()}
+	for index, resourceID := range resourceIDs {
+		content := "cursor snapshot " + strconv.Itoa(index)
+		if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+			INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)
+			VALUES($1,$2,$3,'text',$4,$5,$5)`, resourceID, fixture.chatID, fixture.userID, content, createdAt); err != nil {
+			t.Fatalf("insert synthetic cursor snapshot %d: %v", index, err)
+		}
+	}
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	startBackfill := func(sourceCredential string) (string, string) {
+		t.Helper()
+		response := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/backfills", sourceCredential, map[string]any{})
+		defer func() { _ = response.Body.Close() }()
+		var result struct {
+			SchemaVersion  string `json:"schema_version"`
+			BackfillID     string `json:"backfill_id"`
+			SnapshotCursor string `json:"snapshot_cursor"`
+			ScopeReset     bool   `json:"scope_reset"`
+		}
+		if response.StatusCode != http.StatusOK || json.NewDecoder(response.Body).Decode(&result) != nil || result.SchemaVersion != "v2" || !result.ScopeReset || result.BackfillID == "" || result.SnapshotCursor == "" {
+			t.Fatalf("start cursor-test backfill status=%d result=%#v", response.StatusCode, result)
+		}
+		return result.BackfillID, result.SnapshotCursor
+	}
+	type snapshotPage struct {
+		SchemaVersion string `json:"schema_version"`
+		Snapshots     []struct {
+			ResourceID string `json:"resource_id"`
+			RevisionID string `json:"revision_id"`
+		} `json:"snapshots"`
+		NextSnapshotCursor string `json:"next_snapshot_cursor"`
+		HasMore            bool   `json:"has_more"`
+	}
+	readPage := func(sourceCredential, backfillID, cursor string) (int, string, snapshotPage) {
+		t.Helper()
+		pageURL := fixture.serverURL + "/api/v2/intelligence/source/backfills/" + url.PathEscape(backfillID) + "/snapshots?cursor=" + url.QueryEscape(cursor) + "&limit=1"
+		response := sourceV2Request(t, fixture.httpClient, http.MethodGet, pageURL, sourceCredential, nil)
+		defer func() { _ = response.Body.Close() }()
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			t.Fatalf("read cursor snapshot response: %v", err)
+		}
+		var page snapshotPage
+		if response.StatusCode == http.StatusOK {
+			if err := json.Unmarshal(body, &page); err != nil {
+				t.Fatalf("decode cursor snapshot response %q: %v", body, err)
+			}
+		}
+		return response.StatusCode, string(body), page
+	}
+	backfillID, cursor := startBackfill(credential)
+	status, firstBody, firstPage := readPage(credential, backfillID, cursor)
+	if status != http.StatusOK || firstPage.SchemaVersion != "v2" || !firstPage.HasMore || len(firstPage.Snapshots) != 1 || firstPage.NextSnapshotCursor == "" {
+		t.Fatalf("first limited snapshot page status=%d page=%#v body=%s", status, firstPage, firstBody)
+	}
+	status, duplicateBody, duplicatePage := readPage(credential, backfillID, cursor)
+	if status != http.StatusOK || len(duplicatePage.Snapshots) != 1 || duplicatePage.Snapshots[0].RevisionID != firstPage.Snapshots[0].RevisionID || duplicatePage.NextSnapshotCursor != firstPage.NextSnapshotCursor || duplicateBody != firstBody {
+		t.Fatalf("retry did not return the same materialized page: status=%d first=%s retry=%s", status, firstBody, duplicateBody)
+	}
+	status, _, finalPage := readPage(credential, backfillID, firstPage.NextSnapshotCursor)
+	if status != http.StatusOK || finalPage.HasMore || len(finalPage.Snapshots) != 1 {
+		t.Fatalf("second limited snapshot page status=%d page=%#v", status, finalPage)
+	}
+	if finalPage.Snapshots[0].ResourceID == firstPage.Snapshots[0].ResourceID {
+		t.Fatalf("snapshot keyset repeated resource across pages: %#v then %#v", firstPage, finalPage)
+	}
+
+	invalidCursorCode := func(sourceCredential, pathBackfillID, rawCursor string) string {
+		t.Helper()
+		pageURL := fixture.serverURL + "/api/v2/intelligence/source/backfills/" + url.PathEscape(pathBackfillID) + "/snapshots?cursor=" + url.QueryEscape(rawCursor)
+		response := sourceV2Request(t, fixture.httpClient, http.MethodGet, pageURL, sourceCredential, nil)
+		defer func() { _ = response.Body.Close() }()
+		var envelope struct {
+			Error struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+			t.Fatalf("decode invalid cursor response status=%d: %v", response.StatusCode, err)
+		}
+		if response.StatusCode != http.StatusBadRequest {
+			t.Fatalf("invalid cursor status=%d code=%q, want 400", response.StatusCode, envelope.Error.Code)
+		}
+		return envelope.Error.Code
+	}
+	tampered := "A" + cursor[1:]
+	if invalidCursorCode(credential, backfillID, tampered) != "invalid_cursor" {
+		t.Fatal("tampered snapshot cursor did not return invalid_cursor")
+	}
+	otherBackfillID, _ := startBackfill(credential)
+	if invalidCursorCode(credential, otherBackfillID, cursor) != "invalid_cursor" {
+		t.Fatal("snapshot cursor from one backfill was accepted for another backfill")
+	}
+	secondConnectionID, secondCredential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	if secondConnectionID == connectionID || invalidCursorCode(secondCredential, backfillID, cursor) != "invalid_cursor" {
+		t.Fatal("snapshot cursor was not bound to its source connection")
+	}
+
+	identity, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, credential)
+	if err != nil {
+		t.Fatalf("authenticate cursor fixture credential: %v", err)
+	}
+	expiredCursor := fixture.server.encodeIntelligenceSourceV2Cursor(intelligenceSourceV2Cursor{
+		Kind: "snapshot", ConnectionID: identity.ConnectionID, ChatID: identity.ChatID,
+		BackfillID: backfillID, Page: 0, IssuedAt: fixture.server.intelligenceOIDCNow().Add(-8 * 24 * time.Hour).Unix(),
+	})
+	expiredURL := fixture.serverURL + "/api/v2/intelligence/source/backfills/" + url.PathEscape(backfillID) + "/snapshots?cursor=" + url.QueryEscape(expiredCursor)
+	expiredResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, expiredURL, credential, nil)
+	defer func() { _ = expiredResponse.Body.Close() }()
+	var expiredEnvelope struct {
+		SchemaVersion string `json:"schema_version"`
+		Error         struct {
+			Code     string            `json:"code"`
+			Recovery map[string]string `json:"recovery"`
+		} `json:"error"`
+	}
+	if expiredResponse.StatusCode != http.StatusGone || json.NewDecoder(expiredResponse.Body).Decode(&expiredEnvelope) != nil || expiredEnvelope.SchemaVersion != "v2" || expiredEnvelope.Error.Code != "cursor_expired" || expiredEnvelope.Error.Recovery["action"] != "full_backfill_required" {
+		t.Fatalf("expired cursor response status=%d envelope=%#v", expiredResponse.StatusCode, expiredEnvelope)
+	}
+	resetID, resetCursor := startBackfill(credential)
+	if resetID == backfillID || resetCursor == cursor {
+		t.Fatalf("full backfill did not create an independent reset: old=%s new=%s", backfillID, resetID)
+	}
+}
+
+func TestIntelligenceSourceV2FenceSerializesConcurrentCreateEditAndDelete(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	editID := "source-v2-fence-edit-" + uuid.NewString()
+	deleteID := "source-v2-fence-delete-" + uuid.NewString()
+	createID := "source-v2-fence-create-" + uuid.NewString()
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)
+		VALUES($1,$2,$3,'text','before edit',$4,$4),($5,$2,$3,'text','before delete',$4,$4)`, editID, fixture.chatID, fixture.userID, createdAt, deleteID); err != nil {
+		t.Fatalf("insert synthetic concurrent-fence history: %v", err)
+	}
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	identity, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, credential)
+	if err != nil {
+		t.Fatalf("authenticate synthetic concurrent-fence connection: %v", err)
+	}
+	lockTx, err := fixture.server.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin synthetic source-sequence lock: %v", err)
+	}
+	defer func() { _ = lockTx.Rollback() }()
+	var sequence int64
+	if err := lockTx.QueryRowContext(ctx, `SELECT next_sequence FROM public.intelligence_source_v2_connections WHERE id=$1 FOR UPDATE`, connectionID).Scan(&sequence); err != nil {
+		t.Fatalf("lock synthetic source sequence: %v", err)
+	}
+	_ = sequence
+
+	operations := []struct {
+		name  string
+		query string
+		args  []any
+	}{
+		{"edit", `UPDATE public.messages SET content='after edit 🌍',updated_at=$2 WHERE id=$1`, []any{editID, time.Now().UTC().Format(time.RFC3339Nano)}},
+		{"delete", `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, []any{deleteID, time.Now().UTC().Format(time.RFC3339Nano)}},
+		{"create", `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','created at fence',$4,$4)`, []any{createID, fixture.chatID, fixture.userID, time.Now().UTC().Format(time.RFC3339Nano)}},
+	}
+	operationResults := make(chan error, len(operations))
+	for _, operation := range operations {
+		operation := operation
+		go func() {
+			_, err := fixture.server.sqlDB.ExecContext(ctx, operation.query, operation.args...)
+			if err != nil {
+				err = errors.New(operation.name + ": " + err.Error())
+			}
+			operationResults <- err
+		}()
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var blocked int
+		if err := fixture.server.sqlDB.QueryRowContext(ctx, `
+			SELECT count(*) FROM pg_stat_activity
+			WHERE datname=current_database() AND wait_event_type='Lock'
+			  AND (lower(query) LIKE '%update public.messages set content%'
+			       OR lower(query) LIKE '%update public.messages set deleted_at%'
+			       OR lower(query) LIKE '%insert into public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)%')`).Scan(&blocked); err != nil {
+			t.Fatalf("inspect synthetic message writes waiting on sequence fence: %v", err)
+		}
+		if blocked >= len(operations) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("only %d of %d concurrent message writes waited on the held sequence fence", blocked, len(operations))
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	backfillResult := make(chan struct {
+		start httptransport.IntelligenceSourceV2BackfillStart
+		err   error
+	}, 1)
+	go func() {
+		started, err := fixture.server.intelligenceSourceV2StartBackfill(ctx, identity)
+		backfillResult <- struct {
+			start httptransport.IntelligenceSourceV2BackfillStart
+			err   error
+		}{started, err}
+	}()
+	if err := lockTx.Commit(); err != nil {
+		t.Fatalf("release synthetic source-sequence lock: %v", err)
+	}
+	for range operations {
+		if err := <-operationResults; err != nil {
+			t.Fatal(err)
+		}
+	}
+	started := <-backfillResult
+	if started.err != nil {
+		t.Fatalf("start backfill across concurrent source writes: %v", started.err)
+	}
+	page, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, started.start.BackfillID, started.start.SnapshotCursor, 100)
+	if err != nil || page.HasMore || page.FenceCursor == "" {
+		t.Fatalf("read snapshot across concurrent source writes page=%#v err=%v", page, err)
+	}
+	resourceContent := make(map[string]string, len(page.Snapshots))
+	for _, snapshot := range page.Snapshots {
+		resourceContent[snapshot.ResourceID] = snapshot.Content
+	}
+	if resourceContent[editID] != "after edit 🌍" || resourceContent[createID] != "created at fence" {
+		t.Fatalf("snapshot lost a concurrent edit or create: %#v", resourceContent)
+	}
+	if _, exists := resourceContent[deleteID]; exists {
+		t.Fatalf("snapshot retained the concurrently deleted resource: %#v", resourceContent)
+	}
+	var fenceSequence, editSequence, deleteSequence, createSequence int64
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT fence_sequence FROM public.intelligence_source_v2_backfills WHERE id=$1`, started.start.BackfillID).Scan(&fenceSequence); err != nil {
+		t.Fatalf("read concurrent backfill fence: %v", err)
+	}
+	for resourceID, target := range map[string]*int64{editID: &editSequence, deleteID: &deleteSequence, createID: &createSequence} {
+		if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT sequence FROM public.intelligence_source_v2_events WHERE connection_id=$1 AND resource_id=$2`, connectionID, resourceID).Scan(target); err != nil {
+			t.Fatalf("read concurrent source event for %s: %v", resourceID, err)
+		}
+	}
+	replay, err := fixture.server.intelligenceSourceV2Events(ctx, identity, page.FenceCursor, 100)
+	if err != nil {
+		t.Fatalf("replay events after concurrent backfill fence: %v", err)
+	}
+	replayed := make(map[string]httptransport.IntelligenceSourceV2Event, len(replay.Events))
+	for _, event := range replay.Events {
+		replayed[event.ResourceID] = event
+	}
+	for resourceID, eventSequence := range map[string]int64{editID: editSequence, deleteID: deleteSequence, createID: createSequence} {
+		if eventSequence > fenceSequence {
+			if _, exists := replayed[resourceID]; !exists {
+				t.Errorf("post-fence event for %s is missing from replay (event=%d fence=%d)", resourceID, eventSequence, fenceSequence)
+			}
+		} else if _, exists := replayed[resourceID]; exists {
+			t.Errorf("pre-fence event for %s leaked into replay (event=%d fence=%d)", resourceID, eventSequence, fenceSequence)
+		}
 	}
 }
 

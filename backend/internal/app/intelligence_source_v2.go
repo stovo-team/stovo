@@ -22,7 +22,12 @@ func (s *Server) intelligenceSourceV2Handler() http.Handler {
 			return s.authenticateIntelligenceSourceV2Credential(ctx, token)
 		},
 		Operations: httptransport.IntelligenceSourceV2Operations{
-			Authorize: s.intelligenceSourceV2Authorize,
+			Authorize:         s.intelligenceSourceV2Authorize,
+			StartBackfill:     s.intelligenceSourceV2StartBackfill,
+			BackfillSnapshots: s.intelligenceSourceV2BackfillSnapshots,
+			Events:            s.intelligenceSourceV2Events,
+			Snapshot:          s.intelligenceSourceV2Snapshot,
+			ResolveCitation:   s.intelligenceSourceV2ResolveCitation,
 		},
 		Audit: s.auditIntelligenceSourceV2,
 		Limit: func(ctx context.Context, connectionID string) error {
@@ -60,12 +65,14 @@ func (s *Server) intelligenceSourceV2Authorize(ctx context.Context, identity htt
 			SELECT f.ai_notes_enabled,
 			       (u.is_active=1 AND cm.user_id IS NOT NULL AND ch.family_id=i.family_id
 			        AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$6
-		        AND m.deleted_at IS NULL AND m.type='text' AND m.encryption_protocol IN ('legacy_plaintext','server_at_rest')),
+			        AND m.deleted_at IS NULL AND m.type='text' AND m.encryption_protocol IN ('legacy_plaintext','server_at_rest')
+			        AND NOT EXISTS (SELECT 1 FROM public.message_user_deletions mud WHERE mud.message_id=m.id AND mud.user_id=u.id)),
 			       COALESCE(read_grant.granted,false),COALESCE(operation_grant.granted,false),
 			       md5(ch.id || ':' || u.is_active::text || ':' || (cm.user_id IS NOT NULL)::text
 			           || ':' || f.ai_notes_enabled::text || ':' || COALESCE(read_grant.granted,false)::text
 			           || ':' || COALESCE(operation_grant.granted,false)::text || ':' || c.enabled::text
-			           || ':' || (c.revoked_at IS NULL)::text || ':' || (c.credential_expires_at>$6)::text),
+			           || ':' || (c.revoked_at IS NULL)::text || ':' || (c.credential_expires_at>$6)::text
+			           || ':' || (NOT EXISTS (SELECT 1 FROM public.message_user_deletions mud WHERE mud.message_id=m.id AND mud.user_id=u.id))::text),
 			       c.credential_expires_at
 			FROM public.messages m
 			JOIN public.chats ch ON ch.id=m.chat_id

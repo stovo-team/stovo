@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	stdhttp "net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ const (
 	intelligenceSourceV2BasePath       = "/api/v2/intelligence/source"
 	intelligenceSourceV2MaxBatch       = 100
 	intelligenceSourceV2MaxBody        = 256 << 10
+	intelligenceSourceV2SnapshotPage   = 100
 	intelligenceSourceV2Timeout        = 5 * time.Second
 	intelligenceSourceV2MaxDecisionAge = 5 * time.Minute
 )
@@ -45,6 +47,59 @@ type IntelligenceSourceV2CitationResolution struct {
 	Excerpt         string         `json:"excerpt"`
 }
 
+type IntelligenceSourceV2Event struct {
+	SchemaVersion  string    `json:"schema_version"`
+	EventID        string    `json:"event_id"`
+	TenantID       string    `json:"tenant_id"`
+	ConnectionID   string    `json:"connection_id"`
+	PrincipalID    string    `json:"principal_id"`
+	ResourceID     string    `json:"resource_id"`
+	RevisionID     string    `json:"revision_id"`
+	OrderToken     string    `json:"order_token"`
+	SourceSequence int64     `json:"source_sequence"`
+	ContainerID    string    `json:"container_id"`
+	ObservedAt     time.Time `json:"observed_at"`
+	Kind           string    `json:"kind"`
+	PolicyRefs     []string  `json:"policy_refs"`
+	Tombstone      bool      `json:"tombstone"`
+}
+
+type IntelligenceSourceV2EventPage struct {
+	SchemaVersion string                      `json:"schema_version"`
+	Events        []IntelligenceSourceV2Event `json:"events"`
+	NextCursor    string                      `json:"next_cursor"`
+	HasMore       bool                        `json:"has_more"`
+}
+
+type IntelligenceSourceV2ResourceSnapshot struct {
+	SchemaVersion      string         `json:"schema_version"`
+	TenantID           string         `json:"tenant_id"`
+	ConnectionID       string         `json:"connection_id"`
+	PrincipalID        string         `json:"principal_id"`
+	ResourceID         string         `json:"resource_id"`
+	RevisionID         string         `json:"revision_id"`
+	ContentRevisionID  string         `json:"content_revision_id"`
+	MetadataRevisionID string         `json:"metadata_revision_id"`
+	ObservedAt         time.Time      `json:"observed_at"`
+	Content            string         `json:"content"`
+	Metadata           map[string]any `json:"metadata"`
+}
+
+type IntelligenceSourceV2BackfillStart struct {
+	SchemaVersion  string `json:"schema_version"`
+	BackfillID     string `json:"backfill_id"`
+	SnapshotCursor string `json:"snapshot_cursor"`
+	ScopeReset     bool   `json:"scope_reset"`
+}
+
+type IntelligenceSourceV2SnapshotPage struct {
+	SchemaVersion      string                                 `json:"schema_version"`
+	Snapshots          []IntelligenceSourceV2ResourceSnapshot `json:"snapshots"`
+	NextSnapshotCursor string                                 `json:"next_snapshot_cursor"`
+	HasMore            bool                                   `json:"has_more"`
+	FenceCursor        string                                 `json:"fence_cursor,omitempty"`
+}
+
 type IntelligenceSourceV2AuditRecord struct {
 	InstallationID string `json:"installation_id,omitempty"`
 	ConnectionID   string `json:"connection_id,omitempty"`
@@ -53,8 +108,12 @@ type IntelligenceSourceV2AuditRecord struct {
 }
 
 type IntelligenceSourceV2Operations struct {
-	Authorize       func(context.Context, IntelligenceSourceIdentity, []string, string) ([]IntelligenceSourceV2AuthorizationDecision, error)
-	ResolveCitation func(context.Context, IntelligenceSourceIdentity, string, string, IntelligenceTextLocator) (IntelligenceSourceV2CitationResolution, error)
+	Authorize         func(context.Context, IntelligenceSourceIdentity, []string, string) ([]IntelligenceSourceV2AuthorizationDecision, error)
+	StartBackfill     func(context.Context, IntelligenceSourceIdentity) (IntelligenceSourceV2BackfillStart, error)
+	BackfillSnapshots func(context.Context, IntelligenceSourceIdentity, string, string, int) (IntelligenceSourceV2SnapshotPage, error)
+	Events            func(context.Context, IntelligenceSourceIdentity, string, int) (IntelligenceSourceV2EventPage, error)
+	Snapshot          func(context.Context, IntelligenceSourceIdentity, string, string) (IntelligenceSourceV2ResourceSnapshot, error)
+	ResolveCitation   func(context.Context, IntelligenceSourceIdentity, string, string, IntelligenceTextLocator) (IntelligenceSourceV2CitationResolution, error)
 }
 
 type IntelligenceSourceV2HandlerConfig struct {
@@ -84,6 +143,10 @@ func NewIntelligenceSourceV2Handler(config IntelligenceSourceV2HandlerConfig) st
 	}
 	handler := &IntelligenceSourceV2Handler{config: config}
 	router := chi.NewRouter()
+	router.Post("/backfills", handler.startBackfill)
+	router.Get("/backfills/{backfillID}/snapshots", handler.backfillSnapshots)
+	router.Get("/events", handler.events)
+	router.Get("/resources/{resourceID}/snapshot", handler.snapshot)
 	router.Post("/authorization:check", handler.authorize)
 	router.Post("/citations:resolve", handler.resolveCitation)
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -93,6 +156,111 @@ func NewIntelligenceSourceV2Handler(config IntelligenceSourceV2HandlerConfig) st
 			r = r2
 		}
 		router.ServeHTTP(w, r)
+	})
+}
+
+func (h *IntelligenceSourceV2Handler) startBackfill(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "backfills", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		var request struct {
+			SchemaVersion string `json:"schema_version"`
+		}
+		if err := h.decodeBody(w, r, &request); err != nil {
+			return nil, err
+		}
+		if request.SchemaVersion != "" && request.SchemaVersion != "v2" {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		if h.config.Operations.StartBackfill == nil {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		started, err := h.config.Operations.StartBackfill(ctx, identity)
+		if err != nil {
+			return nil, err
+		}
+		if started.SchemaVersion != "v2" || started.BackfillID == "" || len(started.BackfillID) > 256 || started.SnapshotCursor == "" || len(started.SnapshotCursor) > 4096 || !started.ScopeReset {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		return started, nil
+	})
+}
+
+func (h *IntelligenceSourceV2Handler) backfillSnapshots(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "backfill_snapshots", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		backfillID := chi.URLParam(r, "backfillID")
+		cursor := r.URL.Query().Get("cursor")
+		limit, err := parseIntelligenceSourceV2SnapshotLimit(r.URL.Query().Get("limit"))
+		if backfillID == "" || len(backfillID) > 256 || cursor == "" || len(cursor) > 4096 || err != nil {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		if h.config.Operations.BackfillSnapshots == nil {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		page, err := h.config.Operations.BackfillSnapshots(ctx, identity, backfillID, cursor, limit)
+		if err != nil {
+			return nil, err
+		}
+		if page.SchemaVersion != "v2" || len(page.Snapshots) > limit || page.HasMore && (page.NextSnapshotCursor == "" || page.FenceCursor != "") || !page.HasMore && (page.NextSnapshotCursor != "" || page.FenceCursor == "") {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		for _, snapshot := range page.Snapshots {
+			if !validIntelligenceSourceV2Snapshot(snapshot, identity, snapshot.ResourceID, snapshot.RevisionID) {
+				return nil, ErrIntelligenceSourceUnavailable
+			}
+		}
+		return page, nil
+	})
+}
+
+func (h *IntelligenceSourceV2Handler) events(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "events", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		cursor := r.URL.Query().Get("cursor")
+		limit, err := parseSourceLimit(r.URL.Query().Get("limit"))
+		if cursor == "" || len(cursor) > 4096 || err != nil {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		if h.config.Operations.Events == nil {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		page, err := h.config.Operations.Events(ctx, identity, cursor, limit)
+		if err != nil {
+			return nil, err
+		}
+		if page.SchemaVersion != "v2" || len(page.Events) > limit || len(page.NextCursor) > 4096 || page.HasMore && page.NextCursor == "" {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		for _, event := range page.Events {
+			if !validIntelligenceSourceV2Event(event, identity) {
+				return nil, ErrIntelligenceSourceUnavailable
+			}
+		}
+		if page.Events == nil {
+			page.Events = []IntelligenceSourceV2Event{}
+		}
+		return page, nil
+	})
+}
+
+func (h *IntelligenceSourceV2Handler) snapshot(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "snapshot", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		resourceID := chi.URLParam(r, "resourceID")
+		revisionID := strings.TrimSpace(r.URL.Query().Get("revision_id"))
+		if strings.TrimSpace(resourceID) == "" || len(resourceID) > 256 || revisionID == "" || len(revisionID) > 256 {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		if h.config.Operations.Snapshot == nil {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		if err := h.requireCurrentRead(ctx, identity, resourceID); err != nil {
+			return nil, err
+		}
+		snapshot, err := h.config.Operations.Snapshot(ctx, identity, resourceID, revisionID)
+		if err != nil {
+			return nil, err
+		}
+		if !validIntelligenceSourceV2Snapshot(snapshot, identity, resourceID, revisionID) {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		return snapshot, nil
 	})
 }
 
@@ -195,6 +363,45 @@ func validIntelligenceSourceV2Decision(decision IntelligenceSourceV2Authorizatio
 	return decision.SchemaVersion == "v2" && decision.TenantID == identity.TenantID && decision.ConnectionID == identity.ConnectionID && decision.PrincipalID == identity.PrincipalUserID && decision.ResourceID == resourceID && decision.Operation == operation && decision.Scope.Kind == "chat" && decision.Scope.ResourceID == identity.ChatID && decision.PolicyRevision != "" && !decision.DecidedAt.IsZero() && !decision.ValidUntil.IsZero() && ttl > 0 && ttl <= intelligenceSourceV2MaxDecisionAge && !decision.DecidedAt.After(now) && now.Before(decision.ValidUntil) && now.Sub(decision.DecidedAt) <= intelligenceSourceV2MaxDecisionAge
 }
 
+func (h *IntelligenceSourceV2Handler) requireCurrentRead(ctx context.Context, identity IntelligenceSourceIdentity, resourceID string) error {
+	if h.config.Operations.Authorize == nil {
+		return ErrIntelligenceSourceUnavailable
+	}
+	decisions, err := h.config.Operations.Authorize(ctx, identity, []string{resourceID}, "read")
+	if err != nil {
+		return err
+	}
+	if len(decisions) != 1 || !validIntelligenceSourceV2Decision(decisions[0], identity, resourceID, "read", h.config.Now().UTC()) {
+		return ErrIntelligenceSourceUnavailable
+	}
+	if !decisions[0].Allowed {
+		return ErrIntelligenceSourceNotFound
+	}
+	return nil
+}
+
+func validIntelligenceSourceV2Snapshot(snapshot IntelligenceSourceV2ResourceSnapshot, identity IntelligenceSourceIdentity, resourceID, revisionID string) bool {
+	return snapshot.SchemaVersion == "v2" && snapshot.TenantID == identity.TenantID && snapshot.ConnectionID == identity.ConnectionID && snapshot.PrincipalID == identity.PrincipalUserID && snapshot.ResourceID == resourceID && snapshot.RevisionID == revisionID && snapshot.ContentRevisionID == revisionID && snapshot.MetadataRevisionID == revisionID && !snapshot.ObservedAt.IsZero()
+}
+
+func validIntelligenceSourceV2Event(event IntelligenceSourceV2Event, identity IntelligenceSourceIdentity) bool {
+	if event.SchemaVersion != "v2" || event.EventID == "" || event.TenantID != identity.TenantID || event.ConnectionID != identity.ConnectionID || event.PrincipalID != identity.PrincipalUserID || event.ResourceID == "" || event.RevisionID == "" || event.OrderToken == "" || event.SourceSequence <= 0 || event.ContainerID != identity.ChatID || event.ObservedAt.IsZero() || !validSourceEventKind(event.Kind) {
+		return false
+	}
+	return event.Kind != "delete" || event.Tombstone
+}
+
+func parseIntelligenceSourceV2SnapshotLimit(raw string) (int, error) {
+	if strings.TrimSpace(raw) == "" {
+		return intelligenceSourceV2SnapshotPage, nil
+	}
+	limit, err := strconv.Atoi(raw)
+	if err != nil || limit < 1 || limit > intelligenceSourceV2SnapshotPage {
+		return 0, ErrIntelligenceSourceInvalidRequest
+	}
+	return limit, nil
+}
+
 func (h *IntelligenceSourceV2Handler) serve(w stdhttp.ResponseWriter, r *stdhttp.Request, route string, operation func(context.Context, IntelligenceSourceIdentity) (any, error)) {
 	buffered := &intelligenceSourceResponse{header: make(stdhttp.Header)}
 	buffered.Header().Set("Cache-Control", "no-store")
@@ -250,7 +457,7 @@ func (h *IntelligenceSourceV2Handler) serve(w stdhttp.ResponseWriter, r *stdhttp
 	identity, err = h.config.Authenticate(ctx, token)
 	if err != nil {
 		status, result = intelligenceSourceV2ErrorStatus(err)
-		writeIntelligenceSourceV2Error(buffered, status, intelligenceSourceV2ErrorCode(status))
+		writeIntelligenceSourceV2Error(buffered, status, result)
 		return
 	}
 	if !identity.InstallationEnabled || !identity.ConnectionEnabled || identity.InstallationID == "" || identity.TenantID == "" || identity.ConnectionID == "" || identity.FamilyID == "" || identity.PrincipalUserID == "" || identity.ChatID == "" {
@@ -261,7 +468,7 @@ func (h *IntelligenceSourceV2Handler) serve(w stdhttp.ResponseWriter, r *stdhttp
 	if h.config.Limit != nil {
 		if err := h.config.Limit(ctx, identity.ConnectionID); err != nil {
 			status, result = intelligenceSourceV2ErrorStatus(err)
-			writeIntelligenceSourceV2Error(buffered, status, intelligenceSourceV2ErrorCode(status))
+			writeIntelligenceSourceV2Error(buffered, status, result)
 			return
 		}
 	}
@@ -271,7 +478,7 @@ func (h *IntelligenceSourceV2Handler) serve(w stdhttp.ResponseWriter, r *stdhttp
 	}
 	if err != nil {
 		status, result = intelligenceSourceV2ErrorStatus(err)
-		writeIntelligenceSourceV2Error(buffered, status, intelligenceSourceV2ErrorCode(status))
+		writeIntelligenceSourceV2Error(buffered, status, result)
 		return
 	}
 	buffered.Header().Set("Content-Type", "application/json")
@@ -298,7 +505,18 @@ func (h *IntelligenceSourceV2Handler) decodeBody(w stdhttp.ResponseWriter, r *st
 
 func intelligenceSourceV2ErrorStatus(err error) (int, string) {
 	status, _ := sourceErrorStatus(err)
-	return status, intelligenceSourceV2ErrorCode(status)
+	return status, intelligenceSourceV2ErrorCodeFor(err, status)
+}
+
+func intelligenceSourceV2ErrorCodeFor(err error, status int) string {
+	switch {
+	case errors.Is(err, ErrIntelligenceSourceInvalidCursor):
+		return "invalid_cursor"
+	case errors.Is(err, ErrIntelligenceSourceCursorExpired):
+		return "cursor_expired"
+	default:
+		return intelligenceSourceV2ErrorCode(status)
+	}
 }
 
 func intelligenceSourceV2ErrorCode(status int) string {
