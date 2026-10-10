@@ -23,7 +23,6 @@ The change is gated to local mock mode. Normal development and production call b
 - A mock call has at most one active screen-share owner. The owner is represented in the existing shared call snapshot as a nullable user ID. While a share is active, another participant cannot replace the owner; only the owner can stop that share. Snapshots written before this field existed are read as having no active share.
 - Every same-origin tab participating in that call observes the same owner and renders the synthetic 16:9 fixture for that participant. The fixture is local UI content; the app does not transmit screen pixels or media.
 - The presenter can stop sharing. Sharing also clears when its owner leaves the call or when the call ends. Other participants remain in the call.
-- A tab that reloads while the call remains active recovers the current sharing owner from the shared snapshot.
 
 ### Screen and participant layout
 
@@ -56,7 +55,7 @@ The change is gated to local mock mode. Normal development and production call b
 Before changing behavior, add regression tests that fail against the current mock call path. The implementation should then make these tests pass:
 
 - Broker tests cover the nullable presenter field, old-snapshot compatibility, starting/stopping a share, rejection of a nonparticipant or a second presenter trying to take over, rejection of another participant trying to stop the active share, and cleanup when the owner leaves or the call ends.
-- Mock-call tests prove a share is visible in a second same-origin tab, survives presenter-tab reload while the call stays active, and clears after owner departure or call end.
+- Mock-call tests prove a share is visible in a second same-origin participating tab and clears after owner departure or call end.
 - Mock UI tests prove the screen-share control starts and stops the synthetic fixture without invoking `getDisplayMedia`, camera/microphone acquisition, audio playback, Socket.IO, WebRTC, or LiveKit.
 - Layout integration tests verify a wide stage renders participant tiles on the right and a constrained stage renders them below, while resizing preserves the share.
 - New Chat dialog tests verify a circular gray close button with the same background and border treatment as Add People, while retaining close behavior and accessible labeling.
@@ -65,7 +64,7 @@ Run only the focused checks required by the repository's bug-fix, feature, and t
 
 ## Important risks
 
-- Mock call state is persisted for same-origin tab recovery; schema parsing must handle snapshots from before screen sharing was added and malformed presenter IDs safely.
+- Mock call state is persisted for same-origin tab synchronization; schema parsing must handle snapshots from before screen sharing was added and malformed presenter IDs safely.
 - The real call hook contains device-capture cleanup paths. The mock implementation must never fall through into those paths when stopping a synthetic share.
 - The layout is driven by observed dimensions. Integration tests must exercise the real call stage rather than only testing the standalone layout helper.
 - The primary checkout contains an unrelated local edit in `frontend/call-ui-preview.tsx`; implementation must preserve it and keep task changes in the dedicated worktree.
