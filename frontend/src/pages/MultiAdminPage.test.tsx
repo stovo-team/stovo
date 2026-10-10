@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(),
+  masterLogin: vi.fn(), fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(),
 }));
 
 vi.mock("../api/masterAdmin", () => ({
@@ -11,7 +11,7 @@ vi.mock("../api/masterAdmin", () => ({
   fetchTenantAiSettings: mocks.fetchTenantAiSettings,
   updateServerSettings: mocks.updateServerSettings,
   updateTenantAiSettings: mocks.updateTenantAiSettings,
-  createInviteLink: vi.fn(), createServer: vi.fn(), deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: vi.fn(),
+  createInviteLink: vi.fn(), createServer: vi.fn(), deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: mocks.masterLogin,
 }));
 vi.mock("../i18n/LanguageContext", async () => {
   const { getAppStrings } = await import("../config/strings");
@@ -42,6 +42,29 @@ describe("supervisor space management", () => {
     container.remove();
     localStorage.removeItem("master_admin_token");
     vi.clearAllMocks();
+  });
+
+  it("submits the credentials filled by a password manager without React input events", async () => {
+    localStorage.removeItem("master_admin_token");
+    mocks.masterLogin.mockResolvedValue("logged-in-token");
+    await act(async () => { root.render(<MultiAdminPage />); });
+    const username = container.querySelector<HTMLInputElement>('input[type="text"]')!;
+    const password = container.querySelector<HTMLInputElement>('input[type="password"]')!;
+    username.value = "actual-admin";
+    password.value = "remembered-password";
+    await act(async () => {
+      container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(mocks.masterLogin).toHaveBeenCalledWith("actual-admin", "remembered-password");
+  });
+
+  it("starts with an empty password and identifies the existing-password field for autofill", async () => {
+    localStorage.removeItem("master_admin_token");
+    await act(async () => { root.render(<MultiAdminPage />); });
+    const password = container.querySelector<HTMLInputElement>('input[type="password"]')!;
+    expect(password.value).toBe("");
+    expect(password.autocomplete).toBe("current-password");
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')!.autocomplete).toBe("username");
   });
 
   it("shows icon-only Settings and Invite, and puts destructive actions in the overflow menu", async () => {
