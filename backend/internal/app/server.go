@@ -242,6 +242,10 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	app.startMemberIPBanSweep()
 	app.startOutboxDispatcher()
 	app.startFileValidationWorker()
+	if err := app.initializeIntelligenceSourceV2RestoreEpoch(context.Background()); err != nil {
+		app.logger.Warnf("intelligence-source-v2-restore", "restore epoch initialization failed; source routes remain closed")
+	}
+	app.startIntelligenceSourceV2RetentionWorker()
 	app.restoreCallSessions(context.Background())
 	app.initMCP()
 	app.lifecycle.Go(app.startNtfyRetryWorker)

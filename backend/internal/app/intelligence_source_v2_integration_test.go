@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -621,6 +622,619 @@ func TestIntelligenceSourceV2FenceSerializesConcurrentCreateEditAndDelete(t *tes
 			t.Errorf("pre-fence event for %s leaked into replay (event=%d fence=%d)", resourceID, eventSequence, fenceSequence)
 		}
 	}
+}
+
+func TestIntelligenceSourceV2MessageWritesCannotRestorePayloadAfterConcurrentAccessLoss(t *testing.T) {
+	tests := []struct {
+		name       string
+		invalidate func(context.Context, intelligenceSourceV2ConsentFixture, string) error
+		waitQuery  string
+		wantReason string
+	}{
+		{
+			name: "read grant revocation",
+			invalidate: func(ctx context.Context, fixture intelligenceSourceV2ConsentFixture, connectionID string) error {
+				return fixture.server.revokeIntelligenceSourceV2Connection(ctx, nil, httptransport.IntelligenceSourceV2ConsentPrincipal{UserID: fixture.userID, FamilyID: fixture.familyID}, connectionID, "read")
+			},
+			waitQuery:  "intelligence_source_v2_connections",
+			wantReason: "read_grant_revoked",
+		},
+		{
+			name: "chat membership removal",
+			invalidate: func(ctx context.Context, fixture intelligenceSourceV2ConsentFixture, _ string) error {
+				_, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.chat_members WHERE chat_id=$1 AND user_id=$2`, fixture.chatID, fixture.userID)
+				return err
+			},
+			waitQuery:  "delete from public.chat_members",
+			wantReason: "membership_changed",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newIntelligenceSourceV2ConsentFixture(t)
+			ctx := context.Background()
+			connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+			resourceID := "source-v2-access-race-" + uuid.NewString()
+			createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+			if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','initial payload',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+				t.Fatalf("insert synthetic access-race message: %v", err)
+			}
+
+			lockTx, err := fixture.server.sqlDB.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatalf("begin source connection serialization lock: %v", err)
+			}
+			defer func() { _ = lockTx.Rollback() }()
+			var lockedConnectionID string
+			if err := lockTx.QueryRowContext(ctx, `SELECT id FROM public.intelligence_source_v2_connections WHERE id=$1 FOR UPDATE`, connectionID).Scan(&lockedConnectionID); err != nil {
+				t.Fatalf("hold source connection serialization lock: %v", err)
+			}
+			if lockedConnectionID != connectionID {
+				t.Fatalf("locked source connection %q, want %q", lockedConnectionID, connectionID)
+			}
+
+			invalidationResult := make(chan error, 1)
+			go func() { invalidationResult <- test.invalidate(ctx, fixture, connectionID) }()
+			waitForSourceV2LockWait(t, fixture, test.waitQuery)
+
+			messageWriteResult := make(chan error, 1)
+			go func() {
+				_, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET content='raced after access loss',updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano))
+				messageWriteResult <- err
+			}()
+			waitForSourceV2LockWait(t, fixture, "update public.messages set content='raced after access loss'")
+			if err := lockTx.Commit(); err != nil {
+				t.Fatalf("release source connection serialization lock: %v", err)
+			}
+			if err := <-invalidationResult; err != nil {
+				t.Fatalf("complete concurrent access invalidation: %v", err)
+			}
+			if err := <-messageWriteResult; err != nil {
+				t.Fatalf("complete concurrent message write: %v", err)
+			}
+
+			var payloadCount int
+			if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads payload JOIN public.intelligence_source_v2_revisions revision USING(connection_id,revision_id) WHERE payload.connection_id=$1 AND revision.resource_id=$2`, connectionID, resourceID).Scan(&payloadCount); err != nil {
+				t.Fatalf("count payloads after concurrent access loss: %v", err)
+			}
+			if payloadCount != 0 {
+				t.Errorf("concurrent write restored %d source payload(s) after access loss", payloadCount)
+			}
+			var reason string
+			if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT reason FROM public.intelligence_source_v2_tombstone_ledger WHERE connection_id=$1 AND resource_id IN ($2,'chat:'||$3) ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID, fixture.chatID).Scan(&reason); err != nil {
+				t.Fatalf("read durable tombstone after concurrent access loss: %v", err)
+			}
+			if reason != test.wantReason {
+				t.Errorf("latest invalidation reason=%q, want %q", reason, test.wantReason)
+			}
+		})
+	}
+}
+
+func waitForSourceV2LockWait(t *testing.T, fixture intelligenceSourceV2ConsentFixture, queryPrefix string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var waiting int
+		if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `
+			SELECT count(*) FROM pg_stat_activity
+			WHERE datname=current_database() AND wait_event_type='Lock' AND lower(query) LIKE '%'||$1||'%'`, strings.ToLower(queryPrefix)).Scan(&waiting); err != nil {
+			t.Fatalf("inspect source-v2 access-race lock wait for %q: %v", queryPrefix, err)
+		}
+		if waiting > 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("query %q did not reach the expected lock wait", queryPrefix)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestIntelligenceSourceV2LifecycleChangesPurgePayloadsAndKeepTombstones(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	deleteID := "source-v2-lifecycle-delete-" + uuid.NewString()
+	restoreID := "source-v2-lifecycle-restore-" + uuid.NewString()
+	moveID := "source-v2-lifecycle-move-" + uuid.NewString()
+	visibilityID := "source-v2-lifecycle-visibility-" + uuid.NewString()
+	connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)
+		VALUES($1,$2,$3,'text','delete me',$5,$5),($4,$2,$3,'text','restore me',$5,$5),($6,$2,$3,'text','move me',$5,$5),($7,$2,$3,'text','hide me',$5,$5)`,
+		deleteID, fixture.chatID, fixture.userID, restoreID, createdAt, moveID, visibilityID); err != nil {
+		t.Fatalf("insert synthetic lifecycle messages: %v", err)
+	}
+	latestEvent := func(resourceID string) (revisionID, kind string, tombstone bool, protocol string, deleted bool) {
+		t.Helper()
+		err := fixture.server.sqlDB.QueryRowContext(ctx, `
+			SELECT e.revision_id,e.kind,e.tombstone,r.encryption_protocol,r.deleted
+			FROM public.intelligence_source_v2_events e
+			JOIN public.intelligence_source_v2_revisions r ON r.connection_id=e.connection_id AND r.revision_id=e.revision_id
+			WHERE e.connection_id=$1 AND e.resource_id=$2 ORDER BY e.sequence DESC LIMIT 1`, connectionID, resourceID).
+			Scan(&revisionID, &kind, &tombstone, &protocol, &deleted)
+		if err != nil {
+			t.Fatalf("read latest lifecycle event for %s: %v", resourceID, err)
+		}
+		return
+	}
+	payloadCount := func(resourceID string) int {
+		t.Helper()
+		var count int
+		if err := fixture.server.sqlDB.QueryRowContext(ctx, `
+			SELECT count(*) FROM public.intelligence_source_v2_revision_payloads p
+			JOIN public.intelligence_source_v2_revisions r ON r.connection_id=p.connection_id AND r.revision_id=p.revision_id
+			WHERE p.connection_id=$1 AND r.resource_id=$2`, connectionID, resourceID).Scan(&count); err != nil {
+			t.Fatalf("count lifecycle payloads for %s: %v", resourceID, err)
+		}
+		return count
+	}
+	deletedRevision, deleteKind, deleteTombstone, _, _ := latestEvent(deleteID)
+	if deleteKind != "create" || deleteTombstone || payloadCount(deleteID) != 1 {
+		t.Fatalf("initial source revision = %s/%s/%v payloads=%d", deletedRevision, deleteKind, deleteTombstone, payloadCount(deleteID))
+	}
+	deletedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, deleteID, deletedAt); err != nil {
+		t.Fatalf("soft-delete synthetic source message: %v", err)
+	}
+	tombstoneRevision, deleteKind, deleteTombstone, deleteProtocol, deleteFlag := latestEvent(deleteID)
+	if deleteKind != "delete" || !deleteTombstone || deleteProtocol != "metadata_only" || !deleteFlag {
+		t.Fatalf("delete event was not a metadata tombstone: kind=%q tombstone=%v protocol=%q deleted=%v", deleteKind, deleteTombstone, deleteProtocol, deleteFlag)
+	}
+	if count := payloadCount(deleteID); count != 0 {
+		t.Fatalf("message deletion retained %d source payload rows; deletion must purge content immediately while preserving revision %s", count, tombstoneRevision)
+	}
+	var ledgerPresent bool
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT to_regclass('public.intelligence_source_v2_tombstone_ledger') IS NOT NULL`).Scan(&ledgerPresent); err != nil || !ledgerPresent {
+		t.Fatalf("metadata tombstone ledger is unavailable: present=%v err=%v", ledgerPresent, err)
+	}
+	var retainedTombstone int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_tombstone_ledger WHERE connection_id=$1 AND resource_id=$2 AND revision_id=$3`, connectionID, deleteID, tombstoneRevision).Scan(&retainedTombstone); err != nil || retainedTombstone != 1 {
+		t.Fatalf("delete tombstone ledger rows=%d err=%v", retainedTombstone, err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=NULL,updated_at=$2 WHERE id=$1`, deleteID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("restore synthetic source message: %v", err)
+	}
+	restoredRevision, restoreKind, restoreTombstone, _, _ := latestEvent(deleteID)
+	if restoreKind != "restore" || restoreTombstone || restoredRevision == tombstoneRevision || payloadCount(deleteID) != 1 {
+		t.Fatalf("restored message revision=%s kind=%q tombstone=%v payloads=%d", restoredRevision, restoreKind, restoreTombstone, payloadCount(deleteID))
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET chat_id=$2,updated_at=$3 WHERE id=$1`, moveID, fixture.secondChatID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("move synthetic source message out of scoped chat: %v", err)
+	}
+	_, moveKind, moveTombstone, moveProtocol, moveDeleted := latestEvent(moveID)
+	if moveKind != "move" || !moveTombstone || moveProtocol != "metadata_only" || !moveDeleted || payloadCount(moveID) != 0 {
+		t.Fatalf("scope exit did not produce and enforce a metadata tombstone: kind=%q tombstone=%v protocol=%q deleted=%v payloads=%d", moveKind, moveTombstone, moveProtocol, moveDeleted, payloadCount(moveID))
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.message_user_deletions(message_id,user_id,deleted_at) VALUES($1,$2,$3)`, visibilityID, fixture.userID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("hide synthetic message for source principal: %v", err)
+	}
+	_, visibilityKind, visibilityTombstone, visibilityProtocol, visibilityDeleted := latestEvent(visibilityID)
+	if visibilityKind != "acl_change" || !visibilityTombstone || visibilityProtocol != "metadata_only" || !visibilityDeleted || payloadCount(visibilityID) != 0 {
+		t.Fatalf("per-user visibility change did not emit a content-free invalidation: kind=%q tombstone=%v protocol=%q deleted=%v payloads=%d", visibilityKind, visibilityTombstone, visibilityProtocol, visibilityDeleted, payloadCount(visibilityID))
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.chat_members WHERE chat_id=$1 AND user_id=$2`, fixture.chatID, fixture.userID); err != nil {
+		t.Fatalf("remove source principal from scoped chat: %v", err)
+	}
+	_, membershipKind, membershipTombstone, membershipProtocol, membershipDeleted := latestEvent("chat:" + fixture.chatID)
+	if membershipKind != "acl_change" || !membershipTombstone || membershipProtocol != "metadata_only" || !membershipDeleted {
+		t.Fatalf("membership removal did not emit a chat-scope tombstone: kind=%q tombstone=%v protocol=%q deleted=%v", membershipKind, membershipTombstone, membershipProtocol, membershipDeleted)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.chat_members(chat_id,user_id,created_at) VALUES($1,$2,$3)`, fixture.chatID, fixture.userID, time.Now().UTC()); err != nil {
+		t.Fatalf("restore source principal membership: %v", err)
+	}
+	_, membershipKind, membershipTombstone, membershipProtocol, membershipDeleted = latestEvent("chat:" + fixture.chatID)
+	if membershipKind != "acl_change" || !membershipTombstone || membershipProtocol != "metadata_only" || !membershipDeleted {
+		t.Fatalf("membership restoration did not emit a chat-scope tombstone: kind=%q tombstone=%v protocol=%q deleted=%v", membershipKind, membershipTombstone, membershipProtocol, membershipDeleted)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.chats SET media_visibility='family',updated_at=$2 WHERE id=$1`, fixture.chatID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("change synthetic chat visibility: %v", err)
+	}
+	_, visibilityKind, visibilityTombstone, visibilityProtocol, visibilityDeleted = latestEvent("chat:" + fixture.chatID)
+	if visibilityKind != "acl_change" || !visibilityTombstone || visibilityProtocol != "metadata_only" || !visibilityDeleted {
+		t.Fatalf("chat visibility change did not emit a scope invalidation: kind=%q tombstone=%v protocol=%q deleted=%v", visibilityKind, visibilityTombstone, visibilityProtocol, visibilityDeleted)
+	}
+	_ = deleteProtocol
+	_ = deleteFlag
+}
+
+func TestIntelligenceSourceV2GrantRevocationKeepsMetadataEventsAndPurgesReadPayloads(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true, "process": true})
+	resourceID := "source-v2-revoke-resource-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','revoke me',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic revocation message: %v", err)
+	}
+	identity, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, credential)
+	if err != nil {
+		t.Fatalf("authenticate synthetic revocation credential: %v", err)
+	}
+	started, err := fixture.server.intelligenceSourceV2StartBackfill(ctx, identity)
+	if err != nil {
+		t.Fatalf("start revocation-test backfill: %v", err)
+	}
+	page, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, started.BackfillID, started.SnapshotCursor, 100)
+	if err != nil || page.HasMore || page.FenceCursor == "" || len(page.Snapshots) != 1 {
+		t.Fatalf("read revocation-test snapshot page=%#v err=%v", page, err)
+	}
+	revisionID := page.Snapshots[0].RevisionID
+	exactURL := fixture.serverURL + "/api/v2/intelligence/source/resources/" + url.PathEscape(resourceID) + "/snapshot?revision_id=" + url.QueryEscape(revisionID)
+	exactBeforeRevoke := sourceV2Request(t, fixture.httpClient, http.MethodGet, exactURL, credential, nil)
+	if exactBeforeRevoke.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(exactBeforeRevoke.Body)
+		_ = exactBeforeRevoke.Body.Close()
+		t.Fatalf("exact read before revocation status=%d body=%s", exactBeforeRevoke.StatusCode, body)
+	}
+	_ = exactBeforeRevoke.Body.Close()
+	revokeGrant := func(grant string) {
+		t.Helper()
+		response := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/revoke", fixture.userToken, map[string]string{"connection_id": connectionID, "grant": grant})
+		defer func() { _ = response.Body.Close() }()
+		if response.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(response.Body)
+			t.Fatalf("revoke %s status=%d body=%s", grant, response.StatusCode, body)
+		}
+	}
+	type sourceEventPage struct {
+		Events []struct {
+			ResourceID string `json:"resource_id"`
+			Kind       string `json:"kind"`
+			Tombstone  bool   `json:"tombstone"`
+		} `json:"events"`
+		NextCursor string `json:"next_cursor"`
+	}
+	readEvents := func(cursor string) sourceEventPage {
+		t.Helper()
+		requestURL := fixture.serverURL + "/api/v2/intelligence/source/events?cursor=" + url.QueryEscape(cursor)
+		response := sourceV2Request(t, fixture.httpClient, http.MethodGet, requestURL, credential, nil)
+		defer func() { _ = response.Body.Close() }()
+		var result sourceEventPage
+		if response.StatusCode != http.StatusOK || json.NewDecoder(response.Body).Decode(&result) != nil {
+			t.Fatalf("metadata event access after revoke status=%d result=%#v", response.StatusCode, result)
+		}
+		return result
+	}
+	revokeGrant("process")
+	if decision := sourceV2AuthorizationDecision(t, fixture, credential, resourceID, "read"); !decision.Allowed {
+		t.Fatal("revoking process unexpectedly removed the independent read grant")
+	}
+	if decision := sourceV2AuthorizationDecision(t, fixture, credential, resourceID, "process"); decision.Allowed {
+		t.Fatal("revoked process grant remained authorized")
+	}
+	processEvents := readEvents(page.FenceCursor)
+	if len(processEvents.Events) == 0 || !processEvents.Events[0].Tombstone || processEvents.Events[0].Kind != "acl_change" {
+		t.Fatalf("process revoke did not produce metadata invalidation: %#v", processEvents)
+	}
+	revokeGrant("read")
+	if decision := sourceV2AuthorizationDecision(t, fixture, credential, resourceID, "read"); decision.Allowed {
+		t.Fatal("read remained authorized after its grant was revoked")
+	}
+	afterReadRevoke := sourceV2Request(t, fixture.httpClient, http.MethodGet, exactURL, credential, nil)
+	if afterReadRevoke.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(afterReadRevoke.Body)
+		_ = afterReadRevoke.Body.Close()
+		t.Fatalf("exact read after grant revocation status=%d body=%s, want indistinguishable not-found", afterReadRevoke.StatusCode, body)
+	}
+	_ = afterReadRevoke.Body.Close()
+	var payloadCount int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, revisionID).Scan(&payloadCount); err != nil {
+		t.Fatalf("inspect purged exact revision payload: %v", err)
+	}
+	if payloadCount != 0 {
+		t.Fatalf("read revoke retained %d content payloads for the source connection", payloadCount)
+	}
+	readRevokeEvents := readEvents(processEvents.NextCursor)
+	if len(readRevokeEvents.Events) == 0 || !readRevokeEvents.Events[0].Tombstone || readRevokeEvents.Events[0].Kind != "acl_change" {
+		t.Fatalf("read revoke removed metadata-only event access: %#v", readRevokeEvents)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `SELECT to_regclass('public.intelligence_source_v2_tombstone_ledger') IS NOT NULL`); err != nil {
+		t.Fatalf("inspect source v2 tombstone ledger: %v", err)
+	}
+	revokeGrant("connection")
+	afterConnectionRevoke := sourceV2Request(t, fixture.httpClient, http.MethodGet, fixture.serverURL+"/api/v2/intelligence/source/events?cursor="+url.QueryEscape(readRevokeEvents.NextCursor), credential, nil)
+	defer func() { _ = afterConnectionRevoke.Body.Close() }()
+	if afterConnectionRevoke.StatusCode != http.StatusUnauthorized {
+		body, _ := io.ReadAll(afterConnectionRevoke.Body)
+		t.Fatalf("source credential after connection revoke status=%d body=%s", afterConnectionRevoke.StatusCode, body)
+	}
+}
+
+func TestIntelligenceSourceV2RestoreGateBlocksRoutesAndMissingStateFailsClosed(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	var gateExists bool
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT to_regclass('public.intelligence_source_v2_restore_gate') IS NOT NULL`).Scan(&gateExists); err != nil || !gateExists {
+		t.Fatalf("source v2 restore gate table is missing: exists=%v err=%v", gateExists, err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET blocked=true,active_restore_id='synthetic-restore' WHERE gate_id='global'`); err != nil {
+		t.Fatalf("block synthetic source restore: %v", err)
+	}
+	request := map[string]any{"schema_version": "v2", "resource_ids": []string{"synthetic-restore-gate"}, "operation": "read"}
+	blocked := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/authorization:check", credential, request)
+	if blocked.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(blocked.Body)
+		_ = blocked.Body.Close()
+		t.Fatalf("source route while restore gate is blocked status=%d body=%s", blocked.StatusCode, body)
+	}
+	_ = blocked.Body.Close()
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET blocked=false,active_restore_id=NULL WHERE gate_id='global'`); err != nil {
+		t.Fatalf("unblock synthetic source restore gate: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `DELETE FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global'`); err != nil {
+		t.Fatalf("remove synthetic restore gate row: %v", err)
+	}
+	missing := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/authorization:check", credential, request)
+	defer func() { _ = missing.Body.Close() }()
+	if missing.StatusCode != http.StatusServiceUnavailable {
+		body, _ := io.ReadAll(missing.Body)
+		t.Fatalf("source route with missing restore state status=%d body=%s", missing.StatusCode, body)
+	}
+	_ = connectionID
+}
+
+func TestIntelligenceSourceV2StaleUnblockedSnapshotCannotOpenRoutes(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	_, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET blocked=false,restore_epoch='epoch-from-restored-snapshot' WHERE gate_id='global'`); err != nil {
+		t.Fatalf("simulate restored unblocked snapshot with stale deployment epoch: %v", err)
+	}
+	request := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/authorization:check", credential, map[string]any{
+		"schema_version": "v2", "resource_ids": []string{"synthetic-stale-restore"}, "operation": "read",
+	})
+	defer func() { _ = request.Body.Close() }()
+	if request.StatusCode != http.StatusServiceUnavailable {
+		body, _ := io.ReadAll(request.Body)
+		t.Fatalf("route opened from stale unblocked restore snapshot: status=%d body=%s", request.StatusCode, body)
+	}
+}
+
+func TestIntelligenceSourceV2FreshEmptyDatabaseBindsDeploymentRestoreEpoch(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch='uninitialized',blocked=false WHERE gate_id='global'`); err != nil {
+		t.Fatalf("reset synthetic empty database restore epoch: %v", err)
+	}
+	if err := fixture.server.initializeIntelligenceSourceV2RestoreEpoch(context.Background()); err != nil {
+		t.Fatalf("bind empty database to deployment restore epoch: %v", err)
+	}
+	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(context.Background()); err != nil {
+		t.Fatalf("fresh database restore gate stayed closed after initialization: %v", err)
+	}
+}
+
+func TestIntelligenceSourceV2PrincipalDeactivationRetiresConsent(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	resourceID := "source-v2-principal-deactivated-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','principal lifecycle secret',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic principal lifecycle message: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.users SET is_active=0 WHERE id=$1`, fixture.userID); err != nil {
+		t.Fatalf("deactivate synthetic source principal: %v", err)
+	}
+	var payloadCount int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads payload JOIN public.intelligence_source_v2_revisions revision USING(connection_id,revision_id) WHERE payload.connection_id=$1 AND revision.resource_id=$2`, connectionID, resourceID).Scan(&payloadCount); err != nil {
+		t.Fatalf("count payloads after principal deactivation: %v", err)
+	}
+	if payloadCount != 0 {
+		t.Errorf("principal deactivation retained %d readable source payload(s)", payloadCount)
+	}
+	var reason string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT reason FROM public.intelligence_source_v2_tombstone_ledger WHERE connection_id=$1 ORDER BY sequence DESC LIMIT 1`, connectionID).Scan(&reason); err != nil {
+		t.Fatalf("read principal deactivation tombstone: %v", err)
+	}
+	if reason != "principal_inactive" {
+		t.Errorf("principal deactivation tombstone reason=%q, want principal_inactive", reason)
+	}
+	var enabled, readGranted, revoked bool
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT connection.enabled,grant_row.granted,connection.revoked_at IS NOT NULL FROM public.intelligence_source_v2_connections connection JOIN public.intelligence_source_v2_connection_grants grant_row ON grant_row.connection_id=connection.id AND grant_row.grant_type='read' WHERE connection.id=$1`, connectionID).Scan(&enabled, &readGranted, &revoked); err != nil {
+		t.Fatalf("read retired connection state: %v", err)
+	}
+	if enabled || readGranted || !revoked {
+		t.Errorf("deactivation left consent resumable: enabled=%v read_granted=%v revoked=%v", enabled, readGranted, revoked)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.users SET is_active=1 WHERE id=$1`, fixture.userID); err != nil {
+		t.Fatalf("reactivate synthetic principal: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET content='after reactivation',updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("edit synthetic message after reactivation: %v", err)
+	}
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1`, connectionID).Scan(&payloadCount); err != nil {
+		t.Fatalf("count payloads after reactivation: %v", err)
+	}
+	if payloadCount != 0 {
+		t.Errorf("reactivation restored %d payload(s) without fresh consent", payloadCount)
+	}
+}
+
+func TestIntelligenceSourceV2DeletingParentPreservesImmutableHistory(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	resourceID := "source-v2-parent-delete-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','parent delete payload',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic parent-deletion message: %v", err)
+	}
+	var eventID, revisionID string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT event_id,revision_id FROM public.intelligence_source_v2_events WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).Scan(&eventID, &revisionID); err != nil {
+		t.Fatalf("read immutable event identities before deleting principal: %v", err)
+	}
+	// The application already requires chat memberships to be removed before a
+	// user row can be deleted. Keep this test focused on source-v2 child rows.
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.chat_members WHERE user_id=$1`, fixture.userID); err != nil {
+		t.Fatalf("remove synthetic principal membership before deletion: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.messages WHERE id=$1`, resourceID); err != nil {
+		t.Fatalf("remove synthetic sender message before deleting principal: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.users WHERE id=$1`, fixture.userID); err != nil {
+		t.Fatalf("delete source principal with immutable history: %v", err)
+	}
+	var principalID, installationID sql.NullString
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT principal_user_id,installation_id FROM public.intelligence_source_v2_connections WHERE id=$1`, connectionID).Scan(&principalID, &installationID); err != nil {
+		t.Fatalf("read archived source connection after principal deletion: %v", err)
+	}
+	if principalID.Valid || !installationID.Valid {
+		t.Fatalf("parent deletion did not detach only deleted principal: principal=%#v installation=%#v", principalID, installationID)
+	}
+	var retainedEvent, retainedRevision bool
+	var payloadCount int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM public.intelligence_source_v2_events WHERE event_id=$1),EXISTS(SELECT 1 FROM public.intelligence_source_v2_revisions WHERE revision_id=$2), (SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$3)`, eventID, revisionID, connectionID).Scan(&retainedEvent, &retainedRevision, &payloadCount); err != nil {
+		t.Fatalf("read retained source metadata after principal deletion: %v", err)
+	}
+	if !retainedEvent || !retainedRevision || payloadCount != 0 {
+		t.Fatalf("source history after principal deletion event=%v revision=%v payloads=%d", retainedEvent, retainedRevision, payloadCount)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.intelligence_installations WHERE id=$1`, installationID.String); err != nil {
+		t.Fatalf("delete installation with immutable source history: %v", err)
+	}
+	var detachedInstallation sql.NullString
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT installation_id FROM public.intelligence_source_v2_connections WHERE id=$1`, connectionID).Scan(&detachedInstallation); err != nil {
+		t.Fatalf("read archived connection after installation deletion: %v", err)
+	}
+	if detachedInstallation.Valid {
+		t.Fatalf("installation foreign key remained set after parent deletion: %#v", detachedInstallation)
+	}
+}
+
+func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	resourceID := "source-v2-retention-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','retained briefly',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic retention message: %v", err)
+	}
+	var originalRevisionID, createEventID string
+	var createSequence int64
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `
+		SELECT revision_id,event_id,sequence FROM public.intelligence_source_v2_events
+		WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).
+		Scan(&originalRevisionID, &createEventID, &createSequence); err != nil {
+		t.Fatalf("read synthetic create revision: %v", err)
+	}
+	var payloadCreatedAt, payloadExpiresAt time.Time
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT created_at,retention_expires_at FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, originalRevisionID).Scan(&payloadCreatedAt, &payloadExpiresAt); err != nil {
+		t.Fatalf("read synthetic payload retention deadline: %v", err)
+	}
+	if payloadExpiresAt.After(payloadCreatedAt.Add(30 * 24 * time.Hour)) {
+		t.Fatalf("content payload expires after 30-day contract: created=%s expires=%s", payloadCreatedAt, payloadExpiresAt)
+	}
+	backupCreatedAt := time.Now().UTC()
+	backupRestorableUntil := backupCreatedAt.Add(30 * 24 * time.Hour)
+	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup-too-long", backupCreatedAt, backupCreatedAt.Add(31*24*time.Hour)); !errors.Is(err, httptransport.ErrIntelligenceSourceInvalidRequest) {
+		t.Fatalf("backup horizon longer than 30 days returned %v, want invalid request", err)
+	}
+	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
+		t.Fatalf("register synthetic restorable backup horizon: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("delete synthetic retention message: %v", err)
+	}
+	var tombstoneEventID, tombstoneRevisionID string
+	var tombstoneSequence int64
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `
+		SELECT event_id,revision_id,sequence FROM public.intelligence_source_v2_events
+		WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).
+		Scan(&tombstoneEventID, &tombstoneRevisionID, &tombstoneSequence); err != nil {
+		t.Fatalf("read synthetic deletion tombstone: %v", err)
+	}
+	var tombstoneCreatedAt, tombstoneRetainUntil time.Time
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT created_at,retain_until FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID).Scan(&tombstoneCreatedAt, &tombstoneRetainUntil); err != nil {
+		t.Fatalf("read retained tombstone horizon: %v", err)
+	}
+	if tombstoneRetainUntil.Before(tombstoneCreatedAt.Add(37*24*time.Hour)) || tombstoneRetainUntil.Before(backupRestorableUntil.Add(7*24*time.Hour)) {
+		t.Fatalf("tombstone horizon does not cover restorable backup plus margin: created=%s retain=%s backup_until=%s", tombstoneCreatedAt, tombstoneRetainUntil, backupRestorableUntil)
+	}
+
+	restoreID := "synthetic-restore-" + uuid.NewString()
+	tombstones, err := fixture.server.BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
+	if err != nil || len(tombstones) == 0 || tombstones[len(tombstones)-1].EventID != tombstoneEventID {
+		t.Fatalf("begin restore did not return post-backup tombstones: %#v err=%v", tombstones, err)
+	}
+	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, nil, time.Now().UTC()); err == nil {
+		t.Fatal("restore completed before the newer tombstone was replayed")
+	}
+	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); !errors.Is(err, httptransport.ErrIntelligenceSourceDisabled) {
+		t.Fatalf("restore gate opened before tombstone replay: %v", err)
+	}
+	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC().Add(-6*time.Minute)); err == nil {
+		t.Fatal("restore completed with a stale tombstone ledger check")
+	}
+	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC()); err != nil {
+		t.Fatalf("complete restore after replaying fresh tombstone high-water: %v", err)
+	}
+	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); err != nil {
+		t.Fatalf("restore gate remained blocked after fresh tombstone replay: %v", err)
+	}
+
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=NULL,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("restore synthetic retention message: %v", err)
+	}
+	var restoredRevisionID string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT revision_id FROM public.intelligence_source_v2_events WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).Scan(&restoredRevisionID); err != nil {
+		t.Fatalf("read post-restore source revision: %v", err)
+	}
+	if restoredRevisionID == tombstoneRevisionID || restoredRevisionID == originalRevisionID {
+		t.Fatalf("restore reused an immutable revision identity: initial=%s deleted=%s restored=%s", originalRevisionID, tombstoneRevisionID, restoredRevisionID)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.intelligence_source_v2_revision_payloads SET retention_expires_at=now()-interval '1 second' WHERE connection_id=$1 AND revision_id=$2`, connectionID, restoredRevisionID); err != nil {
+		t.Fatalf("expire synthetic source payload for cleanup check: %v", err)
+	}
+	expiredSnapshotURL := fixture.serverURL + "/api/v2/intelligence/source/resources/" + url.PathEscape(resourceID) + "/snapshot?revision_id=" + url.QueryEscape(restoredRevisionID)
+	expiredSnapshot := sourceV2Request(t, fixture.httpClient, http.MethodGet, expiredSnapshotURL, credential, nil)
+	if expiredSnapshot.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(expiredSnapshot.Body)
+		_ = expiredSnapshot.Body.Close()
+		t.Fatalf("expired source payload remained readable status=%d body=%s", expiredSnapshot.StatusCode, body)
+	}
+	_ = expiredSnapshot.Body.Close()
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := fixture.server.cleanupIntelligenceSourceV2Retention(canceledCtx, time.Now().UTC()); !errors.Is(err, httptransport.ErrIntelligenceSourceUnavailable) {
+		t.Fatalf("retention storage failure returned %v, want fail-closed unavailable", err)
+	}
+	shortlyAfterHorizon := time.Now().UTC().Add(36 * 24 * time.Hour)
+	cleanup, err := fixture.server.cleanupIntelligenceSourceV2Retention(ctx, shortlyAfterHorizon)
+	if err != nil || cleanup.PayloadsPurged == 0 {
+		t.Fatalf("expired content cleanup = %#v err=%v", cleanup, err)
+	}
+	var tombstonesBeforeHorizon int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID).Scan(&tombstonesBeforeHorizon); err != nil || tombstonesBeforeHorizon != 1 {
+		t.Fatalf("tombstone was pruned before backup horizon plus margin: count=%d err=%v", tombstonesBeforeHorizon, err)
+	}
+	cleanupAt := time.Now().UTC().Add(38 * 24 * time.Hour)
+	cleanup, err = fixture.server.cleanupIntelligenceSourceV2Retention(ctx, cleanupAt)
+	if err != nil || cleanup.TombstonesPruned != 0 {
+		t.Fatalf("cleanup without a verified backup inventory pruned tombstones = %#v err=%v", cleanup, err)
+	}
+	var retainedWithoutInventory int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID).Scan(&retainedWithoutInventory); err != nil || retainedWithoutInventory != 1 {
+		t.Fatalf("tombstone ledger did not fail closed without backup inventory: count=%d err=%v", retainedWithoutInventory, err)
+	}
+	if err := fixture.server.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
+		t.Fatalf("mark synthetic complete backup inventory: %v", err)
+	}
+	cleanup, err = fixture.server.cleanupIntelligenceSourceV2Retention(ctx, cleanupAt)
+	if err != nil || cleanup.TombstonesPruned == 0 {
+		t.Fatalf("verified expired tombstone ledger cleanup = %#v err=%v", cleanup, err)
+	}
+	var eventStillPresent bool
+	var retainedRevisionProtocol string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM public.intelligence_source_v2_events WHERE event_id=$1),r.encryption_protocol
+		FROM public.intelligence_source_v2_revisions r WHERE r.connection_id=$2 AND r.revision_id=$3`, tombstoneEventID, connectionID, tombstoneRevisionID).
+		Scan(&eventStillPresent, &retainedRevisionProtocol); err != nil || !eventStillPresent || retainedRevisionProtocol != "metadata_only" {
+		t.Fatalf("immutable tombstone identity did not survive ledger expiry: present=%v protocol=%q err=%v", eventStillPresent, retainedRevisionProtocol, err)
+	}
+	_ = createEventID
+	_ = createSequence
 }
 
 func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) {
@@ -1265,6 +1879,10 @@ func newIntelligenceSourceV2ConsentFixture(t *testing.T) intelligenceSourceV2Con
 	server.cfg.IntelligenceOIDCRedirectURIs = []string{redirectURI}
 	server.cfg.IntelligenceOIDCSigningKeyID = "synthetic-consent-key"
 	server.cfg.IntelligenceOIDCSigningPrivateKeyPEM = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateKeyDER}))
+	server.cfg.IntelligenceSourceV2RestoreEpoch = "synthetic-source-v2-restore-epoch-current"
+	if _, err := server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET blocked=false,restore_epoch=$1 WHERE gate_id='global'`, server.cfg.IntelligenceSourceV2RestoreEpoch); err != nil {
+		t.Fatalf("initialize synthetic deployment restore epoch: %v", err)
+	}
 	httpServer := httptest.NewServer(server.Routes())
 	t.Cleanup(httpServer.Close)
 

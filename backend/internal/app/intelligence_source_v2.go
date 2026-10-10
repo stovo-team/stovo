@@ -19,6 +19,9 @@ func (s *Server) intelligenceSourceV2Handler() http.Handler {
 			if err := s.requireIntelligenceSourceV2ConsentEnabled(); err != nil {
 				return httptransport.IntelligenceSourceIdentity{}, err
 			}
+			if err := s.requireIntelligenceSourceV2RestoreReady(ctx); err != nil {
+				return httptransport.IntelligenceSourceIdentity{}, err
+			}
 			return s.authenticateIntelligenceSourceV2Credential(ctx, token)
 		},
 		Operations: httptransport.IntelligenceSourceV2Operations{
@@ -65,10 +68,14 @@ func (s *Server) intelligenceSourceV2Authorize(ctx context.Context, identity htt
 			SELECT f.ai_notes_enabled,
 			       (u.is_active=1 AND cm.user_id IS NOT NULL AND ch.family_id=i.family_id
 			        AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$6
+			        AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 			        AND m.deleted_at IS NULL AND m.type='text' AND m.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 			        AND NOT EXISTS (SELECT 1 FROM public.message_user_deletions mud WHERE mud.message_id=m.id AND mud.user_id=u.id)),
 			       COALESCE(read_grant.granted,false),COALESCE(operation_grant.granted,false),
 			       md5(ch.id || ':' || u.is_active::text || ':' || (cm.user_id IS NOT NULL)::text
+			           || ':' || ch.encryption_protocol || ':' || ch.media_visibility || ':'
+			           || COALESCE((SELECT string_agg(policy_member.user_id, ',' ORDER BY policy_member.user_id)
+			                       FROM public.chat_members policy_member WHERE policy_member.chat_id=ch.id),'')
 			           || ':' || f.ai_notes_enabled::text || ':' || COALESCE(read_grant.granted,false)::text
 			           || ':' || COALESCE(operation_grant.granted,false)::text || ':' || c.enabled::text
 			           || ':' || (c.revoked_at IS NULL)::text || ':' || (c.credential_expires_at>$6)::text

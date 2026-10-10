@@ -1,4 +1,4 @@
-h1:Zo/yUmy7zH1HrA6lqDWk24D+odefSN4pLQ/eMq7a3yA=
+h1:wIgtzHd2PY1+aEjMKANsly0PTW9GXlRUeclDg+8F5A8=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -43,3 +43,4 @@ h1:Zo/yUmy7zH1HrA6lqDWk24D+odefSN4pLQ/eMq7a3yA=
 20261010110000_add_intelligence_source_v2_consent.sql h1:HN6+AYFs58gGUgNWqUwMZAsGbYsi393slHXC3CO0MiQ=
 20261010113000_add_intelligence_browser_authorization_sessions.sql h1:Bqa9h4T4c0v48QMRgLYGfPekZJ4k3/xbsWcmBn6tGHI=
 20261010120000_add_intelligence_source_v2_sync.sql h1:naDnCOvK5bkDAozj5fSi0VWc+u8utb/XWUdsA2ozLmo=
+20261010130000_add_intelligence_source_v2_retention.sql h1:nwL5YDlfDrdW5/zxqzk+8safFyKL5XRgb5Syr4ljUk8=

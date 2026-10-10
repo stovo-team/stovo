@@ -63,6 +63,7 @@ func (s *Server) intelligenceSourceV2StartBackfill(ctx context.Context, identity
 		JOIN public.users u ON u.id=c.principal_user_id AND u.is_active=1 AND u.family_id=i.family_id
 		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=$6
 		JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
+		  AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 		JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
 		JOIN public.intelligence_source_v2_connection_grants read_grant
 		  ON read_grant.connection_id=c.id AND read_grant.grant_type='read' AND read_grant.granted
@@ -219,6 +220,7 @@ func (s *Server) readIntelligenceSourceV2BackfillMessages(ctx context.Context, t
 		       jsonb_build_object('chat_id',m.chat_id,'sender_id',m.sender_id,'message_type',m.type,
 		                          'created_at',m.created_at,'updated_at',m.updated_at,'edited',m.is_edited),now()
 		FROM public.messages m
+		JOIN public.chats scoped_chat ON scoped_chat.id=m.chat_id AND scoped_chat.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 		WHERE m.chat_id=$1 AND m.deleted_at IS NULL AND m.type='text'
 		  AND ((m.encryption_protocol='legacy_plaintext' AND m.content IS NOT NULL)
 		       OR (m.encryption_protocol='server_at_rest' AND m.ciphertext IS NOT NULL AND m.nonce IS NOT NULL))
@@ -287,8 +289,8 @@ func (s *Server) loadIntelligenceSourceV2BackfillPage(ctx context.Context, tx *s
 		JOIN public.intelligence_source_v2_revisions r
 		  ON r.connection_id=item.connection_id AND r.resource_id=item.resource_id AND r.revision_id=item.revision_id
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
-		WHERE item.backfill_id=$1 AND item.page_number=$2
-		ORDER BY item.item_number`, backfillID, pageNumber)
+		WHERE item.backfill_id=$1 AND item.page_number=$2 AND p.retention_expires_at>$3
+		ORDER BY item.item_number`, backfillID, pageNumber, s.intelligenceOIDCNow())
 	if err != nil {
 		return nil, httptransport.ErrIntelligenceSourceUnavailable
 	}
@@ -416,9 +418,10 @@ func (s *Server) intelligenceSourceV2Snapshot(ctx context.Context, identity http
 		JOIN public.intelligence_source_v2_connections c ON c.id=r.connection_id AND c.id=$1 AND c.enabled AND c.revoked_at IS NULL
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.enabled AND i.tenant_id=$2 AND i.family_id=$3
 		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=r.chat_id AND scope.chat_id=$4
+		JOIN public.chats scoped_chat ON scoped_chat.id=r.chat_id AND scoped_chat.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
-		WHERE r.connection_id=$1 AND r.resource_id=$5 AND r.revision_id=$6 AND NOT r.deleted`,
-		identity.ConnectionID, identity.TenantID, identity.FamilyID, identity.ChatID, resourceID, revisionID).Scan(
+		WHERE r.connection_id=$1 AND r.resource_id=$5 AND r.revision_id=$6 AND NOT r.deleted AND p.retention_expires_at>$7`,
+		identity.ConnectionID, identity.TenantID, identity.FamilyID, identity.ChatID, resourceID, revisionID, s.intelligenceOIDCNow()).Scan(
 		&snapshot.ResourceID, &snapshot.RevisionID, &metadata, &snapshot.ObservedAt, &protocol, &content, &ciphertext, &nonce)
 	if errors.Is(err, sql.ErrNoRows) {
 		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceNotFound
@@ -482,6 +485,7 @@ func intelligenceSourceV2ReadScope(ctx context.Context, queryer sourceV2QueryRow
 			JOIN public.users u ON u.id=c.principal_user_id AND u.id=$3 AND u.is_active=1 AND u.family_id=i.family_id
 			JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=$6
 			JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
+			  AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 			JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
 			JOIN public.intelligence_source_v2_connection_grants g ON g.connection_id=c.id AND g.grant_type='read' AND g.granted
 			WHERE c.id=$1 AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$7

@@ -100,6 +100,10 @@ type Config struct {
 	// Messenger source API. Installation and connection gates are additional
 	// requirements resolved by the source credential store.
 	IntelligenceSourceEnabled bool
+	// IntelligenceSourceV2RestoreEpoch is deployment state kept outside the
+	// database backup. Rotating it before a restore keeps stale snapshots closed
+	// until the tombstone replay is completed.
+	IntelligenceSourceV2RestoreEpoch string
 	// IntelligenceOIDCEnabled is a separate default-off gate for the registered
 	// Intelligence relying party. It does not enable source data access.
 	IntelligenceOIDCEnabled              bool
@@ -255,6 +259,7 @@ func Load() (Config, error) {
 		AICallTranscriptionEnabled:           envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
 		AICallMaxDurationMinutes:             envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
 		IntelligenceSourceEnabled:            envBool("INTELLIGENCE_SOURCE_ENABLED", false),
+		IntelligenceSourceV2RestoreEpoch:     strings.TrimSpace(os.Getenv("INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH")),
 		IntelligenceOIDCEnabled:              envBool("INTELLIGENCE_OIDC_ENABLED", false),
 		IntelligenceOIDCIssuer:               strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_ISSUER")),
 		IntelligenceOIDCClientID:             strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_CLIENT_ID")),

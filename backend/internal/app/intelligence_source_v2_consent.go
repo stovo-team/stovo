@@ -362,10 +362,14 @@ func (s *Server) revokeIntelligenceSourceV2Connection(ctx context.Context, _ *ht
 		return httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	defer func() { _ = tx.Rollback() }()
-	var installationID string
+	var installationID, chatID string
+	var connectionEnabled bool
+	var revokedAt sql.NullTime
 	err = tx.QueryRowContext(ctx, `
-		SELECT c.installation_id FROM public.intelligence_source_v2_connections c
-		WHERE c.id=$1 AND c.principal_user_id=$2 FOR UPDATE`, connectionID, principal.UserID).Scan(&installationID)
+		SELECT c.installation_id,scope.chat_id,c.enabled,c.revoked_at
+		FROM public.intelligence_source_v2_connections c
+	JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id
+		WHERE c.id=$1 AND c.principal_user_id=$2 FOR UPDATE OF c`, connectionID, principal.UserID).Scan(&installationID, &chatID, &connectionEnabled, &revokedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return httptransport.ErrIntelligenceSourceV2ConsentNotFound
 	}
@@ -373,6 +377,18 @@ func (s *Server) revokeIntelligenceSourceV2Connection(ctx context.Context, _ *ht
 		return httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	if grantType != "" {
+		var wasGranted bool
+		if err := tx.QueryRowContext(ctx, `SELECT granted FROM public.intelligence_source_v2_connection_grants WHERE connection_id=$1 AND grant_type=$2`, connectionID, grantType).Scan(&wasGranted); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return httptransport.ErrIntelligenceSourceV2ConsentNotFound
+			}
+			return httptransport.ErrIntelligenceSourceV2ConsentUnavailable
+		}
+		if wasGranted {
+			if err := emitIntelligenceSourceV2ScopeTombstone(ctx, tx, connectionID, chatID, "grant_revoked:"+grantType, grantType == "read"); err != nil {
+				return err
+			}
+		}
 		result, err := tx.ExecContext(ctx, `
 			UPDATE public.intelligence_source_v2_connection_grants
 			SET granted=false,revoked_at=COALESCE(revoked_at,$1),updated_at=$1
@@ -387,6 +403,11 @@ func (s *Server) revokeIntelligenceSourceV2Connection(ctx context.Context, _ *ht
 			return httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 		}
 	} else {
+		if connectionEnabled && !revokedAt.Valid {
+			if err := emitIntelligenceSourceV2ScopeTombstone(ctx, tx, connectionID, chatID, "connection_revoked", true); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE public.intelligence_source_v2_connections
 			SET enabled=false,revoked_at=COALESCE(revoked_at,$1)
