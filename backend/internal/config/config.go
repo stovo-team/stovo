@@ -1,6 +1,9 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/url"
 	"os"
@@ -95,9 +98,18 @@ type Config struct {
 	// Messenger source API. Installation and connection gates are additional
 	// requirements resolved by the source credential store.
 	IntelligenceSourceEnabled bool
-	MinIOCallsBucket          string
-	SolutionProfile           SolutionProfile
-	FeatureMatrix             FeatureMatrix
+	// IntelligenceOIDCEnabled is a separate default-off gate for the registered
+	// Intelligence relying party. It does not enable source data access.
+	IntelligenceOIDCEnabled              bool
+	IntelligenceOIDCIssuer               string
+	IntelligenceOIDCClientID             string
+	IntelligenceOIDCClientSecret         string
+	IntelligenceOIDCRedirectURIs         []string
+	IntelligenceOIDCSigningKeyID         string
+	IntelligenceOIDCSigningPrivateKeyPEM string
+	MinIOCallsBucket                     string
+	SolutionProfile                      SolutionProfile
+	FeatureMatrix                        FeatureMatrix
 }
 
 func Load() (Config, error) {
@@ -200,45 +212,118 @@ func Load() (Config, error) {
 			}
 			return "local"
 		}())),
-		LocalStoragePath:           storagePath,
-		MinIOEndpoint:              getenv("MINIO_ENDPOINT", "minio:9000"),
-		MinIOAccessKey:             strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
-		MinIOSecretKey:             strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
-		MinIOSecure:                envBool("MINIO_SECURE", false),
-		MinIOPublicEndpoint:        strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")),
-		MinIOPublicSecure:          envBool("MINIO_PUBLIC_SECURE", true),
-		MinIOFilesBucket:           getenv("MINIO_FILES_BUCKET", "stovo-files"),
-		MinIOLogsBucket:            getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
-		LogFilePath:                logPath,
-		LogBufferMaxRecords:        bufferSize,
-		TurnEnabled:                envBool("TURN_ENABLED", true),
-		TurnHost:                   envString("TURN_HOST", ""),
-		TurnPort:                   envInt("TURN_PORT", 3478),
-		TurnUsername:               envString("TURN_USERNAME", "family"),
-		TurnPassword:               envString("TURN_PASSWORD", "change_me"),
-		NtfyBaseURL:                envString("NTFY_BASE_URL", "http://ntfy:80"),
-		NtfyPublishToken:           envString("NTFY_PUBLISH_TOKEN", ""),
-		FirebaseCredentialsFile:    envString("FIREBASE_CREDENTIALS_FILE", ""),
-		FirebaseCredentialsJSON:    envString("FIREBASE_CREDENTIALS_JSON", ""),
-		LiveKitURL:                 envString("LIVEKIT_URL", ""),
-		LiveKitAPIKey:              envString("LIVEKIT_API_KEY", ""),
-		LiveKitAPISecret:           envString("LIVEKIT_API_SECRET", ""),
-		GuestMeetingsEnabled:       envBool("GUEST_MEETINGS_ENABLED", true),
-		GuestMeetingURL:            trimTrailingSlash(envString("GUEST_MEETING_URL", getenv("APP_URL", "http://localhost:8000"))),
-		GroqAPIKey:                 envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
-		GroqBaseURL:                envString("GROQ_BASE_URL", envString("GROQ_API_BASE", "")),
-		GroqSTTModel:               getenv("GROQ_STT_MODEL", "qwen3-asr-flash-2025-09-08"),
-		GroqChatModel:              getenv("GROQ_CHAT_MODEL", ""),
-		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
-		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
-		AICallMaxDurationMinutes:   envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
-		IntelligenceSourceEnabled:  envBool("INTELLIGENCE_SOURCE_ENABLED", false),
-		MinIOCallsBucket:           getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
-		SolutionProfile:            ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
-		FeatureMatrix:              GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
+		LocalStoragePath:                     storagePath,
+		MinIOEndpoint:                        getenv("MINIO_ENDPOINT", "minio:9000"),
+		MinIOAccessKey:                       strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
+		MinIOSecretKey:                       strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
+		MinIOSecure:                          envBool("MINIO_SECURE", false),
+		MinIOPublicEndpoint:                  strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")),
+		MinIOPublicSecure:                    envBool("MINIO_PUBLIC_SECURE", true),
+		MinIOFilesBucket:                     getenv("MINIO_FILES_BUCKET", "stovo-files"),
+		MinIOLogsBucket:                      getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
+		LogFilePath:                          logPath,
+		LogBufferMaxRecords:                  bufferSize,
+		TurnEnabled:                          envBool("TURN_ENABLED", true),
+		TurnHost:                             envString("TURN_HOST", ""),
+		TurnPort:                             envInt("TURN_PORT", 3478),
+		TurnUsername:                         envString("TURN_USERNAME", "family"),
+		TurnPassword:                         envString("TURN_PASSWORD", "change_me"),
+		NtfyBaseURL:                          envString("NTFY_BASE_URL", "http://ntfy:80"),
+		NtfyPublishToken:                     envString("NTFY_PUBLISH_TOKEN", ""),
+		FirebaseCredentialsFile:              envString("FIREBASE_CREDENTIALS_FILE", ""),
+		FirebaseCredentialsJSON:              envString("FIREBASE_CREDENTIALS_JSON", ""),
+		LiveKitURL:                           envString("LIVEKIT_URL", ""),
+		LiveKitAPIKey:                        envString("LIVEKIT_API_KEY", ""),
+		LiveKitAPISecret:                     envString("LIVEKIT_API_SECRET", ""),
+		GuestMeetingsEnabled:                 envBool("GUEST_MEETINGS_ENABLED", true),
+		GuestMeetingURL:                      trimTrailingSlash(envString("GUEST_MEETING_URL", getenv("APP_URL", "http://localhost:8000"))),
+		GroqAPIKey:                           envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
+		GroqBaseURL:                          envString("GROQ_BASE_URL", envString("GROQ_API_BASE", "")),
+		GroqSTTModel:                         getenv("GROQ_STT_MODEL", "qwen3-asr-flash-2025-09-08"),
+		GroqChatModel:                        getenv("GROQ_CHAT_MODEL", ""),
+		GroqSTTCostPerHourUSD:                envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
+		AICallTranscriptionEnabled:           envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
+		AICallMaxDurationMinutes:             envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
+		IntelligenceSourceEnabled:            envBool("INTELLIGENCE_SOURCE_ENABLED", false),
+		IntelligenceOIDCEnabled:              envBool("INTELLIGENCE_OIDC_ENABLED", false),
+		IntelligenceOIDCIssuer:               strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_ISSUER")),
+		IntelligenceOIDCClientID:             strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_CLIENT_ID")),
+		IntelligenceOIDCClientSecret:         strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_CLIENT_SECRET")),
+		IntelligenceOIDCRedirectURIs:         splitCSV(os.Getenv("INTELLIGENCE_OIDC_REDIRECT_URIS")),
+		IntelligenceOIDCSigningKeyID:         strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_SIGNING_KEY_ID")),
+		IntelligenceOIDCSigningPrivateKeyPEM: strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_SIGNING_PRIVATE_KEY_PEM")),
+		MinIOCallsBucket:                     getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
+		SolutionProfile:                      ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
+		FeatureMatrix:                        GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
 	}
 
+	if err := cfg.validateIntelligenceOIDC(); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+func (c Config) validateIntelligenceOIDC() error {
+	if !c.IntelligenceOIDCEnabled {
+		return nil
+	}
+	if !canonicalHTTPSIssuer(c.IntelligenceOIDCIssuer) {
+		return fmt.Errorf("invalid Intelligence OIDC config: issuer must be a canonical HTTPS URL")
+	}
+	if c.IntelligenceOIDCClientID == "" || c.IntelligenceOIDCClientSecret == "" || c.IntelligenceOIDCSigningKeyID == "" {
+		return fmt.Errorf("invalid Intelligence OIDC config: client and signing key identifiers are required")
+	}
+	if len(c.IntelligenceOIDCRedirectURIs) == 0 {
+		return fmt.Errorf("invalid Intelligence OIDC config: at least one exact HTTPS callback is required")
+	}
+	seenRedirectURIs := make(map[string]struct{}, len(c.IntelligenceOIDCRedirectURIs))
+	for _, redirectURI := range c.IntelligenceOIDCRedirectURIs {
+		parsed, err := url.ParseRequestURI(redirectURI)
+		if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.Fragment != "" || parsed.ForceQuery || parsed.Opaque != "" || parsed.String() != redirectURI {
+			return fmt.Errorf("invalid Intelligence OIDC config: callback URIs must be exact HTTPS URLs without fragments")
+		}
+		if _, exists := seenRedirectURIs[redirectURI]; exists {
+			return fmt.Errorf("invalid Intelligence OIDC config: callback URIs must be unique")
+		}
+		seenRedirectURIs[redirectURI] = struct{}{}
+	}
+	if !validOIDCSigningPrivateKey(c.IntelligenceOIDCSigningPrivateKeyPEM) {
+		return fmt.Errorf("invalid Intelligence OIDC config: signing key must be an RSA PKCS#8 or PKCS#1 PEM key of at least 2048 bits")
+	}
+	return nil
+}
+
+func canonicalHTTPSIssuer(raw string) bool {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Hostname() == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" || parsed.Opaque != "" {
+		return false
+	}
+	if strings.ToLower(parsed.Host) != parsed.Host || parsed.Port() == "443" || parsed.RawPath != "" || parsed.Path == "/" || strings.HasSuffix(parsed.Path, "/") {
+		return false
+	}
+	return parsed.String() == raw
+}
+
+func validOIDCSigningPrivateKey(raw string) bool {
+	block, rest := pem.Decode([]byte(raw))
+	if block == nil || strings.TrimSpace(string(rest)) != "" {
+		return false
+	}
+	var parsed any
+	var err error
+	switch block.Type {
+	case "PRIVATE KEY":
+		parsed, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+	case "RSA PRIVATE KEY":
+		parsed, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	default:
+		return false
+	}
+	if err != nil {
+		return false
+	}
+	key, ok := parsed.(*rsa.PrivateKey)
+	return ok && key.N.BitLen() >= 2048 && key.Validate() == nil
 }
 
 func splitCSV(value string) []string {
