@@ -155,6 +155,13 @@ export function createBrowserQRLogin() {
   });
 }
 
+export function createAndroidQRLogin(accessToken: string): Promise<{ requestId: string; expiresAt: string }> {
+  return apiRequest<{ requestId: string; expiresAt: string }>("/api/auth/android-qr-login", {
+    method: "POST",
+    accessToken,
+  });
+}
+
 export function getBrowserQRLoginStatus(requestId: string) {
   return apiRequest<BrowserQRLoginStatus>(`/api/auth/qr-login/${encodeURIComponent(requestId)}`);
 }
@@ -211,5 +218,12 @@ export function logout() {
   return apiRequest<{ status: string }>("/api/auth/logout", {
     method: "POST",
     headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
+  });
+}
+
+export function redeemAndroidQRLogin(apiUrl: string, requestId: string): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>(`/api/auth/android-qr-login/${encodeURIComponent(requestId)}/redeem`, {
+    method: "POST",
+    apiBaseUrl: apiUrl,
   });
 }

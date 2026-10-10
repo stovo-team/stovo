@@ -48,7 +48,7 @@ func (h CoreHandlers) AssetLinks(w stdhttp.ResponseWriter, _ *stdhttp.Request) {
 	w.WriteHeader(stdhttp.StatusOK)
 	_, _ = w.Write([]byte(`[
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
     "target": {
       "namespace": "android_app",
       "package_name": "com.stakhovivan.stovo",

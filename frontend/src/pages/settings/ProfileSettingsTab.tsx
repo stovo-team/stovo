@@ -2,9 +2,10 @@ import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { startRegistration } from "@simplewebauthn/browser";
+import QRCode from "qrcode";
 import { BellOff, Clock3, KeyRound, LockKeyhole, Mail, Server, UserRound } from "lucide-react";
-import { ApiError } from "../../api/client";
-import { beginPasskeyRegistration, finishPasskeyRegistration } from "../../api/auth";
+import { ApiError, getApiUrl } from "../../api/client";
+import { beginPasskeyRegistration, createAndroidQRLogin, finishPasskeyRegistration } from "../../api/auth";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
 
@@ -45,18 +46,38 @@ export function ProfileSettingsTab(props: Props) {
   const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
-  const passkeyUnavailable = Capacitor.isNativePlatform() || !window.isSecureContext || typeof window.PublicKeyCredential === "undefined";
+  const [androidQR, setAndroidQR] = useState<{ image: string; expiresAt: string } | null>(null);
+  const [androidQRBusy, setAndroidQRBusy] = useState(false);
+  const [androidQRError, setAndroidQRError] = useState("");
+  async function generateAndroidQR() {
+    if (!accessToken || androidQRBusy) return;
+    setAndroidQRBusy(true);
+    setAndroidQRError("");
+    setAndroidQR(null);
+    try {
+      const apiUrl = getApiUrl();
+      const grant = await createAndroidQRLogin(accessToken);
+      const payload = `stovo://auth/android-login?version=1&apiUrl=${encodeURIComponent(apiUrl)}&code=${encodeURIComponent(grant.requestId)}`;
+      const image = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
+      setAndroidQR({ image, expiresAt: grant.expiresAt });
+    } catch (err) {
+      setAndroidQRError(err instanceof ApiError ? String(err.message) : "Could not create Android sign-in QR. Try again.");
+    } finally {
+      setAndroidQRBusy(false);
+    }
+  }
+  const passkeyUnavailable = (Capacitor.isNativePlatform() && Capacitor.getPlatform() !== "android") || !window.isSecureContext || typeof window.PublicKeyCredential === "undefined";
   async function addPasskey() {
-    if (!accessToken) return;
+    if (!accessToken || passkeyUnavailable || passkeyBusy) return;
     setPasskeyBusy(true);
     setPasskeyMessage("");
     try {
       const ceremony = await beginPasskeyRegistration(accessToken);
       const credential = await startRegistration({ optionsJSON: ceremony.publicKey as never });
       await finishPasskeyRegistration(accessToken, ceremony.ceremonyId, credential);
-      setPasskeyMessage("Passkey added. You can now use it to sign in on the web.");
+      setPasskeyMessage("Passkey added. You can now use it to sign in.");
     } catch (err) {
-      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
+      if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
         setPasskeyMessage(err instanceof ApiError ? String(err.message) : "Could not add passkey. Try again over HTTPS.");
       }
     } finally {
@@ -87,9 +108,19 @@ export function ProfileSettingsTab(props: Props) {
         <h3><KeyRound aria-hidden="true" size={20} /> Passkeys</h3>
         <p className="muted-copy">Use your device screen lock or password manager to sign in without remembering a password.</p>
         <button type="button" className="save-button primary-button" onClick={() => void addPasskey()} disabled={!accessToken || passkeyUnavailable || passkeyBusy || isSaving}>{passkeyBusy ? "Adding…" : "Add a passkey"}</button>
-        {passkeyUnavailable && <p className="muted-copy">Passkeys require HTTPS and a supported browser.</p>}
+        {passkeyUnavailable && <p className="muted-copy">Passkeys require HTTPS and a supported browser or Android WebView.</p>}
         {passkeyMessage && <p role="status" className="muted-copy">{passkeyMessage}</p>}
       </section>
+      {!Capacitor.isNativePlatform() && <section className="profile-detail-form">
+        <h3>Android sign-in QR</h3>
+        <p className="muted-copy">Scan this QR in the Stovo Android app to sign in to your account. Keep it private; it expires in two minutes.</p>
+        <button type="button" className="save-button primary-button" onClick={() => void generateAndroidQR()} disabled={!accessToken || androidQRBusy || isSaving}>{androidQRBusy ? "Creating…" : androidQR ? "Regenerate Android sign-in QR" : "Create Android sign-in QR"}</button>
+        {androidQR && <div aria-live="polite">
+          <img src={androidQR.image} alt="Android sign-in QR code" width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
+          <p className="muted-copy">Expires: <time dateTime={androidQR.expiresAt}>{new Date(androidQR.expiresAt).toLocaleString()}</time></p>
+        </div>}
+        {androidQRError && <p role="alert" className="muted-copy">{androidQRError}</p>}
+      </section>}
       <section className="profile-detail-form profile-notification-schedule">
         <h3>{strings.notifications.quietHours}</h3>
         <label className="profile-notification-toggle">

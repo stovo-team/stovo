@@ -52,6 +52,7 @@ func (s *PostgresStore) UpdatePasskeyCredential(ctx context.Context, credentialI
 
 func (s *PostgresStore) CleanupExpiredAuthRequests(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM passkey_ceremonies WHERE expires_at < now() - interval '1 day'`); err != nil { return err }
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM android_qr_login_grants WHERE expires_at < now() - interval '1 day'`); err != nil { return err }
 	_, err := s.db.ExecContext(ctx, `DELETE FROM qr_login_requests WHERE expires_at < now() - interval '1 day'`)
 	return err
 }
@@ -103,4 +104,15 @@ func (s *PostgresStore) AcceptPasskeyInvite(ctx context.Context, p identity.Pass
 	if _, err = tx.ExecContext(ctx, `INSERT INTO chat_preferences (chat_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, p.FamilyChatID, p.UserID); err != nil { return err }
 	if _, err = tx.ExecContext(ctx, `INSERT INTO refresh_tokens (id,user_id,token_hash,expires_at,created_at,ip_address) VALUES ($1,$2,$3,$4,$5,$6)`, p.RefreshTokenID, p.UserID, p.RefreshTokenHash, p.RefreshExpiresAt, p.CreatedAt, p.IPAddress); err != nil { return err }
 	return tx.Commit()
+}
+
+func (s *PostgresStore) CreateAndroidQRLoginGrant(ctx context.Context, idHash, familyID, userID string, expiresAt time.Time) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO android_qr_login_grants (id_hash, family_id, user_id, expires_at) VALUES ($1, $2, $3, $4)`, idHash, familyID, userID, expiresAt)
+	return err
+}
+
+func (s *PostgresStore) ConsumeAndroidQRLoginGrant(ctx context.Context, idHash string) (identity.AndroidQRLoginGrant, error) {
+	var grant identity.AndroidQRLoginGrant
+	err := s.db.QueryRowContext(ctx, `UPDATE android_qr_login_grants SET consumed_at = now() WHERE id_hash = $1 AND consumed_at IS NULL AND expires_at > now() RETURNING family_id, user_id, expires_at`, idHash).Scan(&grant.FamilyID, &grant.UserID, &grant.ExpiresAt)
+	return grant, err
 }

@@ -207,6 +207,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 		}),
 		PasskeyAuthenticationOptions: http.HandlerFunc(s.passkeyAuthenticationOptions),
 		PasskeyAuthenticationVerify:  http.HandlerFunc(s.passkeyAuthenticationVerify),
+		AndroidQRLoginCreate:         s.authenticated(s.createAndroidQRLogin),
+		AndroidQRLoginRedeem:         http.HandlerFunc(s.redeemAndroidQRLogin),
 		QRLoginCreate:                http.HandlerFunc(s.createQRLogin),
 		QRLoginStatus:                http.HandlerFunc(s.qrLoginStatus),
 		QRLoginApprove: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
