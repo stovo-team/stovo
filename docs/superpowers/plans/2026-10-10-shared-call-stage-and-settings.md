@@ -155,3 +155,17 @@
 - [x] Run `cd frontend && npm test`, `npm run lint`, `npm run build`, and the focused Chromium browser suite. Record the unrelated existing lint baseline failure if it remains.
 - [x] Inspect and capture desktop/right-rail, short/bottom-rail, collapsed share, mobile pair/grid, floating controls, and all three settings tabs.
 - [x] Review the complete diff and commit any final integration fixes. Do not push or publish.
+
+### Follow-up: refine screen-share and mobile call chrome
+
+- [x] Add regressions for mobile participant hide/invite actions, fixed circular
+  control sizing, icon-only record actions, and the roomier translucent panel.
+- [x] Anchor the mobile participant toggle beside thumbnails and route mobile
+  Invite to the existing invite dialog.
+- [x] Increase panel padding/radius/transparency; fix mobile control and SVG
+  sizing; normalize Stovo Intelligence typography and circular record/stop icons.
+- [x] Allow the desktop participant rail to use a second thumbnail column when
+  its available width supports it.
+- [x] Keep Rotate beside mobile Invite and put the invite dialog above the
+  fullscreen presentation; split the top bar to stay within file-size baseline.
+- [x] Run focused and broader tests, build, visual review, and commit locally.

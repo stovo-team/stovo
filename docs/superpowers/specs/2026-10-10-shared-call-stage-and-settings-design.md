@@ -153,6 +153,24 @@ they do not broadcast into mock calls or change another participant's capture.
 
 ## Integration contracts
 
+### Follow-up refinement: screen-share overlay controls and mobile actions
+
+- Keep the desktop presenter and participant rail flush to opposite stage edges at
+  the existing 5:1 width ratio. If the right rail grows beyond 240px, remote
+  participant thumbnails may flow into two columns while each card stays 16:9.
+- Anchor the small participant-collapse chevron to the participant row edge on
+  mobile and to the presenter/rail boundary on desktop. Keep it overlaid and
+  reachable in both layouts.
+- Keep the mobile top controls over the presentation and expose both Shrink and
+  Invite alongside Rotate. Mobile Invite opens the same call invite dialog as
+  desktop; the dialog itself remains above the presentation and interactive.
+- Give the floating control panel more interior spacing, a 22px radius, and a
+  translucent blurred surface. Keep mobile action buttons fixed-size circles and
+  their SVGs at a consistent size so the row cannot stretch or squash them.
+- Match the Stovo Intelligence row padding and title typography to the other More
+  menu entries. Use icon-only circular SVG controls for start/stop actions: a
+  record circle to start and a square stop glyph to stop.
+
 All four call paths render the same stage/layout base and the same control-panel
 and settings bases. Adapter code may vary for device capabilities, action callbacks,
 guest authorization, and media engines. Settings supported by a call type are

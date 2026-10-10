@@ -81,6 +81,46 @@ describe("mobile call UI unification", () => {
     expect(controls?.querySelectorAll(".mobile-active-ctrl-lbl")).toHaveLength(0);
   });
 
+  it("keeps participant collapse and invite actions beside a mobile screen share", () => {
+    const openInvite = vi.fn();
+    window.addEventListener("stovo:open-call-invite", openInvite);
+    try {
+      const container = renderScreen({
+        ...baseProps,
+        callType: "video",
+        mockScreenShareOwner: { userId: "presenter", displayName: "Alex" },
+      });
+      expect(container.querySelector('.shared-call-stage [aria-label="Hide participants"]')).not.toBeNull();
+      const invite = container.querySelector<HTMLButtonElement>('.mobile-active-top-bar [aria-label="Invite people"]');
+      expect(invite).not.toBeNull();
+      act(() => invite?.click());
+      expect(openInvite).toHaveBeenCalledOnce();
+    } finally {
+      window.removeEventListener("stovo:open-call-invite", openInvite);
+    }
+  });
+
+  it("uses round icon actions for AI Notes and video recording", () => {
+    const container = renderScreen(baseProps);
+    act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
+    for (const label of ["Start AI Notes", "Start Recording"]) {
+      const action = container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
+      expect(action?.querySelector("svg")).not.toBeNull();
+      expect(action?.textContent).not.toMatch(/Start/);
+    }
+  });
+
+  it("keeps mobile call controls round and fixed-size inside the floating panel", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/font:\s*inherit/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-name")).toMatch(/font-size:\s*\.875rem/);
+  });
+
   it("toggles auto-hidden controls on repeated mobile stage taps", () => {
     writeCallUIPreferences({ autoHideControls: true });
     const container = renderScreen(baseProps);

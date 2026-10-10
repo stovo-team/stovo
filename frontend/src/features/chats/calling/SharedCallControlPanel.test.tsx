@@ -57,9 +57,9 @@ describe("SharedCallControlPanel", () => {
     expect(styles).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.shared-call-control-panel\s*\{\s*transition:\s*none/);
   });
 
-  it("keeps the floating control box compact and rectangular over the shared stage", () => {
+  it("keeps the floating control box padded, rounded, and translucent over the shared stage", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*border-radius:\s*16px;[^}]*padding:\s*2px 4px/);
+    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*rgba\(24, 25, 28, \.68\);[^}]*border-radius:\s*22px;[^}]*padding:\s*8px 12px/);
     expect(styles).toMatch(/\.call-popup\.call-popup-fullscreen \.shared-call-control-panel > \.call-popup-ctrl-row\s*\{[^}]*background:\s*transparent !important;[^}]*padding:\s*0 !important/);
   });
 });

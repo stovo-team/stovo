@@ -54,6 +54,9 @@ export const SharedCallStage = forwardRef<HTMLDivElement, SharedCallStageProps>(
       return;
     }
     const presenter = stage.querySelector<HTMLElement>(".call-grid__tile--screen, .guest-call-screen-tile");
+    const participants = isMobile
+      ? stage.querySelector<HTMLElement>(".call-grid__mobile-participant-row")
+      : null;
     if (!presenter) {
       setPresenterAnchor(null);
       return;
@@ -61,10 +64,11 @@ export const SharedCallStage = forwardRef<HTMLDivElement, SharedCallStageProps>(
     const measure = () => {
       const stageBounds = stage.getBoundingClientRect();
       const presenterBounds = presenter.getBoundingClientRect();
+      const anchorBounds = participants?.getBoundingClientRect() ?? presenterBounds;
       if (!stageBounds.width || !presenterBounds.width) return;
       const next = {
-        left: presenterBounds.right - stageBounds.left,
-        top: presenterBounds.top - stageBounds.top + presenterBounds.height / 2,
+        left: anchorBounds.right - stageBounds.left,
+        top: anchorBounds.top - stageBounds.top + anchorBounds.height / 2,
       };
       setPresenterAnchor((current) => current && Math.abs(current.left - next.left) < 0.5 && Math.abs(current.top - next.top) < 0.5 ? current : next);
     };

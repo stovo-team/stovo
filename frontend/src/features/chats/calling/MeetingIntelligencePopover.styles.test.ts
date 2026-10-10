@@ -27,16 +27,20 @@ describe("meeting intelligence popover design", () => {
     expect(ruleFor(".meeting-intel-card + .meeting-intel-card")).not.toMatch(/border/);
   });
 
-  it("uses labeled rectangular controls and a collapsed Intelligence section in the mobile menu", () => {
+  it("uses circular icon controls and matching typography in the collapsed mobile Intelligence section", () => {
     expect(component).toContain('className="meeting-intel-inline-toggle"');
     expect(component).toContain('aria-expanded={isExpanded}');
     expect(component).toContain('{isExpanded && <div className="meeting-intel-content">');
-    expect(component).toContain('isNotesActive ? "Stop"');
-    expect(component).toContain('isRecActive ? "Stop"');
+    expect(component).toContain("isNotesActive ? <Square");
+    expect(component).toContain("isRecActive ? <Square");
+    expect(component).toContain("<Circle size={17}");
     const button = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
-    expect(button).toMatch(/border-radius:\s*9px/);
-    expect(button).toMatch(/min-width:\s*58px/);
-    expect(button).toMatch(/flex:\s*0 0 auto/);
+    expect(button).toMatch(/border-radius:\s*50%/);
+    expect(button).toMatch(/min-width:\s*36px/);
+    expect(button).toMatch(/flex:\s*0 0 36px/);
+    expect(ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
+    const titleRules = Array.from(styles.matchAll(/\.meeting-intel-popover--inline-menu \.meeting-intel-name\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(titleRules.at(-1)).toMatch(/font-size:\s*\.875rem/);
   });
 
   it("keeps Live Captions disabled and places its Premium badge beside the switch", () => {

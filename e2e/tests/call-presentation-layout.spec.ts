@@ -18,13 +18,29 @@ for (const viewport of [
     await page.getByRole("button", { name: /^(Share screen|Share Screen)$/ }).click();
     await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
     await expect(peer.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
+    if (viewport.layout === "mobile-bottom") await page.screenshot({ path: test.info().outputPath("mobile-presentation.png") });
     const grid = page.locator(".call-grid--presenting:visible");
     if (viewport.layout === "mobile-bottom") {
+      const participantToggle = page.getByRole("button", { name: "Hide participants" });
+      await expect(participantToggle).toBeVisible();
+      await participantToggle.click();
+      await expect(page.getByRole("button", { name: "Show participants" })).toBeVisible();
+      await page.getByRole("button", { name: "Show participants" }).click();
+      await page.getByRole("button", { name: "Invite people" }).click();
+      await expect(page.getByRole("dialog", { name: "Invite to call" })).toBeVisible();
+      await page.getByRole("button", { name: "Close invite modal" }).click();
+      await page.getByRole("button", { name: "Rotate landscape" }).click();
+      await expect(page.getByRole("button", { name: "Close landscape view" })).toBeVisible();
+      await page.getByRole("button", { name: "Close landscape view" }).click();
       await expect.poll(async () => page.locator(".shared-call-control-panel").evaluate((panel) => {
         const panelRect = panel.getBoundingClientRect();
         const controls = Array.from(panel.querySelectorAll<HTMLElement>("button")).map((button) => button.getBoundingClientRect());
+        const firstControl = panel.querySelector<HTMLElement>(".mobile-active-ctrl-btn")!;
+        const firstControlRect = firstControl.getBoundingClientRect();
         return panelRect.width >= 280
           && controls.length >= 5
+          && getComputedStyle(firstControl).borderRadius === "50%"
+          && Math.abs(firstControlRect.width - firstControlRect.height) < 1
           && controls.every((rect) => rect.left >= panelRect.left && rect.right <= panelRect.right)
           && controls.every((rect, index) => controls.slice(index + 1).every((other) => rect.right <= other.left + 1 || other.right <= rect.left + 1));
       })).toBe(true);
@@ -70,7 +86,6 @@ for (const viewport of [
       });
       expect(Math.abs(geometry.left)).toBeLessThanOrEqual(1);
       expect(geometry.height).toBeGreaterThan(72);
-      await page.screenshot({ path: test.info().outputPath("mobile-presentation.png") });
     }
     await page.getByRole("button", { name: "End call", exact: true }).click();
     await peer.close();
@@ -194,7 +209,7 @@ test("replaces group audio avatars with the shared screen on desktop", async ({ 
   const expandedPresenter = await presenter.boundingBox();
   expect(expandedPresenter!.width * expandedPresenter!.height).toBeGreaterThan(initialPresenter!.width * initialPresenter!.height);
   const controlPanel = await page.locator(".shared-call-control-panel").boundingBox();
-  expect(controlPanel!.height).toBeLessThanOrEqual(64);
+  expect(controlPanel!.height).toBeLessThanOrEqual(72);
   expect(controlPanel!.x).toBeGreaterThanOrEqual(expandedPresenter!.x);
   expect(controlPanel!.x + controlPanel!.width).toBeLessThanOrEqual(expandedPresenter!.x + expandedPresenter!.width);
   await expect(page.locator(".call-grid-shell:visible .call-grid__audio-pool")).toBeAttached();

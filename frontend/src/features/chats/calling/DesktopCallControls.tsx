@@ -22,7 +22,7 @@ import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -92,6 +92,11 @@ export function DesktopCallControls({
     accessToken,
     socketRef
   } = session;
+  useEffect(() => {
+    const openInvite = () => setIsCallInviteOpen(true);
+    window.addEventListener("stovo:open-call-invite", openInvite);
+    return () => window.removeEventListener("stovo:open-call-invite", openInvite);
+  }, [setIsCallInviteOpen]);
 
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";

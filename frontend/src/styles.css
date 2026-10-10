@@ -939,6 +939,7 @@
   align-content: start;
   gap: 8px;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .call-grid__participant-pin {
@@ -958,6 +959,10 @@
   gap: 8px;
   min-height: 0;
   overflow-y: auto;
+}
+
+@container (min-width: 240px) {
+  .call-grid__remote-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .call-grid__remote-rail > [data-participant-id] {
@@ -15113,6 +15118,20 @@ span.message-spoiler.is-revealed {
   gap: 8px;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.mobile-active-top-bar:has(.mobile-active-invite-btn) {
+  left: 16px;
+  right: 16px;
+  justify-content: space-between;
+}
+.mobile-active-top-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.mobile-active-top-actions .mobile-active-landscape-open {
+  position: static;
+  inset: auto;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  z-index: auto;
+}
 
 .mobile-active-top-bar.mobile-active-controls--hidden {
   opacity: 0;
@@ -26082,15 +26101,17 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .shared-call-control-panel {
   align-items: center;
-  background: rgba(24, 25, 28, .9);
+  background: rgba(24, 25, 28, .68);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
   border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 16px;
+  border-radius: 22px;
   bottom: 16px;
   display: flex;
   justify-content: center;
   left: 50%;
   max-width: calc(100% - 24px);
-  padding: 2px 4px;
+  padding: 8px 12px;
   position: absolute;
   transform: translateX(-50%);
   transition: opacity .18s ease, translate .18s ease;
@@ -26105,7 +26126,21 @@ button.chat-info-title-edit:active:not(:disabled) {
   box-sizing: border-box;
   max-width: 100%;
   width: 100%;
+  gap: clamp(0px, 1vw, 6px);
 }
+.mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl,
+.mobile-active-screen--video .shared-call-control-panel .mobile-active-more-anchor { flex: 0 0 auto; min-width: 0; }
+.mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn {
+  box-sizing: border-box;
+  flex: 0 0 clamp(44px, 13vw, 48px);
+  width: clamp(44px, 13vw, 48px);
+  height: clamp(44px, 13vw, 48px);
+  min-width: clamp(44px, 13vw, 48px);
+  min-height: clamp(44px, 13vw, 48px);
+  border-radius: 50%;
+  padding: 0;
+}
+.mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn svg { display: block; flex: 0 0 auto; width: 20px; height: 20px; }
 .call-popup.call-popup-fullscreen .shared-call-control-panel > .call-popup-ctrl-row {
   background: transparent !important;
   padding: 0 !important;
@@ -26132,6 +26167,33 @@ button.chat-info-title-edit:active:not(:disabled) {
   overflow: hidden;
   width: min(820px, calc(100vw - 32px));
 }
+.call-invite-modal {
+  position: fixed;
+  z-index: 10001;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 14px;
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 18px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 22px;
+  background: rgba(25, 26, 30, .96);
+  color: var(--text-primary, #fff);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .55);
+  backdrop-filter: blur(18px);
+}
+.call-invite-modal-header,
+.call-invite-modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.call-invite-modal-header h3 { margin: 0; font: inherit; font-size: 1rem; font-weight: 650; }
+.call-invite-member-list { display: grid; gap: 4px; max-height: min(42dvh, 320px); overflow: auto; }
+.call-invite-member-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px; border-radius: 10px; cursor: pointer; }
+.call-invite-member-row:hover { background: rgba(255, 255, 255, .07); }
+.call-invite-modal-actions { justify-content: flex-end; }
 .call-settings-dialog-header {
   align-items: center;
   border-bottom: 1px solid var(--border-default, rgba(255,255,255,.12));
@@ -30815,7 +30877,7 @@ button.checklist-add-item-btn:hover,
   aspect-ratio: auto;
   right: 12px;
   bottom: max(calc(env(safe-area-inset-bottom, 0px) + 104px), 116px);
-  z-index: 20;
+  z-index: 34;
   border-radius: 8px;
   cursor: pointer;
 }
@@ -31129,14 +31191,15 @@ button.checklist-add-item-btn:hover,
 .call-grid__mobile-participant-row .call-grid__label { left: 3px; right: 3px; bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
 .call-grid__mobile-participant-row .call-grid__participant-status { display: none; }
 .meeting-intel-inline-toggle {
-  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
-  color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left;
+  box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px;
+  color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left; font: inherit;
 }
 .meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
-  width: auto; min-width: 58px; height: 32px; min-height: 32px; flex: 0 0 auto;
-  padding: 0 12px; border-radius: 9px; font-size: .78rem;
+  box-sizing: border-box; width: 36px; min-width: 36px; height: 36px; min-height: 36px; flex: 0 0 36px;
+  padding: 0; border-radius: 50%; font: inherit;
 }
+.meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
 .meeting-intel-restricted-badge[aria-label="Premium feature"] {
   display: inline-flex; align-items: center; width: max-content; padding: 2px 8px;
   color: #bfdbfe; background: rgba(37, 99, 235, .24); border: 1px solid rgba(96, 165, 250, .4);
@@ -31165,10 +31228,12 @@ button.checklist-add-item-btn:hover,
 }
 
 .meeting-intel-popover--inline-menu .meeting-intel-content { padding: 0; display: grid; gap: 2px; }
-.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 6px 10px 4px; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 0; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-inline-toggle { min-height: 44px; padding: 0 12px; font: inherit; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { font: inherit; }
 .meeting-intel-popover--inline-menu .meeting-intel-title-row { gap: 7px; }
 .meeting-intel-popover--inline-menu .meeting-intel-logo { width: 16px; height: 16px; }
-.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-secondary); font-size: 11px; font-weight: 650; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-primary); font-size: .875rem; font-weight: 500; }
 .meeting-intel-popover--inline-menu .meeting-intel-card { padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; }
 .meeting-intel-popover--inline-menu .meeting-intel-card:hover { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
 .meeting-intel-popover--inline-menu .meeting-intel-card-head { min-height: 30px; }
