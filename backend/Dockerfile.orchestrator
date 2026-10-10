@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache git gcc musl-dev
 
 COPY go.mod go.sum ./
+COPY third_party/socketio/go.mod third_party/socketio/go.sum ./third_party/socketio/
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash .github/workflows/backend-dockerfiles.test.sh
+
 awk '
   function fail(message) {
     print message > "/dev/stderr"
