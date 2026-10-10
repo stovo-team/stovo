@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "./screenShareLayout";
+import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "./screenShareLayout";
 
 describe("screen share layout", () => {
   it("uses the side rail when the 16:9 presenter and participant cards fit", () => {
@@ -9,6 +9,11 @@ describe("screen share layout", () => {
   it("moves participants below the presenter when width or height is constrained", () => {
     expect(getScreenShareLayout(450, 720, 2)).toBe("bottom");
     expect(getScreenShareLayout(1200, 150, 2)).toBe("bottom");
+  });
+
+  it("keeps the production policy while fitting a smaller mock screen beside the rail", () => {
+    expect(getScreenShareLayout(1200, 400, 2)).toBe("bottom");
+    expect(getMockScreenShareLayout(1200, 400, 2)).toBe("side");
   });
 
   it("uses the bottom row when the side rail would clip the participant list", () => {

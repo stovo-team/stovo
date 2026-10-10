@@ -256,7 +256,7 @@ export function VoiceChannelStage({
   }
 
   const isListMode = participantCount > 9;
-  const mockScreenShareOwnerId = session.mockScreenShareUserId;
+  const mockScreenShareOwnerId = isCurrentChannelActive ? session.mockScreenShareUserId : null;
   const hasActiveScreenShare = hasScreenSharePresentation(mockScreenShareOwnerId, localScreenStream, callRemoteMedia);
   const mockScreenShareOwner = mockScreenShareOwnerId ? { userId: mockScreenShareOwnerId, displayName: resolveMemberInfo(mockScreenShareOwnerId).rawDisplayName } : null;
 

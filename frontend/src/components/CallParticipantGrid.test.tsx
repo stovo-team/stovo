@@ -103,7 +103,7 @@ describe("shared call participant presentation", () => {
 
     stage = { width: 1200, height: 400 };
     act(() => observers.forEach((resize) => resize(stage)));
-    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);
 
     stage = { width: 450, height: 720 };
     act(() => observers.forEach((resize) => resize(stage)));
@@ -158,6 +158,10 @@ describe("shared call participant presentation", () => {
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
     expect(grid.querySelector(".call-grid__participant-rail")).not.toBeNull();
     expect(styleRules(readFileSync("src/styles.css", "utf8"), ".call-grid__participant-rail")).toMatch(/grid-column:\s*2/);
+
+    stage = { width: 1200, height: 400 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
 
     stage = { width: 450, height: 720 };
     act(() => observers.forEach((resize) => resize(stage)));

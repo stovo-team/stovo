@@ -21,9 +21,13 @@ export function getScreenSharePresenterSize(
   return { width: presenterWidth, height: presenterWidth * (9 / 16) };
 }
 
-/** Use a side rail only when both its participant cards and the 16:9 screen fit. */
-export function getScreenShareLayout(width: number, height: number, participantCount: number): ScreenShareLayout {
-  if (width <= 0 || height <= 0) return "bottom";
+function hasSideRailSpace(
+  width: number,
+  height: number,
+  participantCount: number,
+  minimumPresenterHeight: number,
+): boolean {
+  if (width <= 0 || height <= 0) return false;
 
   const railWidth = Math.min(168, Math.max(112, width * 0.16));
   const gap = 12;
@@ -31,10 +35,19 @@ export function getScreenShareLayout(width: number, height: number, participantC
   const visibleCardCount = Math.max(1, participantCount);
   const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
   const minimumPresenterWidth = 360;
-  const minimumPresenterHeight = 200;
 
   return width >= minimumPresenterWidth + railWidth + gap
-    && height >= Math.max(minimumPresenterHeight, requiredRailHeight)
-    ? "side"
-    : "bottom";
+    && height >= Math.max(minimumPresenterHeight, requiredRailHeight);
+}
+
+/** Keep real screen sharing on the original full-size 16:9 layout policy. */
+export function getScreenShareLayout(width: number, height: number, participantCount: number): ScreenShareLayout {
+  const railWidth = Math.min(168, Math.max(112, width * 0.16));
+  const presenterHeight = (width - railWidth - 12) * (9 / 16);
+  return hasSideRailSpace(width, height, participantCount, Math.max(200, presenterHeight)) ? "side" : "bottom";
+}
+
+/** Mock fixtures can shrink vertically to fit beside the participant rail. */
+export function getMockScreenShareLayout(width: number, height: number, participantCount: number): ScreenShareLayout {
+  return hasSideRailSpace(width, height, participantCount, 200) ? "side" : "bottom";
 }

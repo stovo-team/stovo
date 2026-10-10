@@ -4,7 +4,7 @@ import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
-import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
+import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
 import { MockScreenSharePreview } from "../features/chats/calling/MockScreenSharePreview";
 
 type ScreenPresenter = {
@@ -166,9 +166,10 @@ export default function CallParticipantGrid({
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
 
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
+  const getPresenterLayout = presenter?.isMock ? getMockScreenShareLayout : getScreenShareLayout;
   const useBottomScreenShareRail = useScreenShareRail && (
     stageSize
-      ? getScreenShareLayout(stageSize.width, stageSize.height, remoteMedia.length + 1) === "bottom"
+      ? getPresenterLayout(stageSize.width, stageSize.height, remoteMedia.length + 1) === "bottom"
       : remoteMedia.length >= 4
   );
   const screenPresenterSize = useScreenShareRail && stageSize

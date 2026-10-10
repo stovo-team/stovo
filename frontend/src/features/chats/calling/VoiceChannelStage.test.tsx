@@ -170,6 +170,27 @@ describe("VoiceChannelStage", () => {
     expect(container.querySelector(".call-grid__tile--screen")?.getAttribute("style")).toContain("aspect-ratio: 16 / 9");
   });
 
+  it("does not show a mock presenter while this voice channel is inactive", () => {
+    const session = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callRoomId: "mock-call-voice",
+      callType: "audio",
+      callParticipantIds: [],
+      mockScreenShareUserId: "user-2",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callRemoteMedia: [],
+      activeGroupCalls: {},
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false,
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    expect(container.querySelector('[role="img"][aria-label="Bob\'s shared screen"]')).toBeNull();
+  });
+
   it("renders when disconnected with active participants and allows user to join with exactly one button", () => {
     const mockJoinVoiceChannel = vi.fn();
     const mockSession = {

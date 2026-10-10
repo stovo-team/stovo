@@ -9,6 +9,7 @@ import {
   acceptMockCall,
   createMockCall,
   declineMockCall,
+  getMockCallScreenShareOwnerForParticipant,
   inviteMockCallUsers,
   leaveMockCall,
   publishMockCallSnapshot,
@@ -111,19 +112,24 @@ export function useMockCallSession({
     }
 
     const activeUser = currentUserRef.current;
-    if (!activeUser) return;
-    const screenShareUserId = call.screenShareUserId && call.participants.some(
-      (participant) => participant.userId === call.screenShareUserId && participant.state === "connected",
-    ) ? call.screenShareUserId : null;
-    setMockScreenShareUserId(screenShareUserId);
+    if (!activeUser) {
+      setMockScreenShareUserId(null);
+      return;
+    }
     const self = call.participants.find((participant) => participant.userId === activeUser.id);
-    if (!self) return;
+    if (!self) {
+      setMockScreenShareUserId(null);
+      return;
+    }
     if (self.state === "declined" || self.state === "left") {
+      setMockScreenShareUserId(null);
       if (isCurrentCall) {
         void resetCallState(self.state === "declined" ? "Call declined" : "Call ended", true, false);
       }
       return;
     }
+    const screenShareUserId = getMockCallScreenShareOwnerForParticipant(call, activeUser.id);
+    setMockScreenShareUserId(screenShareUserId);
 
     const callChat = chatsRef.current.find((chat) => chat.id === call.chatId);
     if (!callChat) return;
