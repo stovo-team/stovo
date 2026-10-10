@@ -185,7 +185,7 @@ func TestAndroidQRLoginLifecycle(t *testing.T) {
 				t.Fatalf("new receiving session count = %d, error = %v", count, err)
 			}
 			reused := androidQRRedeem(t, host, grant.RequestID, origin, "192.0.2.5")
-			defer reused.Body.Close()
+			defer func() { _ = reused.Body.Close() }()
 			if reused.StatusCode != http.StatusUnauthorized {
 				t.Fatalf("reused grant = %d", reused.StatusCode)
 			}
@@ -219,7 +219,7 @@ func TestAndroidQRLoginRejectsUnavailableGrants(t *testing.T) {
 				t.Fatal(err)
 			}
 			response := androidQRRedeem(t, host, grant.RequestID, "capacitor://localhost", "192.0.2.5")
-			defer response.Body.Close()
+			defer func() { _ = response.Body.Close() }()
 			if response.StatusCode != http.StatusUnauthorized {
 				t.Fatalf("%s grant = %d", reason, response.StatusCode)
 			}

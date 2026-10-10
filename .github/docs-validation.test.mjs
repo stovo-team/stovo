@@ -46,6 +46,16 @@ function markdownFiles(directory, found = []) {
   return found;
 }
 
+function sourceFiles(directory, found = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!['.git', 'node_modules', 'dist', 'coverage', 'build', 'vendor'].includes(entry.name)) sourceFiles(file, found);
+    } else if (entry.isFile() && /\.(?:go|kt|java|ts|tsx|js|jsx|yml|yaml|gradle|properties)$/.test(entry.name)) found.push(file);
+  }
+  return found;
+}
+
 test('README links to the maintained deployment and contributor guides', () => {
   const readme = read('README.md');
   for (const file of ['CONTRIBUTING.md', 'SECURITY.md', 'docs/README.md', 'docs/self-hosting/docker-compose.md', 'docs/self-hosting/kubernetes.md']) {
@@ -212,6 +222,11 @@ test('all Markdown local links and GitHub heading anchors resolve', () => {
 test('documented Compose filenames and backticked config names match repository configuration', () => {
   const allMarkdownFiles = markdownFiles(root);
   const allMarkdown = allMarkdownFiles.map((file) => readFileSync(file, 'utf8')).join('\n');
+  const implementation = [
+    ...sourceFiles(path.join(root, 'backend')),
+    ...sourceFiles(path.join(root, 'frontend')),
+    ...sourceFiles(path.join(root, '.github/workflows')),
+  ].map((file) => readFileSync(file, 'utf8')).join('\n');
   // README is an immutable target-branch blob in this cleanup. Keep checking
   // operational Compose commands in maintained docs without rewriting it.
   const composeDocs = allMarkdownFiles.filter((file) => path.relative(root, file) !== 'README.md');
@@ -226,7 +241,9 @@ test('documented Compose filenames and backticked config names match repository 
   }
   for (const [, name] of allMarkdown.matchAll(/`([A-Z][A-Z0-9_]{2,})`/g)) {
     if (/^(?:HTTP|HTTPS|API|URL|JWT|S3|AWS|GCP|CPU|RAM|TLS|UDP|TCP|DNS|CI|CD|JSON|YAML|SQL|SPA|CSS|MCP|RBAC)$/.test(name)) continue;
-    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name)) || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name);
+    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
+      || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name)
+      || implementation.includes(name);
     if (!known) errors.push(`unknown config name ${name}`);
   }
   assert.deepEqual(errors, []);
