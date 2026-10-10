@@ -12,7 +12,7 @@ import type { Socket } from "socket.io-client";
 import type { NavigateFunction } from "react-router-dom";
 
 import type { User } from "../../../api/auth";
-import { getChat, type Chat, type Message } from "../../../api/chats";
+import { type Chat, type Message } from "../../../api/chats";
 import { getFamily } from "../../../api/family";
 import CallController, {
   CallCapabilities,
@@ -21,6 +21,7 @@ import CallController, {
   type CallTopology
 } from "../../../realtime/CallController";
 import { callQualityProfileForChatType, DEFAULT_CALL_QUALITY_BITRATES, resolveCallQualityBitrates, type CallQualityProfile } from "../../../realtime/call/callQuality";
+import { createDirectCallStarter } from "./directCallStartup";
 import { waitForSocketConnection } from "../../../realtime/socketConnection";
 import { waitForVoiceChannelConnection } from "./voiceChannelConnection";
 import { createCallSoundPlayer } from "../../../realtime/callSounds";
@@ -194,6 +195,9 @@ export function useCallSession({
   const activeCallSessionIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
+  const callStartupGenerationRef = useRef(0);
+  const callStartupPromiseRef = useRef<Promise<void>>(Promise.resolve());
+  const callCleanupPromiseRef = useRef<Promise<void>>(Promise.resolve());
   const pictureInPictureActiveRef = useRef(false);
   const soundDisabledRef = useRef(callAudioSettings.soundDisabled);
   const callSettingsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -422,6 +426,7 @@ export function useCallSession({
     serverAlreadyNotified = false,
     playEndSoundEffect = true
   ) {
+    callStartupGenerationRef.current += 1;
     console.log("[resetCallState] notice=", notice, "serverAlreadyNotified=", serverAlreadyNotified, new Error().stack?.split("\n").slice(1, 4).join(" | "));
     dismissNativeCallNotification();
     if (playEndSoundEffect && callPhaseRef.current !== "idle") {
@@ -429,7 +434,10 @@ export function useCallSession({
     } else {
       stopCallRingtone();
     }
-    await audioCallRef.current?.cleanup(serverAlreadyNotified);
+    const cleanup = Promise.resolve(audioCallRef.current?.cleanup(serverAlreadyNotified)).catch((err) => {
+      console.warn("[CALL] cleanup failed while resetting call state:", err);
+    });
+    callCleanupPromiseRef.current = cleanup;
     callPhaseRef.current = "idle";
     activeCallSessionIdRef.current = null;
     activeCallChatIdRef.current = null;
@@ -465,6 +473,7 @@ export function useCallSession({
     setCallAudioWarning(null);
     setIsPeerSpeaking(false);
     setCallNotice(notice === "Call ended" ? null : notice ?? null);
+    await cleanup;
   }
 
   const mockCallSession = useMockCallSession({
@@ -478,110 +487,6 @@ export function useCallSession({
       setIsLocalSpeaking, setIsPeerSpeaking, setSpeakingUserIds, setCallAudioSettings, setCallNotice,
     },
   });
-
-  async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
-    console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
-    if (callPhaseRef.current !== "idle") {
-      console.warn("[CALL] startDirectCall: cannot start call while another call is active (callPhase=", callPhaseRef.current, ")");
-      return;
-    }
-    const canCall =
-      selectedChat &&
-      currentUser &&
-      (selectedChat.type === "direct" || selectedChat.type === "group" || selectedChat.type === "family");
-    if (!canCall || !selectedChat || !currentUser) {
-      console.warn("[CALL] startDirectCall: guard failed — selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
-      return;
-    }
-    if (await mockCallSession.startDirectCall(type, inviteUserIds)) return;
-    const socket = socketRef.current;
-    if (!socket) {
-      setError("Realtime is not connected yet. Please wait a moment and try again.");
-      return;
-    }
-    console.log("[CALL] startDirectCall: ensuring socket connected, socket.connected=", socket.connected);
-    const connected = await waitForSocketConnection(socket, { attemptTimeoutMs: 4500 });
-    console.log("[CALL] startDirectCall: socket connected=", connected);
-    if (!connected) {
-      setError("Realtime connection is offline. Please refresh and try again.");
-      return;
-    }
-    let callChat = selectedChat;
-    let peers = callChat.members.filter((member) => member.id !== currentUser.id);
-    if (peers.length === 0) {
-      // The selected chat can be an outdated overview snapshot. Reload its
-      // authoritative member list before deciding that there is nobody to call.
-      if (accessToken) {
-        try {
-          callChat = await getChat(accessToken, selectedChat.id);
-          setSelectedChat(callChat);
-          peers = callChat.members.filter((member) => member.id !== currentUser.id);
-        } catch (err) {
-          console.warn("[CALL] startDirectCall: failed to refresh chat members", err);
-        }
-      }
-      if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
-        console.warn("[CALL] startDirectCall: no peer member found in chat");
-        setError("This chat has no other members to call. Add someone to the chat and try again.");
-        return;
-      }
-    }
-    const selectedInvitees =
-      inviteUserIds && inviteUserIds.length > 0
-        ? inviteUserIds
-        : callChat.type === "direct"
-          ? [peers[0].id]
-          : peers.map((p) => p.id);
-    const primaryPeer = peers.find((p) => selectedInvitees.includes(p.id)) ?? peers[0];
-    const isGroup = callChat.type === "group" || callChat.type === "family";
-    console.log("[CALL] startDirectCall: peer=", primaryPeer?.id ?? null, "invitees=", selectedInvitees, "isGroup=", isGroup);
-    setError(null);
-    setCallNotice(null);
-    setCallType(type);
-    callTypeRef.current = type;
-    if (type === "audio") {
-      void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
-    } else {
-      void applyCallAudioPatch({ cameraEnabled: true, speakerMode: "large" });
-    }
-    const initialPhase: CallPhase = isGroup ? "connecting" : "outgoing";
-    setCallPhase(initialPhase);
-    callPhaseRef.current = initialPhase;
-    activeCallSessionIdRef.current = "pending";
-    setActiveCallChatId(selectedChat.id);
-    setCallPeerUserId(primaryPeer?.id ?? null);
-    setCallPeerDisplayName(isGroup ? (callChat.title ?? primaryPeer?.displayName ?? null) : (primaryPeer?.displayName ?? null));
-    setCallParticipantIds([currentUser.id, ...selectedInvitees]);
-    setCallTopology("mesh");
-    activeCallChatIdRef.current = selectedChat.id;
-    audioCallRef.current?.setLocalUserId(currentUser.id);
-    console.log("[CALL] startDirectCall: calling prepareForCall type=", type);
-    try {
-      await loadCallQuality(callQualityProfileForChatType(callChat.type));
-      await audioCallRef.current?.prepareForCall(type);
-      console.log("[CALL] startDirectCall: prepareForCall resolved OK");
-    } catch (err) {
-      console.error("[CALL] startDirectCall: prepareForCall threw:", err instanceof Error ? err.name + ": " + err.message : err);
-      stopCallRingtone();
-      void audioCallRef.current?.cleanup(true).catch(() => undefined);
-      setCallPhase("idle");
-      callPhaseRef.current = "idle";
-      activeCallSessionIdRef.current = null;
-      callTypeRef.current = "audio";
-      setActiveCallChatId(null);
-      setCallPeerUserId(null);
-      activeCallChatIdRef.current = null;
-      setError(err instanceof Error ? err.message : "Microphone permission is required to call");
-      return;
-    }
-    console.log("[CALL] startDirectCall: emitting call:start chatId=", selectedChat.id, "callType=", type);
-    socket.emit("call:start", {
-      chatId: callChat.id,
-      callType: type,
-      inviteUserIds: selectedInvitees
-    });
-    console.log("[CALL] startDirectCall: call:start emitted — waiting for call:ringing from server");
-  }
 
   const sendCallInvites = useCallInviteControls({
     audioCallRef,
@@ -603,6 +508,41 @@ export function useCallSession({
       audioCallRef.current?.setCallQualityBitrates({ ...DEFAULT_CALL_QUALITY_BITRATES });
     }
   }
+
+  const startDirectCall = createDirectCallStarter({
+    accessToken,
+    currentUser,
+    selectedChat,
+    socketRef,
+    audioCallRef,
+    refs: {
+      activeCallChatIdRef,
+      activeCallSessionIdRef,
+      callTypeRef,
+      callPhaseRef,
+      callStartupGenerationRef,
+      callStartupPromiseRef,
+      callCleanupPromiseRef,
+    },
+    setters: {
+      setActiveCallChatId,
+      setCallAudioSettings,
+      setCallAudioWarning,
+      setCallNotice,
+      setCallParticipantIds,
+      setCallPeerDisplayName,
+      setCallPeerUserId,
+      setCallPhase,
+      setCallTopology,
+      setCallType,
+    },
+    mockCallSession,
+    setError,
+    setSelectedChat,
+    resetCallState,
+    applyCallAudioPatch,
+    loadCallQuality,
+  });
 
   async function acceptIncomingCall() {
     if (mockCallSession.acceptIncomingCall()) return;
@@ -821,6 +761,7 @@ export function useCallSession({
     if (!socketRef.current || !activeCallChatId) {
       return;
     }
+    callStartupGenerationRef.current += 1;
     const terminationEvent = callTerminationEvent(callPhaseRef.current);
     setCallNotice("Ending call...");
     stopCallRingtone();

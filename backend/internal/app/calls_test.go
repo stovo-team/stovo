@@ -65,14 +65,120 @@ func TestCallSessionBusyRulesAndCleanup(t *testing.T) {
 			{ID: "user-3"},
 		},
 	}
-	if _, err := server.startCallSession(otherChat, "user-2", "audio", nil); err == nil {
-		t.Fatalf("expected busy conflict")
+	newSession, err := server.startCallSession(otherChat, "user-2", "audio", nil)
+	if err != nil {
+		t.Fatalf("start should release the caller's previous direct call and retry: %v", err)
 	}
-	if _, ok := server.endCallSession("chat-a"); !ok {
-		t.Fatalf("expected call cleanup")
+	if newSession.ChatID != otherChat.ID {
+		t.Fatalf("started call in %q, want %q", newSession.ChatID, otherChat.ID)
 	}
-	if _, err := server.startCallSession(otherChat, "user-2", "audio", nil); err != nil {
-		t.Fatalf("start after cleanup: %v", err)
+	if _, ok := server.getCallSession("chat-a"); ok {
+		t.Fatalf("previous one-to-one call should be ended when caller moves to a new call")
+	}
+}
+
+func TestCallStartDoesNotReleaseBusyInvitee(t *testing.T) {
+	server := newTestCallServer()
+	oldChat := chatPublic{ID: "old", Type: "direct", Members: []chatMemberPublic{{ID: "user-2"}, {ID: "user-3"}}}
+	newChat := chatPublic{ID: "new", Type: "direct", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-2"}}}
+	oldSession, err := server.startCallSession(oldChat, "user-2", "audio", []string{"user-3"})
+	if err != nil {
+		t.Fatalf("start old call: %v", err)
+	}
+
+	if _, err := server.startCallSession(newChat, "user-1", "audio", []string{"user-2"}); err == nil || err.Error() != "participant is busy in another call" {
+		t.Fatalf("expected invitee busy conflict, got %v", err)
+	}
+	if got, ok := server.getCallSession(oldChat.ID); !ok || got.ID != oldSession.ID {
+		t.Fatal("the invitee's existing call must remain active")
+	}
+}
+
+func TestCallStartDoesNotReleaseCallerWhenInviteeIsAlsoBusy(t *testing.T) {
+	server := newTestCallServer()
+	callerChat := chatPublic{ID: "caller-current", Type: "direct", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-3"}}}
+	inviteeChat := chatPublic{ID: "invitee-current", Type: "direct", Members: []chatMemberPublic{{ID: "user-2"}, {ID: "user-4"}}}
+	targetChat := chatPublic{ID: "target", Type: "direct", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-2"}}}
+	callerSession, err := server.startCallSession(callerChat, "user-1", "audio", nil)
+	if err != nil {
+		t.Fatalf("start caller's current call: %v", err)
+	}
+	inviteeSession, err := server.startCallSession(inviteeChat, "user-2", "audio", nil)
+	if err != nil {
+		t.Fatalf("start invitee's current call: %v", err)
+	}
+
+	if _, err := server.startCallSession(targetChat, "user-1", "audio", []string{"user-2"}); err == nil || err.Error() != "participant is busy in another call" {
+		t.Fatalf("expected busy invitee conflict, got %v", err)
+	}
+	if got, ok := server.getCallSession(callerChat.ID); !ok || got.ID != callerSession.ID {
+		t.Fatal("caller’s existing call must remain active when the invitee is busy")
+	}
+	if got, ok := server.getCallSession(inviteeChat.ID); !ok || got.ID != inviteeSession.ID {
+		t.Fatal("invitee’s existing call must remain active")
+	}
+}
+
+func TestJoinReleasesPreviousOneToOneCallAndJoinsRequestedCall(t *testing.T) {
+	server := newTestCallServer()
+	oldChat := chatPublic{ID: "old", Type: "direct", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-2"}}}
+	targetChat := chatPublic{ID: "target", Type: "group", Members: []chatMemberPublic{{ID: "user-2"}, {ID: "user-3"}, {ID: "user-4"}}}
+	if _, err := server.startCallSession(oldChat, "user-1", "audio", []string{"user-2"}); err != nil {
+		t.Fatalf("start old call: %v", err)
+	}
+	if _, err := server.startCallSession(targetChat, "user-3", "audio", []string{"user-4"}); err != nil {
+		t.Fatalf("start target call: %v", err)
+	}
+
+	joined, isNew, err := server.joinCallSession(targetChat, "user-2", "audio")
+	if err != nil {
+		t.Fatalf("join should release the user's previous call and retry once: %v", err)
+	}
+	if isNew || joined.ChatID != targetChat.ID || joined.Participants["user-2"].State != participantConnected {
+		t.Fatalf("unexpected joined call result: isNew=%t session=%#v", isNew, joined)
+	}
+	if _, ok := server.getCallSession(oldChat.ID); ok {
+		t.Fatal("previous one-to-one call should be ended")
+	}
+}
+
+func TestCallStartLeavesLargerGroupWhenNonCallerMovesToAnotherCall(t *testing.T) {
+	server := newTestCallServer()
+	group := chatPublic{ID: "group", Type: "group", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-2"}, {ID: "user-3"}, {ID: "user-4"}}}
+	newChat := chatPublic{ID: "new", Type: "direct", Members: []chatMemberPublic{{ID: "user-2"}, {ID: "user-5"}}}
+	groupSession, err := server.startCallSession(group, "user-1", "audio", []string{"user-2", "user-3", "user-4"})
+	if err != nil {
+		t.Fatalf("start group call: %v", err)
+	}
+
+	if _, err := server.startCallSession(newChat, "user-2", "audio", nil); err != nil {
+		t.Fatalf("start should leave the user's prior group call and retry: %v", err)
+	}
+	remaining, ok := server.getCallSession(group.ID)
+	if !ok || remaining.ID != groupSession.ID {
+		t.Fatal("moving one non-caller must preserve the larger group call")
+	}
+	if remaining.Participants["user-2"].State != participantLeft {
+		t.Fatalf("prior group participant state = %q, want left", remaining.Participants["user-2"].State)
+	}
+}
+
+func TestJoinClearsStaleActiveRoomIndex(t *testing.T) {
+	server := newTestCallServer()
+	targetChat := chatPublic{ID: "target", Type: "direct", Members: []chatMemberPublic{{ID: "user-1"}, {ID: "user-2"}}}
+	if _, err := server.startCallSession(targetChat, "user-1", "audio", []string{"user-2"}); err != nil {
+		t.Fatalf("start target call: %v", err)
+	}
+	server.calls.Lock()
+	server.calls.SetActiveLocked("user-2", "missing-room")
+	server.calls.Unlock()
+
+	joined, _, err := server.joinCallSession(targetChat, "user-2", "audio")
+	if err != nil {
+		t.Fatalf("join should revalidate and clear a dangling active-room index: %v", err)
+	}
+	if joined.Participants["user-2"].State != participantConnected {
+		t.Fatalf("participant state = %q, want connected", joined.Participants["user-2"].State)
 	}
 }
 
