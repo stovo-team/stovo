@@ -77,7 +77,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	}
 	if metadataResponse.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(metadataResponse.Body)
-		metadataResponse.Body.Close()
+		_ = metadataResponse.Body.Close()
 		t.Fatalf("OIDC discovery status=%d body=%s", metadataResponse.StatusCode, body)
 	}
 	if metadataResponse.Header.Get("Cache-Control") != "no-store" {
@@ -87,7 +87,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	if err := json.NewDecoder(metadataResponse.Body).Decode(&metadata); err != nil {
 		t.Fatalf("decode discovery: %v", err)
 	}
-	metadataResponse.Body.Close()
+	_ = metadataResponse.Body.Close()
 	if metadata["issuer"] != issuer || metadata["authorization_endpoint"] != issuer+"/oauth2/authorize" || metadata["token_endpoint"] != issuer+"/oauth2/token" || metadata["jwks_uri"] != issuer+"/oauth2/jwks" {
 		t.Fatalf("OIDC discovery endpoints = %#v", metadata)
 	}
@@ -100,7 +100,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	})
 	if setupResponse.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(setupResponse.Body)
-		setupResponse.Body.Close()
+		_ = setupResponse.Body.Close()
 		t.Fatalf("create synthetic OIDC user status=%d body=%s", setupResponse.StatusCode, body)
 	}
 	owner := decodeJSON[authResponse](t, setupResponse)
@@ -111,7 +111,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	}
 	if jwksResponse.StatusCode != http.StatusOK || jwksResponse.Header.Get("Cache-Control") != "no-store" {
 		body, _ := io.ReadAll(jwksResponse.Body)
-		jwksResponse.Body.Close()
+		_ = jwksResponse.Body.Close()
 		t.Fatalf("JWKS status=%d cache=%q body=%s", jwksResponse.StatusCode, jwksResponse.Header.Get("Cache-Control"), body)
 	}
 	var jwks struct {
@@ -127,7 +127,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	if err := json.NewDecoder(jwksResponse.Body).Decode(&jwks); err != nil {
 		t.Fatalf("decode JWKS: %v", err)
 	}
-	jwksResponse.Body.Close()
+	_ = jwksResponse.Body.Close()
 	if len(jwks.Keys) != 2 {
 		t.Fatalf("JWKS key overlap contains %d keys, want active and previous public keys: %#v", len(jwks.Keys), jwks.Keys)
 	}
@@ -137,7 +137,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 			t.Fatalf("invalid JWKS signing key: %#v", key)
 		}
 		keyIDs[key.KID] = true
-		if key.KID == keyID && (key.N != base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.N.Bytes()) || key.E != base64.RawURLEncoding.EncodeToString(big.NewInt(int64(privateKey.PublicKey.E)).Bytes())) {
+		if key.KID == keyID && (key.N != base64.RawURLEncoding.EncodeToString(privateKey.N.Bytes()) || key.E != base64.RawURLEncoding.EncodeToString(big.NewInt(int64(privateKey.E)).Bytes())) {
 			t.Fatalf("active JWKS key does not match signing key: %#v", key)
 		}
 	}
@@ -167,7 +167,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 		}
 		if authorizeResponse.StatusCode != http.StatusFound || authorizeResponse.Header.Get("Cache-Control") != "no-store" {
 			body, _ := io.ReadAll(authorizeResponse.Body)
-			authorizeResponse.Body.Close()
+			_ = authorizeResponse.Body.Close()
 			t.Fatalf("authorize status=%d cache=%q body=%s", authorizeResponse.StatusCode, authorizeResponse.Header.Get("Cache-Control"), body)
 		}
 		callback, err := url.Parse(authorizeResponse.Header.Get("Location"))
@@ -211,7 +211,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 				t.Fatalf("request invalid authorize parameters: %v", err)
 			}
 			body, _ := io.ReadAll(response.Body)
-			response.Body.Close()
+			_ = response.Body.Close()
 			if response.StatusCode != http.StatusBadRequest || strings.Contains(string(body), owner.User.ID) {
 				t.Fatalf("invalid authorization parameters status=%d body=%s", response.StatusCode, body)
 			}
@@ -222,7 +222,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 		t.Fatalf("request invalid callback: %v", err)
 	}
 	unauthorizedBody, _ := io.ReadAll(unauthorizedCallback.Body)
-	unauthorizedCallback.Body.Close()
+	_ = unauthorizedCallback.Body.Close()
 	if unauthorizedCallback.StatusCode != http.StatusBadRequest || strings.Contains(string(unauthorizedBody), "attacker.example") {
 		t.Fatalf("invalid callback response leaked details or was accepted: status=%d body=%s", unauthorizedCallback.StatusCode, unauthorizedBody)
 	}
@@ -233,15 +233,15 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	})
 	if browserSession.StatusCode != http.StatusOK || browserSession.Header.Get("Cache-Control") != "no-store" {
 		body, _ := io.ReadAll(browserSession.Body)
-		browserSession.Body.Close()
+		_ = browserSession.Body.Close()
 		t.Fatalf("create OIDC browser session status=%d body=%s", browserSession.StatusCode, body)
 	}
 	var sessionReply map[string]any
 	if err := json.NewDecoder(browserSession.Body).Decode(&sessionReply); err != nil {
-		browserSession.Body.Close()
+		_ = browserSession.Body.Close()
 		t.Fatalf("decode OIDC browser session response: %v", err)
 	}
-	browserSession.Body.Close()
+	_ = browserSession.Body.Close()
 	if sessionReply["expires_in"] != float64(120) || len(sessionReply) != 1 {
 		t.Fatalf("OIDC browser session response exposed unexpected fields: %#v", sessionReply)
 	}
@@ -277,11 +277,11 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	}
 	if browserResponse.StatusCode != http.StatusFound || browserResponse.Header.Get("Cache-Control") != "no-store" {
 		body, _ := io.ReadAll(browserResponse.Body)
-		browserResponse.Body.Close()
+		_ = browserResponse.Body.Close()
 		t.Fatalf("complete OIDC browser session status=%d body=%s", browserResponse.StatusCode, body)
 	}
 	browserLocation, err := url.Parse(browserResponse.Header.Get("Location"))
-	browserResponse.Body.Close()
+	_ = browserResponse.Body.Close()
 	if err != nil || browserLocation.Query().Get("code") == "" || browserLocation.Query().Get("state") != state {
 		t.Fatalf("OIDC browser callback = %q (err %v)", browserResponse.Header.Get("Location"), err)
 	}
@@ -297,10 +297,10 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	}
 	if replayResponse.StatusCode != http.StatusUnauthorized {
 		body, _ := io.ReadAll(replayResponse.Body)
-		replayResponse.Body.Close()
+		_ = replayResponse.Body.Close()
 		t.Fatalf("replayed OIDC browser ticket status=%d body=%s", replayResponse.StatusCode, body)
 	}
-	replayResponse.Body.Close()
+	_ = replayResponse.Body.Close()
 
 	code := issueCode()
 	codeDigest := sha256.Sum256([]byte(code))
@@ -333,7 +333,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	tokenResponse := exchange(code, verifier)
 	if tokenResponse.StatusCode != http.StatusOK || tokenResponse.Header.Get("Cache-Control") != "no-store" {
 		body, _ := io.ReadAll(tokenResponse.Body)
-		tokenResponse.Body.Close()
+		_ = tokenResponse.Body.Close()
 		t.Fatalf("token response status=%d cache=%q body=%s", tokenResponse.StatusCode, tokenResponse.Header.Get("Cache-Control"), body)
 	}
 	var tokens struct {
@@ -345,7 +345,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	if err := json.NewDecoder(tokenResponse.Body).Decode(&tokens); err != nil {
 		t.Fatalf("decode token response: %v", err)
 	}
-	tokenResponse.Body.Close()
+	_ = tokenResponse.Body.Close()
 	if tokens.IDToken == "" || tokens.AccessToken == "" || tokens.AccessToken == tokens.IDToken || tokens.TokenType != "Bearer" || tokens.ExpiresIn != int64(intelligenceOIDCIDTokenTTL.Seconds()) {
 		t.Fatalf("OIDC code exchange did not return distinct short-lived protocol tokens: %#v", tokens)
 	}
@@ -380,7 +380,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 
 	reused := exchange(code, verifier)
 	reusedBody, _ := io.ReadAll(reused.Body)
-	reused.Body.Close()
+	_ = reused.Body.Close()
 	if reused.StatusCode != http.StatusBadRequest || strings.Contains(string(reusedBody), "SELECT") || strings.Contains(string(reusedBody), code) {
 		t.Fatalf("authorization code reuse response was not generic: status=%d body=%s", reused.StatusCode, reusedBody)
 	}
@@ -388,32 +388,32 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	callbackRetryCode := issueCode()
 	wrongCallback := exchangeWithClient(callbackRetryCode, verifier, "https://attacker.example/callback", clientID, clientSecret)
 	wrongCallbackBody, _ := io.ReadAll(wrongCallback.Body)
-	wrongCallback.Body.Close()
+	_ = wrongCallback.Body.Close()
 	if wrongCallback.StatusCode != http.StatusBadRequest || strings.Contains(string(wrongCallbackBody), "attacker.example") {
 		t.Fatalf("token callback substitution response = %d %s", wrongCallback.StatusCode, wrongCallbackBody)
 	}
 	callbackRetry := exchange(callbackRetryCode, verifier)
 	if callbackRetry.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(callbackRetry.Body)
-		callbackRetry.Body.Close()
+		_ = callbackRetry.Body.Close()
 		t.Fatalf("wrong callback URI consumed the authorization code: status=%d body=%s", callbackRetry.StatusCode, body)
 	}
-	callbackRetry.Body.Close()
+	_ = callbackRetry.Body.Close()
 
 	clientAuthCode := issueCode()
 	wrongClient := exchangeWithClient(clientAuthCode, verifier, redirectURI, clientID, "wrong-synthetic-client-secret")
 	wrongClientBody, _ := io.ReadAll(wrongClient.Body)
-	wrongClient.Body.Close()
+	_ = wrongClient.Body.Close()
 	if wrongClient.StatusCode != http.StatusUnauthorized || strings.Contains(string(wrongClientBody), clientSecret) || strings.Contains(string(wrongClientBody), clientAuthCode) {
 		t.Fatalf("invalid confidential client response = %d %s", wrongClient.StatusCode, wrongClientBody)
 	}
 	clientAuthRetry := exchange(clientAuthCode, verifier)
 	if clientAuthRetry.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(clientAuthRetry.Body)
-		clientAuthRetry.Body.Close()
+		_ = clientAuthRetry.Body.Close()
 		t.Fatalf("invalid client secret consumed the authorization code: status=%d body=%s", clientAuthRetry.StatusCode, body)
 	}
-	clientAuthRetry.Body.Close()
+	_ = clientAuthRetry.Body.Close()
 
 	pkceRetryCode := issueCode()
 	wrongVerifier := strings.Repeat("z", len(verifier))
@@ -422,23 +422,23 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 	}
 	wrongPKCE := exchange(pkceRetryCode, wrongVerifier)
 	wrongPKCEBody, _ := io.ReadAll(wrongPKCE.Body)
-	wrongPKCE.Body.Close()
+	_ = wrongPKCE.Body.Close()
 	if wrongPKCE.StatusCode != http.StatusBadRequest || strings.Contains(string(wrongPKCEBody), pkceRetryCode) {
 		t.Fatalf("wrong PKCE verifier response is not generic: status=%d body=%s", wrongPKCE.StatusCode, wrongPKCEBody)
 	}
 	validPKCERetry := exchange(pkceRetryCode, verifier)
 	if validPKCERetry.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(validPKCERetry.Body)
-		validPKCERetry.Body.Close()
+		_ = validPKCERetry.Body.Close()
 		t.Fatalf("invalid verifier unexpectedly consumed the authorization code: status=%d body=%s", validPKCERetry.StatusCode, body)
 	}
-	validPKCERetry.Body.Close()
+	_ = validPKCERetry.Body.Close()
 
 	expiredCode := issueCode()
 	fixedNow = fixedNow.Add(intelligenceOIDCAuthorizationCodeTTL + time.Second)
 	expiredExchange := exchange(expiredCode, verifier)
 	expiredBody, _ := io.ReadAll(expiredExchange.Body)
-	expiredExchange.Body.Close()
+	_ = expiredExchange.Body.Close()
 	if expiredExchange.StatusCode != http.StatusBadRequest || strings.Contains(string(expiredBody), expiredCode) {
 		t.Fatalf("expired authorization code response = %d %s", expiredExchange.StatusCode, expiredBody)
 	}
@@ -456,7 +456,7 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 		t.Fatalf("request OIDC authorize for inactive user: %v", err)
 	}
 	inactiveBody, _ := io.ReadAll(inactiveResponse.Body)
-	inactiveResponse.Body.Close()
+	_ = inactiveResponse.Body.Close()
 	if inactiveResponse.StatusCode != http.StatusUnauthorized || strings.Contains(string(inactiveBody), owner.User.ID) {
 		t.Fatalf("inactive OIDC principal response = %d %s", inactiveResponse.StatusCode, inactiveBody)
 	}

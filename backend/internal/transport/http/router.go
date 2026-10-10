@@ -28,6 +28,7 @@ type RouteComposition struct {
 	MCP                         stdhttp.Handler
 	IntelligenceOIDC            stdhttp.Handler
 	IntelligenceSource          stdhttp.Handler
+	IntelligenceSourceV2        stdhttp.Handler
 	IntelligenceSourceV2Consent stdhttp.Handler
 	Plugins                     stdhttp.Handler
 	FrontendFallback            stdhttp.Handler
@@ -54,6 +55,9 @@ func NewRouter(routes RouteComposition) stdhttp.Handler {
 	RegisterMCPRoutes(router, routes.MCP)
 	if routes.IntelligenceSource != nil {
 		router.Mount("/api/v1/intelligence/source", routes.IntelligenceSource)
+	}
+	if routes.IntelligenceSourceV2 != nil {
+		router.Mount("/api/v2/intelligence/source", routes.IntelligenceSourceV2)
 	}
 	if routes.IntelligenceSourceV2Consent != nil {
 		router.Mount("/api/v2/intelligence", routes.IntelligenceSourceV2Consent)

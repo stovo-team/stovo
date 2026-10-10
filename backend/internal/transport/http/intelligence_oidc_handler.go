@@ -147,7 +147,7 @@ func (h *IntelligenceOIDCHandler) authorize(w stdhttp.ResponseWriter, r *stdhttp
 		writeOIDCOperationError(w, err)
 		return
 	}
-	redirect := IntelligenceSourceV2ConsentRedirect{RedirectURI: result.RedirectURI, Code: result.Code, State: result.State}
+	redirect := IntelligenceSourceV2ConsentRedirect(result)
 	if !redirectIntelligenceAuthorization(w, r, redirect, request.RedirectURI, request.State) {
 		writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return

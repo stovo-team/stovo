@@ -320,7 +320,9 @@ func validIntelligenceOIDCVerifier(value string) bool {
 		return false
 	}
 	for _, char := range value {
-		if !(char >= 'A' && char <= 'Z' || char >= 'a' && char <= 'z' || char >= '0' && char <= '9' || strings.ContainsRune("-._~", char)) {
+		switch {
+		case char >= 'A' && char <= 'Z', char >= 'a' && char <= 'z', char >= '0' && char <= '9', strings.ContainsRune("-._~", char):
+		default:
 			return false
 		}
 	}

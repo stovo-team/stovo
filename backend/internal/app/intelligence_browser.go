@@ -17,7 +17,8 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 	if s.sqlDB == nil || principal.UserID == "" || principal.FamilyID == "" {
 		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnauthorized
 	}
-	if input.Flow == "oidc" {
+	switch input.Flow {
+	case "oidc":
 		if !s.cfg.IntelligenceOIDCEnabled || input.ClientID != s.cfg.IntelligenceOIDCClientID || !containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, input.RedirectURI) || input.ResponseType != "code" || input.Nonce == "" || !validIntelligenceOIDCString(input.State, 512) || !validIntelligenceOIDCString(input.Nonce, 512) || input.CodeChallengeMethod != "S256" || !validIntelligenceOIDCChallenge(input.CodeChallenge) {
 			return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceOIDCInvalidRequest
 		}
@@ -27,7 +28,7 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 		if _, err := s.intelligenceOIDCSubject(ctx, principal.UserID); err != nil {
 			return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceOIDCUnauthorized
 		}
-	} else if input.Flow == "source_v2" {
+	case "source_v2":
 		if err := s.requireIntelligenceSourceV2ConsentEnabled(); err != nil {
 			return httptransport.IntelligenceBrowserSessionTicket{}, err
 		}
@@ -46,7 +47,7 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 				return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
 			}
 		}
-	} else {
+	default:
 		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
 	}
 

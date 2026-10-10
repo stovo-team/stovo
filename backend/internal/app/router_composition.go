@@ -44,6 +44,7 @@ func newRouter(s *Server) http.Handler {
 		Admin:                       s.adminRoutes(),
 		MCP:                         s.mcpRoutes(),
 		IntelligenceSource:          httptransport.NewIntelligenceSourceHandler(s.intelligenceSourceHandler()),
+		IntelligenceSourceV2:        s.intelligenceSourceV2Handler(),
 		IntelligenceSourceV2Consent: s.intelligenceSourceV2ConsentHandler(),
 		IntelligenceOIDC:            s.intelligenceOIDCHandler(),
 		Plugins:                     s.pluginRoutes(),

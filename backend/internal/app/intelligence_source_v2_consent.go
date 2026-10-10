@@ -428,6 +428,7 @@ func (s *Server) authenticateIntelligenceSourceV2Credential(ctx context.Context,
 	var scopedChatCount int
 	err := s.sqlDB.QueryRowContext(ctx, `
 		SELECT i.id,i.tenant_id,c.id,i.family_id,c.principal_user_id,i.enabled,c.enabled,
+	       (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id LIMIT 1),
 		       (SELECT count(*) FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)
 		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id
@@ -436,7 +437,7 @@ func (s *Server) authenticateIntelligenceSourceV2Credential(ctx context.Context,
 		WHERE c.credential_hash=$1 AND c.revoked_at IS NULL
 		  AND c.credential_expires_at>now() AND u.is_active=1`, digest[:]).Scan(
 		&identity.InstallationID, &identity.TenantID, &identity.ConnectionID, &identity.FamilyID,
-		&identity.PrincipalUserID, &identity.InstallationEnabled, &identity.ConnectionEnabled, &scopedChatCount)
+		&identity.PrincipalUserID, &identity.InstallationEnabled, &identity.ConnectionEnabled, &identity.ChatID, &scopedChatCount)
 	if errors.Is(err, sql.ErrNoRows) {
 		return httptransport.IntelligenceSourceIdentity{}, httptransport.ErrIntelligenceSourceUnauthorized
 	}
