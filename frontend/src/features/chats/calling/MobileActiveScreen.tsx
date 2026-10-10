@@ -378,7 +378,7 @@ export function MobileActiveScreen({
               speakingUserIds={speakingUserIds}
               onFlipLocalCamera={() => void handleFlipCamera()}
               isFlippingCamera={isCameraFlipping}
-              mobileSingleRemote={callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1 && isCameraEnabled && Boolean(localVideoStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false)) && Boolean(gridRemoteMedia[0]?.hasVideo && gridRemoteMedia[0].stream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false))}
+              mobileSingleRemote={!isGroupCall && callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1 && isCameraEnabled && Boolean(localVideoStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false)) && Boolean(gridRemoteMedia[0]?.hasVideo && gridRemoteMedia[0].stream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false))}
               isLocalPrimary={isSelfViewFullscreen}
               onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
               isCallConnected={callPhase === "in-call"}

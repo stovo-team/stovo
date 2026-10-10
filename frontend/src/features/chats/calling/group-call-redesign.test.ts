@@ -21,7 +21,9 @@ describe("group call presentation surface", () => {
   });
 
   it("uses a smaller group popup and compact invite and call controls", () => {
-    expect(rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/width:\s*min\(640px,/);
+    const groupPopupRule = rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)");
+    expect(groupPopupRule).toMatch(/width:\s*min\(960px,/);
+    expect(groupPopupRule).toMatch(/height:\s*min\(640px,/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/width:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/height:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn--invite")).toMatch(/width:\s*40px/);

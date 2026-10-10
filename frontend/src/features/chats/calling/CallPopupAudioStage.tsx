@@ -36,6 +36,8 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
     hasRemoteVideo ||
     callRemoteMedia.length > 1 ||
     hasScreenShare ||
+    callAudioSettings.screenSharing ||
+    Boolean(session.mockScreenShareUserId) ||
     Boolean(localScreenStream) ||
     (callPhase !== "in-call" && !(isGroupCall && callPhase === "connecting")) ||
     isMobileViewport

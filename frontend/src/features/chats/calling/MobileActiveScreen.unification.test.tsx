@@ -163,7 +163,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector('.mobile-active-controls [aria-label="Flip camera"]')).toBeNull();
   });
 
-  it("renders mobile group participants as centered square tiles and does not open focus view on tap", () => {
+  it("renders mobile group participants as centered landscape tiles and does not open focus view on tap", () => {
     const stream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
     const container = renderScreen({
       ...baseProps,
@@ -178,7 +178,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector(".call-grid__focus-main")).toBeNull();
   });
 
-  it("fits the shared screen at 16:9 above square participant cards on mobile", () => {
+  it("fits the shared screen at 16:9 above landscape participant cards on mobile", () => {
     const screenTrack = { readyState: "live", enabled: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };
     const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
     const audioStream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
@@ -285,6 +285,19 @@ describe("mobile call UI unification", () => {
     });
     expect(container.querySelector(".call-grid--mobile-single")).toBeNull();
     expect(container.querySelector(".call-grid__mobile-primary, .call-grid__mobile-pip")).toBeNull();
+  });
+
+  it("keeps two group participants in a column when both cameras are live", () => {
+    const track = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps, isGroupCall: true, callType: "video", isCameraEnabled: true,
+      hasRemoteVideo: true, localVideoStream: stream, remoteVideoStream: stream,
+      remoteMedia: [{ userId: "peer", stream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false }],
+    });
+    expect(container.querySelector(".call-grid--mobile-pair")).not.toBeNull();
+    expect(container.querySelector(".call-grid--mobile-single")).toBeNull();
+    expect(container.querySelectorAll(".call-grid__tile video")).toHaveLength(2);
   });
 
   it("swaps the mobile two-person main view only when both local and remote cameras are enabled", () => {

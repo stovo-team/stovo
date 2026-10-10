@@ -72,7 +72,7 @@ describe("shared call participant presentation", () => {
     expect(css).toMatch(/\.call-grid--screen-share \.call-grid__remote-rail\s*\{[^}]*overflow-x:\s*auto/);
     expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
     expect(styleRules(css, ".shared-call-stage .call-grid--screen-share > .call-grid__tile--screen")).toMatch(/max-height:\s*100%/);
-    expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 clamp\(72px, 10vw, 112px\);[^}]*height:\s*100% !important/);
+    expect(css).toMatch(/\.call-grid--screen-share \.call-grid__participant-pin,\s*\.call-grid--screen-share \.call-grid__remote-rail > \[data-participant-id\]\s*\{[^}]*flex:\s*0 0 auto;[^}]*height:\s*100% !important;[^}]*aspect-ratio:\s*16\s*\/\s*9/);
   });
 
   it("chooses the screen-share rail from measured stage width and height and updates on resize", () => {

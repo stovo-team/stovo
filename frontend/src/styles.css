@@ -212,7 +212,8 @@
 }
 
 .call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
-  width: min(640px, calc(100vw - 40px));
+  width: min(960px, calc(100vw - 40px));
+  height: min(640px, calc(100dvh - 40px));
   max-height: calc(100dvh - 40px);
   box-sizing: border-box;
   padding: 20px 24px 24px;
@@ -379,7 +380,7 @@
   align-self: stretch;
 }
 
-.call-popup-group-participants.voice-grid--2 {
+.call-popup-group-call .call-popup-group-participants.voice-grid--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto;
 }
@@ -932,6 +933,7 @@
   min-width: 0;
   min-height: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   align-self: stretch;
   align-content: start;
@@ -948,7 +950,10 @@
 
 .call-grid__remote-rail {
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  min-width: 0;
+  overflow-x: hidden;
   align-content: start;
   gap: 8px;
   min-height: 0;
@@ -991,9 +996,10 @@
 
 .call-grid--screen-share-bottom .call-grid__participant-pin,
 .call-grid--screen-share-bottom .call-grid__remote-rail > [data-participant-id] {
-  flex: 0 0 clamp(84px, 12vw, 128px);
+  flex: 0 0 auto;
+  width: auto;
   height: 100% !important;
-  aspect-ratio: auto;
+  aspect-ratio: 16 / 9;
 }
 
 .call-grid--screen-share-bottom .call-grid__remote-rail {
@@ -1056,9 +1062,10 @@
 
   .call-grid--screen-share .call-grid__participant-pin,
   .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
-    flex: 0 0 clamp(72px, 10vw, 112px);
+    flex: 0 0 auto;
+    width: auto;
     height: 100% !important;
-    aspect-ratio: auto;
+    aspect-ratio: 16 / 9;
   }
 
   .call-grid--screen-share .call-grid__participant-pin .call-grid__avatar-circle,
@@ -30979,12 +30986,15 @@ button.checklist-add-item-btn:hover,
 }
 .call-grid__mobile-participant-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-content: start;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   min-width: 0;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 84px;
+  scrollbar-width: thin;
 }
 .call-grid--mobile-presentation-many .call-grid__mobile-participant-row {
   flex-wrap: nowrap;
@@ -30997,16 +31007,16 @@ button.checklist-add-item-btn:hover,
 .call-grid__mobile-participant-row > .call-grid__tile,
 .call-grid__mobile-participant-row > [data-participant-id] {
   position: relative;
-  flex: 0 1 76px;
-  width: 76px;
-  height: 76px;
+  flex: 0 0 144px;
+  width: 144px;
+  height: 81px;
   min-height: 0;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
 }
 .call-grid__mobile-participant-row [data-participant-id] > .call-grid__tile {
-  width: 100%; height: 100%; min-height: 0; aspect-ratio: 1 / 1; border-radius: inherit;
+  width: 100%; height: 100%; min-height: 0; aspect-ratio: 16 / 9; border-radius: inherit;
 }
 .call-grid__profile-avatar {
   display: grid;
@@ -31038,7 +31048,7 @@ button.checklist-add-item-btn:hover,
 @media (max-width: 420px) {
   .mobile-active-video-stage .call-grid--mobile-presentation { inset-inline: 6px; }
   .call-grid__mobile-participant-row > .call-grid__tile,
-  .call-grid__mobile-participant-row > [data-participant-id] { flex-basis: 64px; width: 64px; height: 64px; }
+  .call-grid__mobile-participant-row > [data-participant-id] { flex-basis: 128px; width: 128px; height: 72px; }
 }
 
 .meeting-intel-popover--inline-menu {
@@ -31885,3 +31895,21 @@ button.minimized-call-button--end:active:not(:disabled) {
 .voice-room-participant-content { justify-content: center; }
 .voice-room-member-invite, .voice-room-expand-button { box-sizing: border-box; flex-shrink: 0; }
 .chat-list-item:has(.chat-list-voice-participants) { padding-block: 5px; }
+
+/* Two participants use the available mobile height in a single landscape column. */
+.mobile-active-video-stage .call-grid--mobile-pair {
+  width: min(calc(100% - 24px), calc((100dvh - 60px - 90px - 8px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 8 / 9)) !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none;
+  aspect-ratio: auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+
+.call-popup-group-call:not(.call-popup-fullscreen):not(.call-popup-minimized) .call-popup-audio-stage:not(:empty) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+}
