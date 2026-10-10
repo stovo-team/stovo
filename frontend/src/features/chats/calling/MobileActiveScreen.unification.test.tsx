@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MobileActiveScreen } from "./MobileActiveScreen";
+import { writeCallUIPreferences } from "./callUIPreferences";
 
 const mountedRoots: Root[] = [];
 
@@ -78,6 +79,31 @@ describe("mobile call UI unification", () => {
     expect(actionLabels).toEqual(["Mute", "Audio output", "Turn on camera", "More options", "End call"]);
     expect(controls?.querySelector('[aria-label="End call"] svg')).not.toBeNull();
     expect(controls?.querySelectorAll(".mobile-active-ctrl-lbl")).toHaveLength(0);
+  });
+
+  it("toggles auto-hidden controls on repeated mobile stage taps", () => {
+    writeCallUIPreferences({ autoHideControls: true });
+    const container = renderScreen(baseProps);
+    const screen = container.querySelector<HTMLElement>(".mobile-active-screen")!;
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => screen.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    act(() => screen.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("toggles mobile controls once when tapping inside the shared presentation stage", () => {
+    writeCallUIPreferences({ autoHideControls: true });
+    const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+    const container = renderScreen({ ...baseProps, isScreenSharing: true, localScreenStream: screenStream });
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    const stage = container.querySelector<HTMLElement>(".mobile-active-video-stage")!;
+
+    act(() => stage.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("keeps mobile audio routing and camera flip actions without desktop device menus", async () => {
@@ -509,6 +535,7 @@ describe("mobile call UI unification", () => {
 
   it("makes hidden mobile controls inert after timeout and restores interaction when the stage is tapped", () => {
     vi.useFakeTimers();
+    localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: true, cameraFit: "fit" }));
     const container = renderScreen(baseProps);
     const controls = container.querySelector(".mobile-active-controls") as HTMLDivElement;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
@@ -522,6 +549,16 @@ describe("mobile call UI unification", () => {
     expect(controls.getAttribute("aria-hidden")).toBe("false");
     expect(controls.hasAttribute("inert")).toBe(false);
     expect(buttons[0]?.tabIndex).toBe(0);
+  });
+
+  it("keeps mobile controls visible by default", () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    const container = renderScreen(baseProps);
+    const controls = container.querySelector(".mobile-active-controls")!;
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    expect(controls.hasAttribute("inert")).toBe(false);
   });
 
   it("does not announce Connected or Speaking for a video stream until the call is in progress", () => {

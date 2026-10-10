@@ -80,6 +80,7 @@ class FakeMediaStream {
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
+const originalInnerWidth = window.innerWidth;
 
 async function renderPage() {
   const { default: GuestMeetingPage } = await import("./GuestMeetingPage");
@@ -118,6 +119,8 @@ afterEach(async () => {
   host?.remove();
   root = null;
   host = null;
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+  localStorage.removeItem("stovo.call-ui-preferences");
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
@@ -192,6 +195,34 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(header).not.toBeNull();
     expect(header?.querySelector('button[aria-label*="Minimize"], button[title*="Minimize"], .call-preview-minimize')).toBeNull();
     expect(host?.querySelector('[aria-label="Minimize call"], [aria-label="Shrink call"]')).toBeNull();
+  });
+
+  it("reveals auto-hidden controls when a mobile guest taps the call stage", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: true, cameraFit: "fit" }));
+    api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-mobile", state: "admitted" });
+    await renderPage();
+    await act(async () => {
+      const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Mobile guest");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const room = host?.querySelector<HTMLElement>(".guest-call-room");
+    const controls = host?.querySelector<HTMLElement>(".shared-call-control-panel");
+    expect(controls?.getAttribute("data-visible")).toBe("false");
+    await act(async () => {
+      room?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+      await Promise.resolve();
+    });
+    expect(controls?.getAttribute("data-visible")).toBe("true");
   });
 
   it("passes the signed-in account token when creating a meeting session", async () => {
@@ -365,7 +396,9 @@ describe("GuestMeetingPage pre-join controls", () => {
     const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Open device settings"]');
     await act(async () => { trigger?.click(); });
 
-    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).not.toBeNull();
+    expect(host?.querySelector('[role="dialog"][aria-label="Call settings"]')).not.toBeNull();
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="call-settings-panel-audio"]')?.click(); });
+    expect(host?.querySelector('[role="region"][aria-label="Audio settings"]')).not.toBeNull();
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Input gain"]')?.value).toBe("100");
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("100");
     expect(host?.textContent).toContain("Microphone test");
@@ -379,8 +412,9 @@ describe("GuestMeetingPage pre-join controls", () => {
     });
 
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
-    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).toBeNull();
+    expect(host?.querySelector('[role="dialog"][aria-label="Call settings"]')).toBeNull();
     await act(async () => { trigger?.click(); });
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="call-settings-panel-audio"]')?.click(); });
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("35");
   });
 

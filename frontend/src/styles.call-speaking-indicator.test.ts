@@ -9,16 +9,19 @@ const callSurfaceSources = [
   readFileSync(resolve(process.cwd(), "src/features/chats/calling/VoiceChannelStage.tsx"), "utf8"),
   readFileSync(resolve(process.cwd(), "src/pages/GuestMeetingPage.tsx"), "utf8"),
 ];
+const sharedStageSource = readFileSync(resolve(process.cwd(), "src/features/chats/calling/SharedCallStage.tsx"), "utf8");
 
 describe("call speaking-indicator CSS contract", () => {
   it("applies the shared stage and control styles across DM/group, voice, and guest surfaces", () => {
     expect(callSurfaceSources[0]).toContain("shared-call-controls");
-    expect(callSurfaceSources[0]).toContain("shared-call-stage");
+    expect(callSurfaceSources[0]).toContain("SharedCallStage");
     expect(callSurfaceSources[1]).toContain("shared-call-controls");
+    expect(callSurfaceSources[1]).toContain("SharedCallStage");
     expect(callSurfaceSources[2]).toContain("shared-call-controls");
-    expect(callSurfaceSources[2]).toContain("shared-call-stage");
+    expect(callSurfaceSources[2]).toContain("SharedCallStage");
     expect(callSurfaceSources[3]).toContain("shared-call-controls");
-    expect(callSurfaceSources[3]).toContain("shared-call-stage");
+    expect(callSurfaceSources[3]).toContain("SharedCallStage");
+    expect(sharedStageSource).toContain("shared-call-stage shared-call-stage-layout");
 
     const sharedRules = rule(".shared-call-controls");
     expect(sharedRules).toContain("justify-content: center");

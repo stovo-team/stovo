@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 for (const viewport of [
   { width: 1280, height: 720, layout: "side" },
-  { width: 800, height: 360, layout: "bottom" },
+  { width: 800, height: 260, layout: "bottom" },
   { width: 640, height: 850, layout: "mobile-bottom" },
 ]) {
   test(`keeps presentation participants landscape without horizontal clipping at ${viewport.width}x${viewport.height}`, async ({ page }) => {
@@ -17,10 +17,34 @@ for (const viewport of [
     if (viewport.layout === "mobile-bottom") await page.getByRole("button", { name: "More options" }).click();
     await page.getByRole("button", { name: /^(Share screen|Share Screen)$/ }).click();
     await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
+    await expect(peer.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
     const grid = page.locator(".call-grid--presenting:visible");
+    if (viewport.layout === "mobile-bottom") {
+      await expect.poll(async () => page.locator(".shared-call-control-panel").evaluate((panel) => {
+        const panelRect = panel.getBoundingClientRect();
+        const controls = Array.from(panel.querySelectorAll<HTMLElement>("button")).map((button) => button.getBoundingClientRect());
+        return panelRect.width >= 280
+          && controls.length >= 5
+          && controls.every((rect) => rect.left >= panelRect.left && rect.right <= panelRect.right)
+          && controls.every((rect, index) => controls.slice(index + 1).every((other) => rect.right <= other.left + 1 || other.right <= rect.left + 1));
+      })).toBe(true);
+    }
     await expect(grid).toHaveCount(1);
     if (viewport.layout === "side") await expect(grid).not.toHaveClass(/call-grid--screen-share-bottom/);
     if (viewport.layout === "bottom") await expect(grid).toHaveClass(/call-grid--screen-share-bottom/);
+
+    if (viewport.layout === "side") {
+      // Desktop should use the full stage width: screen is 5x each 16:9 participant card.
+      await expect.poll(() => grid.evaluate((element) => {
+        const stage = element.getBoundingClientRect();
+        const screen = element.querySelector<HTMLElement>(".call-grid__tile--screen")!.getBoundingClientRect();
+        const participant = element.querySelector<HTMLElement>(".call-grid__participant-rail .call-grid__tile")!.getBoundingClientRect();
+        return Math.abs(screen.width / participant.width - 5) < 0.08
+          && Math.abs(screen.width / screen.height - 16 / 9) < 0.04
+          && Math.abs(screen.left - stage.left) < 3
+          && Math.abs(participant.right - stage.right) < 1;
+      })).toBe(true);
+    }
 
     // Actual browser geometry catches min-height and intrinsic grid sizing bugs.
     // An aspect-ratio declaration alone does not ensure the rendered ratio.
@@ -151,6 +175,29 @@ test("replaces group audio avatars with the shared screen on desktop", async ({ 
   await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
   await expect(page.getByRole("list", { name: "Group call participants" })).not.toBeVisible();
   await expect(peer.getByRole("list", { name: "Group call participants" })).not.toBeVisible();
+  const stage = page.locator(".call-grid--presenting:visible");
+  const presenter = stage.locator(".call-grid__tile--screen");
+  const initialPresenter = await presenter.boundingBox();
+  const participantsToggle = page.getByRole("button", { name: "Hide participants" });
+  await expect(participantsToggle).toHaveAttribute("aria-expanded", "true");
+  await expect.poll(async () => {
+    const toggleBounds = await participantsToggle.boundingBox();
+    const presenterBounds = await presenter.boundingBox();
+    return toggleBounds && presenterBounds
+      && toggleBounds.width <= 30
+      && Math.abs(toggleBounds.x + toggleBounds.width / 2 - (presenterBounds.x + presenterBounds.width)) <= 2
+      && Math.abs(toggleBounds.y + toggleBounds.height / 2 - (presenterBounds.y + presenterBounds.height / 2)) <= 2;
+  }).toBe(true);
+  await participantsToggle.click();
+  await expect(page.getByRole("button", { name: "Show participants" })).toHaveAttribute("aria-expanded", "false");
+  await expect(stage.locator(".call-grid__participant-rail")).not.toBeVisible();
+  const expandedPresenter = await presenter.boundingBox();
+  expect(expandedPresenter!.width * expandedPresenter!.height).toBeGreaterThan(initialPresenter!.width * initialPresenter!.height);
+  const controlPanel = await page.locator(".shared-call-control-panel").boundingBox();
+  expect(controlPanel!.height).toBeLessThanOrEqual(64);
+  expect(controlPanel!.x).toBeGreaterThanOrEqual(expandedPresenter!.x);
+  expect(controlPanel!.x + controlPanel!.width).toBeLessThanOrEqual(expandedPresenter!.x + expandedPresenter!.width);
+  await expect(page.locator(".call-grid-shell:visible .call-grid__audio-pool")).toBeAttached();
   await page.screenshot({ path: test.info().outputPath("desktop-audio-presentation.png") });
   await page.getByRole("button", { name: "Stop sharing screen" }).click();
   await expect(page.getByRole("list", { name: "Group call participants" })).toBeVisible();

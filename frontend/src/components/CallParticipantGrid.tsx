@@ -4,7 +4,7 @@ import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
-import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
+import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize, getScreenStreamAspectRatio } from "../features/chats/calling/screenShareLayout";
 import { MockScreenSharePreview } from "../features/chats/calling/MockScreenSharePreview";
 
 type ScreenPresenter = {
@@ -99,6 +99,7 @@ export default function CallParticipantGrid({
 }: CallParticipantGridProps) {
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
   const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  const [measuredScreenAspectRatio, setMeasuredScreenAspectRatio] = useState<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -161,6 +162,11 @@ export default function CallParticipantGrid({
           }
         : null;
   const isPresenting = Boolean(presenter);
+  const screenAspectRatio = presenter?.isMock ? 16 / 9 : measuredScreenAspectRatio ?? getScreenStreamAspectRatio(presenter?.screenStream);
+  const screenAspectRatioCss = screenAspectRatio === 16 / 9 ? "16 / 9" : String(screenAspectRatio);
+  useEffect(() => {
+    setMeasuredScreenAspectRatio(null);
+  }, [presenter?.userId, presenter?.screenStream]);
   const count = 1 + remoteMedia.length;
   const useMobilePair = isMobileLayout && !mobileSingleRemote && !isPresenting && count === 2;
   const useLandscapeParticipantSizing = (isPresenting || useMobilePair) && !mobileSingleRemote;
@@ -174,7 +180,7 @@ export default function CallParticipantGrid({
   const getPresenterLayout = presenter?.isMock ? getMockScreenShareLayout : getScreenShareLayout;
   const useBottomScreenShareRail = useScreenShareRail && (
     stageSize
-      ? getPresenterLayout(stageSize.width, stageSize.height, remoteMedia.length + 1) === "bottom"
+      ? getPresenterLayout(stageSize.width, stageSize.height, remoteMedia.length + 1, screenAspectRatio) === "bottom"
       : remoteMedia.length >= 4
   );
   const screenPresenterSize = useScreenShareRail && stageSize
@@ -183,6 +189,7 @@ export default function CallParticipantGrid({
       stageSize.height,
       useBottomScreenShareRail ? "bottom" : "side",
       getScreenShareBottomRailHeight(window.innerHeight),
+      screenAspectRatio,
     )
     : null;
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
@@ -241,12 +248,15 @@ export default function CallParticipantGrid({
       style={{
         ...gridStyle,
         gridTemplateColumns: useScreenShareRail
-          ? undefined
+          ? useBottomScreenShareRail
+            ? undefined
+            : `${Math.round(screenPresenterSize?.width ?? 560)}px ${Math.round((screenPresenterSize?.width ?? 560) / 5)}px`
           : useMobilePresentationRow
           ? "minmax(0, 1fr)"
           : isPresenting
           ? "repeat(auto-fit, minmax(120px, 1fr))"
           : `repeat(${columns}, minmax(0, 1fr))`,
+        justifyContent: useScreenShareRail && !useBottomScreenShareRail ? "space-between" : undefined,
       }}
     >
       {presenter ? (
@@ -254,10 +264,10 @@ export default function CallParticipantGrid({
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? useBottomScreenShareRail
-              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
-              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
+              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "center", justifySelf: "center" }
+              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "center", justifySelf: "start" }
             : useMobilePresentationRow
-              ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
+              ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: screenAspectRatioCss, maxHeight: "none", ["--screen-aspect-ratio" as string]: screenAspectRatioCss }
               : landscapePresenterTileStyle}
           label={presenter.displayName}
           stream={presenter.screenStream}
@@ -266,6 +276,7 @@ export default function CallParticipantGrid({
           isMuted={Boolean(presenter.isMuted)}
           isConnected={isCallConnected}
           localVideoPlaceholder={presenter.isMock ? <MockScreenSharePreview ownerName={presenter.displayName} /> : undefined}
+          onVideoMetadata={(width, height) => { if (width > 0 && height > 0) setMeasuredScreenAspectRatio(width / height); }}
         />
       ) : null}
 

@@ -12,8 +12,11 @@ import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { CallControlButton } from "./CallControlButton";
 import { CallParticipantStage } from "./CallParticipantStage";
+import { SharedCallStage } from "./SharedCallStage";
+import { SharedCallControlPanel } from "./SharedCallControlPanel";
 import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
 import { hasScreenSharePresentation } from "./screenSharePresentation";
+import { useCallUIPreferences } from "./callUIPreferences";
 
 export function MobileActiveScreen({
   peerName,
@@ -92,6 +95,7 @@ export function MobileActiveScreen({
   isGroupCall?: boolean;
   participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
 }) {
+  const { preferences: callUIPreferences } = useCallUIPreferences();
   const [isLandscapeView, setIsLandscapeView] = useState(false);
 
   const transcription = useTranscription({
@@ -135,7 +139,7 @@ export function MobileActiveScreen({
   const CALL_CONTROLS_HIDE_DELAY_MS = 15_000;
 
   const showControls = useCallback(() => setAreControlsVisible(true), []);
-  const toggleControls = useCallback(() => setAreControlsVisible((visible) => !visible), []);
+  const toggleControls = useCallback(() => setAreControlsVisible((visible) => callUIPreferences.autoHideControls ? !visible : true), [callUIPreferences.autoHideControls]);
   const selfViewVerticalPosition = areControlsVisible ? "top" : "bottom";
   const compactPipClassName = `mobile-active-pip mobile-active-pip--${selfViewVerticalPosition} mobile-active-pip--${selfViewSide}`;
 
@@ -191,10 +195,11 @@ export function MobileActiveScreen({
     : { transform: localVideoMirrorTransform };
 
   useEffect(() => {
+    if (!callUIPreferences.autoHideControls) { setAreControlsVisible(true); return; }
     if (!areControlsVisible) return;
     const timerId = window.setTimeout(() => setAreControlsVisible(false), CALL_CONTROLS_HIDE_DELAY_MS);
     return () => window.clearTimeout(timerId);
-  }, [areControlsVisible]);
+  }, [areControlsVisible, callUIPreferences.autoHideControls]);
 
   // Attach remote video stream
   useEffect(() => {
@@ -361,7 +366,7 @@ export function MobileActiveScreen({
       )}
 
       {showAnyVideo && (
-        <CallParticipantStage className="shared-call-stage mobile-active-video-stage" onPointerDown={toggleControls}>
+        <SharedCallStage cameraFit={callUIPreferences.cameraFit} isMobile isSharing={showPresentationGrid} className="mobile-active-video-stage">
           {useSharedVideoGrid || showGroupRoster ? (
             <CallParticipantGrid
               localStream={localVideoStream}
@@ -540,7 +545,7 @@ export function MobileActiveScreen({
           )}
             </>
           )}
-        </CallParticipantStage>
+        </SharedCallStage>
       )}
 
       {/* Avatar view for audio-only calls without video/screen */}
@@ -577,6 +582,7 @@ export function MobileActiveScreen({
       )}
 
       {/* Bottom control bar */}
+      <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls && !areControlsVisible}>
       <div
         className={`mobile-active-controls shared-call-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
         data-layout="mobile-one-row"
@@ -644,6 +650,7 @@ export function MobileActiveScreen({
           </div>
         </div>
       </div>
+      </SharedCallControlPanel>
 
       {/* Floating Subtitle Overlay for Live Captions */}
       {liveCaptions && (

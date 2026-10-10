@@ -42,7 +42,7 @@ describe("group call presentation surface", () => {
 
   it("keeps audio settings above the expanded call and uses the audio-channel popup", () => {
     expect(rule(".call-audio-popup-backdrop")).toMatch(/z-index:\s*2600/);
-    expect(audioSettingsPopup).toContain("className=\"call-audio-popup\"");
+    expect(audioSettingsPopup).toContain('className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}');
     expect(styles).toContain(".call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share");
   });
 });

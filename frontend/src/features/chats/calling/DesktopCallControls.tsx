@@ -31,6 +31,9 @@ import { CallControlButton } from "./CallControlButton";
 import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
 import { enableCallCamera } from "./callCamera";
+import { SharedCallStage } from "./SharedCallStage";
+import { SharedCallControlPanel } from "./SharedCallControlPanel";
+import { useCallUIPreferences } from "./callUIPreferences";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -45,6 +48,7 @@ export function DesktopCallControls({
   mockScreenShareOwner?: { userId: string; displayName: string } | null;
 } = {}) {
   const { session, members, currentUser, isMobileViewport, chats, onOpenChat } = useCallFeatureContext();
+  const { preferences: callUIPreferences } = useCallUIPreferences();
   const {
     callPhase,
     callType,
@@ -222,7 +226,7 @@ export function DesktopCallControls({
       )}
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-      <CallParticipantStage className={`shared-call-stage call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && !localScreenStream && !mockScreenShareOwner && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+      <SharedCallStage cameraFit={callUIPreferences.cameraFit} isSharing={Boolean(localScreenStream || callRemoteMedia.some((m) => m.hasScreenShare) || mockScreenShareOwner)} className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && !localScreenStream && !mockScreenShareOwner && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
         {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare) || mockScreenShareOwner) && (callPhase === "in-call" || (isGroupCall && callPhase === "connecting")) && !isCallMinimized ? (
           <CallParticipantGrid
             isCallConnected={callPhase === "in-call"}
@@ -267,7 +271,7 @@ export function DesktopCallControls({
             </div>
           </>
         )}
-      </CallParticipantStage>
+      </SharedCallStage>
 
       {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
@@ -335,6 +339,7 @@ export function DesktopCallControls({
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
+        <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
         <div className="call-ctrl-row call-popup-ctrl-row shared-call-controls guest-call-controls">
           {callPhase === "incoming" && (
             <>
@@ -399,6 +404,7 @@ export function DesktopCallControls({
                       setIsCallAudioPopupOpen(false);
                       setIsCallSettingsMenuOpen(false);
                     } else {
+                      window.dispatchEvent(new CustomEvent("stovo:open-call-settings", { detail: "general" }));
                       setIsCallSettingsMenuOpen(false);
                       setIsCallAudioPopupOpen(true);
                     }
@@ -490,6 +496,7 @@ export function DesktopCallControls({
             </>
           )}
         </div>
+        </SharedCallControlPanel>
       )}
 
     </>

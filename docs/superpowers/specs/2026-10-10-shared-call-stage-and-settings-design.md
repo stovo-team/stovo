@@ -1,7 +1,7 @@
 # Shared call stage, floating controls, and settings
 
 Date: 2026-10-10
-Status: written specification approved, with the user explicitly retaining 16:9 gallery cards.
+Status: approved specification with follow-up layout refinements: 16:9 participant cards, a 5:1 desktop share-to-participant width ratio, and compact controls anchored over the presentation edge.
 
 ## User problem and outcome
 
@@ -18,9 +18,10 @@ including its rounded surfaces. The user approved implementing inline in this ch
 
 - Maximize the shared screen within the available stage, preserving the source ratio.
 - Compact participant cards at 16:9, on the right when room permits and below otherwise.
-- A chevron hides/restores the participant rail and gives its space to the shared screen.
+- On desktop side-rail layouts, align the presentation at the left edge and participant cards at the right edge. Keep each participant card 16:9 and size the presentation card to five times its width.
+- A small chevron button sits directly on the presentation edge, hides/restores the participant rail, and gives its space to the shared screen.
 - Shrink/expand and invite controls overlay the stage instead of allocating rows.
-- A rounded floating control panel with a 90% opaque surface.
+- A compact rounded-rectangle floating control panel overlays the stage with a 90% opaque surface and minimal padding.
 - One settings dialog with General, Audio, and Camera tabs, using the application's
   current language convention (English labels today; Russian names in the request
   describe these same tabs).
@@ -82,6 +83,12 @@ when the stage still has room. Right rails can scroll vertically when required,
 never horizontally. Bottom rails stay in one row and scroll horizontally when
 participants exceed its capacity. Mobile rows align left, with cards 144×81px
 and 128×72px at widths up to 420px. Cards remain landscape, including muted avatars.
+On desktop side layouts, the stage uses 5:1 presentation and participant columns,
+with both cards flush to their respective stage edges; the participant card remains
+16:9. The short bottom-row layout remains unchanged.
+On narrow screens during sharing, the participant thumbnails sit in a left-aligned
+row above the presentation. Without sharing, two mobile participants use a single
+16:9 column sized to fit above the controls; three or more use a grid.
 
 Without a presentation, portrait/mobile group calls use one column for two people
 and a grid for three or more. Gallery cards retain 16:9 and use the largest size that fits between the top

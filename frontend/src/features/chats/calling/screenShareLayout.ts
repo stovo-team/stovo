@@ -2,8 +2,18 @@ export type ScreenShareLayout = "side" | "bottom";
 
 export type ScreenSharePresenterSize = { width: number; height: number };
 
+export function getScreenStreamAspectRatio(stream: MediaStream | null | undefined): number {
+  const track = stream?.getVideoTracks().find((item) => item.readyState !== "ended");
+  const settings = typeof track?.getSettings === "function" ? track.getSettings() : undefined;
+  return settings?.width && settings.height ? settings.width / settings.height : 16 / 9;
+}
+
 export function getScreenShareBottomRailHeight(viewportHeight: number): number {
   return Math.min(90, Math.max(80, viewportHeight * 0.11));
+}
+
+function getSideRailWidth(width: number): number {
+  return Math.max(112, (width - 12) / 6);
 }
 
 export function getScreenSharePresenterSize(
@@ -11,43 +21,45 @@ export function getScreenSharePresenterSize(
   height: number,
   layout: ScreenShareLayout,
   bottomRailHeight = getScreenShareBottomRailHeight(height),
+  aspectRatio = 16 / 9,
 ): ScreenSharePresenterSize {
-  const railWidth = Math.min(168, Math.max(112, width * 0.16));
   const gap = 12;
+  const railWidth = getSideRailWidth(width);
   const availableWidth = layout === "side" ? width - railWidth - gap : width;
   const availableHeight = layout === "side" ? height : Math.max(0, height - bottomRailHeight - gap);
-  const presenterWidth = Math.max(0, Math.min(availableWidth, availableHeight * (16 / 9)));
+  const ratio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const presenterWidth = Math.max(0, Math.min(availableWidth, availableHeight * ratio));
 
-  return { width: presenterWidth, height: presenterWidth * (9 / 16) };
+  return { width: presenterWidth, height: presenterWidth / ratio };
 }
 
 function hasSideRailSpace(
   width: number,
   height: number,
-  participantCount: number,
+  _participantCount: number,
   minimumPresenterHeight: number,
+  aspectRatio = 16 / 9,
 ): boolean {
   if (width <= 0 || height <= 0) return false;
 
-  const railWidth = Math.min(168, Math.max(112, width * 0.16));
   const gap = 12;
-  const cardHeight = Math.max(80, railWidth * (9 / 16));
-  const visibleCardCount = Math.max(1, participantCount);
-  const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
-  const minimumPresenterWidth = 360;
+  const ratio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const minimumPresenterWidth = 560;
+  const minimumParticipantWidth = minimumPresenterWidth / 5;
+  const requiredHeight = minimumPresenterWidth / ratio;
 
-  return width >= minimumPresenterWidth + railWidth + gap
-    && height >= Math.max(minimumPresenterHeight, requiredRailHeight);
+  return width >= minimumPresenterWidth + minimumParticipantWidth + gap
+    && height >= Math.max(minimumPresenterHeight, requiredHeight);
 }
 
 /** Keep real screen sharing on the original full-size 16:9 layout policy. */
-export function getScreenShareLayout(width: number, height: number, participantCount: number): ScreenShareLayout {
-  const railWidth = Math.min(168, Math.max(112, width * 0.16));
-  const presenterHeight = (width - railWidth - 12) * (9 / 16);
-  return hasSideRailSpace(width, height, participantCount, Math.max(200, presenterHeight)) ? "side" : "bottom";
+export function getScreenShareLayout(width: number, height: number, participantCount: number, aspectRatio = 16 / 9): ScreenShareLayout {
+  const ratio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 16 / 9;
+  const minimumPresenterHeight = 560 / ratio;
+  return hasSideRailSpace(width, height, participantCount, minimumPresenterHeight, ratio) ? "side" : "bottom";
 }
 
 /** Mock fixtures can shrink vertically to fit beside the participant rail. */
-export function getMockScreenShareLayout(width: number, height: number, participantCount: number): ScreenShareLayout {
-  return hasSideRailSpace(width, height, participantCount, 200) ? "side" : "bottom";
+export function getMockScreenShareLayout(width: number, height: number, participantCount: number, aspectRatio = 16 / 9): ScreenShareLayout {
+  return hasSideRailSpace(width, height, participantCount, 560 / aspectRatio, aspectRatio) ? "side" : "bottom";
 }
