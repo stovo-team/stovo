@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import type { User } from "../../../api/auth";
@@ -14,6 +14,8 @@ import {
   publishMockCallSnapshot,
   readMockCallSnapshot,
   subscribeToMockCallChanges,
+  startMockCallScreenShare,
+  stopMockCallScreenShare,
   type MockCallSnapshot,
 } from "../../../dev/mockCallBroker";
 
@@ -85,13 +87,19 @@ export function useMockCallSession({
 }: MockCallSessionParams) {
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
+  const [mockScreenShareUserId, setMockScreenShareUserId] = useState<string | null>(null);
   const applySnapshotRef = useRef<(call: MockCallSnapshot | null) => void>(() => undefined);
 
   applySnapshotRef.current = (call) => {
-    if (!call) return;
+    if (!call) {
+      setMockScreenShareUserId(null);
+      setters.setCallAudioSettings((current) => current.screenSharing ? { ...current, screenSharing: false } : current);
+      return;
+    }
     const isCurrentCall =
       refs.activeCallSessionIdRef.current === call.id || refs.callRoomIdRef.current === call.id;
     if (call.status === "ended") {
+      setMockScreenShareUserId(null);
       setters.setActiveGroupCalls((current) => {
         if (!current[call.chatId]) return current;
         const next = { ...current };
@@ -104,6 +112,10 @@ export function useMockCallSession({
 
     const activeUser = currentUserRef.current;
     if (!activeUser) return;
+    const screenShareUserId = call.screenShareUserId && call.participants.some(
+      (participant) => participant.userId === call.screenShareUserId && participant.state === "connected",
+    ) ? call.screenShareUserId : null;
+    setMockScreenShareUserId(screenShareUserId);
     const self = call.participants.find((participant) => participant.userId === activeUser.id);
     if (!self) return;
     if (self.state === "declined" || self.state === "left") {
@@ -157,7 +169,7 @@ export function useMockCallSession({
       screenStream: null,
       hasVideo: false,
       hasAudio: false,
-      hasScreenShare: false,
+      hasScreenShare: screenShareUserId === userId,
       isMuted: true,
     })));
     setters.setHasRemoteVideo(call.callType === "video" && remoteUsers.length > 0);
@@ -165,16 +177,12 @@ export function useMockCallSession({
     setters.setIsLocalSpeaking(false);
     setters.setIsPeerSpeaking(false);
     setters.setSpeakingUserIds([]);
-    if (isNewCall) {
-      setters.setCallAudioSettings((current) => ({
-        ...current,
-        micMuted: true,
-        soundDisabled: true,
-        cameraEnabled: false,
-        screenSharing: false,
-      }));
-      setters.setCallNotice("Mock call: audio and camera devices are disabled");
-    }
+    setters.setCallAudioSettings((current) => ({
+      ...current,
+      ...(isNewCall ? { micMuted: true, soundDisabled: true, cameraEnabled: false } : {}),
+      screenSharing: screenShareUserId === activeUser.id,
+    }));
+    if (isNewCall) setters.setCallNotice("Mock call: audio and camera devices are disabled");
     if (isGroupCall) {
       setters.setActiveGroupCalls((current) => ({
         ...current,
@@ -312,8 +320,20 @@ export function useMockCallSession({
     return true;
   };
 
+  const toggleScreenShare = (): boolean => {
+    if (!isLocalMockCallMode || !currentUser) return false;
+    const call = readMockCallSnapshot();
+    if (!call || call.id !== refs.callRoomIdRef.current) return true;
+    const updated = call.screenShareUserId === currentUser.id
+      ? stopMockCallScreenShare(call, currentUser.id)
+      : startMockCallScreenShare(call, currentUser.id);
+    if (updated) publishMockCallSnapshot(updated);
+    return true;
+  };
+
   return {
     isEnabled: isLocalMockCallMode,
+    mockScreenShareUserId,
     startDirectCall,
     sendInvites,
     acceptIncomingCall,
@@ -321,5 +341,6 @@ export function useMockCallSession({
     joinVoiceChannel,
     declineIncomingCall,
     endActiveCall,
+    toggleScreenShare,
   };
 }

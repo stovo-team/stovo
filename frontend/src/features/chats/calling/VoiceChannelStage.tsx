@@ -32,6 +32,7 @@ import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { enableCallCamera } from "./callCamera";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
+import { hasScreenSharePresentation } from "./screenSharePresentation";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -255,12 +256,9 @@ export function VoiceChannelStage({
   }
 
   const isListMode = participantCount > 9;
-  const hasActiveScreenShare = Boolean(
-    localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended") ||
-    callRemoteMedia?.some(
-      (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
-    ),
-  );
+  const mockScreenShareOwnerId = session.mockScreenShareUserId;
+  const hasActiveScreenShare = hasScreenSharePresentation(mockScreenShareOwnerId, localScreenStream, callRemoteMedia);
+  const mockScreenShareOwner = mockScreenShareOwnerId ? { userId: mockScreenShareOwnerId, displayName: resolveMemberInfo(mockScreenShareOwnerId).rawDisplayName } : null;
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
@@ -290,6 +288,7 @@ export function VoiceChannelStage({
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
             remoteMedia={callRemoteMedia ?? []}
+            mockScreenShareOwner={mockScreenShareOwner}
             localUserLabel={currentUser?.displayName ?? "You"}
             mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
             callType={callType}

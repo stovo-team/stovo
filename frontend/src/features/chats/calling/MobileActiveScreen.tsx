@@ -13,6 +13,7 @@ import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { CallControlButton } from "./CallControlButton";
 import { CallParticipantStage } from "./CallParticipantStage";
 import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
+import { hasScreenSharePresentation } from "./screenSharePresentation";
 
 export function MobileActiveScreen({
   peerName,
@@ -51,7 +52,7 @@ export function MobileActiveScreen({
   currentUserId,
   socketRef,
   isGroupCall = false,
-  participantProfiles = {},
+  participantProfiles = {}, mockScreenShareOwner = null,
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
@@ -89,7 +90,7 @@ export function MobileActiveScreen({
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
   isGroupCall?: boolean;
-  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>;
+  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
 }) {
   const [isLandscapeView, setIsLandscapeView] = useState(false);
 
@@ -295,10 +296,8 @@ export function MobileActiveScreen({
   const showRemoteVideo = Boolean(hasRemoteVideo || remoteVideoStream !== null);
   const isSharingLocalScreen = Boolean(isScreenSharing || localScreenStream);
   useEffect(() => { if (!isSharingLocalScreen) setIsLandscapeView(false); }, [isSharingLocalScreen]);
-  const hasRemoteScreenShare = remoteMedia.some(
-    (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
-  );
-  const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare;
+  const hasRemoteScreenShare = hasScreenSharePresentation(mockScreenShareOwner?.userId, null, remoteMedia);
+  const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare || Boolean(mockScreenShareOwner);
   const useSharedVideoGrid = showPresentationGrid || (callType === "video" && showRemoteVideo && Boolean(remoteVideoStream));
   const gridRemoteMedia = remoteMedia.length > 0
     ? remoteMedia
@@ -367,7 +366,7 @@ export function MobileActiveScreen({
             <CallParticipantGrid
               localStream={localVideoStream}
               localScreenStream={localScreenStream}
-              remoteMedia={gridRemoteMedia}
+              remoteMedia={gridRemoteMedia} mockScreenShareOwner={mockScreenShareOwner}
               localUserLabel={localUserLabel}
               accessToken={accessToken}
               participantProfiles={participantProfiles}

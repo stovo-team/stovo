@@ -268,6 +268,95 @@
   gap: 14px;
 }
 
+.mock-screen-share-preview {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: clamp(22px, 4.2vw, 38px) minmax(0, 1fr) clamp(5px, 1vw, 9px);
+  overflow: hidden;
+  background: #f4f6fb;
+  color: #172033;
+  font: 500 clamp(6px, .82vw, 12px)/1.3 Inter, system-ui, sans-serif;
+  text-align: left;
+}
+.mock-screen-share-preview__topbar {
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, 1vw, 12px);
+  min-width: 0;
+  padding: 0 clamp(7px, 1.3vw, 16px);
+  background: #fff;
+  border-bottom: 1px solid #e6e9f0;
+  color: #5c6475;
+}
+.mock-screen-share-preview__window-dots {
+  width: clamp(14px, 2.2vw, 26px);
+  height: clamp(4px, .6vw, 7px);
+  flex: 0 0 auto;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #f87171 0 30%, #fbbf24 30% 65%, #34d399 65%);
+}
+.mock-screen-share-preview__topbar-status {
+  margin-left: auto;
+  overflow: hidden;
+  color: #737b8c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mock-screen-share-preview__content {
+  display: grid;
+  grid-template-columns: minmax(52px, 17%) minmax(0, 1fr);
+  min-height: 0;
+}
+.mock-screen-share-preview__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .8vw, 10px);
+  min-width: 0;
+  padding: clamp(5px, 1.2vw, 14px);
+  background: #202a42;
+  color: #dce3f1;
+}
+.mock-screen-share-preview__brand-mark {
+  display: grid;
+  width: clamp(13px, 2.1vw, 24px);
+  height: clamp(13px, 2.1vw, 24px);
+  place-items: center;
+  margin-bottom: clamp(3px, .5vw, 7px);
+  border-radius: 7px;
+  background: #6274ee;
+  color: #fff;
+  font-weight: 800;
+}
+.mock-screen-share-preview__sidebar-item {
+  overflow: hidden;
+  padding: clamp(2px, .45vw, 5px) clamp(3px, .65vw, 8px);
+  border-radius: 5px;
+  color: #abb5ca;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mock-screen-share-preview__sidebar-item.is-active { background: #34415f; color: #fff; }
+.mock-screen-share-preview__document {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .8vw, 10px);
+  min-width: 0;
+  padding: clamp(8px, 2vw, 24px) clamp(10px, 2.4vw, 30px);
+  background: #f8f9fc;
+}
+.mock-screen-share-preview__eyebrow { color: #70798b; font-size: .72em; font-weight: 700; letter-spacing: .12em; }
+.mock-screen-share-preview__document strong { color: #18243b; font-size: clamp(10px, 1.7vw, 24px); font-weight: 700; }
+.mock-screen-share-preview__document-rule { height: 1px; margin: clamp(1px, .3vw, 4px) 0; background: #dfe4ed; }
+.mock-screen-share-preview__line { display: block; width: 72%; height: clamp(2px, .4vw, 5px); border-radius: 9px; background: #d9dfeb; }
+.mock-screen-share-preview__line--wide { width: 92%; }
+.mock-screen-share-preview__line--short { width: 48%; }
+.mock-screen-share-preview__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(3px, .8vw, 9px); margin: clamp(2px, .5vw, 7px) 0; }
+.mock-screen-share-preview__cards span { display: flex; flex-direction: column; gap: clamp(2px, .4vw, 5px); min-width: 0; padding: clamp(4px, .9vw, 11px); border: 1px solid #e2e7f0; border-radius: 6px; background: #fff; color: #59647a; }
+.mock-screen-share-preview__cards b { color: #6274ee; font-size: .78em; }
+.mock-screen-share-preview__taskbar { display: flex; justify-content: center; gap: clamp(3px, .6vw, 7px); background: #e8ebf2; }
+.mock-screen-share-preview__taskbar span { width: clamp(3px, .6vw, 7px); height: clamp(3px, .6vw, 7px); margin-top: 1px; border-radius: 50%; background: #8c96aa; }
+
 .call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share {
   width: 100% !important;
   max-width: 100% !important;

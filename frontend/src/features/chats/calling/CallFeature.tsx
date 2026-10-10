@@ -131,6 +131,13 @@ export function CallFeature() {
       profilePhoto: currentUser.profilePhoto ?? null,
     };
   }
+  const mockScreenShareOwnerId = session.mockScreenShareUserId;
+  const mockScreenShareOwnerUser = mockScreenShareOwnerId === currentUser?.id
+    ? currentUser
+    : [...members, ...(activeChat?.members ?? [])].find((member) => member.id === mockScreenShareOwnerId);
+  const mockScreenShareOwner = mockScreenShareOwnerId
+    ? { userId: mockScreenShareOwnerId, displayName: mockScreenShareOwnerUser?.displayName ?? mockScreenShareOwnerId }
+    : null;
 
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
@@ -261,10 +268,11 @@ export function CallFeature() {
                 socketRef={session.socketRef}
                 isGroupCall={isGroupCall}
                 participantProfiles={participantProfiles}
+                mockScreenShareOwner={mockScreenShareOwner}
               />
             )}
 
-            <DesktopCallControls />
+            <DesktopCallControls mockScreenShareOwner={mockScreenShareOwner} />
           </section>
         </>
       )}

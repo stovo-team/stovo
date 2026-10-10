@@ -120,6 +120,48 @@ describe("shared call participant presentation", () => {
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
   });
 
+  it("renders a synthetic 16:9 screen share and moves participants below it when the stage narrows", () => {
+    let stage = { width: 1200, height: 720 };
+    const observers: Array<(size: { width: number; height: number }) => void> = [];
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        observers.push((size) => {
+          const rect = { x: 0, y: 0, top: 0, left: 0, width: size.width, height: size.height, right: size.width, bottom: size.height, toJSON: () => ({}) } as DOMRectReadOnly;
+          const entry = { target, contentRect: rect, borderBoxSize: [], contentBoxSize: [], devicePixelContentBoxSize: [] } as unknown as ResizeObserverEntry;
+          this.callback([entry], this as unknown as ResizeObserver);
+        });
+        observers.at(-1)?.(stage);
+      }
+      disconnect() {}
+    });
+    const container = renderGrid({
+      localStream: null,
+      localUserLabel: "Stovo Demo",
+      remoteMedia: [
+        { userId: "user-alex-rivera", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false },
+      ],
+      callType: "audio",
+      mockScreenShareOwner: { userId: "user-stovo-demo", displayName: "Stovo Demo" },
+    });
+
+    const grid = container.querySelector<HTMLElement>(".call-grid")!;
+    const preview = grid.querySelector<HTMLElement>('[role="img"][aria-label="Stovo Demo\'s shared screen"]');
+    const presenter = grid.querySelector<HTMLElement>(".call-grid__tile--screen");
+    expect(preview).not.toBeNull();
+    expect(presenter?.style.aspectRatio).toBe("16 / 9");
+    expect(grid.classList.contains("call-grid--screen-share")).toBe(true);
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
+    expect(grid.querySelector(".call-grid__participant-rail")).not.toBeNull();
+    expect(styleRules(readFileSync("src/styles.css", "utf8"), ".call-grid__participant-rail")).toMatch(/grid-column:\s*2/);
+
+    stage = { width: 450, height: 720 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);
+    expect(grid.querySelector('[role="img"][aria-label="Stovo Demo\'s shared screen"]')).not.toBeNull();
+    expect(presenter?.style.aspectRatio).toBe("16 / 9");
+  });
+
   it("keeps speech on the participant and preserves the screen tile's 16:9 ratio", () => {
     const screen = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
     const container = renderGrid({ localStream: null, localScreenStream: screen, remoteMedia: [], callType: "audio", isLocalSpeaking: true });

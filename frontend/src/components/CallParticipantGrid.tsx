@@ -5,6 +5,15 @@ import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
 import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
+import { MockScreenSharePreview } from "../features/chats/calling/MockScreenSharePreview";
+
+type ScreenPresenter = {
+  userId: string;
+  displayName: string;
+  screenStream: MediaStream | null;
+  isMuted?: boolean;
+  isMock?: boolean;
+};
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -20,6 +29,7 @@ type CallParticipantGridProps = {
   onFlipLocalCamera?: () => void;
   isFlippingCamera?: boolean;
   localVideoPlaceholder?: ReactNode;
+  mockScreenShareOwner?: { userId: string; displayName: string } | null;
   mobileSingleRemote?: boolean;
   isLocalPrimary?: boolean;
   onToggleMobileStage?: () => void;
@@ -76,6 +86,7 @@ export default function CallParticipantGrid({
   onFlipLocalCamera,
   isFlippingCamera,
   localVideoPlaceholder,
+  mockScreenShareOwner = null,
   mobileSingleRemote = false,
   isLocalPrimary = false,
   onToggleMobileStage,
@@ -124,15 +135,31 @@ export default function CallParticipantGrid({
     localStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false),
   );
 
-  const presenter =
-    localScreenStream && localScreenStream.getVideoTracks().some((t) => t.readyState !== "ended")
-      ? { userId: localUserLabel, screenStream: localScreenStream }
-      : remoteMedia.find(
-          (m) =>
-            m.hasScreenShare &&
-            m.screenStream &&
-            m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
-        );
+  const localScreenPresenter = localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")
+    ? { userId: localUserLabel, displayName: localUserLabel, screenStream: localScreenStream, isMuted: isLocalMuted }
+    : null;
+  const remoteScreenPresenter = remoteMedia.find(
+    (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
+  );
+  const presenter: ScreenPresenter | null = localScreenPresenter
+    ? localScreenPresenter
+    : remoteScreenPresenter
+      ? {
+          userId: remoteScreenPresenter.userId,
+          displayName: participantProfiles[remoteScreenPresenter.userId]?.displayName ?? remoteScreenPresenter.userId,
+          screenStream: remoteScreenPresenter.screenStream,
+          isMuted: remoteScreenPresenter.isMuted,
+        }
+      : mockScreenShareOwner
+        ? {
+            ...mockScreenShareOwner,
+            screenStream: null,
+            isMuted: mockScreenShareOwner.displayName === localUserLabel
+              ? isLocalMuted
+              : Boolean(remoteMedia.find((media) => media.userId === mockScreenShareOwner.userId)?.isMuted),
+            isMock: true,
+          }
+        : null;
   const isPresenting = Boolean(presenter);
 
   const count = 1 + remoteMedia.length;
@@ -216,7 +243,7 @@ export default function CallParticipantGrid({
           : `repeat(${columns}, minmax(0, 1fr))`,
       }}
     >
-      {presenter?.screenStream ? (
+      {presenter ? (
         <CallParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
@@ -226,12 +253,13 @@ export default function CallParticipantGrid({
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
               : landscapePresenterTileStyle}
-          label={presenter.userId}
+          label={presenter.displayName}
           stream={presenter.screenStream}
-          showVideo
+          showVideo={Boolean(presenter.screenStream)}
           isScreen
-          isMuted={presenter.userId === localUserLabel ? isLocalMuted : "isMuted" in presenter && Boolean(presenter.isMuted)}
+          isMuted={Boolean(presenter.isMuted)}
           isConnected={isCallConnected}
+          localVideoPlaceholder={presenter.isMock ? <MockScreenSharePreview ownerName={presenter.displayName} /> : undefined}
         />
       ) : null}
 
