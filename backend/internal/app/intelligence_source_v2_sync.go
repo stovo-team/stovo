@@ -130,7 +130,7 @@ func (s *Server) intelligenceSourceV2BackfillSnapshots(ctx context.Context, iden
 	if err != nil {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	allowed, err := intelligenceSourceV2ReadScope(ctx, tx, identity, s.intelligenceOIDCNow())
+	allowed, err := intelligenceSourceV2LockReadScope(ctx, tx, identity, s.intelligenceOIDCNow())
 	if err != nil {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, err
 	}
@@ -289,8 +289,8 @@ func (s *Server) loadIntelligenceSourceV2BackfillPage(ctx context.Context, tx *s
 		JOIN public.intelligence_source_v2_revisions r
 		  ON r.connection_id=item.connection_id AND r.resource_id=item.resource_id AND r.revision_id=item.revision_id
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
-		WHERE item.backfill_id=$1 AND item.page_number=$2 AND p.retention_expires_at>$3
-		ORDER BY item.item_number`, backfillID, pageNumber, s.intelligenceOIDCNow())
+		WHERE item.backfill_id=$1 AND item.page_number=$2
+		ORDER BY item.item_number`, backfillID, pageNumber)
 	if err != nil {
 		return nil, httptransport.ErrIntelligenceSourceUnavailable
 	}
@@ -408,11 +408,23 @@ func (s *Server) intelligenceSourceV2Snapshot(ctx context.Context, identity http
 	if s.sqlDB == nil {
 		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
+	tx, err := s.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	defer func() { _ = tx.Rollback() }()
+	allowed, err := intelligenceSourceV2LockReadScope(ctx, tx, identity, s.intelligenceOIDCNow())
+	if err != nil {
+		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, err
+	}
+	if !allowed {
+		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceNotFound
+	}
 	var snapshot httptransport.IntelligenceSourceV2ResourceSnapshot
 	var metadata []byte
 	var protocol string
 	var content, ciphertext, nonce sql.NullString
-	err := s.sqlDB.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT r.resource_id,r.revision_id,r.metadata,r.observed_at,r.encryption_protocol,p.content,p.ciphertext,p.nonce
 		FROM public.intelligence_source_v2_revisions r
 		JOIN public.intelligence_source_v2_connections c ON c.id=r.connection_id AND c.id=$1 AND c.enabled AND c.revoked_at IS NULL
@@ -420,8 +432,8 @@ func (s *Server) intelligenceSourceV2Snapshot(ctx context.Context, identity http
 		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=r.chat_id AND scope.chat_id=$4
 		JOIN public.chats scoped_chat ON scoped_chat.id=r.chat_id AND scoped_chat.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
-		WHERE r.connection_id=$1 AND r.resource_id=$5 AND r.revision_id=$6 AND NOT r.deleted AND p.retention_expires_at>$7`,
-		identity.ConnectionID, identity.TenantID, identity.FamilyID, identity.ChatID, resourceID, revisionID, s.intelligenceOIDCNow()).Scan(
+		WHERE r.connection_id=$1 AND r.resource_id=$5 AND r.revision_id=$6 AND NOT r.deleted`,
+		identity.ConnectionID, identity.TenantID, identity.FamilyID, identity.ChatID, resourceID, revisionID).Scan(
 		&snapshot.ResourceID, &snapshot.RevisionID, &metadata, &snapshot.ObservedAt, &protocol, &content, &ciphertext, &nonce)
 	if errors.Is(err, sql.ErrNoRows) {
 		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceNotFound
@@ -452,6 +464,9 @@ func (s *Server) intelligenceSourceV2Snapshot(ctx context.Context, identity http
 	snapshot.PrincipalID = identity.PrincipalUserID
 	snapshot.ContentRevisionID = snapshot.RevisionID
 	snapshot.MetadataRevisionID = snapshot.RevisionID
+	if err := tx.Commit(); err != nil {
+		return httptransport.IntelligenceSourceV2ResourceSnapshot{}, httptransport.ErrIntelligenceSourceUnavailable
+	}
 	return snapshot, nil
 }
 
@@ -488,7 +503,7 @@ func intelligenceSourceV2ReadScope(ctx context.Context, queryer sourceV2QueryRow
 			  AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 			JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
 			JOIN public.intelligence_source_v2_connection_grants g ON g.connection_id=c.id AND g.grant_type='read' AND g.granted
-			WHERE c.id=$1 AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$7
+		WHERE c.id=$1 AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$7
 			  AND i.tenant_id=$4 AND i.family_id=$5
 			  AND (SELECT count(*) FROM public.intelligence_source_v2_connection_chats exact_scope WHERE exact_scope.connection_id=c.id)=1
 		)`, identity.ConnectionID, identity.InstallationID, identity.PrincipalUserID, identity.TenantID, identity.FamilyID, identity.ChatID, now).Scan(&allowed)
@@ -496,6 +511,25 @@ func intelligenceSourceV2ReadScope(ctx context.Context, queryer sourceV2QueryRow
 		return false, httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return allowed, nil
+}
+
+// Lock the source connection before checking current read policy and fetching
+// content. Grant revocation and lifecycle invalidation take this same row with
+// FOR UPDATE, so an overlapping read is ordered entirely before or after it.
+func intelligenceSourceV2LockReadScope(ctx context.Context, tx *sql.Tx, identity httptransport.IntelligenceSourceIdentity, now time.Time) (bool, error) {
+	var connectionID string
+	err := tx.QueryRowContext(ctx, `
+		SELECT c.id /* intelligence_source_v2_read_connection_lock */
+		FROM public.intelligence_source_v2_connections c
+		WHERE c.id=$1
+		FOR SHARE OF c`, identity.ConnectionID).Scan(&connectionID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	return intelligenceSourceV2ReadScope(ctx, tx, identity, now)
 }
 
 func (s *Server) encodeIntelligenceSourceV2Cursor(cursor intelligenceSourceV2Cursor) string {

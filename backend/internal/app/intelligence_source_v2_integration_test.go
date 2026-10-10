@@ -624,6 +624,127 @@ func TestIntelligenceSourceV2FenceSerializesConcurrentCreateEditAndDelete(t *tes
 	}
 }
 
+func TestIntelligenceSourceV2ContentReadsSerializeWithReadRevocation(t *testing.T) {
+	tests := []struct {
+		name string
+		read func(context.Context, intelligenceSourceV2ConsentFixture, httptransport.IntelligenceSourceIdentity, string, string, string, string) error
+		want error
+	}{
+		{
+			name: "backfill snapshot",
+			read: func(ctx context.Context, fixture intelligenceSourceV2ConsentFixture, identity httptransport.IntelligenceSourceIdentity, backfillID, cursor, _, _ string) error {
+				page, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, backfillID, cursor, 100)
+				if err == nil && len(page.Snapshots) > 0 {
+					return errors.New("backfill returned content after read revocation")
+				}
+				return err
+			},
+			want: httptransport.ErrIntelligenceSourceForbidden,
+		},
+		{
+			name: "exact snapshot",
+			read: func(ctx context.Context, fixture intelligenceSourceV2ConsentFixture, identity httptransport.IntelligenceSourceIdentity, _, _, resourceID, revisionID string) error {
+				_, err := fixture.server.intelligenceSourceV2Snapshot(ctx, identity, resourceID, revisionID)
+				return err
+			},
+			want: httptransport.ErrIntelligenceSourceNotFound,
+		},
+		{
+			name: "citation",
+			read: func(ctx context.Context, fixture intelligenceSourceV2ConsentFixture, identity httptransport.IntelligenceSourceIdentity, _, _, resourceID, revisionID string) error {
+				_, err := fixture.server.intelligenceSourceV2ResolveCitation(ctx, identity, resourceID, revisionID, httptransport.IntelligenceTextLocator{Kind: "text", Start: 0, End: 4})
+				return err
+			},
+			want: httptransport.ErrIntelligenceSourceNotFound,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newIntelligenceSourceV2ConsentFixture(t)
+			ctx := context.Background()
+			connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+			resourceID := "source-v2-read-revoke-race-" + uuid.NewString()
+			createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+			if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','race payload',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+				t.Fatalf("insert synthetic read-race message: %v", err)
+			}
+			identity, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, credential)
+			if err != nil {
+				t.Fatalf("authenticate synthetic read-race credential: %v", err)
+			}
+			started, err := fixture.server.intelligenceSourceV2StartBackfill(ctx, identity)
+			if err != nil {
+				t.Fatalf("start synthetic read-race backfill: %v", err)
+			}
+			page, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, started.BackfillID, started.SnapshotCursor, 100)
+			if err != nil || len(page.Snapshots) != 1 {
+				t.Fatalf("materialize synthetic read-race payload page=%#v err=%v", page, err)
+			}
+			revisionID := page.Snapshots[0].RevisionID
+			if test.name == "backfill snapshot" {
+				started, err = fixture.server.intelligenceSourceV2StartBackfill(ctx, identity)
+				if err != nil {
+					t.Fatalf("start racing backfill: %v", err)
+				}
+			}
+
+			lockTx, err := fixture.server.sqlDB.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatalf("begin synthetic revocation serialization: %v", err)
+			}
+			var lockedConnectionID string
+			if err := lockTx.QueryRowContext(ctx, `SELECT id FROM public.intelligence_source_v2_connections WHERE id=$1 FOR UPDATE`, connectionID).Scan(&lockedConnectionID); err != nil {
+				_ = lockTx.Rollback()
+				t.Fatalf("hold source connection while revocation starts: %v", err)
+			}
+			revokeResult := make(chan error, 1)
+			readResult := make(chan error, 1)
+			revokeStarted, readStarted := false, false
+			defer func() {
+				_ = lockTx.Rollback()
+				if revokeStarted {
+					<-revokeResult
+				}
+				if readStarted {
+					<-readResult
+				}
+			}()
+
+			go func() {
+				revokeResult <- fixture.server.revokeIntelligenceSourceV2Connection(ctx, nil, httptransport.IntelligenceSourceV2ConsentPrincipal{UserID: fixture.userID, FamilyID: fixture.familyID}, connectionID, "read")
+			}()
+			revokeStarted = true
+			waitForSourceV2LockWait(t, fixture, "intelligence_source_v2_connections")
+
+			go func() {
+				readResult <- test.read(ctx, fixture, identity, started.BackfillID, started.SnapshotCursor, resourceID, revisionID)
+			}()
+			readStarted = true
+			waitForSourceV2LockWait(t, fixture, "intelligence_source_v2_read_connection_lock")
+
+			if err := lockTx.Commit(); err != nil {
+				t.Fatalf("release source connection after queuing read and revoke: %v", err)
+			}
+			if err := <-revokeResult; err != nil {
+				t.Fatalf("complete concurrent read revocation: %v", err)
+			}
+			revokeStarted = false
+			if err := <-readResult; !errors.Is(err, test.want) {
+				t.Fatalf("content read after queued read revocation returned %v, want %v", err, test.want)
+			}
+			readStarted = false
+			var payloadCount int
+			if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1`, connectionID).Scan(&payloadCount); err != nil {
+				t.Fatalf("count payloads after racing revoke and read: %v", err)
+			}
+			if payloadCount != 0 {
+				t.Fatalf("read revoke retained %d source payload(s)", payloadCount)
+			}
+		})
+	}
+}
+
 func TestIntelligenceSourceV2MessageWritesCannotRestorePayloadAfterConcurrentAccessLoss(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -1102,10 +1223,77 @@ func TestIntelligenceSourceV2DeletingParentPreservesImmutableHistory(t *testing.
 	}
 }
 
-func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *testing.T) {
+func TestIntelligenceSourceV2ActivePayloadSurvivesBackupRetentionSweep(t *testing.T) {
 	fixture := newIntelligenceSourceV2ConsentFixture(t)
 	ctx := context.Background()
 	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	resourceID := "source-v2-active-retention-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','source still exists',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic active retention message: %v", err)
+	}
+	var revisionID string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT revision_id FROM public.intelligence_source_v2_events WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).Scan(&revisionID); err != nil {
+		t.Fatalf("read active source revision: %v", err)
+	}
+
+	_, err := fixture.server.cleanupIntelligenceSourceV2Retention(ctx, time.Now().UTC().Add(31*24*time.Hour))
+	if err != nil {
+		t.Fatalf("run backup retention sweep: %v", err)
+	}
+	exactURL := fixture.serverURL + "/api/v2/intelligence/source/resources/" + url.PathEscape(resourceID) + "/snapshot?revision_id=" + url.QueryEscape(revisionID)
+	response := sourceV2Request(t, fixture.httpClient, http.MethodGet, exactURL, credential, nil)
+	defer func() { _ = response.Body.Close() }()
+	var snapshot struct {
+		Content string `json:"content"`
+	}
+	if response.StatusCode != http.StatusOK || json.NewDecoder(response.Body).Decode(&snapshot) != nil || snapshot.Content != "source still exists" {
+		body, _ := io.ReadAll(response.Body)
+		t.Fatalf("live source payload after backup retention sweep status=%d content=%q body=%s", response.StatusCode, snapshot.Content, body)
+	}
+}
+
+func TestIntelligenceSourceV2RestoreCannotTrustTombstonesFromRestoredDatabase(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	resourceID := "source-v2-restore-rollback-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','pre-backup content',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
+		t.Fatalf("insert synthetic pre-backup message: %v", err)
+	}
+	backupCreatedAt := time.Now().UTC()
+	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-restore-rollback", backupCreatedAt, backupCreatedAt.Add(30*24*time.Hour)); err != nil {
+		t.Fatalf("register synthetic pre-revocation backup: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("create post-backup deletion tombstone: %v", err)
+	}
+	var tombstoneEventID string
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT event_id FROM public.intelligence_source_v2_tombstone_ledger WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).Scan(&tombstoneEventID); err != nil {
+		t.Fatalf("read post-backup deletion tombstone: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID); err != nil {
+		t.Fatalf("simulate restoring a database snapshot without the newer tombstone: %v", err)
+	}
+
+	restoreID := "synthetic-stale-ledger-restore-" + uuid.NewString()
+	_, beginErr := fixture.server.BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
+	if !errors.Is(beginErr, httptransport.ErrIntelligenceSourceUnavailable) {
+		t.Fatalf("restore without independent tombstone proof returned %v, want unavailable", beginErr)
+	}
+	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); err == nil {
+		t.Fatal("source routes opened after restoring without an independent tombstone proof")
+	}
+	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, nil, time.Now().UTC()); !errors.Is(err, httptransport.ErrIntelligenceSourceUnavailable) {
+		t.Fatalf("restore completion without independent tombstone proof returned %v, want unavailable", err)
+	}
+}
+
+func TestIntelligenceSourceV2RetentionPreservesActivePayloadsAndTombstones(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, _ := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
 	resourceID := "source-v2-retention-" + uuid.NewString()
 	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','retained briefly',$4,$4)`, resourceID, fixture.chatID, fixture.userID, createdAt); err != nil {
@@ -1119,12 +1307,9 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 		Scan(&originalRevisionID, &createEventID, &createSequence); err != nil {
 		t.Fatalf("read synthetic create revision: %v", err)
 	}
-	var payloadCreatedAt, payloadExpiresAt time.Time
-	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT created_at,retention_expires_at FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, originalRevisionID).Scan(&payloadCreatedAt, &payloadExpiresAt); err != nil {
-		t.Fatalf("read synthetic payload retention deadline: %v", err)
-	}
-	if payloadExpiresAt.After(payloadCreatedAt.Add(30 * 24 * time.Hour)) {
-		t.Fatalf("content payload expires after 30-day contract: created=%s expires=%s", payloadCreatedAt, payloadExpiresAt)
+	var payloadCreatedAt time.Time
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT created_at FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, originalRevisionID).Scan(&payloadCreatedAt); err != nil {
+		t.Fatalf("read synthetic active payload: %v", err)
 	}
 	backupCreatedAt := time.Now().UTC()
 	backupRestorableUntil := backupCreatedAt.Add(30 * 24 * time.Hour)
@@ -1133,6 +1318,14 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
 		t.Fatalf("register synthetic restorable backup horizon: %v", err)
+	}
+	_, err := fixture.server.cleanupIntelligenceSourceV2Retention(ctx, time.Now().UTC().Add(31*24*time.Hour))
+	if err != nil {
+		t.Fatalf("run backup retention sweep while source remains active: %v", err)
+	}
+	var activePayloadCount int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, originalRevisionID).Scan(&activePayloadCount); err != nil || activePayloadCount != 1 {
+		t.Fatalf("active source payload count after backup retention sweep=%d err=%v", activePayloadCount, err)
 	}
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		t.Fatalf("delete synthetic retention message: %v", err)
@@ -1153,48 +1346,16 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 		t.Fatalf("tombstone horizon does not cover restorable backup plus margin: created=%s retain=%s backup_until=%s", tombstoneCreatedAt, tombstoneRetainUntil, backupRestorableUntil)
 	}
 
-	restoreID := "synthetic-restore-" + uuid.NewString()
-	tombstones, err := fixture.server.BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
-	if err != nil || len(tombstones) == 0 || tombstones[len(tombstones)-1].EventID != tombstoneEventID {
-		t.Fatalf("begin restore did not return post-backup tombstones: %#v err=%v", tombstones, err)
-	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, nil, time.Now().UTC()); err == nil {
-		t.Fatal("restore completed before the newer tombstone was replayed")
-	}
-	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); !errors.Is(err, httptransport.ErrIntelligenceSourceDisabled) {
-		t.Fatalf("restore gate opened before tombstone replay: %v", err)
-	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC().Add(-6*time.Minute)); err == nil {
-		t.Fatal("restore completed with a stale tombstone ledger check")
-	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC()); err != nil {
-		t.Fatalf("complete restore after replaying fresh tombstone high-water: %v", err)
-	}
-	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); err != nil {
-		t.Fatalf("restore gate remained blocked after fresh tombstone replay: %v", err)
-	}
-
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=NULL,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
-		t.Fatalf("restore synthetic retention message: %v", err)
+		t.Fatalf("restore synthetic message through the normal Messenger lifecycle: %v", err)
 	}
 	var restoredRevisionID string
 	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT revision_id FROM public.intelligence_source_v2_events WHERE connection_id=$1 AND resource_id=$2 ORDER BY sequence DESC LIMIT 1`, connectionID, resourceID).Scan(&restoredRevisionID); err != nil {
-		t.Fatalf("read post-restore source revision: %v", err)
+		t.Fatalf("read post-lifecycle-restore source revision: %v", err)
 	}
 	if restoredRevisionID == tombstoneRevisionID || restoredRevisionID == originalRevisionID {
 		t.Fatalf("restore reused an immutable revision identity: initial=%s deleted=%s restored=%s", originalRevisionID, tombstoneRevisionID, restoredRevisionID)
 	}
-	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.intelligence_source_v2_revision_payloads SET retention_expires_at=now()-interval '1 second' WHERE connection_id=$1 AND revision_id=$2`, connectionID, restoredRevisionID); err != nil {
-		t.Fatalf("expire synthetic source payload for cleanup check: %v", err)
-	}
-	expiredSnapshotURL := fixture.serverURL + "/api/v2/intelligence/source/resources/" + url.PathEscape(resourceID) + "/snapshot?revision_id=" + url.QueryEscape(restoredRevisionID)
-	expiredSnapshot := sourceV2Request(t, fixture.httpClient, http.MethodGet, expiredSnapshotURL, credential, nil)
-	if expiredSnapshot.StatusCode != http.StatusNotFound {
-		body, _ := io.ReadAll(expiredSnapshot.Body)
-		_ = expiredSnapshot.Body.Close()
-		t.Fatalf("expired source payload remained readable status=%d body=%s", expiredSnapshot.StatusCode, body)
-	}
-	_ = expiredSnapshot.Body.Close()
 	canceledCtx, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, err := fixture.server.cleanupIntelligenceSourceV2Retention(canceledCtx, time.Now().UTC()); !errors.Is(err, httptransport.ErrIntelligenceSourceUnavailable) {
@@ -1202,8 +1363,8 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 	shortlyAfterHorizon := time.Now().UTC().Add(36 * 24 * time.Hour)
 	cleanup, err := fixture.server.cleanupIntelligenceSourceV2Retention(ctx, shortlyAfterHorizon)
-	if err != nil || cleanup.PayloadsPurged == 0 {
-		t.Fatalf("expired content cleanup = %#v err=%v", cleanup, err)
+	if err != nil {
+		t.Fatalf("run backup retention cleanup while source remains active: %#v err=%v", cleanup, err)
 	}
 	var tombstonesBeforeHorizon int
 	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID).Scan(&tombstonesBeforeHorizon); err != nil || tombstonesBeforeHorizon != 1 {
@@ -1223,7 +1384,11 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 	cleanup, err = fixture.server.cleanupIntelligenceSourceV2Retention(ctx, cleanupAt)
 	if err != nil || cleanup.TombstonesPruned == 0 {
-		t.Fatalf("verified expired tombstone ledger cleanup = %#v err=%v", cleanup, err)
+		t.Fatalf("verified tombstone cleanup = %#v err=%v", cleanup, err)
+	}
+	var restoredPayloadCount int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_revision_payloads WHERE connection_id=$1 AND revision_id=$2`, connectionID, restoredRevisionID).Scan(&restoredPayloadCount); err != nil || restoredPayloadCount != 1 {
+		t.Fatalf("active source payload after backup retention cleanup count=%d err=%v", restoredPayloadCount, err)
 	}
 	var eventStillPresent bool
 	var retainedRevisionProtocol string
