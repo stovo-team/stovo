@@ -1,7 +1,7 @@
 # Shared call stage, floating controls, and settings
 
 Date: 2026-10-10
-Status: conversational design approved; written specification awaiting review.
+Status: written specification approved, with the user explicitly retaining 16:9 gallery cards.
 
 ## User problem and outcome
 
@@ -84,12 +84,13 @@ participants exceed its capacity. Mobile rows align left, with cards 144×81px
 and 128×72px at widths up to 420px. Cards remain landscape, including muted avatars.
 
 Without a presentation, portrait/mobile group calls use one column for two people
-and a grid for three or more. Gallery cards occupy the entire available grid cells;
-they do not impose the presentation rail's 16:9 frame constraint. Camera content
-inside them follows the Fit/Crop preference. Use the full mobile width with small
-edge spacing and the space between the top overlay and controls. Increase the
-desktop group popup height to min(640px, viewport height minus 40px); allow its
-gallery to fill the remaining height. Desktop gallery remains a grid. Existing DM main
+and a grid for three or more. Gallery cards retain 16:9 and use the largest size that fits between the top
+overlay and controls. Some horizontal or vertical spare space can remain because
+the user explicitly chose preserving this ratio. Camera content inside each frame
+follows the Fit/Crop preference. Use 12px mobile edge spacing, 60px top clearance,
+90px bottom clearance, an 8px card gap, and safe-area insets. Increase the desktop
+group popup to min(960px, viewport width minus 40px) by min(640px, viewport height
+minus 40px); its gallery retains 16:9 cards. Desktop gallery remains a grid. Existing DM main
 video/PiP switching remains available in its established mobile mode.
 
 The chevron is an accessible button with Hide participants/Show participants labels
@@ -173,7 +174,7 @@ Write failing tests before each observable feature, then implement it.
    unsupported devices, mirror limited to local camera, crop never affecting share.
 4. Controls tests: auto-hide off/on, hover, keyboard focus, open menus, touch reveal,
    and no invisible overlay intercepting clicks.
-5. Browser geometry tests: gallery fills the available area; right rail has no horizontal clipping; bottom row is
+5. Browser geometry tests: gallery uses the largest fitting 16:9 cards; right rail has no horizontal clipping; bottom row is
    compact 16:9; collapse increases actual presenter bounds; floating chrome does
    not allocate stage rows; expanded sharing fits wide/short/mobile windows.
 6. Browser/component integration coverage for DM, group, voice, and guest adapters,
