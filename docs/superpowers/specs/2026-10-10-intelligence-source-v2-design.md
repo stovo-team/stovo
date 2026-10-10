@@ -1,6 +1,6 @@
 # Messenger Intelligence Source v2
 
-**Status:** Design for review
+**Status:** Approved for implementation
 **Date:** 2026-10-10
 **Repository scope:** `stovo-messenger` only
 

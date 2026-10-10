@@ -1,6 +1,6 @@
 # Messenger Intelligence Source v2 Implementation Plan
 
-**Status:** For review; no implementation has started
+**Status:** Approved; implementation in progress
 
 **Spec:** [2026-10-10-intelligence-source-v2-design.md](../specs/2026-10-10-intelligence-source-v2-design.md)
 **Repository:** `stovo-messenger` only

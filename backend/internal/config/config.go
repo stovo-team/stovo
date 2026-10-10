@@ -3,8 +3,10 @@ package config
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -107,9 +109,17 @@ type Config struct {
 	IntelligenceOIDCRedirectURIs         []string
 	IntelligenceOIDCSigningKeyID         string
 	IntelligenceOIDCSigningPrivateKeyPEM string
+	IntelligenceOIDCPreviousSigningKeys  []IntelligenceOIDCSigningPublicKey
 	MinIOCallsBucket                     string
 	SolutionProfile                      SolutionProfile
 	FeatureMatrix                        FeatureMatrix
+}
+
+// IntelligenceOIDCSigningPublicKey is a retired public key retained in JWKS
+// during the rotation overlap window. It never contains private key material.
+type IntelligenceOIDCSigningPublicKey struct {
+	KeyID        string `json:"kid"`
+	PublicKeyPEM string `json:"public_key_pem"`
 }
 
 func Load() (Config, error) {
@@ -257,6 +267,20 @@ func Load() (Config, error) {
 		FeatureMatrix:                        GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
 	}
 
+	if cfg.IntelligenceOIDCEnabled {
+		previousKeysJSON := strings.TrimSpace(os.Getenv("INTELLIGENCE_OIDC_PREVIOUS_SIGNING_KEYS_JSON"))
+		if previousKeysJSON != "" {
+			decoder := json.NewDecoder(strings.NewReader(previousKeysJSON))
+			decoder.DisallowUnknownFields()
+			if previousKeysJSON[0] != '[' || decoder.Decode(&cfg.IntelligenceOIDCPreviousSigningKeys) != nil {
+				return Config{}, fmt.Errorf("invalid Intelligence OIDC config: previous signing keys must be a JSON array")
+			}
+			var trailing any
+			if err := decoder.Decode(&trailing); err != io.EOF {
+				return Config{}, fmt.Errorf("invalid Intelligence OIDC config: previous signing keys must be a JSON array")
+			}
+		}
+	}
 	if err := cfg.validateIntelligenceOIDC(); err != nil {
 		return Config{}, err
 	}
@@ -270,7 +294,7 @@ func (c Config) validateIntelligenceOIDC() error {
 	if !canonicalHTTPSIssuer(c.IntelligenceOIDCIssuer) {
 		return fmt.Errorf("invalid Intelligence OIDC config: issuer must be a canonical HTTPS URL")
 	}
-	if c.IntelligenceOIDCClientID == "" || c.IntelligenceOIDCClientSecret == "" || c.IntelligenceOIDCSigningKeyID == "" {
+	if c.IntelligenceOIDCClientID == "" || c.IntelligenceOIDCClientSecret == "" || !validOIDCKeyID(c.IntelligenceOIDCSigningKeyID) {
 		return fmt.Errorf("invalid Intelligence OIDC config: client and signing key identifiers are required")
 	}
 	if len(c.IntelligenceOIDCRedirectURIs) == 0 {
@@ -290,6 +314,19 @@ func (c Config) validateIntelligenceOIDC() error {
 	if !validOIDCSigningPrivateKey(c.IntelligenceOIDCSigningPrivateKeyPEM) {
 		return fmt.Errorf("invalid Intelligence OIDC config: signing key must be an RSA PKCS#8 or PKCS#1 PEM key of at least 2048 bits")
 	}
+	if len(c.IntelligenceOIDCPreviousSigningKeys) > 8 {
+		return fmt.Errorf("invalid Intelligence OIDC config: at most eight previous signing keys are allowed")
+	}
+	seenKeyIDs := map[string]struct{}{c.IntelligenceOIDCSigningKeyID: {}}
+	for _, key := range c.IntelligenceOIDCPreviousSigningKeys {
+		if !validOIDCKeyID(key.KeyID) || !validOIDCSigningPublicKey(key.PublicKeyPEM) {
+			return fmt.Errorf("invalid Intelligence OIDC config: previous signing keys require a key ID and an RSA public key of at least 2048 bits")
+		}
+		if _, exists := seenKeyIDs[key.KeyID]; exists {
+			return fmt.Errorf("invalid Intelligence OIDC config: signing key IDs must be unique")
+		}
+		seenKeyIDs[key.KeyID] = struct{}{}
+	}
 	return nil
 }
 
@@ -298,10 +335,22 @@ func canonicalHTTPSIssuer(raw string) bool {
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Hostname() == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" || parsed.Opaque != "" {
 		return false
 	}
-	if strings.ToLower(parsed.Host) != parsed.Host || parsed.Port() == "443" || parsed.RawPath != "" || parsed.Path == "/" || strings.HasSuffix(parsed.Path, "/") {
+	if strings.ToLower(parsed.Host) != parsed.Host || parsed.Port() == "443" || parsed.RawPath != "" || parsed.Path != "" {
 		return false
 	}
 	return parsed.String() == raw
+}
+
+func validOIDCKeyID(value string) bool {
+	if value == "" || len(value) > 128 || strings.TrimSpace(value) != value {
+		return false
+	}
+	for _, char := range value {
+		if char < 0x21 || char > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 func validOIDCSigningPrivateKey(raw string) bool {
@@ -324,6 +373,28 @@ func validOIDCSigningPrivateKey(raw string) bool {
 	}
 	key, ok := parsed.(*rsa.PrivateKey)
 	return ok && key.N.BitLen() >= 2048 && key.Validate() == nil
+}
+
+func validOIDCSigningPublicKey(raw string) bool {
+	block, rest := pem.Decode([]byte(raw))
+	if block == nil || strings.TrimSpace(string(rest)) != "" {
+		return false
+	}
+	var parsed any
+	var err error
+	switch block.Type {
+	case "PUBLIC KEY":
+		parsed, err = x509.ParsePKIXPublicKey(block.Bytes)
+	case "RSA PUBLIC KEY":
+		parsed, err = x509.ParsePKCS1PublicKey(block.Bytes)
+	default:
+		return false
+	}
+	if err != nil {
+		return false
+	}
+	key, ok := parsed.(*rsa.PublicKey)
+	return ok && key.N.BitLen() >= 2048 && key.E >= 3 && key.E%2 == 1
 }
 
 func splitCSV(value string) []string {

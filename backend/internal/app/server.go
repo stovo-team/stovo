@@ -47,6 +47,7 @@ type Server struct {
 	canvasDB               *sql.DB
 	guestDB                *sql.DB
 	sqlDB                  *sql.DB
+	oidcNow                func() time.Time
 	memberIPs              memberIPStore
 	memberIPMu             sync.RWMutex
 	databaseHealth         ports.HealthChecker
@@ -145,7 +146,8 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	}
 	app := &Server{
 		cfg: deps.Config, database: deps.Database, databaseHealth: deps.DatabaseHealth, persistence: deps.Persistence,
-		redis: deps.Redis, jobsRedis: deps.JobsRedis, logger: deps.Logger, logBuffer: deps.LogBuffer,
+		oidcNow: time.Now,
+		redis:   deps.Redis, jobsRedis: deps.JobsRedis, logger: deps.Logger, logBuffer: deps.LogBuffer,
 		storage: deps.Storage, tunnel: deps.Tunnel, sockets: deps.Sockets,
 		cache: deps.Cache, redisHealth: deps.RedisHealth, broker: deps.Broker,
 		privacy: deps.Privacy, contactPolicy: deps.Contacts, preferences: deps.Preferences,

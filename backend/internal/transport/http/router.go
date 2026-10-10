@@ -26,6 +26,7 @@ type RouteComposition struct {
 	Files              FileRoutes
 	Admin              AdminRoutes
 	MCP                stdhttp.Handler
+	IntelligenceOIDC   stdhttp.Handler
 	IntelligenceSource stdhttp.Handler
 	Plugins            stdhttp.Handler
 	FrontendFallback   stdhttp.Handler
@@ -52,6 +53,12 @@ func NewRouter(routes RouteComposition) stdhttp.Handler {
 	RegisterMCPRoutes(router, routes.MCP)
 	if routes.IntelligenceSource != nil {
 		router.Mount("/api/v1/intelligence/source", routes.IntelligenceSource)
+	}
+	if routes.IntelligenceOIDC != nil {
+		router.MethodFunc(stdhttp.MethodGet, "/.well-known/openid-configuration", routes.IntelligenceOIDC.ServeHTTP)
+		router.MethodFunc(stdhttp.MethodGet, "/oauth2/authorize", routes.IntelligenceOIDC.ServeHTTP)
+		router.MethodFunc(stdhttp.MethodPost, "/oauth2/token", routes.IntelligenceOIDC.ServeHTTP)
+		router.MethodFunc(stdhttp.MethodGet, "/oauth2/jwks", routes.IntelligenceOIDC.ServeHTTP)
 	}
 	if routes.Plugins != nil {
 		router.Mount("/api/v1/plugins", routes.Plugins)
