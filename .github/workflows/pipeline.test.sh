@@ -192,8 +192,24 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-grep -Fq 'version: v2.14.0' .github/workflows/pipeline.yml || {
-  echo "Backend CI must pin golangci-lint to v2.14.0." >&2
+grep -Fq 'install-mode: none' .github/workflows/pipeline.yml || {
+  echo "Backend CI must use the golangci-lint binary preinstalled on its persistent runner." >&2
+  exit 1
+}
+grep -Fq 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' .github/workflows/pipeline.yml || {
+  echo "Backend CI must add the runner-local golangci-lint installation directory to PATH." >&2
+  exit 1
+}
+grep -Fq 'GOLANGCI_LINT_VERSION: 2.14.0' .github/workflows/pipeline.yml || {
+  echo "Backend CI must pin and verify the preinstalled golangci-lint version." >&2
+  exit 1
+}
+grep -Fq 'version="$(golangci-lint --version)"' .github/workflows/pipeline.yml || {
+  echo "Backend CI must check the preinstalled golangci-lint version before running it." >&2
+  exit 1
+}
+grep -Fq 'if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then' .github/workflows/pipeline.yml || {
+  echo "Backend CI must fail when the preinstalled golangci-lint version does not match its pin." >&2
   exit 1
 }
 grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {
