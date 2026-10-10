@@ -18,6 +18,11 @@ on:
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
   workflow_dispatch:
+    inputs:
+      backend_deploy_only:
+        description: 'Deploy backend immediately, skipping CI and frontend jobs'
+        type: boolean
+        default: false
 
 concurrency:
   group: pipeline-${{ github.ref }}
@@ -33,7 +38,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
+      frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -88,7 +93,7 @@ jobs:
   backend-ci:
     name: Backend CI
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only
     runs-on: [self-hosted, tests]
     services:
       postgres:
@@ -334,7 +339,7 @@ jobs:
   deploy-backend-web:
     name: Deploy Backend Web
     needs: [changes, backend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -460,6 +465,32 @@ jobs:
             # Reconcile the LiveKit SFU
             docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d livekit
 
+            registered_tenant_slugs="$(sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres \
+              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
+            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
+            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
+            root_upstream="$(bash deploy/resolve-root-upstream.sh "$(get_env BACKEND_UPSTREAMS '')" $tenant_slugs)"
+            if [ -n "$root_upstream" ]; then
+              ensure_env BACKEND_UPSTREAMS "$root_upstream"
+            fi
+
+            # Compare credentials without printing their values into Actions logs.
+            if sudo docker inspect stovo-orchestrator >/dev/null 2>&1; then
+              running_admin_user="$(sudo docker exec stovo-orchestrator printenv MASTER_ADMIN_USER)"
+              running_admin_password="$(sudo docker exec stovo-orchestrator printenv MASTER_ADMIN_PASSWORD)"
+              if [ "$running_admin_user" = "$(get_env MASTER_ADMIN_USER '')" ]; then
+                echo "Supervisor username matches .env."
+              else
+                echo "WARNING: Supervisor username differs from .env." >&2
+              fi
+              if [ "$running_admin_password" = "$(get_env MASTER_ADMIN_PASSWORD '')" ]; then
+                echo "Supervisor password matches .env."
+              else
+                echo "WARNING: Supervisor password differs from the literal .env value; check Compose interpolation or stale container configuration." >&2
+              fi
+              unset running_admin_user running_admin_password
+            fi
+
             # Build and deploy orchestrator, caddy gateway, and coturn
             docker_with_space_recovery sudo env DOCKER_BUILDKIT=1 docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build orchestrator caddy coturn
             sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --force-recreate caddy
@@ -480,10 +511,6 @@ jobs:
             fi
 
             # Migrate every registered tenant and every live tenant backend
-            registered_tenant_slugs="$(sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
-            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
-            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
             if [ -n "$tenant_slugs" ]; then
                 echo "Applying migrations to registered and live tenant databases..."
                 for server_slug in $tenant_slugs; do
@@ -635,6 +662,25 @@ jobs:
                         fi
                     fi
                 done
+            fi
+
+            # The frontend can be healthy while every login request returns 502.
+            if [ -n "$root_upstream" ]; then
+              api_healthy=false
+              for _ in $(seq 1 30); do
+                if api_status="$(curl --fail --silent --show-error --max-time 10 --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/api/auth/setup-status")" &&
+                  printf '%s' "$api_status" | grep -Eq '"setupRequired"[[:space:]]*:[[:space:]]*(true|false)'; then
+                  api_healthy=true
+                  break
+                fi
+                sleep 2
+              done
+              if [ "$api_healthy" != true ]; then
+                echo "Root authentication API health check failed." >&2
+                sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml logs --tail=100 caddy
+                exit 1
+              fi
+              echo "Root authentication API health check passed."
             fi
 
             echo "Backend web deployment finished successfully!"

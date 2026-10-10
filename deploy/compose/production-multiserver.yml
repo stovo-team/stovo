@@ -118,6 +118,7 @@ services:
       # Supplying a hostname (rather than only :80) lets Caddy obtain a TLS
       # certificate and listen on the published HTTPS port.
       APP_DOMAIN: ${APP_DOMAIN}
+      BACKEND_UPSTREAMS: ${BACKEND_UPSTREAMS:-}
     dns:
       - 1.1.1.1
       - 8.8.8.8

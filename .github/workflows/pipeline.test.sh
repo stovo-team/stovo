@@ -2,6 +2,7 @@
 set -euo pipefail
 
 bash .github/workflows/backend-dockerfiles.test.sh
+node .github/workflows/multiserver-routing.test.mjs
 
 awk '
   function fail(message) {
@@ -77,7 +78,7 @@ awk '
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
       fail("Frontend CI must run only when frontend paths changed.")
     }
-    if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\''") {
+    if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only") {
       fail("Backend CI must run only when backend paths changed.")
     }
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
@@ -99,7 +100,7 @@ awk '
     }
 
     expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
-    expected_backend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.backend == '\''true'\''"
+    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
       fail("Frontend deploy must require a master push and the frontend path filter.")
     }
