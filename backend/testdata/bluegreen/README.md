@@ -9,8 +9,10 @@ Short checklist for validating REST, Socket.IO, and live call-state across an
   active backend color. Local compose only starts `backend-blue`; start the
   inactive color with `docker compose --profile bluegreen up -d --no-deps <inactive>`.
 - `.env` has `ACTIVE_BACKEND=backend-blue` (or green).
-- Caddyfile uses `reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000` for `/api/*`
-  and `/socket.io*`.
+- Caddyfile uses `reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000}` for
+  `/api/*` and `/socket.io*`. Compose derives the default upstream directly
+  from `ACTIVE_BACKEND`, using the backend service name on the shared default
+  network.
 
 ## Cutover (same shape as deploy)
 

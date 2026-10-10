@@ -26,13 +26,8 @@ import { waitForSocketConnection } from "../../../realtime/socketConnection";
 import { waitForVoiceChannelConnection } from "./voiceChannelConnection";
 import { createCallSoundPlayer } from "../../../realtime/callSounds";
 import { getAudioSettings, mergeWithDefaults } from "../../../api/audioSettings";
-import {
-  isNativeCallPluginAvailable,
-  setNativeActiveCallState,
-  type PictureInPictureState
-} from "../../../native/callPlugin";
-import { navigateWithMotion } from "../../../motion/navigation";
-import { activeSessionVideoElement, callTerminationEvent, hasLiveLocalVideo } from "../shared/callLifecycle";
+import type { PictureInPictureState } from "../../../native/callPlugin";
+import { callTerminationEvent, hasLiveLocalVideo } from "../shared/callLifecycle";
 import type { CallPhase, CallTrackStatus } from "../shared/types";
 import { useCallTimer } from "./useCallTimer";
 import { useCallMedia } from "./useCallMedia";
@@ -40,6 +35,8 @@ import { useCallSessionMediaEffects } from "./useCallSessionMediaEffects";
 import { useCallSessionNativeEffects } from "./useCallSessionNativeEffects";
 import { useCallInviteControls } from "./useCallInviteControls";
 import { useCallSignaling } from "./useCallSignaling";
+import { useMockCallSession } from "./useMockCallSession";
+import { useCallSessionSurface } from "./useCallSessionSurface";
 
 export type UseCallSessionParams = {
   accessToken: string | null;
@@ -263,72 +260,22 @@ export function useCallSession({
     return member?.displayName ?? "Active Call";
   }, [activeCallChat, activeCallChatId, callPeerUserId, currentUser, members, selectedChat]);
 
-  const syncNativePictureInPictureCallState = useCallback(() => {
-    const phase = callPhaseRef.current;
-    if (phase !== "idle") {
-      videoPictureInPictureActiveRef.current = false;
-      setIsVideoPictureInPictureActive(false);
-      try {
-        activeSessionVideoElement()?.pause();
-      } catch {
-        // Detached media can reject a synchronous pause during route changes.
-      }
-    }
-    if (!isNativeCallPluginAvailable()) return;
-
-    const hasLiveSession = Boolean(activeCallSessionIdRef.current);
-    const active = phase !== "idle" && hasLiveSession;
-    // Android PiP keeps the active call WebView alive. This must include
-    // audio-only calls (notably voice channels), not just camera or screen-share
-    // calls, so leaving the app never tears down the active call surface.
-    const video = active;
-
-    void setNativeActiveCallState({
-      active,
-      video,
-      chatId: active ? activeCallChatIdRef.current : null,
-      sessionId: active ? activeCallSessionIdRef.current : null
-    });
-  }, [
-    setIsVideoPictureInPictureActive,
-    videoPictureInPictureActiveRef
-  ]);
-
-  const restoreActiveCallSurface = useCallback(() => {
-    if (callPhaseRef.current === "idle") {
-      return;
-    }
-
-    setIsCallMinimized(false);
-    setIsDetailsOpen(false);
-
-    const callChatId = activeCallChatIdRef.current;
-    if (!callChatId || activeChatIdRef.current === callChatId) {
-      return;
-    }
-
-    const callChat = chatsRef.current.find((candidate) => candidate.id === callChatId) ?? null;
-    if (callChat) {
-      setSelectedChat(callChat);
-      const cachedMessages = messageCacheRef.current[callChat.id];
-      if (cachedMessages) {
-        setMessages(cachedMessages);
-      }
-    }
-
-    navigateWithMotion(navigate, `/app/chats/${callChatId}`, {
-      reducedMotion: prefersReducedMotion
-    });
-  }, [
+  const { syncNativePictureInPictureCallState, restoreActiveCallSurface } = useCallSessionSurface({
+    callPhaseRef,
+    activeCallChatIdRef,
+    activeCallSessionIdRef,
     activeChatIdRef,
     chatsRef,
     messageCacheRef,
     navigate,
     prefersReducedMotion,
+    setIsCallMinimized,
     setIsDetailsOpen,
     setMessages,
-    setSelectedChat
-  ]);
+    setSelectedChat,
+    setIsVideoPictureInPictureActive,
+    videoPictureInPictureActiveRef
+  });
 
   const stopCallRingtone = useCallback(() => {
     callSoundPlayerRef.current.stopRingtone();
@@ -529,6 +476,18 @@ export function useCallSession({
     await cleanup;
   }
 
+  const mockCallSession = useMockCallSession({
+    accessToken, currentUser, selectedChat, members, chatsRef,
+    setSelectedChat, setError, setPreJoinChatId, resetCallState,
+    refs: { activeCallSessionIdRef, activeCallChatIdRef, callRoomIdRef, callTypeRef, callPhaseRef },
+    setters: {
+      setActiveGroupCalls, setCallPhase, setActiveCallChatId, setCallRoomId,
+      setCallPeerUserId, setCallPeerDisplayName, setCallType, setCallTopology,
+      setCallParticipantIds, setCallRemoteMedia, setHasRemoteVideo, setRemoteVideoStream,
+      setIsLocalSpeaking, setIsPeerSpeaking, setSpeakingUserIds, setCallAudioSettings, setCallNotice,
+    },
+  });
+
   async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
     console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
     const canCall =
@@ -538,6 +497,13 @@ export function useCallSession({
     if (!canCall || !selectedChat || !currentUser) {
       console.warn("[CALL] startDirectCall: guard failed — selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
       return;
+    }
+    if (mockCallSession.isEnabled) {
+      if (callPhaseRef.current !== "idle") {
+        console.warn("[CALL] startDirectCall: cannot start a mock call while another call is active (callPhase=", callPhaseRef.current, ")");
+        return;
+      }
+      if (await mockCallSession.startDirectCall(type, inviteUserIds)) return;
     }
     const chatAtStart = selectedChat;
     const userAtStart = currentUser;
@@ -676,7 +642,8 @@ export function useCallSession({
     audioCallRef,
     callInviteSelection,
     setCallInviteSelection,
-    setIsCallInviteOpen
+    setIsCallInviteOpen,
+    onInvite: mockCallSession.isEnabled ? mockCallSession.sendInvites : undefined,
   });
 
   async function loadCallQuality(profile: CallQualityProfile) {
@@ -693,6 +660,7 @@ export function useCallSession({
   }
 
   async function acceptIncomingCall() {
+    if (mockCallSession.acceptIncomingCall()) return;
     const socket = socketRef.current;
     if (!socket || !activeCallChatId || !callPeerUserId) {
       return;
@@ -754,6 +722,7 @@ export function useCallSession({
     activeCall: Record<string, any>,
     settings: { micMuted: boolean; cameraEnabled: boolean }
   ) {
+    if (mockCallSession.joinOngoingGroupCall(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
       return;
@@ -827,6 +796,7 @@ export function useCallSession({
     targetChat: Chat,
     settings: { micMuted?: boolean; cameraEnabled?: boolean } = { micMuted: false, cameraEnabled: false }
   ) {
+    if (mockCallSession.joinVoiceChannel(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
       return;
@@ -887,6 +857,7 @@ export function useCallSession({
   }
 
   function declineIncomingCall() {
+    if (mockCallSession.declineIncomingCall()) return;
     const declineChatId = activeCallChatId ?? activeCallChatIdRef.current;
     if (!socketRef.current || !declineChatId) {
       return;
@@ -901,6 +872,7 @@ export function useCallSession({
   }
 
   async function endActiveCall() {
+    if (mockCallSession.endActiveCall()) return;
     if (!socketRef.current || !activeCallChatId) {
       return;
     }
