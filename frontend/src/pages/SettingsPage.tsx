@@ -553,6 +553,7 @@ export default function SettingsPage() {
                 ) : activeSettingsItem === "Privacy and Security" ? (
                   <PrivacySecuritySettings
                     strings={strings}
+                    authRequest={authRequest}
                     currentUser={currentUser}
                     members={members}
                     blockedMemberIds={blockedMemberIds}

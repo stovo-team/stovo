@@ -55,7 +55,8 @@ func (s *Server) intelligenceOIDCHandler() http.Handler {
 	}
 	issuer := s.cfg.IntelligenceOIDCIssuer
 	return httptransport.NewIntelligenceOIDCHandler(httptransport.IntelligenceOIDCHandlerConfig{
-		Enabled: true,
+		Enabled:       true,
+		BrowserAppURL: s.cfg.AppURL,
 		Discovery: map[string]any{
 			"issuer":                                issuer,
 			"authorization_endpoint":                issuer + "/oauth2/authorize",
@@ -71,7 +72,9 @@ func (s *Server) intelligenceOIDCHandler() http.Handler {
 		},
 		JWKS: map[string]any{"keys": keys},
 		Operations: httptransport.IntelligenceOIDCOperations{
-			Authorize: s.authorizeIntelligenceOIDC,
+			ValidateAuthorization: s.validateIntelligenceOIDCAuthorizationRequest,
+			Authorize:             s.authorizeIntelligenceOIDC,
+			AuthorizeBrowser:      s.authorizeIntelligenceOIDCBrowserSession,
 			Exchange: func(ctx context.Context, request *http.Request, clientID, clientSecret, code, redirectURI, verifier string) (httptransport.IntelligenceOIDCTokenResponse, error) {
 				// OIDC's protocol access token is opaque and has no Messenger API
 				// authority; app APIs accept signed app sessions and source routes
@@ -110,8 +113,8 @@ func (s *Server) authorizeIntelligenceOIDC(ctx context.Context, request *http.Re
 	if err := s.intelligenceOIDCRateLimit(ctx, request, "oidc-authorize", 30); err != nil {
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, err
 	}
-	if input.ResponseType != "code" || input.ClientID != s.cfg.IntelligenceOIDCClientID || !containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, input.RedirectURI) || !validIntelligenceOIDCString(input.State, 512) || !validIntelligenceOIDCString(input.Nonce, 512) || input.CodeChallengeMethod != "S256" || !validIntelligenceOIDCChallenge(input.CodeChallenge) {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCInvalidRequest
+	if err := s.validateIntelligenceOIDCAuthorizationRequest(ctx, request, input); err != nil {
+		return httptransport.IntelligenceOIDCAuthorizationResult{}, err
 	}
 	user, err := s.currentUser(request)
 	if err != nil {
@@ -142,6 +145,16 @@ func (s *Server) authorizeIntelligenceOIDC(ctx context.Context, request *http.Re
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
 	}
 	return httptransport.IntelligenceOIDCAuthorizationResult{RedirectURI: input.RedirectURI, Code: code, State: input.State}, nil
+}
+
+func (s *Server) validateIntelligenceOIDCAuthorizationRequest(_ context.Context, _ *http.Request, input httptransport.IntelligenceOIDCAuthorizationRequest) error {
+	if !s.cfg.IntelligenceOIDCEnabled || s.cfg.IntelligenceOIDCClientID == "" || s.cfg.IntelligenceOIDCClientSecret == "" {
+		return httptransport.ErrIntelligenceOIDCUnavailable
+	}
+	if input.ResponseType != "code" || input.ClientID != s.cfg.IntelligenceOIDCClientID || !containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, input.RedirectURI) || !validIntelligenceOIDCString(input.State, 512) || !validIntelligenceOIDCString(input.Nonce, 512) || input.CodeChallengeMethod != "S256" || !validIntelligenceOIDCChallenge(input.CodeChallenge) {
+		return httptransport.ErrIntelligenceOIDCInvalidRequest
+	}
+	return nil
 }
 
 func (s *Server) exchangeIntelligenceOIDCCode(ctx context.Context, request *http.Request, clientID, clientSecret, code, redirectURI, verifier string) (string, error) {

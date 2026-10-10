@@ -227,10 +227,85 @@ func TestIntelligenceOIDCCodeFlowIsOneUseAndSeparateFromSourceCredential(t *test
 		t.Fatalf("invalid callback response leaked details or was accepted: status=%d body=%s", unauthorizedCallback.StatusCode, unauthorizedBody)
 	}
 
+	browserSession := jsonRequest(t, oidcClient, http.MethodPost, oidcServer.URL+"/api/v2/intelligence/authorize-session", owner.AccessToken, map[string]any{
+		"flow": "oidc", "response_type": "code", "client_id": clientID, "redirect_uri": redirectURI,
+		"state": state, "nonce": nonce, "code_challenge": challenge, "code_challenge_method": "S256",
+	})
+	if browserSession.StatusCode != http.StatusOK || browserSession.Header.Get("Cache-Control") != "no-store" {
+		body, _ := io.ReadAll(browserSession.Body)
+		browserSession.Body.Close()
+		t.Fatalf("create OIDC browser session status=%d body=%s", browserSession.StatusCode, body)
+	}
+	var sessionReply map[string]any
+	if err := json.NewDecoder(browserSession.Body).Decode(&sessionReply); err != nil {
+		browserSession.Body.Close()
+		t.Fatalf("decode OIDC browser session response: %v", err)
+	}
+	browserSession.Body.Close()
+	if sessionReply["expires_in"] != float64(120) || len(sessionReply) != 1 {
+		t.Fatalf("OIDC browser session response exposed unexpected fields: %#v", sessionReply)
+	}
+	var browserTicket string
+	for _, cookie := range browserSession.Cookies() {
+		if cookie.Name == "messenger_oidc_browser" {
+			browserTicket = cookie.Value
+			if cookie.Path != "/oauth2/authorize" || !cookie.HttpOnly || cookie.MaxAge != 120 {
+				t.Fatalf("OIDC browser cookie is not path-scoped and short-lived: %#v", cookie)
+			}
+		}
+	}
+	if browserTicket == "" || len(sessionReply) != 1 {
+		t.Fatal("OIDC browser session did not keep its ticket in an HttpOnly cookie")
+	}
+	ticketHash := sha256.Sum256([]byte(browserTicket))
+	var storedTicketHash []byte
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT ticket_hash FROM public.intelligence_browser_authorization_sessions WHERE flow='oidc' AND user_id=$1`, owner.User.ID).Scan(&storedTicketHash); err != nil {
+		t.Fatalf("read persisted OIDC browser ticket hash: %v", err)
+	}
+	if len(storedTicketHash) != sha256.Size || !bytes.Equal(storedTicketHash, ticketHash[:]) || bytes.Contains(storedTicketHash, []byte(browserTicket)) {
+		t.Fatal("OIDC browser ticket was not stored as only its SHA-256 hash")
+	}
+	browserRequest, err := http.NewRequest(http.MethodGet, makeAuthorizeURL(redirectURI), nil)
+	if err != nil {
+		t.Fatalf("build OIDC browser completion request: %v", err)
+	}
+	browserRequest.Header.Set("Accept", "text/html")
+	browserRequest.AddCookie(&http.Cookie{Name: "messenger_oidc_browser", Value: browserTicket})
+	browserResponse, err := oidcClient.Do(browserRequest)
+	if err != nil {
+		t.Fatalf("complete OIDC browser session: %v", err)
+	}
+	if browserResponse.StatusCode != http.StatusFound || browserResponse.Header.Get("Cache-Control") != "no-store" {
+		body, _ := io.ReadAll(browserResponse.Body)
+		browserResponse.Body.Close()
+		t.Fatalf("complete OIDC browser session status=%d body=%s", browserResponse.StatusCode, body)
+	}
+	browserLocation, err := url.Parse(browserResponse.Header.Get("Location"))
+	browserResponse.Body.Close()
+	if err != nil || browserLocation.Query().Get("code") == "" || browserLocation.Query().Get("state") != state {
+		t.Fatalf("OIDC browser callback = %q (err %v)", browserResponse.Header.Get("Location"), err)
+	}
+	var remainingBrowserTickets int
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT count(*) FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1`, ticketHash[:]).Scan(&remainingBrowserTickets); err != nil || remainingBrowserTickets != 0 {
+		t.Fatalf("one-use OIDC browser ticket rows=%d err=%v", remainingBrowserTickets, err)
+	}
+	replayRequest, _ := http.NewRequest(http.MethodGet, makeAuthorizeURL(redirectURI), nil)
+	replayRequest.AddCookie(&http.Cookie{Name: "messenger_oidc_browser", Value: browserTicket})
+	replayResponse, err := oidcClient.Do(replayRequest)
+	if err != nil {
+		t.Fatalf("replay OIDC browser ticket: %v", err)
+	}
+	if replayResponse.StatusCode != http.StatusUnauthorized {
+		body, _ := io.ReadAll(replayResponse.Body)
+		replayResponse.Body.Close()
+		t.Fatalf("replayed OIDC browser ticket status=%d body=%s", replayResponse.StatusCode, body)
+	}
+	replayResponse.Body.Close()
+
 	code := issueCode()
 	codeDigest := sha256.Sum256([]byte(code))
 	var storedCodeHash []byte
-	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT code_hash FROM public.intelligence_oidc_authorization_codes WHERE user_id=$1`, owner.User.ID).Scan(&storedCodeHash); err != nil {
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT code_hash FROM public.intelligence_oidc_authorization_codes WHERE code_hash=$1 AND user_id=$2`, codeDigest[:], owner.User.ID).Scan(&storedCodeHash); err != nil {
 		t.Fatalf("read synthetic stored authorization code hash: %v", err)
 	}
 	if !bytes.Equal(storedCodeHash, codeDigest[:]) || bytes.Equal(storedCodeHash, []byte(code)) {

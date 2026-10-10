@@ -36,6 +36,8 @@ import MultiAdminPage from "./pages/MultiAdminPage";
 import CanvasPage from "./pages/CanvasPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import LegalDocumentsPage from "./pages/LegalDocumentsPage";
+import { IntelligenceConsentPage } from "./pages/IntelligenceConsentPage";
+import { useStrings } from "./i18n/LanguageContext";
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
 import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
 
@@ -44,6 +46,7 @@ if (typeof document !== "undefined") {
 }
 
 function ClusterRoutes() {
+  const strings = useStrings();
   const { slug } = useParams();
   const prefix = slug ? `/s/${slug}` : "";
   const location = useLocation();
@@ -125,6 +128,7 @@ function ClusterRoutes() {
       <Route path="/server-setup" element={<ServerSetupPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/intelligence/consent" element={<RequireAuth><IntelligenceConsentPage strings={strings} /></RequireAuth>} />
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/app/qr-login/:requestId" element={<RequireAuth><QRLoginApprovalPage /></RequireAuth>} />
       <Route path="/meet/:token" element={<GuestMeetingPage />} />

@@ -32,6 +32,39 @@ export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | n
   );
 }
 
+export function getSafeLoginReturnPath(value: unknown, fallback: string): string {
+  const target = value && typeof value === "object" && "from" in value
+    ? (value as { from?: unknown }).from
+    : value;
+  if (!target || typeof target !== "object") return safeFallbackPath(fallback);
+  const location = target as { pathname?: unknown; search?: unknown; hash?: unknown };
+  if (typeof location.pathname !== "string" || !location.pathname.startsWith("/") || location.pathname.startsWith("//") || location.pathname.includes("\\")) {
+    return safeFallbackPath(fallback);
+  }
+  const search = typeof location.search === "string" ? location.search : "";
+  const hash = typeof location.hash === "string" ? location.hash : "";
+  if ((search && !search.startsWith("?")) || (hash && !hash.startsWith("#"))) return safeFallbackPath(fallback);
+  try {
+    const parsed = new URL(`${location.pathname}${search}${hash}`, "https://messenger.invalid");
+    if (parsed.origin !== "https://messenger.invalid" || parsed.pathname === "/login" || parsed.pathname.endsWith("/login")) {
+      return safeFallbackPath(fallback);
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return safeFallbackPath(fallback);
+  }
+}
+
+function safeFallbackPath(fallback: string): string {
+  if (!fallback.startsWith("/") || fallback.startsWith("//") || fallback.includes("\\")) return "/app/chats";
+  try {
+    const parsed = new URL(fallback, "https://messenger.invalid");
+    return parsed.origin === "https://messenger.invalid" ? `${parsed.pathname}${parsed.search}${parsed.hash}` : "/app/chats";
+  } catch {
+    return "/app/chats";
+  }
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,6 +86,7 @@ export default function LoginPage() {
   const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
   const prefix = getClusterPrefix();
   const isDeviceLogin = new URLSearchParams(location.search).get("deviceLogin") === "1";
+  const postLoginPath = getSafeLoginReturnPath(location.state, `${prefix}/app/chats`);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -92,7 +126,7 @@ export default function LoginPage() {
         if (!active) return;
         if (result.accessToken && result.user) {
           acceptAuthResponse({ accessToken: result.accessToken, tokenType: "Bearer", expiresInSeconds: result.expiresInSeconds ?? 900, user: result.user, refreshToken: result.auth?.refreshToken });
-          navigate(`${prefix}/app/chats`, { replace: true });
+          navigate(postLoginPath, { replace: true });
           setQrLogin((current) => current?.requestId === qrLogin.requestId ? { ...current, status: "approved" } : current);
         } else if (result.status && result.status !== "pending") {
           setQrLogin((current) => current?.requestId === qrLogin.requestId ? { ...current, status: result.status ?? "expired" } : current);
@@ -105,10 +139,10 @@ export default function LoginPage() {
       active = false;
       window.clearInterval(timer);
     };
-  }, [qrLogin?.requestId, qrLogin?.status, acceptAuthResponse, navigate, prefix]);
+  }, [qrLogin?.requestId, qrLogin?.status, acceptAuthResponse, navigate, postLoginPath]);
 
   if (currentUser) {
-    return <Navigate to={`${prefix}/app/chats`} replace />;
+    return <Navigate to={postLoginPath} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -117,7 +151,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login({ username: loginValue, password });
-      navigate(`${prefix}/app/chats`, { replace: true });
+      navigate(postLoginPath, { replace: true });
     } catch (err) {
       const detail = err instanceof ApiError ? String(err.message) : "Invalid credentials";
       setError(detail);
@@ -144,7 +178,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       acceptAuthResponse(await verifyDeviceLoginCode(loginValue, deviceCode));
-      navigate(`${prefix}/app/chats`, { replace: true });
+      navigate(postLoginPath, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Invalid verification code");
     } finally { setIsSubmitting(false); }
@@ -161,7 +195,7 @@ export default function LoginPage() {
       const options = await beginPasskeyAuthentication();
       const response = await startAuthentication({ optionsJSON: options.publicKey as never });
       acceptAuthResponse(await finishPasskeyAuthentication(options.ceremonyId, response));
-      navigate(`${prefix}/app/chats`, { replace: true });
+      navigate(postLoginPath, { replace: true });
     } catch (err) {
       if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
         setError(err instanceof ApiError ? String(err.message) : "Passkey sign-in failed. Try again or use your password.");

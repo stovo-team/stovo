@@ -45,16 +45,19 @@ type IntelligenceOIDCTokenResponse struct {
 }
 
 type IntelligenceOIDCOperations struct {
-	Authorize func(context.Context, *stdhttp.Request, IntelligenceOIDCAuthorizationRequest) (IntelligenceOIDCAuthorizationResult, error)
-	Exchange  func(context.Context, *stdhttp.Request, string, string, string, string, string) (IntelligenceOIDCTokenResponse, error)
+	ValidateAuthorization func(context.Context, *stdhttp.Request, IntelligenceOIDCAuthorizationRequest) error
+	Authorize             func(context.Context, *stdhttp.Request, IntelligenceOIDCAuthorizationRequest) (IntelligenceOIDCAuthorizationResult, error)
+	AuthorizeBrowser      func(context.Context, *stdhttp.Request, string, IntelligenceOIDCAuthorizationRequest) (IntelligenceOIDCAuthorizationResult, error)
+	Exchange              func(context.Context, *stdhttp.Request, string, string, string, string, string) (IntelligenceOIDCTokenResponse, error)
 }
 
 type IntelligenceOIDCHandlerConfig struct {
-	Enabled    bool
-	Discovery  any
-	JWKS       any
-	Operations IntelligenceOIDCOperations
-	Timeout    time.Duration
+	Enabled       bool
+	BrowserAppURL string
+	Discovery     any
+	JWKS          any
+	Operations    IntelligenceOIDCOperations
+	Timeout       time.Duration
 }
 
 type IntelligenceOIDCHandler struct {
@@ -103,32 +106,52 @@ func (h *IntelligenceOIDCHandler) authorize(w stdhttp.ResponseWriter, r *stdhttp
 		writeOIDCError(w, stdhttp.StatusBadRequest, "invalid_request")
 		return
 	}
-	if h.config.Operations.Authorize == nil {
-		writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
-		return
-	}
 	ctx, cancel := context.WithTimeout(r.Context(), h.config.Timeout)
 	defer cancel()
-	result, err := h.config.Operations.Authorize(ctx, r, request)
+	var result IntelligenceOIDCAuthorizationResult
+	var err error
+	if r.Header.Get("Authorization") == "" {
+		cookie, cookieErr := r.Cookie(intelligenceOIDCBrowserCookieName)
+		if cookieErr != nil || cookie.Value == "" {
+			if h.config.Operations.ValidateAuthorization != nil {
+				if err := h.config.Operations.ValidateAuthorization(ctx, r, request); err != nil {
+					writeOIDCOperationError(w, err)
+					return
+				}
+			}
+			location, locationErr := intelligenceBrowserConsentPage(h.config.BrowserAppURL, "oidc", r.URL.Query())
+			if locationErr != nil {
+				writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
+				return
+			}
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			stdhttp.Redirect(w, r, location, stdhttp.StatusFound)
+			return
+		}
+		if h.config.Operations.AuthorizeBrowser == nil {
+			writeOIDCError(w, stdhttp.StatusUnauthorized, "login_required")
+			return
+		}
+		result, err = h.config.Operations.AuthorizeBrowser(ctx, r, cookie.Value, request)
+		if err == nil || errors.Is(err, ErrIntelligenceOIDCUnauthorized) {
+			clearIntelligenceBrowserCookie(w, h.config.BrowserAppURL, intelligenceOIDCBrowserCookieName, "/oauth2/authorize")
+		}
+	} else {
+		if h.config.Operations.Authorize == nil {
+			writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
+			return
+		}
+		result, err = h.config.Operations.Authorize(ctx, r, request)
+	}
 	if err != nil {
 		writeOIDCOperationError(w, err)
 		return
 	}
-	if result.Code == "" || result.RedirectURI != request.RedirectURI || result.State != request.State {
+	redirect := IntelligenceSourceV2ConsentRedirect{RedirectURI: result.RedirectURI, Code: result.Code, State: result.State}
+	if !redirectIntelligenceAuthorization(w, r, redirect, request.RedirectURI, request.State) {
 		writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return
 	}
-	callback, err := url.ParseRequestURI(result.RedirectURI)
-	if err != nil || callback.Scheme != "https" || callback.Host == "" || callback.Fragment != "" {
-		writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
-		return
-	}
-	query := callback.Query()
-	query.Set("code", result.Code)
-	query.Set("state", result.State)
-	callback.RawQuery = query.Encode()
-	w.Header().Set("Referrer-Policy", "no-referrer")
-	stdhttp.Redirect(w, r, callback.String(), stdhttp.StatusFound)
 }
 
 func (h *IntelligenceOIDCHandler) token(w stdhttp.ResponseWriter, r *stdhttp.Request) {

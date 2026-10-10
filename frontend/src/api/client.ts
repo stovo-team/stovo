@@ -115,7 +115,12 @@ function cacheProfileId() {
 function canCacheRequest(endpoint: string, options: ApiRequestOptions) {
   return (options.method ?? "GET").toUpperCase() === "GET" &&
     Boolean(options.accessToken) &&
-    !endpoint.startsWith("/api/auth/");
+    !endpoint.startsWith("/api/auth/") &&
+    !endpoint.startsWith("/api/v2/intelligence/");
+}
+
+function responseForbidsCaching(response: Response) {
+  return /(?:^|,)\s*no-store(?:\s|,|$)/i.test(response.headers.get("Cache-Control") ?? "");
 }
 
 export function getApiUrl(): string {
@@ -316,19 +321,21 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
       return undefined as T;
     }
 
+    const cacheResponse = cacheable && !responseForbidsCaching(response);
+
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
       // A server outage should not erase a usable local view. Authentication and
       // client errors remain authoritative and are never replaced by stale data.
-      if (response.status >= 500 && cacheable) {
+      if (response.status >= 500 && cacheResponse) {
         const cached = await loadApiResponseCache<T>(profileId, endpoint);
         if (cached !== null) return cached;
       }
       throw new ApiError(response.status, payload?.detail ?? response.statusText);
     }
 
-    if (cacheable) void saveApiResponseCache(profileId, endpoint, payload);
+    if (cacheResponse) void saveApiResponseCache(profileId, endpoint, payload);
     return payload as T;
   };
 

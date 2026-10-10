@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -17,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/google/uuid"
 )
@@ -375,12 +378,260 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	}
 }
 
+func TestIntelligenceSourceV2BrowserConsentTicketIsBoundOneUseAndConnectionsArePrivate(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	const state = "synthetic-browser-state"
+	requestBody := map[string]any{
+		"flow": "source_v2", "response_type": "code", "client_id": fixture.clientID, "redirect_uri": fixture.redirectURI,
+		"state": state, "code_challenge": fixture.challenge, "code_challenge_method": "S256", "chat_id": fixture.chatID,
+		"grants": map[string]bool{"read": true, "process": false, "external_transfer": true, "export": false},
+	}
+	sessionResponse := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/authorize-session", fixture.userToken, requestBody)
+	if sessionResponse.StatusCode != http.StatusOK || sessionResponse.Header.Get("Cache-Control") != "no-store" {
+		body, _ := io.ReadAll(sessionResponse.Body)
+		sessionResponse.Body.Close()
+		t.Fatalf("create source v2 browser ticket status=%d body=%s", sessionResponse.StatusCode, body)
+	}
+	var sessionResponseBody map[string]any
+	if err := json.NewDecoder(sessionResponse.Body).Decode(&sessionResponseBody); err != nil {
+		sessionResponse.Body.Close()
+		t.Fatalf("decode source v2 browser ticket response: %v", err)
+	}
+	sessionResponse.Body.Close()
+	if len(sessionResponseBody) != 1 || sessionResponseBody["expires_in"] != float64(120) {
+		t.Fatalf("browser session response returned unexpected fields: %#v", sessionResponseBody)
+	}
+	var browserTicket string
+	for _, cookie := range sessionResponse.Cookies() {
+		if cookie.Name == "messenger_source_v2_browser" {
+			browserTicket = cookie.Value
+			if cookie.Path != "/api/v2/intelligence/authorize" || !cookie.HttpOnly || cookie.MaxAge != 120 {
+				t.Fatalf("source browser cookie is not path-scoped and short-lived: %#v", cookie)
+			}
+		}
+	}
+	if browserTicket == "" {
+		t.Fatal("browser ticket was not returned in HttpOnly cookie")
+	}
+	ticketHash := sha256.Sum256([]byte(browserTicket))
+	var storedHash []byte
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT ticket_hash FROM public.intelligence_browser_authorization_sessions WHERE flow='source_v2' AND user_id=$1`, fixture.userID).Scan(&storedHash); err != nil {
+		t.Fatalf("read source browser ticket hash: %v", err)
+	}
+	if !bytes.Equal(storedHash, ticketHash[:]) || bytes.Contains(storedHash, []byte(browserTicket)) {
+		t.Fatal("source browser ticket was not persisted as only its SHA-256 hash")
+	}
+	wrongFlowRequest := httptest.NewRequest(http.MethodGet, fixture.serverURL+"/oauth2/authorize", nil)
+	_, wrongFlowErr := fixture.server.authorizeIntelligenceOIDCBrowserSession(ctx, wrongFlowRequest, browserTicket, httptransport.IntelligenceOIDCAuthorizationRequest{
+		ResponseType: "code", ClientID: fixture.clientID, RedirectURI: fixture.redirectURI, State: state, Nonce: "synthetic-nonce",
+		CodeChallenge: fixture.challenge, CodeChallengeMethod: "S256",
+	})
+	if wrongFlowErr == nil {
+		t.Fatal("source consent ticket was accepted by the OIDC authorization flow")
+	}
+	var ticketRows int
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1 AND flow='source_v2'`, ticketHash[:]).Scan(&ticketRows); err != nil || ticketRows != 1 {
+		t.Fatalf("cross-flow ticket attempt consumed source session rows=%d err=%v", ticketRows, err)
+	}
+
+	query := url.Values{
+		"response_type": {"code"}, "client_id": {fixture.clientID}, "redirect_uri": {fixture.redirectURI},
+		"state": {state}, "code_challenge": {fixture.challenge}, "code_challenge_method": {"S256"},
+	}
+	browserStart, err := http.NewRequest(http.MethodGet, fixture.serverURL+"/api/v2/intelligence/authorize?"+query.Encode(), nil)
+	if err != nil {
+		t.Fatalf("build browser consent start: %v", err)
+	}
+	browserStart.Header.Set("Accept", "text/html")
+	browserStartResponse, err := fixture.httpClient.Do(browserStart)
+	if err != nil {
+		t.Fatalf("request browser consent start: %v", err)
+	}
+	if browserStartResponse.StatusCode != http.StatusFound {
+		body, _ := io.ReadAll(browserStartResponse.Body)
+		browserStartResponse.Body.Close()
+		t.Fatalf("browser consent start status=%d body=%s", browserStartResponse.StatusCode, body)
+	}
+	consentPage, err := url.Parse(browserStartResponse.Header.Get("Location"))
+	browserStartResponse.Body.Close()
+	if err != nil || consentPage.Path != "/intelligence/consent" || consentPage.Query().Get("flow") != "source_v2" || consentPage.Query().Get("state") != state {
+		t.Fatalf("browser consent page = %q (err %v)", browserStartResponse.Header.Get("Location"), err)
+	}
+
+	form := url.Values{
+		"response_type": {"code"}, "client_id": {fixture.clientID}, "redirect_uri": {fixture.redirectURI},
+		"state": {state}, "code_challenge": {fixture.challenge}, "code_challenge_method": {"S256"}, "chat_id": {fixture.chatID},
+		"read": {"true"}, "process": {"false"}, "external_transfer": {"true"}, "export": {"false"},
+	}
+	submitBrowserForm := func(values url.Values) *http.Response {
+		t.Helper()
+		formRequest, err := http.NewRequest(http.MethodPost, fixture.serverURL+"/api/v2/intelligence/authorize", strings.NewReader(values.Encode()))
+		if err != nil {
+			t.Fatalf("build source browser form: %v", err)
+		}
+		formRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		formRequest.Header.Set("Origin", normalizeConfiguredOriginForTest(fixture.server.cfg.AppURL))
+		formRequest.AddCookie(&http.Cookie{Name: "messenger_source_v2_browser", Value: browserTicket})
+		response, err := fixture.httpClient.Do(formRequest)
+		if err != nil {
+			t.Fatalf("submit source browser consent: %v", err)
+		}
+		return response
+	}
+	tamperedForm := make(url.Values, len(form))
+	for key, values := range form {
+		tamperedForm[key] = append([]string(nil), values...)
+	}
+	tamperedForm.Set("export", "true")
+	tamperedResponse := submitBrowserForm(tamperedForm)
+	if tamperedResponse.StatusCode != http.StatusBadRequest {
+		body, _ := io.ReadAll(tamperedResponse.Body)
+		tamperedResponse.Body.Close()
+		t.Fatalf("changed browser grant set status=%d body=%s", tamperedResponse.StatusCode, body)
+	}
+	tamperedResponse.Body.Close()
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1`, ticketHash[:]).Scan(&ticketRows); err != nil || ticketRows != 1 {
+		t.Fatalf("tampered consent consumed the bound browser ticket rows=%d err=%v", ticketRows, err)
+	}
+	formResponse := submitBrowserForm(form)
+	if formResponse.StatusCode != http.StatusFound || formResponse.Header.Get("Cache-Control") != "no-store" {
+		body, _ := io.ReadAll(formResponse.Body)
+		formResponse.Body.Close()
+		t.Fatalf("source browser consent status=%d body=%s", formResponse.StatusCode, body)
+	}
+	callback, err := url.Parse(formResponse.Header.Get("Location"))
+	formResponse.Body.Close()
+	if err != nil || callback.Query().Get("state") != state || callback.Query().Get("code") == "" {
+		t.Fatalf("source browser callback = %q (err %v)", callback, err)
+	}
+	code := callback.Query().Get("code")
+	replay := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/authorize", fixture.userToken, map[string]any{
+		"client_id": fixture.clientID, "redirect_uri": fixture.redirectURI, "state": state, "code_challenge": fixture.challenge,
+		"code_challenge_method": "S256", "chat_id": fixture.chatID, "grants": requestBody["grants"],
+	})
+	if replay.StatusCode != http.StatusFound {
+		body, _ := io.ReadAll(replay.Body)
+		replay.Body.Close()
+		t.Fatalf("separate bearer path remains available after browser ticket use, status=%d body=%s", replay.StatusCode, body)
+	}
+	replay.Body.Close()
+	replayedBrowser := submitBrowserForm(form)
+	if replayedBrowser.StatusCode != http.StatusUnauthorized {
+		body, _ := io.ReadAll(replayedBrowser.Body)
+		replayedBrowser.Body.Close()
+		t.Fatalf("replayed source browser ticket status=%d body=%s", replayedBrowser.StatusCode, body)
+	}
+	replayedBrowser.Body.Close()
+
+	exchange := sourceV2TokenRequest(t, fixture, "authorization_code", code, fixture.verifier, "")
+	if exchange.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(exchange.Body)
+		exchange.Body.Close()
+		t.Fatalf("exchange browser-issued source code status=%d body=%s", exchange.StatusCode, body)
+	}
+	var issued struct {
+		ConnectionID     string          `json:"connection_id"`
+		SourceCredential string          `json:"source_credential"`
+		Grants           map[string]bool `json:"grants"`
+	}
+	if err := json.NewDecoder(exchange.Body).Decode(&issued); err != nil {
+		exchange.Body.Close()
+		t.Fatalf("decode browser-issued source credential: %v", err)
+	}
+	exchange.Body.Close()
+	if issued.SourceCredential == "" || !issued.Grants["read"] || issued.Grants["process"] || !issued.Grants["external_transfer"] || issued.Grants["export"] {
+		t.Fatalf("browser grants changed during server exchange: %#v", issued)
+	}
+	list := sourceV2Request(t, fixture.httpClient, http.MethodGet, fixture.serverURL+"/api/v2/intelligence/connections", fixture.userToken, nil)
+	if list.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(list.Body)
+		list.Body.Close()
+		t.Fatalf("list own source connections status=%d body=%s", list.StatusCode, body)
+	}
+	var ownerList struct {
+		Connections []struct {
+			ID        string          `json:"id"`
+			ChatID    string          `json:"chat_id"`
+			Grants    map[string]bool `json:"grants"`
+			RevokedAt *time.Time      `json:"revoked_at"`
+		} `json:"connections"`
+	}
+	listBody, _ := io.ReadAll(list.Body)
+	list.Body.Close()
+	if err := json.Unmarshal(listBody, &ownerList); err != nil || len(ownerList.Connections) != 1 || strings.Contains(string(listBody), issued.SourceCredential) {
+		t.Fatalf("owner connection list = %s err=%v", listBody, err)
+	}
+	var owned *struct {
+		ID        string          `json:"id"`
+		ChatID    string          `json:"chat_id"`
+		Grants    map[string]bool `json:"grants"`
+		RevokedAt *time.Time      `json:"revoked_at"`
+	}
+	for i := range ownerList.Connections {
+		if ownerList.Connections[i].ID == issued.ConnectionID {
+			owned = &ownerList.Connections[i]
+		}
+	}
+	if owned == nil || owned.ChatID != fixture.chatID || !owned.Grants["read"] || owned.Grants["process"] || !owned.Grants["external_transfer"] {
+		t.Fatalf("own connection list did not preserve the independent chat grants: %#v", owned)
+	}
+	secondUserID := "source-v2-other-user-" + uuid.NewString()
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.users(id,family_id,username,password_hash,display_name,role,created_at) VALUES($1,$2,$1,'synthetic','Other synthetic principal','member',now())`, secondUserID, fixture.familyID); err != nil {
+		t.Fatalf("create second same-family principal for ownership test: %v", err)
+	}
+	secondUserToken, _, err := createAccessToken(fixture.server.cfg, userPublic{ID: secondUserID, FamilyID: fixture.familyID, Role: "member", IsActive: true})
+	if err != nil {
+		t.Fatalf("mint second synthetic Messenger session: %v", err)
+	}
+	otherList := sourceV2Request(t, fixture.httpClient, http.MethodGet, fixture.serverURL+"/api/v2/intelligence/connections", secondUserToken, nil)
+	var otherConnections struct {
+		Connections []json.RawMessage `json:"connections"`
+	}
+	if otherList.StatusCode != http.StatusOK || json.NewDecoder(otherList.Body).Decode(&otherConnections) != nil || len(otherConnections.Connections) != 0 {
+		body, _ := io.ReadAll(otherList.Body)
+		otherList.Body.Close()
+		t.Fatalf("same-family non-owner connection list status=%d entries=%d body=%s", otherList.StatusCode, len(otherConnections.Connections), body)
+	}
+	otherList.Body.Close()
+	wholeRevoke := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/revoke", fixture.userToken, map[string]string{"connection_id": issued.ConnectionID, "grant": "connection"})
+	if wholeRevoke.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(wholeRevoke.Body)
+		wholeRevoke.Body.Close()
+		t.Fatalf("connection UI revoke sentinel status=%d body=%s", wholeRevoke.StatusCode, body)
+	}
+	wholeRevoke.Body.Close()
+	ownerAfterRevoke := sourceV2Request(t, fixture.httpClient, http.MethodGet, fixture.serverURL+"/api/v2/intelligence/connections", fixture.userToken, nil)
+	var revokedList struct {
+		Connections []struct {
+			ID        string          `json:"id"`
+			Grants    map[string]bool `json:"grants"`
+			RevokedAt *time.Time      `json:"revoked_at"`
+		} `json:"connections"`
+	}
+	if ownerAfterRevoke.StatusCode != http.StatusOK || json.NewDecoder(ownerAfterRevoke.Body).Decode(&revokedList) != nil || len(revokedList.Connections) != 1 || revokedList.Connections[0].ID != issued.ConnectionID || revokedList.Connections[0].RevokedAt == nil || revokedList.Connections[0].Grants["read"] {
+		body, _ := io.ReadAll(ownerAfterRevoke.Body)
+		ownerAfterRevoke.Body.Close()
+		t.Fatalf("whole connection revoke did not update safe list status=%d body=%s", ownerAfterRevoke.StatusCode, body)
+	}
+	ownerAfterRevoke.Body.Close()
+}
+
+func normalizeConfiguredOriginForTest(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Host
+}
+
 type intelligenceSourceV2ConsentFixture struct {
 	server       *Server
 	serverURL    string
 	httpClient   *http.Client
 	userToken    string
 	userID       string
+	familyID     string
 	clientID     string
 	clientSecret string
 	redirectURI  string
@@ -448,7 +699,7 @@ func newIntelligenceSourceV2ConsentFixture(t *testing.T) intelligenceSourceV2Con
 	challengeDigest := sha256.Sum256([]byte(verifier))
 	return intelligenceSourceV2ConsentFixture{
 		server: server, serverURL: httpServer.URL, httpClient: &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
-		userToken: accessToken, userID: userID, clientID: clientID, clientSecret: clientSecret, redirectURI: redirectURI,
+		userToken: accessToken, userID: userID, familyID: familyID, clientID: clientID, clientSecret: clientSecret, redirectURI: redirectURI,
 		chatID: chatID, verifier: verifier, challenge: base64.RawURLEncoding.EncodeToString(challengeDigest[:]),
 	}
 }

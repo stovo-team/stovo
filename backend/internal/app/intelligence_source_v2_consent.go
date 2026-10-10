@@ -33,6 +33,7 @@ type intelligenceSourceV2ConsentRecord struct {
 
 func (s *Server) intelligenceSourceV2ConsentHandler() http.Handler {
 	return httptransport.NewIntelligenceSourceV2ConsentHandler(httptransport.IntelligenceSourceV2ConsentHandlerConfig{
+		BrowserAppURL: s.cfg.AppURL,
 		Authenticate: func(request *http.Request) (httptransport.IntelligenceSourceV2ConsentPrincipal, error) {
 			user, err := s.currentUser(request)
 			if err != nil {
@@ -41,11 +42,14 @@ func (s *Server) intelligenceSourceV2ConsentHandler() http.Handler {
 			return httptransport.IntelligenceSourceV2ConsentPrincipal{UserID: user.ID, FamilyID: user.FamilyID}, nil
 		},
 		Operations: httptransport.IntelligenceSourceV2ConsentOperations{
-			Offer:     s.intelligenceSourceV2ConsentOffer,
-			Authorize: s.authorizeIntelligenceSourceV2Consent,
-			Exchange:  s.exchangeIntelligenceSourceV2Consent,
-			Rotate:    s.rotateIntelligenceSourceV2Credential,
-			Revoke:    s.revokeIntelligenceSourceV2Connection,
+			Offer:                s.intelligenceSourceV2ConsentOffer,
+			Authorize:            s.authorizeIntelligenceSourceV2Consent,
+			CreateBrowserSession: s.createIntelligenceBrowserSession,
+			AuthorizeBrowser:     s.authorizeIntelligenceSourceV2BrowserSession,
+			Exchange:             s.exchangeIntelligenceSourceV2Consent,
+			Rotate:               s.rotateIntelligenceSourceV2Credential,
+			Revoke:               s.revokeIntelligenceSourceV2Connection,
+			ListConnections:      s.listIntelligenceSourceV2Connections,
 		},
 	})
 }
