@@ -775,7 +775,7 @@ func chatMemberSet(chat chatPublic) map[string]bool {
 	return set
 }
 
-func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType string, inviteUserIDs []string) (*callSession, error) {
+func (s *Server) startCallSessionOnce(chat chatPublic, callerUserID string, callType string, inviteUserIDs []string) (*callSession, error) {
 	callType = normalizeCallType(callType)
 	if chat.Type == "channel" {
 		return nil, fmt.Errorf("calls are not available in channels")
@@ -848,85 +848,6 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		s.persistCallSession(ctx, sess, 60*time.Second)
 	}(session)
 	return session, nil
-}
-
-func (s *Server) checkCallConflicts(callerUserID, chatID string, invitees []string) error {
-	conflict := s.calls.DetectCallConflictLocked(chatID, callerUserID, invitees, func(session *callSession) string {
-		if session == nil {
-			return ""
-		}
-		return session.ChatID
-	})
-	if conflict == nil {
-		return nil
-	}
-	switch conflict.Kind {
-	case runtime.CallConflictChat:
-		return fmt.Errorf("call already in progress for this chat")
-	case runtime.CallConflictInitiator:
-		return fmt.Errorf("you are already in another call")
-	case runtime.CallConflictParticipant:
-		return fmt.Errorf("participant is busy in another call")
-	default:
-		return fmt.Errorf("call conflict")
-	}
-}
-
-func (s *Server) joinCallSession(chat chatPublic, userID string, callType string) (*callSession, bool, error) {
-	callType = normalizeCallType(callType)
-	members := chatMemberSet(chat)
-	if !members[userID] {
-		return nil, false, fmt.Errorf("you are not a member of this chat")
-	}
-
-	s.calls.Lock()
-	session, exists := s.calls.ByChatLocked(chat.ID)
-	if exists && session != nil {
-		if p, ok := session.Participants[userID]; ok && p != nil && (p.State == participantConnected || p.State == participantConnecting) {
-			s.calls.Unlock()
-			return session, false, nil
-		}
-
-		if roomID, busy := s.calls.ActiveRoomLocked(userID); busy && roomID != session.ID {
-			s.calls.Unlock()
-			return nil, false, fmt.Errorf("you are already in another call")
-		}
-
-		now := time.Now().UTC()
-		if p, ok := session.Participants[userID]; ok && p != nil {
-			p.State = participantConnected
-			if p.JoinedAt.IsZero() {
-				p.JoinedAt = now
-			}
-		} else {
-			session.Participants[userID] = &callParticipant{
-				UserID:   userID,
-				Role:     "member",
-				State:    participantConnected,
-				JoinedAt: now,
-			}
-		}
-		s.calls.SetActiveLocked(userID, session.ID)
-		if chat.Type == "voice" || (session.ConnectedOrConnectingCount() > maxMeshParticipants && s.isSFUConfigured()) {
-			session.Topology = callTopologySFU
-		}
-		s.calls.Unlock()
-
-		go func(sess *callSession) {
-			ctx := context.Background()
-			s.persistCallParticipants(ctx, sess)
-			s.persistCallSession(ctx, sess, 3600*time.Second)
-		}(session)
-
-		return session, false, nil
-	}
-	s.calls.Unlock()
-
-	sess, err := s.startCallSession(chat, userID, callType, nil)
-	if err != nil {
-		return nil, false, err
-	}
-	return sess, true, nil
 }
 
 func (s *Server) indexCallSession(session *callSession) { s.calls.IndexLocked(session) }
@@ -1191,14 +1112,7 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 	if !ok {
 		return nil, false
 	}
-	s.stopActiveTranscriptionForEndedCall(session)
-	go func(sess *callSession) {
-		ctx := context.Background()
-		dur := int(time.Since(sess.CreatedAt).Seconds())
-		_ = s.callPersistence.End(ctx, sess.ID, dur, time.Now().UTC())
-		s.deleteCallSession(ctx, sess.ID)
-		s.deleteCallSession(ctx, sess.ChatID)
-	}(session)
+	s.finishEndedCall(session)
 	return session, true
 }
 

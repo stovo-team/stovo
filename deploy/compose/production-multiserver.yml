@@ -68,6 +68,7 @@ services:
       MASTER_ADMIN_PASSWORD: ${MASTER_ADMIN_PASSWORD}
       MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET}
       PUBLIC_HOST: ${PUBLIC_HOST}
+      APP_URL: ${APP_URL:-http://localhost:8000}
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
@@ -118,6 +119,7 @@ services:
       # Supplying a hostname (rather than only :80) lets Caddy obtain a TLS
       # certificate and listen on the published HTTPS port.
       APP_DOMAIN: ${APP_DOMAIN}
+      BACKEND_UPSTREAMS: ${BACKEND_UPSTREAMS:-}
     dns:
       - 1.1.1.1
       - 8.8.8.8

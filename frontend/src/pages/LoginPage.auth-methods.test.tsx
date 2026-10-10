@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  platform: "web",
   currentUser: null as null | { id: string },
   login: vi.fn(),
   acceptAuthResponse: vi.fn(),
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   qrToDataURL: vi.fn(),
   startAuthentication: vi.fn(),
 }));
+
+vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => mocks.platform !== "web", getPlatform: () => mocks.platform }, registerPlugin: vi.fn(() => ({})) }));
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ currentUser: mocks.currentUser, login: mocks.login, acceptAuthResponse: mocks.acceptAuthResponse }),
@@ -40,6 +43,7 @@ describe("LoginPage authentication methods", () => {
   let root: Root;
 
   beforeEach(() => {
+    mocks.platform = "web";
     mocks.currentUser = null;
     mocks.login.mockReset();
     mocks.acceptAuthResponse.mockReset();
@@ -144,6 +148,47 @@ describe("LoginPage authentication methods", () => {
     expect(mocks.startAuthentication).toHaveBeenCalledOnce();
     expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledWith("ceremony-1", { id: "credential-1", response: {} });
     expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "access" });
+  });
+
+  it("authenticates in a supported Android WebView", async () => {
+    mocks.platform = "android";
+    await renderPage();
+    const button = container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]');
+    expect(button).not.toBeNull();
+    expect(button?.disabled).toBe(false);
+    await act(async () => button?.click());
+    expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledWith("ceremony-1", { id: "credential-1", response: {} });
+    expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "access" });
+  });
+  it.each(["missing API", "insecure context"])("retains Android fallback with %s", async (reason) => {
+    mocks.platform = "android";
+    Object.defineProperty(window, reason === "missing API" ? "PublicKeyCredential" : "isSecureContext", { configurable: true, value: reason === "missing API" ? undefined : false });
+    await renderPage();
+    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]')?.disabled).toBe(true);
+    expect(container.textContent).toContain(reason === "missing API" ? "supported Android WebView" : "secure connection");
+    expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+    expect(container.textContent).toContain("Scan desktop QR");
+  });
+  it.each(["NotAllowedError", "AbortError", "UnknownError"])("allows Android retry after %s", async (name) => {
+    mocks.platform = "android";
+    mocks.startAuthentication.mockRejectedValueOnce(new DOMException("provider error", name));
+    await renderPage();
+    const button = container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]');
+    expect(button).not.toBeNull();
+    await act(async () => button?.click());
+    expect(container.querySelector('[role="alert"]')?.textContent ?? "").toBe(name === "UnknownError" ? "Passkey sign-in failed. Try again or use your password." : "");
+    expect(button?.disabled).toBe(false);
+    expect(mocks.finishPasskeyAuthentication).not.toHaveBeenCalled();
+    expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+    expect(container.textContent).toContain("Scan desktop QR");
+    await act(async () => button?.click());
+    expect(mocks.acceptAuthResponse).toHaveBeenCalledOnce();
+  });
+  it("keeps native iOS passkey login unavailable", async () => {
+    mocks.platform = "ios";
+    await renderPage();
+    expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
+    expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
   });
 
 });

@@ -143,3 +143,66 @@ func (s *Server) allowAuthMethodRate(ctx context.Context, name, clientIP string,
 	count, err := s.cache.Increment(ctx, "rate-limit:auth-method:"+name+":"+clientIP, ttl)
 	return err == nil && count <= int64(limit)
 }
+
+// createAndroidQRLogin creates a separate desktop-to-Android bearer grant.
+func (s *Server) createAndroidQRLogin(w http.ResponseWriter, r *http.Request, actor userPublic) {
+	if !s.allowAuthMethodRate(r.Context(), "android-qr-create", s.getClientIP(r), 8, 60) {
+		writeMessageDetail(w, http.StatusTooManyRequests, "Please wait before requesting another sign-in code")
+		return
+	}
+	rawID, err := randomToken()
+	if err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not start Android QR sign-in")
+		return
+	}
+	expiresAt := time.Now().Add(2 * time.Minute)
+	if err := s.authMethods.CreateAndroidQRLoginGrant(r.Context(), tokenHash(s.cfg.RefreshTokenSecret, rawID), actor.FamilyID, actor.ID, expiresAt); err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not start Android QR sign-in")
+		return
+	}
+	writeMessageValue(w, http.StatusCreated, map[string]any{"requestId": rawID, "expiresAt": expiresAt.UTC().Format(time.RFC3339Nano)})
+}
+
+func (s *Server) redeemAndroidQRLogin(w http.ResponseWriter, r *http.Request) {
+	ip := s.getClientIP(r)
+	if !s.allowAuthMethodRate(r.Context(), "android-qr-redeem", ip, 8, 60) {
+		writeMessageDetail(w, http.StatusTooManyRequests, "Please wait before redeeming another sign-in code")
+		return
+	}
+	// Atomic consumption comes first so any accepted bearer is single-use even
+	// if the account or receiving device is no longer permitted to sign in.
+	grant, err := s.authMethods.ConsumeAndroidQRLoginGrant(r.Context(), tokenHash(s.cfg.RefreshTokenSecret, chi.URLParam(r, "requestID")))
+	if err == sql.ErrNoRows {
+		writeMessageDetail(w, http.StatusUnauthorized, "Android QR sign-in is no longer available")
+		return
+	}
+	if err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not complete Android QR sign-in")
+		return
+	}
+	user, err := s.getUserByID(grant.UserID)
+	if err != nil || !user.IsActive || user.FamilyID != grant.FamilyID {
+		writeMessageDetail(w, http.StatusUnauthorized, "Android QR sign-in is no longer available")
+		return
+	}
+	banned, err := s.isFamilyIPBanned(r.Context(), grant.FamilyID, ip)
+	if err != nil || banned {
+		writeMessageDetail(w, http.StatusUnauthorized, "Android QR sign-in is no longer available")
+		return
+	}
+	raw, hash, expiresAt, err := s.issueRefreshToken(user.ID)
+	if err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not create session")
+		return
+	}
+	if err := s.sessionWriter.CreateSession(r.Context(), identity.PersistedSession{ID: uuid.NewString(), UserID: user.ID, TokenHash: hash, ExpiresAt: expiresAt, CreatedAt: nowString(), IPAddress: ip}); err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not save session")
+		return
+	}
+	access, ttl, err := createAccessToken(s.cfg, user)
+	if err != nil {
+		writeMessageDetail(w, http.StatusInternalServerError, "Could not create access token")
+		return
+	}
+	s.writeAuthSuccess(w, r, http.StatusOK, httptransport.AuthSuccess[userPublic]{AccessToken: access, TokenType: "Bearer", ExpiresInSeconds: ttl, User: user, RefreshToken: raw})
+}
