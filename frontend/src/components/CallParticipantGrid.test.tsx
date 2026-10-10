@@ -101,6 +101,10 @@ describe("shared call participant presentation", () => {
     expect(observers).toHaveLength(1);
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
 
+    stage = { width: 1200, height: 400 };
+    act(() => observers.forEach((resize) => resize(stage)));
+    expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
+
     stage = { width: 450, height: 720 };
     act(() => observers.forEach((resize) => resize(stage)));
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(true);

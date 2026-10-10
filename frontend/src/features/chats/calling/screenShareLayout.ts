@@ -27,8 +27,6 @@ export function getScreenShareLayout(width: number, height: number, participantC
 
   const railWidth = Math.min(168, Math.max(112, width * 0.16));
   const gap = 12;
-  const presenterWidth = width - railWidth - gap;
-  const presenterHeight = presenterWidth * (9 / 16);
   const cardHeight = Math.max(80, railWidth * (9 / 16));
   const visibleCardCount = Math.max(1, participantCount);
   const requiredRailHeight = visibleCardCount * cardHeight + Math.max(0, visibleCardCount - 1) * 8;
@@ -36,7 +34,7 @@ export function getScreenShareLayout(width: number, height: number, participantC
   const minimumPresenterHeight = 200;
 
   return width >= minimumPresenterWidth + railWidth + gap
-    && height >= Math.max(minimumPresenterHeight, presenterHeight, requiredRailHeight)
+    && height >= Math.max(minimumPresenterHeight, requiredRailHeight)
     ? "side"
     : "bottom";
 }
