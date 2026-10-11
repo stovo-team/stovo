@@ -113,12 +113,20 @@ describe("mobile call UI unification", () => {
 
   it("keeps mobile call controls round and fixed-size inside the floating panel", () => {
     const styles = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel")).toMatch(/width:\s*max-content/);
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
     expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
     expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/font:\s*inherit/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*50%/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-name")).toMatch(/font-size:\s*\.875rem/);
+  });
+
+  it("keeps the mobile participant toggle anchored to the presentation edge", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(styles, ".shared-call-participants-toggle")).toMatch(/position:\s*absolute/);
+    expect(styleRules(styles, ".mobile-active-video-stage .shared-call-participants-toggle")).toMatch(/left:\s*0/);
   });
 
   it("toggles auto-hidden controls on repeated mobile stage taps", () => {
@@ -131,6 +139,16 @@ describe("mobile call UI unification", () => {
     expect(controls.getAttribute("aria-hidden")).toBe("true");
     act(() => screen.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
     expect(controls.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("hides mobile controls after the idle timeout with the default preferences", () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    const container = renderScreen(baseProps);
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => vi.advanceTimersByTime(15_000));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("toggles mobile controls once when tapping inside the shared presentation stage", () => {
@@ -591,14 +609,14 @@ describe("mobile call UI unification", () => {
     expect(buttons[0]?.tabIndex).toBe(0);
   });
 
-  it("keeps mobile controls visible by default", () => {
+  it("hides mobile controls by default after the idle timeout", () => {
     vi.useFakeTimers();
     localStorage.clear();
     const container = renderScreen(baseProps);
     const controls = container.querySelector(".mobile-active-controls")!;
     act(() => vi.advanceTimersByTime(30_000));
-    expect(controls.getAttribute("aria-hidden")).toBe("false");
-    expect(controls.hasAttribute("inert")).toBe(false);
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    expect(controls.hasAttribute("inert")).toBe(true);
   });
 
   it("does not announce Connected or Speaking for a video stream until the call is in progress", () => {

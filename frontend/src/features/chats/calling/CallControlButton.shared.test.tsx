@@ -23,6 +23,11 @@ function renderControl(props: React.ComponentProps<typeof CallControlButton>) {
   return host;
 }
 
+function lastStyleRule(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).at(-1) ?? "";
+}
+
 describe("shared call control button", () => {
   it("uses the same microphone icon component across DM/group, mobile, voice and guest surfaces", () => {
     const desktop = renderControl({ action: "microphone", label: "Mute", state: "active", onClick: vi.fn() });
@@ -70,8 +75,8 @@ describe("shared call control button", () => {
     const mutedMicButton = micMuted.querySelector("button")!;
     const speakerOnButton = speakerOn.querySelector("button")!;
     const speakerOffButton = speakerOff.querySelector("button")!;
-    const mutedRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-muted,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
-    const activeRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-active,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
+    const mutedRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-muted");
+    const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
     const mutedColor = mutedRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
     const activeColor = activeRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
 
@@ -86,7 +91,10 @@ describe("shared call control button", () => {
     expect(speakerOffButton.classList.contains("is-muted")).toBe(true);
     expect(activeColor).toBeTruthy();
     expect(mutedColor).toBeTruthy();
-    expect(mutedColor).not.toBe(activeColor);
+    expect(mutedColor).toBe(activeColor);
+    const mutedBackground = mutedRules.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim();
+    const activeBackground = activeRules.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim();
+    expect(mutedBackground).toBe(activeBackground);
   });
 
   it("switches camera and screen-share icons with their states", () => {
@@ -120,5 +128,15 @@ describe("shared call control button", () => {
     expect(endCallRules).toMatch(/transform:\s*none/);
     expect(endCallRules).not.toMatch(/transform:\s*scale/);
     expect(endCallRules).not.toMatch(/background:\s*(?:#b91c1c|rgba\(255,\s*255,\s*255)/i);
+  });
+
+  it("uses the same neutral surface for end-call and active call controls", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
+    const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
+    expect(endRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
+    expect(endRules).toMatch(/color:\s*#fff/);
+    expect(endRules).not.toMatch(/#dc2626|red/i);
+    expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
   });
 });

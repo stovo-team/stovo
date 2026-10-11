@@ -59,7 +59,7 @@ describe("SharedCallControlPanel", () => {
 
   it("keeps the floating control box padded, rounded, and translucent over the shared stage", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*rgba\(24, 25, 28, \.68\);[^}]*border-radius:\s*22px;[^}]*padding:\s*8px 12px/);
+    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*rgba\(24, 25, 28, \.9\);[^}]*border-radius:\s*22px;[^}]*padding:\s*8px 12px/);
     expect(styles).toMatch(/\.call-popup\.call-popup-fullscreen \.shared-call-control-panel > \.call-popup-ctrl-row\s*\{[^}]*background:\s*transparent !important;[^}]*padding:\s*0 !important/);
   });
 });

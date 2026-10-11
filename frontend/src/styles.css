@@ -26101,7 +26101,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .shared-call-control-panel {
   align-items: center;
-  background: rgba(24, 25, 28, .68);
+  background: rgba(24, 25, 28, .9);
   backdrop-filter: blur(18px) saturate(1.1);
   -webkit-backdrop-filter: blur(18px) saturate(1.1);
   border: 1px solid rgba(255, 255, 255, .12);
@@ -26120,13 +26120,15 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-control-panel > .shared-call-controls { background: transparent; border: 0; padding: 0; }
 .shared-call-control-panel > .mobile-active-controls { position: relative; inset: auto; width: auto; max-width: none; padding: 0; background: transparent; }
 .mobile-active-screen--video .shared-call-control-panel {
-  width: min(calc(100% - 24px), 480px);
+  width: max-content;
+  max-width: calc(100vw - 24px);
 }
 .mobile-active-screen--video .shared-call-control-panel > .mobile-active-controls {
   box-sizing: border-box;
   max-width: 100%;
   width: 100%;
   gap: clamp(0px, 1vw, 6px);
+  background: transparent;
 }
 .mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl,
 .mobile-active-screen--video .shared-call-control-panel .mobile-active-more-anchor { flex: 0 0 auto; min-width: 0; }
@@ -26163,6 +26165,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   color: var(--text-primary, #fff);
   display: flex;
   flex-direction: column;
+  height: min(680px, calc(100dvh - 32px));
   max-height: min(760px, calc(100dvh - 32px));
   overflow: hidden;
   width: min(820px, calc(100vw - 32px));
@@ -26191,9 +26194,16 @@ button.chat-info-title-edit:active:not(:disabled) {
 .call-invite-modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .call-invite-modal-header h3 { margin: 0; font: inherit; font-size: 1rem; font-weight: 650; }
 .call-invite-member-list { display: grid; gap: 4px; max-height: min(42dvh, 320px); overflow: auto; }
-.call-invite-member-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px; border-radius: 10px; cursor: pointer; }
+.call-invite-member-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border: 1px solid transparent; border-radius: 12px; cursor: pointer; }
 .call-invite-member-row:hover { background: rgba(255, 255, 255, .07); }
+.call-invite-member-row input[type="checkbox"] { appearance: none; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.28); border-radius: 6px; box-sizing: border-box; cursor: pointer; flex: 0 0 20px; height: 20px; margin: 0; position: relative; width: 20px; }
+.call-invite-member-row input[type="checkbox"]:checked { background: var(--accent-primary, #60a5fa); border-color: var(--accent-primary, #60a5fa); }
+.call-invite-member-row input[type="checkbox"]:checked::after { border: solid #fff; border-width: 0 2px 2px 0; content: ""; height: 9px; left: 6px; position: absolute; top: 2px; transform: rotate(45deg); width: 5px; }
+.call-invite-member-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-primary, #60a5fa); outline-offset: 2px; }
 .call-invite-modal-actions { justify-content: flex-end; }
+.call-invite-modal-actions .action-button { border-radius: 999px; min-height: 42px; padding: 0 20px; }
+.call-invite-modal-actions .action-button.primary { background: var(--accent-primary, #60a5fa); border: 1px solid var(--accent-primary, #60a5fa); color: #fff; }
+.call-invite-modal-actions .action-button.subtle { background: transparent; border: 1px solid rgba(255,255,255,.28); color: var(--text-primary, #fff); }
 .call-settings-dialog-header {
   align-items: center;
   border-bottom: 1px solid var(--border-default, rgba(255,255,255,.12));
@@ -26202,12 +26212,12 @@ button.chat-info-title-edit:active:not(:disabled) {
   min-height: 58px;
   padding: 10px 18px;
 }
-.call-settings-dialog-layout { display: grid; grid-template-columns: 168px minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.call-settings-dialog-layout { display: grid; flex: 1 1 auto; grid-template-columns: 168px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; overflow: hidden; }
 .call-settings-tabs { border-right: 1px solid var(--border-default, rgba(255,255,255,.12)); display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; }
 .call-settings-tabs button { background: transparent; border: 0; border-radius: 10px; color: var(--text-secondary, #a1a1aa); cursor: pointer; font: inherit; padding: 10px 12px; text-align: left; }
 .call-settings-tabs button[aria-selected="true"] { background: rgba(255,255,255,.1); color: var(--text-primary, #fff); }
 .call-settings-tabs button:focus-visible { outline: 2px solid var(--accent-primary, #60a5fa); }
-.call-settings-panel-wrap { min-width: 0; overflow: auto; padding: 16px; }
+.call-settings-panel-wrap { min-height: 0; min-width: 0; overflow: auto; padding: 16px; }
 .call-settings-panel-wrap .call-settings-embedded-content { display: contents; }
 .call-settings-panel-wrap .call-settings-embedded-panel { background: transparent; border: 0; box-shadow: none; max-height: none; max-width: none; overflow: visible; padding: 0; width: 100%; }
 .call-settings-panel-wrap .call-audio-popup-body { max-height: none; overflow: visible; padding: 0; }
@@ -26227,10 +26237,10 @@ button.chat-info-title-edit:active:not(:disabled) {
   .shared-call-control-panel { transition: none; }
 }
 @media (max-width: 640px) {
-  .call-settings-dialog { border-radius: 16px; max-height: calc(100dvh - 24px); width: calc(100vw - 24px); }
-  .call-settings-dialog-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .call-settings-tabs { border-bottom: 1px solid var(--border-default, rgba(255,255,255,.12)); border-right: 0; flex-direction: row; padding: 8px 10px; }
-  .call-settings-tabs button { flex: 1 1 0; padding: 9px 8px; text-align: center; }
+  .call-settings-dialog { border-radius: 16px; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); width: calc(100vw - 24px); }
+  .call-settings-dialog-layout { grid-template-columns: 104px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .call-settings-tabs { border-bottom: 0; border-right: 1px solid var(--border-default, rgba(255,255,255,.12)); flex-direction: column; padding: 10px 6px; }
+  .call-settings-tabs button { flex: 0 0 auto; padding: 9px 6px; text-align: left; }
   .call-settings-panel-wrap { padding: 12px; }
 }
 
@@ -31108,7 +31118,7 @@ button.checklist-add-item-btn:hover,
   justify-content: space-evenly;
   gap: clamp(2px, 1.5vw, 10px);
   padding: 12px 8px max(env(safe-area-inset-bottom, 0px), 12px);
-  background: linear-gradient(transparent, rgba(0, 0, 0, .9) 25%);
+  background: transparent;
 }
 .mobile-active-top-bar { left: 16px; right: auto; }
 .mobile-active-screenshare-bar { left: 50%; right: auto; transform: translateX(-50%); }
@@ -31140,6 +31150,11 @@ button.checklist-add-item-btn:hover,
 .mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__tile--screen {
   grid-row: 2;
   width: 100%; height: auto; min-height: 0; aspect-ratio: var(--screen-aspect-ratio, 16 / 9);
+}
+.mobile-active-video-stage .shared-call-participants-toggle {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 .mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__mobile-participant-row {
   grid-row: 1;
@@ -32159,4 +32174,109 @@ button.minimized-call-button--end:active:not(:disabled) {
   flex: 1;
   min-height: 0;
   align-items: center;
+}
+
+/* Keep expanded group-call chrome over the presentation. The stage can fill
+   the popup when participants collapse without moving the header actions. */
+.call-popup.call-popup-group-call.call-popup-fullscreen { position: relative; }
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-video-area {
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header {
+  inset: 16px 20px auto;
+  pointer-events: none;
+  position: absolute;
+  z-index: 40;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-header-actions,
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-header-invite {
+  pointer-events: auto;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-status { pointer-events: none; }
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-ctrl-row { position: relative; z-index: 35; }
+
+/* Shared call controls have one neutral surface across active, muted, and
+   disconnect states; state remains communicated by icon and accessible name. */
+.shared-call-controls .call-ctrl-btn,
+.shared-call-controls .voice-dock-btn,
+.shared-call-controls .mobile-active-ctrl-btn,
+.shared-call-controls .guest-device-control > button,
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active,
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active),
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active) {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-muted {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.end-btn {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn:hover,
+.shared-call-controls .call-ctrl-btn:active,
+.shared-call-controls .mobile-active-ctrl-btn:hover,
+.shared-call-controls .mobile-active-ctrl-btn:active,
+.shared-call-controls .voice-dock-btn--disconnect:hover,
+.shared-call-controls .voice-dock-btn--disconnect:active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+  transform: none;
+}
+
+.call-invite-modal-actions .action-button.primary {
+  border-radius: 999px;
+  background: var(--accent-primary, #60a5fa) !important;
+  border: 1px solid var(--accent-primary, #60a5fa) !important;
+  color: #fff !important;
+}
+.call-invite-modal-actions .action-button.subtle {
+  border-radius: 999px;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.28) !important;
+  color: var(--text-primary, #fff) !important;
 }

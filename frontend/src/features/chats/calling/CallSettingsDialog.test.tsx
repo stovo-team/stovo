@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallSettingsDialog } from "./CallSettingsDialog";
@@ -11,6 +12,16 @@ const devices: CallDevice[] = [];
 afterEach(() => { while (roots.length) act(() => roots.pop()?.unmount()); document.body.innerHTML = ""; });
 
 describe("CallSettingsDialog", () => {
+  it("uses a fixed-height settings shell with a scrollable active tab panel", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
+    const layout = css.match(/\.call-settings-dialog-layout\s*\{([^}]*)\}/)?.[1] ?? "";
+    const panel = css.match(/\.call-settings-panel-wrap\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(dialog).toMatch(/height:\s*min\(/);
+    expect(layout).toMatch(/flex:\s*1/);
+    expect(panel).toMatch(/overflow:\s*auto/);
+  });
+
   it("starts on General and switches between General, Audio and Camera tabs", () => {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);

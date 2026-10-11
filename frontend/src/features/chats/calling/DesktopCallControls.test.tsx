@@ -1,4 +1,5 @@
 import { act, useState } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallFeatureProvider } from "./CallFeatureContext";
@@ -37,7 +38,7 @@ vi.mock("./useLiveCaptions", () => ({
 }));
 vi.mock("./LiveCaptionsOverlay", () => ({ LiveCaptionsOverlay: () => null }));
 vi.mock("./TranscriptPanel", () => ({ TranscriptPanel: () => null }));
-vi.mock("./GuestMeetingLinkControl", () => ({ GuestMeetingLinkControl: () => null }));
+vi.mock("./GuestMeetingLinkControl", () => ({ GuestMeetingLinkControl: () => <div data-testid="guest-meeting-link-control">Create meeting link</div> }));
 vi.mock("./MeetingIntelligencePopover", () => ({
   MeetingBackgroundToast: () => null,
   MeetingIntelligencePopover: () => null,
@@ -61,6 +62,7 @@ function renderDesktopControls({
   statefulCamera = false,
   activeChat = null,
   currentUser = null,
+  inviteOpen = false,
   overrides = {},
 }: {
   overrides?: Partial<CallSessionApi>;
@@ -72,6 +74,7 @@ function renderDesktopControls({
   sharing?: boolean;
   activeChat?: { id: string; type: string; title: string; members: Array<{ id: string; displayName: string; profilePhoto: null }> } | null;
   currentUser?: { id: string; displayName: string; profilePhoto: null } | null;
+  inviteOpen?: boolean;
 } = {}) {
   const noop = vi.fn();
   const mockTrack = {
@@ -118,7 +121,7 @@ function renderDesktopControls({
       canShareScreen: true,
     },
     callAudioDevices: [],
-    isCallInviteOpen: false,
+    isCallInviteOpen: inviteOpen,
     setIsCallInviteOpen: noop,
     callParticipantIds: ["self", "peer"],
     callInviteSelection: [],
@@ -191,6 +194,11 @@ function renderDesktopControls({
   return host;
 }
 
+function lastCssRule(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).at(-1) ?? "";
+}
+
 describe("DesktopCallControls visibility", () => {
   it("does not overlay a top-right audio wave badge on the remote video when speaking", () => {
     const container = renderDesktopControls({ isPeerSpeaking: true, withRemoteVideo: true });
@@ -206,6 +214,45 @@ describe("DesktopCallControls visibility", () => {
     const host = renderDesktopControls();
     expect(host.querySelector('.call-popup-header [aria-label="Invite people"]')).not.toBeNull();
     expect(host.querySelector('.call-popup-ctrl-row [aria-label="Invite people"]')).toBeNull();
+  });
+
+  it("keeps group-call invites focused on available members and the two actions", () => {
+    const host = renderDesktopControls({
+      inviteOpen: true,
+      activeChat: {
+        id: "room",
+        type: "group",
+        title: "Room",
+        members: [
+          { id: "self", displayName: "Self", profilePhoto: null },
+          { id: "peer", displayName: "Alex", profilePhoto: null },
+          { id: "maya", displayName: "Maya Chen", profilePhoto: null },
+        ],
+      },
+      currentUser: { id: "self", displayName: "Self", profilePhoto: null },
+    });
+    const dialog = host.querySelector<HTMLElement>('[aria-label="Invite to call"]')!;
+    expect(dialog.textContent).toContain("Maya Chen");
+    expect(dialog.querySelectorAll(".call-invite-modal-actions button")).toHaveLength(2);
+    expect(dialog.querySelector('[data-testid="guest-meeting-link-control"]')).toBeNull();
+    expect(dialog.textContent).not.toMatch(/Meeting name|Guest entry|Link expires|Create meeting link/i);
+  });
+
+  it("styles the group invite actions as accent and outlined pills", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const inviteButton = lastCssRule(css, ".call-invite-modal-actions .action-button.primary");
+    const cancelButton = lastCssRule(css, ".call-invite-modal-actions .action-button.subtle");
+    expect(inviteButton).toMatch(/border-radius:\s*999px/);
+    expect(inviteButton).toMatch(/background(?:-color)?:\s*var\(--accent-primary/);
+    expect(cancelButton).toMatch(/border-radius:\s*999px/);
+    expect(cancelButton).toMatch(/border:\s*1px solid/);
+  });
+
+  it("keeps top stage actions above a collapsed presentation", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const header = lastCssRule(css, ".call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header");
+    expect(header).toMatch(/position:\s*absolute/);
+    expect(header).toMatch(/z-index:\s*\d+/);
   });
 
   it("shows only the presentation stage when an audio group call shares a screen", () => {
