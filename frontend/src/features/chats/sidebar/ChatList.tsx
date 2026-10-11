@@ -10,7 +10,8 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
 import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
-import { ChatContextMenu, ChatContextMenuState } from "./ChatContextMenu";
+import type { ChatContextMenuState } from "./ChatContextMenu";
+import { ChatListContextMenu } from "./ChatListContextMenu";
 import {
   DefaultChatSectionNames,
   loadAllDefaultFolders,
@@ -50,6 +51,7 @@ export type ChatListProps = {
   hasLoadedOverview?: boolean;
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   filteredChats: Chat[];
+  refreshChats: () => Promise<void>;
   chatFilter: ChatFilter;
   familyId: string;
   canManageFolders: boolean;
@@ -72,6 +74,7 @@ export function ChatList({
   hasLoadedOverview = true,
   chatsBySection: _chatsBySection,
   filteredChats,
+  refreshChats,
   chatFilter,
   familyId,
   canManageFolders,
@@ -829,22 +832,7 @@ export function ChatList({
           </section>
         </div>
       , document.body)}
-      {contextMenu && (
-        <ChatContextMenu
-          menu={contextMenu}
-          folders={folders}
-          onClose={() => setContextMenu(null)}
-          onOpenChat={(c) => {
-            onSelectChat(c);
-            onOpenChat(c);
-          }}
-          onToggleMute={handleToggleMute}
-          onToggleFavorite={handleToggleFavorite}
-          onRemoveFromFolder={handleRemoveChatFromFolder}
-          onMoveToFolder={handleDropChatToFolder}
-          onMarkAsRead={handleMarkAsRead}
-        />
-      )}
+      <ChatListContextMenu menu={contextMenu} folders={folders} onClose={() => setContextMenu(null)} onOpenChat={(c) => { onSelectChat(c); onOpenChat(c); }} onToggleMute={handleToggleMute} onToggleFavorite={handleToggleFavorite} onRemoveFromFolder={handleRemoveChatFromFolder} onMoveToFolder={handleDropChatToFolder} onMarkAsRead={handleMarkAsRead} accessToken={accessToken} currentUserId={currentUserId} onImported={() => { void refreshChats(); }} />
     </div>
   );
 }

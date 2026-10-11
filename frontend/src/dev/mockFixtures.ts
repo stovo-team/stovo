@@ -42,6 +42,7 @@ const family: Family = {
   name: "Stovo Demo",
   storageLimitMb: 10240,
   minimizedChatLayout: false,
+  defaultMessageEncryptionProtocol: "server_at_rest",
   defaultProfileVisibility: "everyone",
   defaultLastSeenVisibility: "everyone",
   defaultReadReceiptsEnabled: true,

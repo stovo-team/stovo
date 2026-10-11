@@ -93,8 +93,13 @@ export function encryptionProtocolLabel(protocol: MessageEncryptionProtocol) {
   return "End-to-end";
 }
 
-export async function encryptMessageContent(chat: Chat, content: string | null, senderUserId?: string) {
-  if (chat.encryptionProtocol !== "end_to_end" || !content) {
+export async function encryptMessageContent(
+  chat: Chat,
+  content: string | null,
+  senderUserId?: string,
+  options: { encryptEmptyContent?: boolean } = {}
+) {
+  if (chat.encryptionProtocol !== "end_to_end" || content === null || (content === "" && !options.encryptEmptyContent)) {
     return {
       content,
       encryption: {

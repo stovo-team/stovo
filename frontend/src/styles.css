@@ -30740,6 +30740,36 @@ button.checklist-add-item-btn:hover,
 .quick-access-settings { box-sizing: border-box; gap: 2px; max-width: 420px; padding: 14px; width: min(calc(100vw - 32px), 420px); }
 .quick-access-settings .modal-card-header { align-items: center; border: 0 !important; display: flex; justify-content: space-between; padding: 2px 2px 8px; }
 .quick-access-settings .modal-card-header h2 { font-size: .92rem; margin: 0; }
+
+.chat-transfer-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(88vh, 760px);
+  max-width: 620px;
+  overflow: auto;
+  padding: 18px;
+  width: min(calc(100vw - 32px), 620px);
+}
+.chat-transfer-dialog .modal-card-header { align-items: center; display: flex; justify-content: space-between; }
+.chat-transfer-dialog .modal-card-header h2 { margin: 0; }
+.chat-transfer-dialog .quick-access-close { align-items: center; background: transparent; border: 0; border-radius: 8px; color: inherit; cursor: pointer; display: inline-flex; font-size: 22px; height: 34px; justify-content: center; width: 34px; }
+.chat-transfer-body { display: grid; gap: 12px; }
+.chat-transfer-body > p { margin: 0; }
+.chat-transfer-file-label, .chat-transfer-profile { display: grid; gap: 6px; }
+.chat-transfer-file-label input, .chat-transfer-profile select { box-sizing: border-box; max-width: 100%; width: 100%; }
+.chat-transfer-preview { border: 1px solid var(--border-default, rgba(127, 127, 127, .3)); border-radius: 12px; display: grid; gap: 8px; max-height: 38vh; overflow: auto; padding: 12px; }
+.chat-transfer-preview h3, .chat-transfer-preview p { margin: 0; overflow-wrap: anywhere; }
+.chat-transfer-preview ul { margin: 6px 0 0; padding-left: 20px; }
+.chat-transfer-preview li { overflow-wrap: anywhere; }
+.chat-transfer-plaintext-warning { border-left: 3px solid var(--warning-color, #d08a00); padding: 8px 10px; }
+.chat-transfer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chat-transfer-actions button { min-height: 38px; }
+.chat-transfer-actions .secondary-button { margin-right: auto; }
+.modal-backdrop:has(.chat-transfer-dialog) { isolation: isolate; z-index: 2147483647; }
+.message-import-attribution { border-left: 2px solid var(--stovo-primary); color: var(--text-muted); display: grid; font-size: .78rem; gap: 2px; margin-block: 4px; padding-left: 8px; }
+.message-import-attribution strong { color: var(--text-secondary); font-weight: 600; }
 .quick-access-close { align-items: center; background: color-mix(in oklab, var(--text-muted) 18%, transparent); border: 0; border-radius: 50%; box-sizing: border-box; color: var(--text-muted); cursor: pointer; display: inline-flex; flex: 0 0 30px; height: 30px !important; justify-content: center; max-height: 30px; max-width: 30px; min-height: 30px !important; min-width: 30px; padding: 0; width: 30px !important; }
 .quick-access-close:hover { background: color-mix(in oklab, var(--text-muted) 30%, transparent); color: var(--text-primary); }
 .quick-access-setting { align-items: center; cursor: pointer; display: flex; gap: 12px; justify-content: space-between; padding: 7px 3px; user-select: none; }

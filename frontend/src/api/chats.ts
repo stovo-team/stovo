@@ -121,6 +121,7 @@ export interface Message {
   deletedAt: string | null;
   isEdited: boolean;
   forwardedFrom?: MessageForward | null;
+  importAttribution?: import("./chatTransferTypes").MessageImportAttribution | null;
   statuses: MessageStatus[];
   reactions: MessageReaction[];
   attachments: FamilyFile[];

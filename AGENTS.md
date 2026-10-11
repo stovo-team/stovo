@@ -9,6 +9,7 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 - Never weaken or delete a test to make a change pass.
 - Keep changes focused and preserve unrelated work.
 - Do not push, publish, merge, or open a pull request without authorization.
+- After authorization, create pull requests with `gh` outside the sandbox and record their URLs in the Active pull requests section below.
 
 ## Workflows
 
@@ -24,3 +25,7 @@ Read the applicable guide before editing:
 ## Verification
 
 Run the focused checks required by the applicable workflow and relevant commands from CONTRIBUTING.md. Report the commands and results, including any required check that could not be run. Avoid unrelated checks.
+
+## Active pull requests
+
+- Chat import/export V1: https://github.com/stovo-team/stovo/pull/164
