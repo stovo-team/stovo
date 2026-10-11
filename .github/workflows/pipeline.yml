@@ -142,10 +142,22 @@ jobs:
             git diff -- ent
             exit 1
           fi
+      - name: Add runner tools to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify preinstalled golangci-lint
+        env:
+          GOLANGCI_LINT_VERSION: 2.14.0
+        run: |
+          version="$(golangci-lint --version)"
+          echo "$version"
+          if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then
+            echo "Expected golangci-lint ${GOLANGCI_LINT_VERSION}, got: ${version}" >&2
+            exit 1
+          fi
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          version: v2.14.0
+          install-mode: none
           working-directory: backend
           verify: true
           skip-cache: true
