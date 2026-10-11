@@ -90,10 +90,13 @@ export function CallSettingsDialog({
           <div className="call-settings-panel-wrap" id={`call-settings-panel-${tab}`} role="tabpanel" aria-labelledby={`call-settings-tab-${tab}`}>
             {tab === "general" && <div className="call-settings-general">
               <h3>General</h3>
-              <label className="call-audio-toggle-row">
+              <div className="call-audio-toggle-row">
                 <span className="call-audio-toggle-info"><span className="call-audio-toggle-name">Hide call controls automatically</span><span className="call-audio-toggle-desc">Reveal controls when you move the pointer or focus the panel.</span></span>
-                <input type="checkbox" aria-label="Hide call controls automatically" checked={preferences.autoHideControls} onChange={(event) => onPreferencePatch({ autoHideControls: event.target.checked })} />
-              </label>
+                <label className="call-audio-toggle-switch">
+                  <input type="checkbox" aria-label="Hide call controls automatically" checked={preferences.autoHideControls} onChange={(event) => onPreferencePatch({ autoHideControls: event.target.checked })} />
+                  <span className="call-audio-toggle-slider" />
+                </label>
+              </div>
             </div>}
             {tab === "audio" && <CallAudioSettingsPopup embedded popupRef={popupRef} isMobile={isMobile} settings={settings} capabilities={capabilities} devices={devices} warning={warning} onPatch={onPatch} onClose={closeDialog} localStream={localStream} />}
             {tab === "camera" && <>

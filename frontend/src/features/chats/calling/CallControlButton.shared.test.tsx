@@ -130,13 +130,12 @@ describe("shared call control button", () => {
     expect(endCallRules).not.toMatch(/background:\s*(?:#b91c1c|rgba\(255,\s*255,\s*255)/i);
   });
 
-  it("uses the same neutral surface for end-call and active call controls", () => {
+  it("keeps end-call red while other controls use a neutral surface", () => {
     const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
     const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
-    expect(endRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
+    expect(endRules).toMatch(/background(?:-color)?:\s*#(?:dc2626|ef4444|ff3b30)/i);
     expect(endRules).toMatch(/color:\s*#fff/);
-    expect(endRules).not.toMatch(/#dc2626|red/i);
     expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
   });
 });

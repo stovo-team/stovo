@@ -228,7 +228,7 @@ export function MeetingIntelligencePopover({
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={17} aria-hidden="true" />}
+                  {isNotesActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={17} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -278,7 +278,7 @@ export function MeetingIntelligencePopover({
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={17} aria-hidden="true" />}
+                  {isRecActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={17} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span

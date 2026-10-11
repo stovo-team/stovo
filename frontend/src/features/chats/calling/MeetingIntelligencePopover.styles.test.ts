@@ -11,6 +11,9 @@ function ruleFor(selector: string) {
 }
 
 describe("meeting intelligence popover design", () => {
+  it("renders a filled record circle for both start actions", () => {
+    expect(component.match(/<Circle size=\{17\} fill="currentColor"/g)).toHaveLength(2);
+  });
   it("removes the subtitle and card descriptions and tightens header-to-content spacing", () => {
     expect(component).not.toContain("meeting-intel-subtitle");
     expect(component).not.toContain("Meeting AI & Recording");
