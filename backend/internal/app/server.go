@@ -13,11 +13,13 @@ import (
 	"sync"
 	"time"
 
+	adapterchatimports "stovo-messenger/backend/internal/adapters/chatimports"
 	"stovo-messenger/backend/internal/config"
 	"stovo-messenger/backend/internal/fcm"
 	featureadministration "stovo-messenger/backend/internal/features/administration"
 	featurecalls "stovo-messenger/backend/internal/features/calls"
 	featurechats "stovo-messenger/backend/internal/features/chats"
+	featurechattransfer "stovo-messenger/backend/internal/features/chattransfer"
 	featurefamily "stovo-messenger/backend/internal/features/family"
 	featurefiles "stovo-messenger/backend/internal/features/files"
 	featureidentity "stovo-messenger/backend/internal/features/identity"
@@ -81,6 +83,7 @@ type Server struct {
 	messagePersistence     *featuremessages.PersistenceService
 	chatSettings           *featurechats.SettingsService
 	chatCreation           *featurechats.CreationService
+	chatImport             *featurechattransfer.ImportService
 	chatArchive            *featurechats.ArchiveService
 	chatQueries            *featurechats.QueryService
 	pins                   *featurechats.PinsService
@@ -219,6 +222,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		app.guestDB = db
 		app.sqlDB = db
 		app.memberIPs = sqlMemberIPStore{db: db}
+		app.chatImport = featurechattransfer.NewImportService(adapterchatimports.NewPostgresStore(db), time.Now, nil, app.storage)
 	}
 	// Audio capture and post-processing workers live in this process. After a
 	// deploy they cannot safely resume an old recording, but its active row

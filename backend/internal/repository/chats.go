@@ -272,6 +272,9 @@ func (s *Store) FindArchiveChatID(ctx context.Context, familyID, userID string) 
 				cm := sql.Table(chatmember.Table)
 				sel.Join(cm).On(sel.C(chat.FieldID), cm.C(chatmember.FieldID))
 				sel.Where(sql.EQ(cm.C(chatmember.FieldUserID), userID))
+				imports := sql.Table("chat_import_batches")
+				subquery := sql.Select(imports.C("chat_id")).From(imports).Where(sql.ColumnsEQ(imports.C("chat_id"), sel.C(chat.FieldID)))
+				sel.Where(sql.NotIn(sel.C(chat.FieldID), subquery))
 			}),
 		).
 		Only(ctx)

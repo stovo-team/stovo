@@ -993,6 +993,10 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 		message.DeletedAt = &deleted
 	}
 	message.IsEdited = m.IsEdited
+	message.ImportAttribution, err = s.loadMessageImportAttribution(context.Background(), messageID)
+	if err != nil {
+		return messagePublic{}, err
+	}
 
 	statuses, err := s.messageDetails.Statuses(context.Background(), messageID)
 	if err != nil {
