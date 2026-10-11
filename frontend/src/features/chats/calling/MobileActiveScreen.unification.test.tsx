@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MobileActiveScreen } from "./MobileActiveScreen";
+import { writeCallUIPreferences } from "./callUIPreferences";
 
 const mountedRoots: Root[] = [];
 
@@ -78,6 +79,89 @@ describe("mobile call UI unification", () => {
     expect(actionLabels).toEqual(["Mute", "Audio output", "Turn on camera", "More options", "End call"]);
     expect(controls?.querySelector('[aria-label="End call"] svg')).not.toBeNull();
     expect(controls?.querySelectorAll(".mobile-active-ctrl-lbl")).toHaveLength(0);
+  });
+
+  it("keeps participant collapse and invite actions beside a mobile screen share", () => {
+    const openInvite = vi.fn();
+    window.addEventListener("stovo:open-call-invite", openInvite);
+    try {
+      const container = renderScreen({
+        ...baseProps,
+        callType: "video",
+        mockScreenShareOwner: { userId: "presenter", displayName: "Alex" },
+      });
+      expect(container.querySelector('.shared-call-stage [aria-label="Hide participants"]')).not.toBeNull();
+      const invite = container.querySelector<HTMLButtonElement>('.mobile-active-top-bar [aria-label="Invite people"]');
+      expect(invite).not.toBeNull();
+      act(() => invite?.click());
+      expect(openInvite).toHaveBeenCalledOnce();
+    } finally {
+      window.removeEventListener("stovo:open-call-invite", openInvite);
+    }
+  });
+
+  it("uses round icon actions for AI Notes and video recording", () => {
+    const container = renderScreen(baseProps);
+    act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')?.click());
+    for (const label of ["Start AI Notes", "Start Recording"]) {
+      const action = container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
+      expect(action?.querySelector("svg")).not.toBeNull();
+      expect(action?.textContent).not.toMatch(/Start/);
+    }
+  });
+
+  it("keeps mobile call controls round and fixed-size inside the floating panel", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel")).toMatch(/width:\s*max-content/);
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
+    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/font:\s*inherit/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-name")).toMatch(/font-size:\s*\.875rem/);
+  });
+
+  it("keeps the mobile participant toggle anchored to the presentation edge", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(styles, ".shared-call-participants-toggle")).toMatch(/position:\s*absolute/);
+    expect(styleRules(styles, ".mobile-active-video-stage .shared-call-participants-toggle")).toMatch(/left:\s*0/);
+  });
+
+  it("toggles auto-hidden controls on repeated mobile stage taps", () => {
+    writeCallUIPreferences({ autoHideControls: true });
+    const container = renderScreen(baseProps);
+    const screen = container.querySelector<HTMLElement>(".mobile-active-screen")!;
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => screen.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    act(() => screen.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("hides mobile controls after the idle timeout with the default preferences", () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    const container = renderScreen(baseProps);
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => vi.advanceTimersByTime(15_000));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("toggles mobile controls once when tapping inside the shared presentation stage", () => {
+    writeCallUIPreferences({ autoHideControls: true });
+    const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+    const container = renderScreen({ ...baseProps, isScreenSharing: true, localScreenStream: screenStream });
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
+    const stage = container.querySelector<HTMLElement>(".mobile-active-video-stage")!;
+
+    act(() => stage.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("keeps mobile audio routing and camera flip actions without desktop device menus", async () => {
@@ -163,7 +247,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector('.mobile-active-controls [aria-label="Flip camera"]')).toBeNull();
   });
 
-  it("renders mobile group participants as centered square tiles and does not open focus view on tap", () => {
+  it("renders mobile group participants as centered landscape tiles and does not open focus view on tap", () => {
     const stream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
     const container = renderScreen({
       ...baseProps,
@@ -178,7 +262,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector(".call-grid__focus-main")).toBeNull();
   });
 
-  it("fits the shared screen at 16:9 above square participant cards on mobile", () => {
+  it("fits the shared screen at 16:9 above landscape participant cards on mobile", () => {
     const screenTrack = { readyState: "live", enabled: true, addEventListener: vi.fn(), removeEventListener: vi.fn() };
     const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
     const audioStream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
@@ -285,6 +369,19 @@ describe("mobile call UI unification", () => {
     });
     expect(container.querySelector(".call-grid--mobile-single")).toBeNull();
     expect(container.querySelector(".call-grid__mobile-primary, .call-grid__mobile-pip")).toBeNull();
+  });
+
+  it("keeps two group participants in a column when both cameras are live", () => {
+    const track = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps, isGroupCall: true, callType: "video", isCameraEnabled: true,
+      hasRemoteVideo: true, localVideoStream: stream, remoteVideoStream: stream,
+      remoteMedia: [{ userId: "peer", stream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false }],
+    });
+    expect(container.querySelector(".call-grid--mobile-pair")).not.toBeNull();
+    expect(container.querySelector(".call-grid--mobile-single")).toBeNull();
+    expect(container.querySelectorAll(".call-grid__tile video")).toHaveLength(2);
   });
 
   it("swaps the mobile two-person main view only when both local and remote cameras are enabled", () => {
@@ -496,6 +593,7 @@ describe("mobile call UI unification", () => {
 
   it("makes hidden mobile controls inert after timeout and restores interaction when the stage is tapped", () => {
     vi.useFakeTimers();
+    localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: true, cameraFit: "fit" }));
     const container = renderScreen(baseProps);
     const controls = container.querySelector(".mobile-active-controls") as HTMLDivElement;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
@@ -509,6 +607,16 @@ describe("mobile call UI unification", () => {
     expect(controls.getAttribute("aria-hidden")).toBe("false");
     expect(controls.hasAttribute("inert")).toBe(false);
     expect(buttons[0]?.tabIndex).toBe(0);
+  });
+
+  it("hides mobile controls by default after the idle timeout", () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    const container = renderScreen(baseProps);
+    const controls = container.querySelector(".mobile-active-controls")!;
+    act(() => vi.advanceTimersByTime(30_000));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    expect(controls.hasAttribute("inert")).toBe(true);
   });
 
   it("does not announce Connected or Speaking for a video stream until the call is in progress", () => {

@@ -10,7 +10,7 @@ function ruleFor(selector: string) {
   return match?.[1] ?? "";
 }
 
-describe("Add People dialog appearance", () => {
+describe("Shared dialog close button appearance", () => {
   it("uses dialog-specific styling so the shared new-chat modal remains unchanged", () => {
     expect(addPeopleDialog).toContain('className="new-chat-screen add-people-dialog"');
     const dialog = ruleFor(".add-people-dialog");
@@ -25,10 +25,12 @@ describe("Add People dialog appearance", () => {
     expect(search).toMatch(/border-radius:\s*(?:2[0-9]|[3-9][0-9])px/);
   });
 
-  it("gives the close control a circular background and visible border", () => {
-    const close = ruleFor(".add-people-dialog .new-chat-screen-close");
-    expect(close).toMatch(/background:\s*(?!transparent)[^;]+;/);
-    expect(close).toMatch(/border:\s*1px\s+solid\s+[^;]+;/);
-    expect(close).toMatch(/border-radius:\s*(?:50%|999px)/);
+  it("gives both dialogs the same circular gray close control", () => {
+    const close = ruleFor(".new-chat-screen-close");
+    const hover = ruleFor(".new-chat-screen-close:hover");
+    expect(close).toMatch(/background:\s*var\(--surface-card\);/);
+    expect(close).toMatch(/border:\s*1px\s+solid\s+var\(--border-default\);/);
+    expect(close).toMatch(/border-radius:\s*50%/);
+    expect(hover).toMatch(/background:\s*var\(--background-tertiary\);/);
   });
 });

@@ -11,7 +11,7 @@ export const CallParticipantStage = forwardRef<HTMLDivElement, CallParticipantSt
   return <div {...props} ref={ref} className={className} />;
 });
 
-export function useScreenShareStageSize(enabled: boolean, participantCount: number, isMobile: boolean, viewportHeight: number) {
+export function useScreenShareStageSize(enabled: boolean, participantCount: number, isMobile: boolean, viewportHeight: number, aspectRatio = 16 / 9) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -41,10 +41,10 @@ export function useScreenShareStageSize(enabled: boolean, participantCount: numb
     return () => window.removeEventListener("resize", measure);
   }, [enabled]);
 
-  const layout = size ? getScreenShareLayout(size.width, size.height, participantCount) : null;
+  const layout = size ? getScreenShareLayout(size.width, size.height, participantCount, aspectRatio) : null;
   const useBottomScreenShareRail = size ? isMobile || layout === "bottom" : false;
   const screenPresenterSize = size
-    ? getScreenSharePresenterSize(Math.min(size.width, 1440), size.height, useBottomScreenShareRail ? "bottom" : "side", getScreenShareBottomRailHeight(viewportHeight))
+    ? getScreenSharePresenterSize(size.width, size.height, useBottomScreenShareRail ? "bottom" : "side", getScreenShareBottomRailHeight(viewportHeight), aspectRatio)
     : null;
 
   return { stageRef, useBottomScreenShareRail, screenPresenterSize };

@@ -26,7 +26,9 @@ export function getMockUserId(): string {
 export function seedMockSession(origin: string, requestedUserId?: string): void {
   const normalizedOrigin = new URL(origin).origin;
   const expectedOrigin = new URL(MOCK_ORIGIN).origin;
-  if (normalizedOrigin !== expectedOrigin) {
+  const localPreview = new URL(normalizedOrigin);
+  const isLoopbackPreview = localPreview.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(localPreview.hostname);
+  if (normalizedOrigin !== expectedOrigin && !isLoopbackPreview) {
     throw new Error(`Local mock mode is bound to ${expectedOrigin}.`);
   }
 

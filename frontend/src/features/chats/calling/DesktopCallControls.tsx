@@ -16,13 +16,12 @@ import {
 import { TranscriptPanel } from "./TranscriptPanel";
 import { CallPopupAudioStage } from "./CallPopupAudioStage";
 import { useTranscription } from "./useTranscription";
-import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -31,6 +30,9 @@ import { CallControlButton } from "./CallControlButton";
 import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
 import { enableCallCamera } from "./callCamera";
+import { SharedCallStage } from "./SharedCallStage";
+import { SharedCallControlPanel } from "./SharedCallControlPanel";
+import { useCallUIPreferences } from "./callUIPreferences";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -39,8 +41,13 @@ import { enableCallCamera } from "./callCamera";
  * remote/local video refs and their attached MediaStreams keep the exact
  * same DOM lifetime.
  */
-export function DesktopCallControls() {
+export function DesktopCallControls({
+  mockScreenShareOwner: providedMockScreenShareOwner,
+}: {
+  mockScreenShareOwner?: { userId: string; displayName: string } | null;
+} = {}) {
   const { session, members, currentUser, isMobileViewport, chats, onOpenChat } = useCallFeatureContext();
+  const { preferences: callUIPreferences } = useCallUIPreferences();
   const {
     callPhase,
     callType,
@@ -84,10 +91,22 @@ export function DesktopCallControls() {
     accessToken,
     socketRef
   } = session;
+  useEffect(() => {
+    const openInvite = () => setIsCallInviteOpen(true);
+    window.addEventListener("stovo:open-call-invite", openInvite);
+    return () => window.removeEventListener("stovo:open-call-invite", openInvite);
+  }, [setIsCallInviteOpen]);
 
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat?.type === "group" || activeChat?.type === "family";
+  const mockScreenShareOwnerId = session.mockScreenShareUserId;
+  const mockScreenShareOwnerUser = mockScreenShareOwnerId === currentUser?.id
+    ? currentUser
+    : [...members, ...(activeChat?.members ?? [])].find((member) => member.id === mockScreenShareOwnerId);
+  const mockScreenShareOwner = providedMockScreenShareOwner ?? (mockScreenShareOwnerId
+    ? { userId: mockScreenShareOwnerId, displayName: mockScreenShareOwnerUser?.displayName ?? mockScreenShareOwnerId }
+    : null);
 
   const callTitle = (callPeerDisplayName ?? activeCallPeerName) ?? activeChat?.title ?? (isVoiceChannel ? "Voice Channel" : "Call");
   const callTimer = session.callTimer;
@@ -211,13 +230,14 @@ export function DesktopCallControls() {
       )}
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-      <CallParticipantStage className={`shared-call-stage call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && !localScreenStream && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
-        {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare)) && (callPhase === "in-call" || (isGroupCall && callPhase === "connecting")) && !isCallMinimized ? (
+      <SharedCallStage cameraFit={callUIPreferences.cameraFit} isSharing={Boolean(localScreenStream || callRemoteMedia.some((m) => m.hasScreenShare) || mockScreenShareOwner)} className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && !localScreenStream && !mockScreenShareOwner && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+        {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare) || mockScreenShareOwner) && (callPhase === "in-call" || (isGroupCall && callPhase === "connecting")) && !isCallMinimized ? (
           <CallParticipantGrid
             isCallConnected={callPhase === "in-call"}
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
             remoteMedia={participantGridMedia}
+            mockScreenShareOwner={mockScreenShareOwner}
             localUserLabel={currentUser?.displayName ?? "You"}
             mirrorLocal={
               callAudioSettings.mirrorLocalVideo &&
@@ -255,7 +275,7 @@ export function DesktopCallControls() {
             </div>
           </>
         )}
-      </CallParticipantStage>
+      </SharedCallStage>
 
       {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
@@ -291,7 +311,6 @@ export function DesktopCallControls() {
                 </label>
               ))}
           </div>
-          <GuestMeetingLinkControl accessToken={accessToken ?? null} chatId={activeChat?.id ?? null} sourceChat={activeChat} currentUserId={currentUser?.id} enabled={(activeChat?.type === "group" || activeChat?.type === "direct" || activeChat?.type === "family") && (currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true)} />
           <div className="call-invite-modal-actions">
             <button
               type="button"
@@ -323,6 +342,7 @@ export function DesktopCallControls() {
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
+        <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
         <div className="call-ctrl-row call-popup-ctrl-row shared-call-controls guest-call-controls">
           {callPhase === "incoming" && (
             <>
@@ -387,6 +407,7 @@ export function DesktopCallControls() {
                       setIsCallAudioPopupOpen(false);
                       setIsCallSettingsMenuOpen(false);
                     } else {
+                      window.dispatchEvent(new CustomEvent("stovo:open-call-settings", { detail: "general" }));
                       setIsCallSettingsMenuOpen(false);
                       setIsCallAudioPopupOpen(true);
                     }
@@ -478,6 +499,7 @@ export function DesktopCallControls() {
             </>
           )}
         </div>
+        </SharedCallControlPanel>
       )}
 
     </>

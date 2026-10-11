@@ -37,10 +37,10 @@ frontend/src/components/VideoPlayer.tsx	506
 frontend/src/config/strings/english.ts	1196
 frontend/src/config/strings/russian.ts	1225
 frontend/src/features/chats/calling/DesktopCallControls.tsx	552
-frontend/src/features/chats/calling/MobileActiveScreen.tsx	660
+frontend/src/features/chats/calling/MobileActiveScreen.tsx	666
 frontend/src/features/chats/calling/useCallSession.ts	1055
 frontend/src/features/chats/calling/useTranscription.ts	605
-frontend/src/features/chats/calling/VoiceChannelStage.tsx	580
+frontend/src/features/chats/calling/VoiceChannelStage.tsx	586
 frontend/src/features/chats/composer/Composer.tsx	963
 frontend/src/features/chats/composer/useMessageComposer.ts	898
 frontend/src/features/chats/conversation/ConversationPanel.tsx	769
@@ -57,7 +57,7 @@ frontend/src/messageMarkdown.tsx	724
 frontend/src/pages/ChatsPage.tsx	469
 frontend/src/pages/ChecklistPage.tsx	780
 frontend/src/pages/FilesPage.tsx	900
-frontend/src/pages/GuestMeetingPage.tsx	807
+frontend/src/pages/GuestMeetingPage.tsx	821
 frontend/src/pages/MembersPage.tsx	450
 frontend/src/pages/MultiAdminPage.tsx	1055
 frontend/src/pages/PlansPage.tsx	798

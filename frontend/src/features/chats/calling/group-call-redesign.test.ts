@@ -21,7 +21,9 @@ describe("group call presentation surface", () => {
   });
 
   it("uses a smaller group popup and compact invite and call controls", () => {
-    expect(rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/width:\s*min\(640px,/);
+    const groupPopupRule = rule(".call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen)");
+    expect(groupPopupRule).toMatch(/width:\s*min\(960px,/);
+    expect(groupPopupRule).toMatch(/height:\s*min\(640px,/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/width:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/height:\s*40px/);
     expect(rule(".call-popup-group-call .call-ctrl-btn--invite")).toMatch(/width:\s*40px/);
@@ -40,7 +42,7 @@ describe("group call presentation surface", () => {
 
   it("keeps audio settings above the expanded call and uses the audio-channel popup", () => {
     expect(rule(".call-audio-popup-backdrop")).toMatch(/z-index:\s*2600/);
-    expect(audioSettingsPopup).toContain("className=\"call-audio-popup\"");
+    expect(audioSettingsPopup).toContain('className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}');
     expect(styles).toContain(".call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share");
   });
 });

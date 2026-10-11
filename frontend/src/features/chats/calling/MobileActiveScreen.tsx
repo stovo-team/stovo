@@ -12,7 +12,12 @@ import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { CallControlButton } from "./CallControlButton";
 import { CallParticipantStage } from "./CallParticipantStage";
+import { SharedCallStage } from "./SharedCallStage";
+import { SharedCallControlPanel } from "./SharedCallControlPanel";
 import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
+import { MobileActiveTopBar } from "./MobileActiveTopBar";
+import { hasScreenSharePresentation } from "./screenSharePresentation";
+import { useCallUIPreferences } from "./callUIPreferences";
 
 export function MobileActiveScreen({
   peerName,
@@ -51,7 +56,7 @@ export function MobileActiveScreen({
   currentUserId,
   socketRef,
   isGroupCall = false,
-  participantProfiles = {},
+  participantProfiles = {}, mockScreenShareOwner = null,
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
@@ -89,8 +94,9 @@ export function MobileActiveScreen({
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
   isGroupCall?: boolean;
-  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>;
+  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
 }) {
+  const { preferences: callUIPreferences } = useCallUIPreferences();
   const [isLandscapeView, setIsLandscapeView] = useState(false);
 
   const transcription = useTranscription({
@@ -134,7 +140,7 @@ export function MobileActiveScreen({
   const CALL_CONTROLS_HIDE_DELAY_MS = 15_000;
 
   const showControls = useCallback(() => setAreControlsVisible(true), []);
-  const toggleControls = useCallback(() => setAreControlsVisible((visible) => !visible), []);
+  const toggleControls = useCallback(() => setAreControlsVisible((visible) => callUIPreferences.autoHideControls ? !visible : true), [callUIPreferences.autoHideControls]);
   const selfViewVerticalPosition = areControlsVisible ? "top" : "bottom";
   const compactPipClassName = `mobile-active-pip mobile-active-pip--${selfViewVerticalPosition} mobile-active-pip--${selfViewSide}`;
 
@@ -190,10 +196,11 @@ export function MobileActiveScreen({
     : { transform: localVideoMirrorTransform };
 
   useEffect(() => {
+    if (!callUIPreferences.autoHideControls) { setAreControlsVisible(true); return; }
     if (!areControlsVisible) return;
     const timerId = window.setTimeout(() => setAreControlsVisible(false), CALL_CONTROLS_HIDE_DELAY_MS);
     return () => window.clearTimeout(timerId);
-  }, [areControlsVisible]);
+  }, [areControlsVisible, callUIPreferences.autoHideControls]);
 
   // Attach remote video stream
   useEffect(() => {
@@ -295,10 +302,8 @@ export function MobileActiveScreen({
   const showRemoteVideo = Boolean(hasRemoteVideo || remoteVideoStream !== null);
   const isSharingLocalScreen = Boolean(isScreenSharing || localScreenStream);
   useEffect(() => { if (!isSharingLocalScreen) setIsLandscapeView(false); }, [isSharingLocalScreen]);
-  const hasRemoteScreenShare = remoteMedia.some(
-    (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
-  );
-  const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare;
+  const hasRemoteScreenShare = hasScreenSharePresentation(mockScreenShareOwner?.userId, null, remoteMedia);
+  const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare || Boolean(mockScreenShareOwner);
   const useSharedVideoGrid = showPresentationGrid || (callType === "video" && showRemoteVideo && Boolean(remoteVideoStream));
   const gridRemoteMedia = remoteMedia.length > 0
     ? remoteMedia
@@ -318,27 +323,17 @@ export function MobileActiveScreen({
       data-mobile-orientation={isLandscapeView ? "landscape" : "portrait"}
       onPointerDown={toggleControls}
     >
-      <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
-        {isLandscapeView && <button type="button" className="mobile-active-shrink-btn mobile-active-landscape-close" aria-label="Close landscape view" onClick={(event) => { event.stopPropagation(); setIsLandscapeView(false); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
-        {isParticipantFocused && <button type="button" className="mobile-active-shrink-btn mobile-active-focus-back" aria-label="Close participant focus" onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
-        <button
-          type="button"
-          className="mobile-active-shrink-btn"
-          aria-label="Shrink call"
-          title="Shrink call"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShrink?.();
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="4 14 10 14 10 20" />
-            <polyline points="20 10 14 10 14 4" />
-            <line x1="14" y1="10" x2="21" y2="3" />
-            <line x1="3" y1="21" x2="10" y2="14" />
-          </svg>
-        </button>
-      </div>
+      <MobileActiveTopBar
+        areControlsVisible={areControlsVisible}
+        isLandscapeView={isLandscapeView}
+        isSharingScreen={isSharingLocalScreen}
+        isParticipantFocused={isParticipantFocused}
+        onShrink={onShrink}
+        onCloseLandscape={() => setIsLandscapeView(false)}
+        onRotateLandscape={() => setIsLandscapeView(true)}
+        onCloseParticipantFocus={() => { closeParticipantFocusRef.current(); setIsParticipantFocused(false); }}
+        onInvite={() => window.dispatchEvent(new CustomEvent("stovo:open-call-invite"))}
+      />
 
       {isSharingLocalScreen && (
         <div
@@ -349,8 +344,6 @@ export function MobileActiveScreen({
           <span>Sharing screen</span>
         </div>
       )}
-      {isSharingLocalScreen && !isLandscapeView && <button type="button" className="mobile-active-landscape-open" aria-label="Rotate landscape" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); setIsParticipantFocused(false); setIsLandscapeView(true); }}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M7 21 3 17l4-4"/><path d="m17 3 4 4-4 4"/><rect x="8" y="7" width="8" height="10" rx="1" transform="rotate(90 12 12)"/></svg></button>}
-
       {notice && (
         <div className="mobile-active-notice-banner" role="status" aria-live="polite">
           <span>{notice}</span>
@@ -362,12 +355,12 @@ export function MobileActiveScreen({
       )}
 
       {showAnyVideo && (
-        <CallParticipantStage className="shared-call-stage mobile-active-video-stage" onPointerDown={toggleControls}>
+        <SharedCallStage cameraFit={callUIPreferences.cameraFit} isMobile isSharing={showPresentationGrid} className="mobile-active-video-stage">
           {useSharedVideoGrid || showGroupRoster ? (
             <CallParticipantGrid
               localStream={localVideoStream}
               localScreenStream={localScreenStream}
-              remoteMedia={gridRemoteMedia}
+              remoteMedia={gridRemoteMedia} mockScreenShareOwner={mockScreenShareOwner}
               localUserLabel={localUserLabel}
               accessToken={accessToken}
               participantProfiles={participantProfiles}
@@ -379,7 +372,7 @@ export function MobileActiveScreen({
               speakingUserIds={speakingUserIds}
               onFlipLocalCamera={() => void handleFlipCamera()}
               isFlippingCamera={isCameraFlipping}
-              mobileSingleRemote={callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1 && isCameraEnabled && Boolean(localVideoStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false)) && Boolean(gridRemoteMedia[0]?.hasVideo && gridRemoteMedia[0].stream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false))}
+              mobileSingleRemote={!isGroupCall && callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1 && isCameraEnabled && Boolean(localVideoStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false)) && Boolean(gridRemoteMedia[0]?.hasVideo && gridRemoteMedia[0].stream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false))}
               isLocalPrimary={isSelfViewFullscreen}
               onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
               isCallConnected={callPhase === "in-call"}
@@ -541,7 +534,7 @@ export function MobileActiveScreen({
           )}
             </>
           )}
-        </CallParticipantStage>
+        </SharedCallStage>
       )}
 
       {/* Avatar view for audio-only calls without video/screen */}
@@ -578,6 +571,7 @@ export function MobileActiveScreen({
       )}
 
       {/* Bottom control bar */}
+      <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls && !areControlsVisible}>
       <div
         className={`mobile-active-controls shared-call-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
         data-layout="mobile-one-row"
@@ -645,6 +639,7 @@ export function MobileActiveScreen({
           </div>
         </div>
       </div>
+      </SharedCallControlPanel>
 
       {/* Floating Subtitle Overlay for Live Captions */}
       {liveCaptions && (

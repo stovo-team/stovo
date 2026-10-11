@@ -134,7 +134,7 @@ export function useCallSession({
     canUseAutoGainControl: false,
     canUseVoiceEnhancement: false,
     canUseCamera: false,
-    canShareScreen: false
+    canShareScreen: import.meta.env.DEV && import.meta.env.MODE === "mock"
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
@@ -217,7 +217,7 @@ export function useCallSession({
     remoteAudioRef,
     remoteVideoRef,
     localVideoRef,
-    toggleScreenShare
+    toggleScreenShare: toggleMediaScreenShare
   } = useCallMedia({
     audioCallRef,
     callPhase,
@@ -487,6 +487,10 @@ export function useCallSession({
       setIsLocalSpeaking, setIsPeerSpeaking, setSpeakingUserIds, setCallAudioSettings, setCallNotice,
     },
   });
+  const toggleScreenShare = () => {
+    if (mockCallSession.toggleScreenShare()) return;
+    return toggleMediaScreenShare();
+  };
 
   const sendCallInvites = useCallInviteControls({
     audioCallRef,
@@ -857,6 +861,7 @@ export function useCallSession({
     setCallType,
     callAudioSettings,
     setCallAudioSettings,
+    mockScreenShareUserId: mockCallSession.mockScreenShareUserId,
     isCallSettingsMenuOpen,
     setIsCallSettingsMenuOpen,
     isCallAudioPopupOpen,

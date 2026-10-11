@@ -55,6 +55,7 @@ export function CallAudioSettingsPopup({
   onPatch,
   onClose,
   localStream = null,
+  embedded = false,
 }: {
   popupRef: RefObject<HTMLDivElement | null>;
   isMobile: boolean;
@@ -66,27 +67,28 @@ export function CallAudioSettingsPopup({
   onPatch: (patch: Partial<CallSettings>) => void;
   onClose: () => void;
   localStream?: MediaStream | null;
+  embedded?: boolean;
 }) {
   const audioTest = useCallAudioTests(localStream, settings);
   return (
     <div
-      className="call-audio-popup-backdrop"
-      role="presentation"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className={embedded ? "call-settings-embedded-content" : "call-audio-popup-backdrop"}
+      role={embedded ? undefined : "presentation"}
+      onMouseDown={!embedded ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
     >
       <div
         ref={popupRef}
-        className="call-audio-popup"
-        role="dialog"
-        aria-modal="true"
+        className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
+        role={embedded ? "region" : "dialog"}
+        aria-modal={embedded ? undefined : true}
         aria-label="Audio settings"
       >
-      <div className="call-audio-popup-header">
+      {!embedded && <div className="call-audio-popup-header">
         <span>Audio settings</span>
         <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
           <X aria-hidden="true" size={14} />
         </button>
-      </div>
+      </div>}
 
       <div className="call-audio-popup-body">
         {warning && <p className="call-audio-popup-warning">{warning}</p>}

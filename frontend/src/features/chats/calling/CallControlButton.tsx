@@ -1,7 +1,7 @@
 import {
   Mic,
   MicOff,
-  PhoneOff,
+  Phone,
   RotateCcw,
   ScreenShare,
   ScreenShareOff,
@@ -21,7 +21,7 @@ const actionIcons = {
   "screen-share": { active: ScreenShareOff, muted: ScreenShare, idle: ScreenShare },
   "audio-output": { active: Volume2, muted: VolumeX, idle: Volume2 },
   "flip-camera": { active: RotateCcw, muted: RotateCcw, idle: RotateCcw },
-  "end-call": { active: PhoneOff, muted: PhoneOff, idle: PhoneOff },
+  "end-call": { active: Phone, muted: Phone, idle: Phone },
 } as const;
 
 type CallControlButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-pressed"> & {

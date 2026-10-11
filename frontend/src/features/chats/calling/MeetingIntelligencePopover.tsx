@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, FileText, Globe, Sparkles, Video } from "lucide-react";
+import { Check, ChevronDown, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -228,7 +228,7 @@ export function MeetingIntelligencePopover({
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? "Stop" : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : "Start"}
+                  {isNotesActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={17} aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -278,7 +278,7 @@ export function MeetingIntelligencePopover({
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? "Stop" : isRecStopping ? <Check size={16} aria-hidden="true" /> : "Start"}
+                  {isRecActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={17} aria-hidden="true" />}
                 </button>
               ) : (
                 <span

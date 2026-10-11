@@ -12,6 +12,7 @@ export function CallVideoSettingsPopup({
   isMobile,
   onPatch,
   onClose,
+  embedded = false,
 }: {
   settings: CallSettings;
   capabilities: CallCapabilities;
@@ -19,27 +20,28 @@ export function CallVideoSettingsPopup({
   isMobile: boolean;
   onPatch: (patch: Partial<CallSettings>) => void;
   onClose: () => void;
+  embedded?: boolean;
 }) {
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
 
   return (
     <div
-      className="call-audio-popup-backdrop"
-      role="presentation"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className={embedded ? "call-settings-embedded-content" : "call-audio-popup-backdrop"}
+      role={embedded ? undefined : "presentation"}
+      onMouseDown={!embedded ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
     >
       <div
-        className="call-audio-popup"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Video settings"
+        className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
+        role={embedded ? "region" : "dialog"}
+        aria-modal={embedded ? undefined : true}
+        aria-label={embedded ? "Camera settings" : "Video settings"}
       >
-        <div className="call-audio-popup-header">
+        {!embedded && <div className="call-audio-popup-header">
           <span>Video settings</span>
           <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
             <X aria-hidden="true" size={14} />
           </button>
-        </div>
+        </div>}
         <div className="call-audio-popup-body">
           {!isMobile && (
             <section className="call-audio-popup-section">
