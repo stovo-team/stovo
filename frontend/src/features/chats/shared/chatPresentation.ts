@@ -248,6 +248,7 @@ export function shouldShowChatRowMeta(chatType: Chat["type"]): boolean {
 export function applyMessagePreviewToChat(chat: Chat, message: Message) {
   return {
     ...chat,
+    ...(message.type === "call" && message.call?.roomId && message.call.roomId === chat.activeCall?.roomId ? { activeCall: null } : {}),
     updatedAt: message.createdAt,
     lastMessageId: message.id,
     lastMessageSenderId: message.senderId,

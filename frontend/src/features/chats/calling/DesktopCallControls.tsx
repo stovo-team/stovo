@@ -254,6 +254,9 @@ export function DesktopCallControls({
           <>
             <div className="call-popup-remote-video-wrap">
               <video
+                disablePictureInPicture
+                disableRemotePlayback
+                controlsList="nofullscreen noremoteplayback"
                 ref={remoteVideoRef}
                 className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo || callRemoteMedia.some((m) => m.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
                 autoPlay
@@ -262,6 +265,9 @@ export function DesktopCallControls({
             </div>
             <div className="call-popup-local-video-wrap">
               <video
+                disablePictureInPicture
+                disableRemotePlayback
+                controlsList="nofullscreen noremoteplayback"
                 ref={localVideoRef}
                 className={[
                   "call-popup-local-video",

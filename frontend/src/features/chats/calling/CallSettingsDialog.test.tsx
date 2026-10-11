@@ -12,6 +12,13 @@ const devices: CallDevice[] = [];
 afterEach(() => { while (roots.length) act(() => roots.pop()?.unmount()); document.body.innerHTML = ""; });
 
 describe("CallSettingsDialog", () => {
+  it("uses the same General preference switch as the Audio settings", () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); roots.push(root);
+    act(() => root.render(<CallSettingsDialog initialTab="general" preferences={{ autoHideControls: false, cameraFit: "fit" }} settings={settings} capabilities={capabilities} devices={devices} warning={null} onPatch={() => undefined} onPreferencePatch={() => undefined} onClose={() => undefined} isMobile={false} />));
+    expect(host.querySelector('.call-audio-toggle-switch input[aria-label="Hide call controls automatically"]')).toBeTruthy();
+    expect(host.querySelector('.call-audio-toggle-switch .call-audio-toggle-slider')).toBeTruthy();
+  });
   it("uses a fixed-height settings shell with a scrollable active tab panel", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";

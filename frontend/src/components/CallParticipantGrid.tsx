@@ -6,6 +6,7 @@ import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
 import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize, getScreenStreamAspectRatio } from "../features/chats/calling/screenShareLayout";
 import { MockScreenSharePreview } from "../features/chats/calling/MockScreenSharePreview";
+import { getCallGallerySize } from "../features/chats/calling/callGalleryLayout";
 
 type ScreenPresenter = {
   userId: string;
@@ -175,6 +176,7 @@ export default function CallParticipantGrid({
     : tileStyle;
 
   const columns = useMobilePair ? 1 : Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
+  const gallerySize = !isPresenting && !mobileSingleRemote && stageSize ? getCallGallerySize(stageSize.width, stageSize.height, count, columns) : null;
 
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
   const getPresenterLayout = presenter?.isMock ? getMockScreenShareLayout : getScreenShareLayout;
@@ -223,7 +225,6 @@ export default function CallParticipantGrid({
       profilePhoto={participantProfiles[localUserLabel]?.profilePhoto ?? null}
       mobilePrimary={mobileSingleRemote && isLocalPrimary}
       mobilePip={mobileSingleRemote && !isLocalPrimary}
-      onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(localUserLabel)}
     />
   );
 
@@ -247,6 +248,7 @@ export default function CallParticipantGrid({
       className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
+        ...(gallerySize ? { "--gallery-width": `${gallerySize.width}px`, "--gallery-height": `${gallerySize.height}px` } as CSSProperties : {}),
         gridTemplateColumns: useScreenShareRail
           ? useBottomScreenShareRail
             ? undefined
@@ -264,7 +266,7 @@ export default function CallParticipantGrid({
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? useBottomScreenShareRail
-              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "center", justifySelf: "center" }
+              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "2", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "start", justifySelf: "start" }
               : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "center", justifySelf: "start" }
             : useMobilePresentationRow
               ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: screenAspectRatioCss, maxHeight: "none", ["--screen-aspect-ratio" as string]: screenAspectRatioCss }

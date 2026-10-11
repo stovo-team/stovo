@@ -10,7 +10,6 @@ import {
   Settings,
   UserPlus,
   Video,
-  VideoOff,
   Volume2
 } from "lucide-react";
 
@@ -389,6 +388,7 @@ export function VoiceChannelStage({
                     {hasActiveVideo && videoStream ? (
                       <div className="voice-participant-video-container">
                         <video
+                          disablePictureInPicture disableRemotePlayback controlsList="nofullscreen noremoteplayback"
                           ref={(el) => {
                             if (el && videoStream && el.srcObject !== videoStream) {
                               el.srcObject = videoStream;

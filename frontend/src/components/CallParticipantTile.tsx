@@ -123,6 +123,9 @@ export function CallParticipantTile({
           }}
           autoPlay
           playsInline
+          disablePictureInPicture
+          disableRemotePlayback
+          controlsList="nofullscreen noremoteplayback"
           muted
           ref={(el) => bindStream(el, stream)}
           onLoadedMetadata={(event) => onVideoMetadata?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight)}

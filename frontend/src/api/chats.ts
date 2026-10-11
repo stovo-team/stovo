@@ -82,8 +82,8 @@ export interface MessageReaction {
   userIds: string[];
   reacted: boolean;
 }
-
 export interface CallHistory {
+  roomId?: string;
   status: "missed" | "declined" | "canceled" | "failed" | "completed";
   callType: "audio" | "video";
   callerId: string;

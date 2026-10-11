@@ -113,10 +113,10 @@ describe("mobile call UI unification", () => {
 
   it("keeps mobile call controls round and fixed-size inside the floating panel", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel")).toMatch(/width:\s*max-content/);
-    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
-    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
-    expect(styleRules(styles, ".mobile-active-screen--video .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel")).toMatch(/width:\s*max-content/);
+    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
+    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
+    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/font:\s*inherit/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*50%/);
@@ -141,9 +141,10 @@ describe("mobile call UI unification", () => {
     expect(controls.getAttribute("aria-hidden")).toBe("false");
   });
 
-  it("hides mobile controls after the idle timeout with the default preferences", () => {
+  it("hides mobile controls after the idle timeout when explicitly enabled", () => {
     vi.useFakeTimers();
     localStorage.clear();
+    writeCallUIPreferences({ autoHideControls: true });
     const container = renderScreen(baseProps);
     const controls = container.querySelector<HTMLElement>(".mobile-active-controls")!;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
@@ -240,8 +241,8 @@ describe("mobile call UI unification", () => {
     expect(localTile).not.toBeNull();
     expect(remoteTile).not.toBeNull();
     expect(flipButton).not.toBeNull();
-    expect(localTile?.getAttribute("role")).toBe("button");
-    expect(localTile?.tabIndex).toBe(0);
+    expect(localTile?.getAttribute("role")).toBeNull();
+    expect(localTile?.tabIndex).toBe(-1);
     expect(flipButton?.closest('[role="button"]')).not.toBe(localTile);
     expect(flipButton?.closest(".call-grid__mobile-local-wrap")).not.toBeNull();
     expect(container.querySelector('.mobile-active-controls [aria-label="Flip camera"]')).toBeNull();
@@ -393,7 +394,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector(".call-grid--mobile-single")).not.toBeNull();
     expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--remote video")?.srcObject).toBe(remoteStream);
     expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--local video")?.srcObject).toBe(localStream);
-    act(() => container.querySelector<HTMLElement>(".call-grid__mobile-pip")?.click());
+    act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote")?.click());
     expect(container.querySelector(".call-grid__tile--local")?.classList.contains("call-grid__mobile-primary")).toBe(true);
     expect(container.querySelector(".call-grid__tile--remote")?.classList.contains("call-grid__mobile-pip")).toBe(true);
     expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--local video")?.srcObject).toBe(localStream);
@@ -508,7 +509,7 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector<HTMLVideoElement>(".mobile-active-fullscreen-video")?.srcObject).toBe(remoteStream);
     expect(container.querySelector<HTMLVideoElement>(".mobile-active-pip video")?.srcObject).toBe(localStream);
 
-    act(() => (container.querySelector(".mobile-active-pip") as HTMLDivElement).click());
+    act(() => (container.querySelector(".call-grid__tile--remote") as HTMLDivElement).click());
     const swappedMain = container.querySelector<HTMLVideoElement>(".mobile-active-fullscreen-video");
     const swappedPip = container.querySelector<HTMLVideoElement>(".mobile-active-pip video");
     expect(swappedMain?.srcObject).toBe(localStream);
@@ -516,7 +517,7 @@ describe("mobile call UI unification", () => {
     const localPrimaryTile = container.querySelector<HTMLElement>(".call-grid__tile--local");
     const flipWhileSelfFullscreen = container.querySelector<HTMLButtonElement>(".call-grid__mobile-local-wrap [aria-label='Flip camera']");
     expect(localPrimaryTile?.classList.contains("call-grid__mobile-primary")).toBe(true);
-    expect(localPrimaryTile?.getAttribute("role")).toBe("button");
+    expect(localPrimaryTile?.getAttribute("role")).toBeNull();
     expect(flipWhileSelfFullscreen).not.toBeNull();
     expect(flipWhileSelfFullscreen?.closest(".call-grid__tile--local")).toBeNull();
     await act(async () => {
@@ -541,7 +542,7 @@ describe("mobile call UI unification", () => {
       localVideoStream: localStream,
       remoteVideoStream: remoteStream,
     });
-    const localTile = container.querySelector(".call-grid__tile--local") as HTMLDivElement;
+    const remoteTile = container.querySelector(".call-grid__tile--remote") as HTMLDivElement;
     const expectOriginalStage = () => {
       expect(container.querySelector(".call-grid__tile--remote")?.classList.contains("call-grid__mobile-primary")).toBe(true);
       expect(container.querySelector(".call-grid__tile--local")?.classList.contains("call-grid__mobile-pip")).toBe(true);
@@ -555,12 +556,12 @@ describe("mobile call UI unification", () => {
       expect((container.querySelector(".call-grid__tile--remote video") as HTMLVideoElement)?.srcObject).toBe(remoteStream);
     };
 
-    expect(localTile.tabIndex).toBe(0);
+    expect(remoteTile.tabIndex).toBe(0);
     expectOriginalStage();
-    act(() => localTile.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })));
+    act(() => remoteTile.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })));
     if (key === " ") {
       expectOriginalStage();
-      act(() => localTile.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true })));
+      act(() => remoteTile.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true })));
       expectSwappedStage();
     } else {
       expectSwappedStage();
@@ -609,9 +610,10 @@ describe("mobile call UI unification", () => {
     expect(buttons[0]?.tabIndex).toBe(0);
   });
 
-  it("hides mobile controls by default after the idle timeout", () => {
+  it("hides mobile controls after the idle timeout when explicitly enabled", () => {
     vi.useFakeTimers();
     localStorage.clear();
+    writeCallUIPreferences({ autoHideControls: true });
     const container = renderScreen(baseProps);
     const controls = container.querySelector(".mobile-active-controls")!;
     act(() => vi.advanceTimersByTime(30_000));

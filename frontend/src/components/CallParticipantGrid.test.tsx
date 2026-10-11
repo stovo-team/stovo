@@ -32,6 +32,16 @@ function styleRules(css: string, selector: string) {
 }
 
 describe("shared call participant presentation", () => {
+  it("leaves the self video unchanged when clicked and disables native video popouts", () => {
+    const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const focus = vi.fn();
+    const container = renderGrid({ localStream: stream, remoteMedia: [], callType: "video", onFocusChange: focus });
+    const tile = container.querySelector<HTMLElement>(".call-grid__tile--local")!;
+    act(() => tile.click());
+    expect(focus).not.toHaveBeenCalled();
+    expect(tile.getAttribute("role")).toBeNull();
+    expect(tile.querySelector("video")?.hasAttribute("disablepictureinpicture")).toBe(true);
+  });
   it("keeps the shared presentation primary and places 16:9 participants in a desktop side rail", () => {
     const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
     const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;
@@ -206,7 +216,7 @@ describe("shared call participant presentation", () => {
     expect(container.querySelector('.call-grid__tile--local.is-speaking')).not.toBeNull();
   });
 
-  it("uses the full shared stage and moves crowded screen-share participants to a compact bottom row", () => {
+  it("uses the full shared stage and moves crowded screen-share participants to a compact top row", () => {
     const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
     const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;
     const remoteMedia = ["one", "two", "three", "four"].map((userId) => ({
@@ -220,7 +230,7 @@ describe("shared call participant presentation", () => {
     const css = readFileSync("src/styles.css", "utf8");
     expect(css).toMatch(/\.shared-call-stage \.call-grid--presenting\.call-grid--screen-share\s*\{[^}]*height:\s*100%\s*!important;[^}]*aspect-ratio:\s*auto/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__tile--screen\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
-    expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*2/);
+    expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1/);
     expect(css).toMatch(/\.call-grid--screen-share\s*\{[^}]*minmax\(0,\s*5fr\)\s+minmax\(112px,\s*1fr\)/);
   });
 
