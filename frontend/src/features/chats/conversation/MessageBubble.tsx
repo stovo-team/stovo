@@ -2,6 +2,7 @@ import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMo
 import { ArrowUpRight, CalendarClock, CalendarPlus, Check, Clock3, DoorOpen, Folder, Loader2, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
+import { SourceMessageAttribution } from "./SourceMessageAttribution";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
@@ -245,7 +246,7 @@ export function MessageBubble({
     ? messages.find((candidate) => candidate.id === message.replyToMessageId)
     : null;
   const senderProfile = selectedChat.members.find((member) => member.id === message.senderId);
-  const showSenderIdentity = shouldShowMessageSender(selectedChat.type, mine);
+  const showSenderIdentity = shouldShowMessageSender(selectedChat.type, mine) || Boolean(message.importAttribution);
   const mediaOnlyMessage = messageHasOnlyMediaAttachments(message);
   const hasCaption = Boolean(message.content?.trim());
   const meetingInvitation = guestMeetingCard(message.content);
@@ -355,6 +356,7 @@ export function MessageBubble({
           </strong>
         </div>
       )}
+      {message.importAttribution && <SourceMessageAttribution attribution={message.importAttribution} />}
       {(repliedMessage || message.forwardedFrom) && (
         <div
           className={

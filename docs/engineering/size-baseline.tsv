@@ -44,7 +44,7 @@ frontend/src/features/chats/calling/VoiceChannelStage.tsx	586
 frontend/src/features/chats/composer/Composer.tsx	963
 frontend/src/features/chats/composer/useMessageComposer.ts	898
 frontend/src/features/chats/conversation/ConversationPanel.tsx	769
-frontend/src/features/chats/conversation/MessageBubble.tsx	646
+frontend/src/features/chats/conversation/MessageBubble.tsx	648
 frontend/src/features/chats/conversation/useMessageThread.ts	910
 frontend/src/features/chats/details/ChatDetailsPanel.tsx	1411
 frontend/src/features/chats/outbox/messageOutboxProcessor.ts	482

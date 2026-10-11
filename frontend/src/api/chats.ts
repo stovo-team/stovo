@@ -82,7 +82,6 @@ export interface MessageReaction {
   userIds: string[];
   reacted: boolean;
 }
-
 export interface CallHistory {
   status: "missed" | "declined" | "canceled" | "failed" | "completed";
   callType: "audio" | "video";
@@ -121,6 +120,7 @@ export interface Message {
   deletedAt: string | null;
   isEdited: boolean;
   forwardedFrom?: MessageForward | null;
+  importAttribution?: import("./chatTransferTypes").MessageImportAttribution | null;
   statuses: MessageStatus[];
   reactions: MessageReaction[];
   attachments: FamilyFile[];

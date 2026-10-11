@@ -246,6 +246,7 @@ export function useChatOverview({
     setChatFilter,
     filteredChats,
     chatsBySection,
+    refreshChats,
     isNewChatOpen,
     newChatScreen,
     newChatMemberSearch,

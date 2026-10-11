@@ -21,6 +21,7 @@ export interface Family {
   name: string;
   storageLimitMb?: number | null;
   minimizedChatLayout: boolean;
+  defaultMessageEncryptionProtocol: "end_to_end" | "server_at_rest" | "legacy_plaintext";
   defaultProfileVisibility: "everyone" | "nobody";
   defaultLastSeenVisibility: "everyone" | "nobody";
   defaultReadReceiptsEnabled: boolean;
