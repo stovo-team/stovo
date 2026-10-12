@@ -64,7 +64,7 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/deploy-environment.sh'
+              - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
 
@@ -324,7 +324,7 @@ jobs:
               "$@"
             }
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
@@ -395,7 +395,7 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }

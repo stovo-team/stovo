@@ -132,11 +132,11 @@ grep -Fq 'RUN --mount=type=cache,target=/root/.npm \' frontend/Dockerfile || {
   echo "The frontend npm dependency install must retain its BuildKit cache mount." >&2
   exit 1
 }
-if [ "$(grep -Fc 'bash scripts/ensure-docker-buildx.sh' .github/workflows/pipeline.yml)" -lt 2 ]; then
+if [ "$(grep -Fc 'bash deploy/scripts/ensure-docker-buildx.sh' .github/workflows/pipeline.yml)" -lt 2 ]; then
   echo "Both production deployment jobs must ensure Docker Buildx before building images." >&2
   exit 1
 fi
-bash scripts/ensure-docker-buildx.test.sh
+bash deploy/scripts/ensure-docker-buildx.test.sh
 
 awk '
   /docker_with_space_recovery\(\)/ { in_recovery = 1; in_command = 0; in_failure_branch = 0 }
