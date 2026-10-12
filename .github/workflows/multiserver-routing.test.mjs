@@ -5,8 +5,19 @@ import { spawnSync } from 'node:child_process';
 
 const read = (file) => readFileSync(file, 'utf8');
 
+// The deployment jobs run Compose through `sudo docker`; the self-hosted runner
+// user may not have the Compose plugin, so fall back to the same invocation.
+const upstream = 'stovo-backend-acdcbca1:8000';
+const composeCommand = () => {
+  for (const prefix of [['docker'], ['sudo', '-n', 'env', `BACKEND_UPSTREAMS=${upstream}`, 'docker']]) {
+    if (spawnSync(prefix[0], [...prefix.slice(1), 'compose', 'version'], { encoding: 'utf8' }).status === 0) return prefix;
+  }
+  return ['docker'];
+};
+
 test('multiserver gateway receives the configured live tenant upstream', () => {
-  const result = spawnSync('docker', ['compose', '--project-directory', '.', '--env-file', '.env.example', '-f', 'deploy/compose/production-multiserver.yml', 'config', '--format', 'json'], {
+  const [command, ...prefix] = composeCommand();
+  const result = spawnSync(command, [...prefix, 'compose', '--project-directory', '.', '--env-file', '.env.example', '-f', 'deploy/compose/production-multiserver.yml', 'config', '--format', 'json'], {
     encoding: 'utf8', env: { ...process.env, BACKEND_UPSTREAMS: 'stovo-backend-acdcbca1:8000' },
   });
   assert.equal(result.status, 0, result.stderr);
