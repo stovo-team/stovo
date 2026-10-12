@@ -21,7 +21,7 @@ backend/internal/repository/chats.go	527
 backend/internal/repository/messages.go	619
 backend/internal/transcription/groq.go	474
 backend/internal/tunnel/tunnel.go	502
-frontend/src/api/chats.ts	453
+frontend/src/api/chats.ts	454
 frontend/src/audioPlaybackSession.ts	975
 frontend/src/components/AttachmentPickerSheet.tsx	799
 frontend/src/components/AudioPlayer.tsx	601
