@@ -3,6 +3,7 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VoiceChannelStage } from "./VoiceChannelStage";
+import { CALL_CONTROLS_REVEAL_EVENT } from "./SharedCallControlPanel";
 import type { Chat } from "../../../api/chats";
 import type { User } from "../../../api/auth";
 import type { CallSessionApi } from "./useCallSession";
@@ -102,6 +103,25 @@ const mockCurrentUser: User = {
 };
 
 describe("VoiceChannelStage", () => {
+  it("reveals hidden call controls when the pointer moves over the voice stage", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false, activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const onReveal = vi.fn();
+    window.addEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    act(() => container.querySelector<HTMLElement>(".voice-room-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+    expect(onReveal).toHaveBeenCalledOnce();
+    window.removeEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+  });
+
   it("exposes a voice call expand control with the current expanded state", () => {
     const onToggleExpanded = vi.fn();
     const mockSession = {

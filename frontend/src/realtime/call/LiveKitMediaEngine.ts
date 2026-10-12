@@ -167,7 +167,7 @@ export default class LiveKitMediaEngine {
 
     const local = this.room.localParticipant;
     const audio = stream.getAudioTracks()[0];
-    const video = stream.getVideoTracks()[0];
+    const video = stream.getVideoTracks().find((track) => track.readyState !== "ended");
 
     if (audio) {
       try {

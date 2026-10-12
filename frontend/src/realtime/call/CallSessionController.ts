@@ -1,5 +1,6 @@
 import { Socket } from "socket.io-client";
 import { getSfuToken } from "./sfuToken";
+import { removeEndedVideoTracks, stopVideoTracks } from "./cameraTracks";
 import {
   defaultMediaEngineFactory,
   type MediaEngineFactory,
@@ -439,6 +440,7 @@ export default class CallSessionController {
         return;
       }
 
+      removeEndedVideoTracks([this.sourceStream, this.localStream]);
       this.sourceStream?.addTrack(videoTrack);
       if (this.sourceStream !== this.localStream) this.localStream?.addTrack(videoTrack);
 
@@ -458,10 +460,7 @@ export default class CallSessionController {
         await this.mesh.renegotiateAll();
       }
     } else {
-      for (const t of this.sourceStream?.getVideoTracks() ?? []) t.stop();
-      if (this.localStream !== this.sourceStream) {
-        for (const t of this.localStream?.getVideoTracks() ?? []) t.stop();
-      }
+      stopVideoTracks([this.sourceStream, this.localStream]);
       if (this.localVideoEl) this.localVideoEl.srcObject = null;
       this.callType = "audio";
 
@@ -1046,7 +1045,7 @@ export default class CallSessionController {
   }
 
   private buildVideoConstraints(): MediaTrackConstraints {
-    const c: MediaTrackConstraints = {};
+    const c: MediaTrackConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
     if (this.settings.videoDeviceId) {
       c.deviceId = { ideal: this.settings.videoDeviceId };
     } else {

@@ -72,6 +72,20 @@ describe("LiveKitMediaEngine video quality", () => {
     ]);
     await engine.disconnect();
   });
+
+  it("publishes the live camera when an ended camera track is still in the stream", async () => {
+    const engine = new LiveKitMediaEngine();
+    await engine.connect({ url: "wss://calls.example", token: "token" });
+    const room = livekit.roomInstances[0];
+    const ended = { id: "ended-camera", kind: "video", readyState: "ended" } as MediaStreamTrack;
+    const live = { id: "live-camera", kind: "video", readyState: "live" } as MediaStreamTrack;
+    const stream = { getAudioTracks: () => [], getVideoTracks: () => [ended, live] } as unknown as MediaStream;
+
+    await engine.publishLocalStream(stream);
+
+    expect(room.localParticipant.publishTrack).toHaveBeenCalledWith(live, expect.objectContaining({ source: "camera" }));
+    await engine.disconnect();
+  });
 });
 
 
