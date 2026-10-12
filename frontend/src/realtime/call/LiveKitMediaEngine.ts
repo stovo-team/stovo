@@ -185,8 +185,17 @@ export default class LiveKitMediaEngine {
     }
     if (video) {
       try {
-        const hasVideo = Array.from(local.trackPublications.values()).some(
+        const cameraPublications = Array.from(local.trackPublications.values()).filter(
           (p) => p.source === lk.Track.Source.Camera
+        );
+        for (const publication of cameraPublications) {
+          const publishedTrack = publication.track;
+          if (publishedTrack?.mediaStreamTrack?.readyState === "ended") {
+            await local.unpublishTrack(publishedTrack);
+          }
+        }
+        const hasVideo = Array.from(local.trackPublications.values()).some(
+          (p) => p.source === lk.Track.Source.Camera && p.track?.mediaStreamTrack?.readyState !== "ended"
         );
         if (!hasVideo) {
           await local.publishTrack(video, {

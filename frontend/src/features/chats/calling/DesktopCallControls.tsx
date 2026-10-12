@@ -31,7 +31,7 @@ import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
 import { enableCallCamera } from "./callCamera";
 import { SharedCallStage } from "./SharedCallStage";
-import { SharedCallControlPanel } from "./SharedCallControlPanel";
+import { CALL_CONTROLS_REVEAL_EVENT, SharedCallControlPanel } from "./SharedCallControlPanel";
 import { useCallUIPreferences } from "./callUIPreferences";
 
 /**
@@ -342,7 +342,10 @@ export function DesktopCallControls({
         <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
       )}
 
-      <CallParticipantStage className="shared-call-stage call-popup-audio-stage">
+      <CallParticipantStage
+        className="shared-call-stage call-popup-audio-stage"
+        onPointerMove={() => window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT))}
+      >
         <CallPopupAudioStage activeChat={activeChat ?? null} />
       </CallParticipantStage>
 

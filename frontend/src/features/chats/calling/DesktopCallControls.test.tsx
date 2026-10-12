@@ -277,6 +277,17 @@ describe("DesktopCallControls visibility", () => {
     expect(controls?.classList.contains("is-hidden")).toBe(false);
   });
 
+  it("reveals auto-hidden controls when the visible one-to-one audio stage receives pointer movement", () => {
+    const host = renderDesktopControls({ callType: "audio" });
+    const reveal = vi.fn();
+    window.addEventListener("stovo:reveal-call-controls", reveal);
+
+    act(() => host.querySelector(".call-popup-audio-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+
+    window.removeEventListener("stovo:reveal-call-controls", reveal);
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps Stovo Intelligence directly available in the desktop call controls", () => {
     const container = renderDesktopControls();
     const intelligence = container.querySelector<HTMLButtonElement>('.call-ctrl-row [aria-label="Stovo Intelligence"]');
