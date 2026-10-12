@@ -57,7 +57,7 @@
 - Create: `backend/internal/features/chattransfer/archive.go`
 - Create: `backend/internal/features/chattransfer/archive_test.go`
 - Create: `backend/internal/features/chattransfer/archive_fuzz_test.go`
-- Create shared canonical fixtures under: `testdata/chat-transfer/v1/`
+- Create shared canonical fixtures under: `e2e/fixtures/chat-transfer/v1/`
 
 **Interfaces:**
 - Define a versioned `ChatArchive` with source provider/profile, exactly one conversation, external participants, chronological messages, attachment metadata/bytes, and warnings/losses.
