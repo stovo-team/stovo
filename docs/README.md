@@ -3,7 +3,7 @@
 ## Self-hosting and operations
 
 - [Docker Compose](self-hosting/docker-compose.md): supported single-host deployment, environment setup, bundled or external infrastructure, ports, persistence, upgrades, backup/restore, and diagnostics.
-- [Kubernetes with Helm](self-hosting/kubernetes.md): the `charts/stovo` chart, Secret handling, persistence, ingress/network requirements, rollout operations, and validation commands.
+- [Kubernetes with Helm](self-hosting/kubernetes.md): the `deploy/charts/stovo` chart, Secret handling, persistence, ingress/network requirements, rollout operations, and validation commands.
 
 ## Architecture
 
@@ -30,5 +30,5 @@
 Deployment instructions in this directory describe the repository's production Compose stack and its Helm chart. `deploy/compose/dev.yml`, `deploy/compose/stage.yml`, `deploy/compose/production-multiserver.yml`, and `deploy/livekit.yaml` are for development, staging, orchestration, or local reference use; they are not drop-in production manifests. Check the chart's own defaults before applying chart-specific settings:
 
 ```sh
-helm show values charts/stovo
+helm show values deploy/charts/stovo
 ```

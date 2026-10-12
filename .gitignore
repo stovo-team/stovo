@@ -40,8 +40,8 @@ coverage/
 /e2e/playwright-report/
 tmp/
 temp/
-ntfy/cache/
-ntfy/data/
+deploy/ntfy/cache/
+deploy/ntfy/data/
 
 .env.production.bak
 *.bak

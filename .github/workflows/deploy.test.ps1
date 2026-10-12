@@ -67,7 +67,8 @@ if ($workflow -notmatch 'docker_with_space_recovery\(\)' -or
     throw "Deployment must safely reclaim unused Docker artifacts and retry after an out-of-space failure."
 }
 
-if ($workflow -notmatch 'migrations/master') {
+if ($workflow -notmatch 'deploy/migrations/master' -or
+    $workflow -notmatch 'find deploy/migrations/master') {
     throw "Deployment must apply master database migrations."
 }
 

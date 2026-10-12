@@ -7,7 +7,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'migrations/master/**'
+      - 'deploy/migrations/master/**'
       - 'deploy/caddy/Caddyfile'
       - 'deploy/caddy/Caddyfile.internal'
       - 'deploy/compose/production-multiserver.yml'
@@ -56,7 +56,7 @@ jobs:
               - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/caddy/Caddyfile'
               - 'deploy/caddy/Caddyfile.internal'
               - 'deploy/compose/production-multiserver.yml'
@@ -464,7 +464,7 @@ jobs:
             for _ in $(seq 1 30); do if sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
-            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+            for migration in $(find deploy/migrations/master -maxdepth 1 -name '*.sql' | sort); do
               echo "Applying master migration: $migration"
               cat "$migration" | sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
             done
