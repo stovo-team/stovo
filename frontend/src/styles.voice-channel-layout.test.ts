@@ -19,10 +19,16 @@ describe("voice channel layout styles", () => {
     expect(styleRules(".voice-room-expand-button")).toMatch(/left:\s*16px/);
   });
 
-  it("reserves the call dock and gives the screen-share stage the remaining height", () => {
-    expect(styleRules(".voice-room-stage")).toMatch(/flex:\s*1 1 0/);
-    expect(styleRules(".voice-room-stage")).toMatch(/height:\s*auto/);
-    expect(styleRules(".voice-room-bottom-bar")).toMatch(/flex:\s*0 0 auto/);
+  it("lays controls over the voice stage and bounds the presentation to the available stage", () => {
+    expect(styleRules(".voice-room-stage")).toMatch(/position:\s*absolute/);
+    expect(styleRules(".voice-room-stage")).toMatch(/inset:\s*0/);
+    expect(styleRules(".voice-channel-room .voice-room-stage")).toMatch(/padding:\s*calc\([^;]*\)\s+16px\s+16px/);
+    expect(styleRules(".voice-room-bottom-bar:has\(.shared-call-control-panel\)")).toMatch(/position:\s*absolute/);
+    expect(styleRules(".voice-room-bottom-bar:has\(.shared-call-control-panel\)")).toMatch(/bottom:\s*0/);
+    expect(styleRules(".voice-room-participant-content")).toMatch(/justify-content:\s*flex-start/);
+    expect(styleRules(".call-grid--screen-share-bottom .call-grid__participant-rail")).toMatch(/grid-row:\s*1/);
+    expect(styleRules(".shared-call-stage .call-grid--presenting.call-grid--screen-share")).toMatch(/max-width:\s*100%/);
+    expect(styleRules(".shared-call-stage .call-grid--presenting.call-grid--screen-share")).toMatch(/max-height:\s*100%/);
     expect(styleRules(".call-popup.call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen)")).toMatch(/height:\s*min\(760px,\s*calc\(100dvh - 40px\)\)/);
     expect(styleRules(".call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-video-area")).toMatch(/flex:\s*1 1 0/);
     expect(styleRules(".call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-video-area")).toMatch(/min-height:\s*0/);

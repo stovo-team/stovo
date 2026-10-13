@@ -138,4 +138,10 @@ describe("shared call control button", () => {
     expect(endRules).toMatch(/color:\s*#fff/);
     expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
   });
+
+  it("outlines the grouped microphone, speaker, and camera controls", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const rules = Array.from(css.matchAll(/\.guest-call-controls \.guest-device-control\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(rules.some((rule) => /border:\s*1px solid var\(--border-default/.test(rule))).toBe(true);
+  });
 });

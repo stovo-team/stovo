@@ -5,10 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SharedCallControlPanel } from "./SharedCallControlPanel";
 
 const roots: Root[] = [];
-afterEach(() => { while (roots.length) act(() => roots.pop()?.unmount()); document.body.innerHTML = ""; });
+afterEach(() => { while (roots.length) act(() => roots.pop()?.unmount()); document.body.innerHTML = ""; vi.useRealTimers(); });
 
 describe("SharedCallControlPanel", () => {
-  it("starts hidden when auto-hide is enabled and reveals on pointer entry", () => {
+  it("reveals on pointer entry and stays visible for 12 seconds after the last movement", () => {
+    vi.useFakeTimers();
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);
     const onReveal = vi.fn();
@@ -18,7 +19,9 @@ describe("SharedCallControlPanel", () => {
     act(() => panel.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })));
     expect(panel.dataset.visible).toBe("true");
     expect(onReveal).toHaveBeenCalledOnce();
-    act(() => panel.dispatchEvent(new PointerEvent("pointerout", { bubbles: true })));
+    act(() => vi.advanceTimersByTime(11_999));
+    expect(panel.dataset.visible).toBe("true");
+    act(() => vi.advanceTimersByTime(1));
     expect(panel.dataset.visible).toBe("false");
   });
   it("keeps controls visible when auto-hide is disabled", () => {
@@ -29,6 +32,7 @@ describe("SharedCallControlPanel", () => {
   });
 
   it("reveals hidden controls on keyboard focus and touch", () => {
+    vi.useFakeTimers();
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);
     act(() => root.render(<SharedCallControlPanel autoHide><button>Mute</button></SharedCallControlPanel>));
@@ -37,17 +41,26 @@ describe("SharedCallControlPanel", () => {
     act(() => button.focus());
     expect(panel.dataset.visible).toBe("true");
     act(() => button.blur());
+    expect(panel.dataset.visible).toBe("true");
+    act(() => vi.advanceTimersByTime(12_000));
     expect(panel.dataset.visible).toBe("false");
     act(() => panel.dispatchEvent(new Event("touchstart", { bubbles: true })));
     expect(panel.dataset.visible).toBe("true");
   });
   it("reveals the panel when the call surface reports pointer movement", () => {
+    vi.useFakeTimers();
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);
     act(() => root.render(<SharedCallControlPanel autoHide><button>Mute</button></SharedCallControlPanel>));
     const panel = host.querySelector<HTMLElement>(".shared-call-control-panel")!;
     act(() => window.dispatchEvent(new Event("stovo:reveal-call-controls")));
     expect(panel.dataset.visible).toBe("true");
+    act(() => vi.advanceTimersByTime(8_000));
+    act(() => window.dispatchEvent(new Event("stovo:reveal-call-controls")));
+    act(() => vi.advanceTimersByTime(11_999));
+    expect(panel.dataset.visible).toBe("true");
+    act(() => vi.advanceTimersByTime(1));
+    expect(panel.dataset.visible).toBe("false");
   });
 
   it("keeps hidden controls from blocking clicks and disables motion when requested", () => {

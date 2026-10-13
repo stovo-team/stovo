@@ -248,6 +248,7 @@ export default function CallParticipantGrid({
       className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
+        ...(useBottomScreenShareRail || useMobilePresentationRow ? { alignContent: "start" } : {}),
         ...(gallerySize ? { "--gallery-width": `${gallerySize.width}px`, "--gallery-height": `${gallerySize.height}px` } as CSSProperties : {}),
         gridTemplateColumns: useScreenShareRail
           ? useBottomScreenShareRail
