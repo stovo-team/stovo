@@ -26,6 +26,18 @@ Read the applicable guide before editing:
 
 Run the focused checks required by the applicable workflow and relevant commands from CONTRIBUTING.md. Report the commands and results, including any required check that could not be run. Avoid unrelated checks.
 
+## Optional documentation search
+
+The canonical human-readable documentation lives in `docs/`. When a question spans several documentation areas and `okf-agent` is installed, use its standalone bundle profile to search the existing pages:
+
+```sh
+okf-agent bundle index --root docs --index-root .okf-index/docs
+okf-agent bundle search "backup restore" --root docs --index-root .okf-index/docs
+okf-agent bundle backlinks architecture/subsystems.md --root docs --index-root .okf-index/docs
+```
+
+Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild the local index after documentation changes. It is disposable and ignored by Git; edit the Markdown source pages instead.
+
 ## Active pull requests
 
 - Chat import/export V1: https://github.com/stovo-team/stovo/pull/164

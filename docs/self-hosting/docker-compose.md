@@ -1,3 +1,8 @@
+---
+title: "Self-host with Docker Compose"
+type: operations
+---
+
 # Self-host with Docker Compose
 
 This guide covers the production single-host stack in `deploy/compose/production-bluegreen.yml`. It builds the Go backend and React frontend locally, runs a PostgreSQL database and Redis Streams service, initializes MinIO buckets, and serves the application through Caddy. A domain with DNS pointing to the host is required for automatic HTTPS. Do not use the development or staging Compose files as production deployment instructions.

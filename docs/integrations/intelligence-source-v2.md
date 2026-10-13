@@ -1,3 +1,8 @@
+---
+title: "Messenger Intelligence Source v2 operations"
+type: integration
+---
+
 # Messenger Intelligence Source v2 operations
 
 This document describes the Messenger-side v2 boundary implemented for a future, explicitly approved canary. It is not a production enablement request or a claim that the Intelligence consumer is ready.

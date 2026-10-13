@@ -1,3 +1,8 @@
+---
+title: "Messenger Intelligence Source v2"
+type: specification
+---
+
 # Messenger Intelligence Source v2
 
 **Status:** Approved for implementation

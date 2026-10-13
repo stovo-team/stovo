@@ -1,3 +1,8 @@
+---
+title: "Local mock mode: multi-user calls and files"
+type: specification
+---
+
 # Local mock mode: multi-user calls and files
 
 ## User problem

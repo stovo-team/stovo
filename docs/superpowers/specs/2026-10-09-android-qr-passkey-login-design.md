@@ -1,3 +1,8 @@
+---
+title: "Android QR and Passkey Sign-in Design"
+type: specification
+---
+
 # Android QR and Passkey Sign-in Design
 
 ## Problem and goal

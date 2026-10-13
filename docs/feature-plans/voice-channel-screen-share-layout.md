@@ -1,3 +1,8 @@
+---
+title: "Voice Channel Screen Share Layout"
+type: feature-plan
+---
+
 # Voice Channel Screen Share Layout
 
 ## User problem

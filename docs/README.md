@@ -1,3 +1,8 @@
+---
+title: "Stovo documentation"
+type: index
+---
+
 # Stovo documentation
 
 ## Self-hosting and operations
@@ -24,6 +29,20 @@
 - [Database migrations](../backend/migrations/): versioned Atlas migrations applied by the Compose `backend-migrate` service.
 - [Atlas baseline procedure](../backend/migrations/BASELINE.md): inspect and baseline an existing schema during a documented migration cutover.
 - [Contributor guide](../CONTRIBUTING.md) and [security policy](../SECURITY.md).
+
+## Optional local search index
+
+Install [`okf-agent`](https://github.com/left-try/okf-agent) with `pipx` if you want full-text search and backlinks across these Markdown pages:
+
+```sh
+pipx install "git+https://github.com/left-try/okf-agent.git@ed3a192d0e44437a446d51d02781a3fa9a5cda93"
+okf-agent bundle index --root docs --index-root .okf-index/docs
+okf-agent bundle search "backup restore" --root docs --index-root .okf-index/docs
+okf-agent bundle backlinks architecture/subsystems.md --root docs --index-root .okf-index/docs
+okf-agent bundle validate --root docs --index-root .okf-index/docs
+```
+
+The index is local, rebuildable, and ignored by Git. The Markdown pages remain the source of truth. Each page carries a short YAML frontmatter `title` and `type` so search results have useful labels and the corpus can be validated. Quote hyphenated search phrases such as `"self-host"`.
 
 ## Scope and accuracy
 
