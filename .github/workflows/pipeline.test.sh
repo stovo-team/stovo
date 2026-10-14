@@ -163,6 +163,23 @@ grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   echo "PR checkout must not persist a write-capable GitHub token." >&2
   exit 1
 }
+awk '
+  /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
+  /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
+  in_pipeline_contract && /^    runs-on: ubuntu-latest$/ { pipeline_contract_uses_hosted_runner = 1 }
+  in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
+  END {
+    if (!pipeline_contract_uses_hosted_runner) {
+      print "Pipeline contract tests must run on the GitHub-hosted PR runner." > "/dev/stderr"
+      failed = 1
+    }
+    if (!pipeline_contract_runs_tests) {
+      print "Trusted PR checks must run pipeline.test.sh before merge." > "/dev/stderr"
+      failed = 1
+    }
+    if (failed) exit 1
+  }
+' "$trusted_pr_workflow"
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
