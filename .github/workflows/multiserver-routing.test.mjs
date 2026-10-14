@@ -5,18 +5,23 @@ import { spawnSync } from 'node:child_process';
 
 const read = (file) => readFileSync(file, 'utf8');
 
-// The deployment jobs run Compose through `sudo docker`; the self-hosted runner
-// user may not have the Compose plugin, so fall back to the same invocation.
+// Probe both the runner user and the sudo context used by deployment. Some
+// self-hosted runners expose neither Compose plugin, so the config check skips there.
 const upstream = 'stovo-backend-acdcbca1:8000';
-const composeCommand = () => {
+const composeCommand = (probe = spawnSync) => {
   for (const prefix of [['docker'], ['sudo', '-n', 'env', `BACKEND_UPSTREAMS=${upstream}`, 'docker']]) {
-    if (spawnSync(prefix[0], [...prefix.slice(1), 'compose', 'version'], { encoding: 'utf8' }).status === 0) return prefix;
+    if (probe(prefix[0], [...prefix.slice(1), 'compose', 'version'], { encoding: 'utf8' }).status === 0) return prefix;
   }
-  return ['docker'];
+  return null;
 };
 
-test('multiserver gateway receives the configured live tenant upstream', () => {
-  const [command, ...prefix] = composeCommand();
+test('Compose discovery reports unavailable when neither runner has the Compose plugin', () => {
+  assert.equal(composeCommand(() => ({ status: 125 })), null);
+});
+
+const compose = composeCommand();
+test('multiserver gateway receives the configured live tenant upstream', { skip: compose ? false : 'Docker Compose is unavailable on this runner' }, () => {
+  const [command, ...prefix] = compose;
   const result = spawnSync(command, [...prefix, 'compose', '--project-directory', '.', '--env-file', '.env.example', '-f', 'deploy/compose/production-multiserver.yml', 'config', '--format', 'json'], {
     encoding: 'utf8', env: { ...process.env, BACKEND_UPSTREAMS: 'stovo-backend-acdcbca1:8000' },
   });
