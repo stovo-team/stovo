@@ -62,6 +62,7 @@ awk '
     job_runner[job] = runner
   }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
+  job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
   (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
   job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
@@ -73,6 +74,7 @@ awk '
   END {
     if (!global_contents_read) fail("The workflow token must have read-only contents access by default.")
     if (!changes_contents_read) fail("The changes job must retain contents: read permission.")
+    if (!changes_fetches_full_history) fail("Detect Changes must fetch full history so merge pushes can compare against the previous push commit.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
     if (insecure_node_override) fail("The pipeline must not enable the insecure Node.js runtime override.")
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
