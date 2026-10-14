@@ -1128,11 +1128,22 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 	backupCreatedAt := time.Now().UTC()
 	backupRestorableUntil := backupCreatedAt.Add(30 * 24 * time.Hour)
-	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup-too-long", backupCreatedAt, backupCreatedAt.Add(31*24*time.Hour)); !errors.Is(err, httptransport.ErrIntelligenceSourceInvalidRequest) {
+	operations := NewIntelligenceSourceV2Operations(fixture.server.sqlDB, fixture.server.cfg.IntelligenceSourceV2RestoreEpoch)
+	if err := operations.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
+		t.Fatalf("mark initial synthetic backup inventory: %v", err)
+	}
+	var inventoryComplete bool
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT complete FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global'`).Scan(&inventoryComplete); err != nil || !inventoryComplete {
+		t.Fatalf("initial backup inventory is not complete: complete=%v err=%v", inventoryComplete, err)
+	}
+	if err := operations.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup-too-long", backupCreatedAt, backupCreatedAt.Add(31*24*time.Hour)); !errors.Is(err, httptransport.ErrIntelligenceSourceInvalidRequest) {
 		t.Fatalf("backup horizon longer than 30 days returned %v, want invalid request", err)
 	}
-	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
+	if err := operations.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
 		t.Fatalf("register synthetic restorable backup horizon: %v", err)
+	}
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT complete FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global'`).Scan(&inventoryComplete); err != nil || inventoryComplete {
+		t.Fatalf("new backup registration left inventory complete: complete=%v err=%v", inventoryComplete, err)
 	}
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.messages SET deleted_at=$2,updated_at=$2 WHERE id=$1`, resourceID, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		t.Fatalf("delete synthetic retention message: %v", err)
@@ -1154,20 +1165,20 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 
 	restoreID := "synthetic-restore-" + uuid.NewString()
-	tombstones, err := fixture.server.BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
+	tombstones, err := operations.BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
 	if err != nil || len(tombstones) == 0 || tombstones[len(tombstones)-1].EventID != tombstoneEventID {
 		t.Fatalf("begin restore did not return post-backup tombstones: %#v err=%v", tombstones, err)
 	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, nil, time.Now().UTC()); err == nil {
+	if err := operations.CompleteIntelligenceSourceV2Restore(ctx, restoreID, nil, time.Now().UTC()); err == nil {
 		t.Fatal("restore completed before the newer tombstone was replayed")
 	}
 	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); !errors.Is(err, httptransport.ErrIntelligenceSourceDisabled) {
 		t.Fatalf("restore gate opened before tombstone replay: %v", err)
 	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC().Add(-6*time.Minute)); err == nil {
+	if err := operations.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC().Add(-6*time.Minute)); err == nil {
 		t.Fatal("restore completed with a stale tombstone ledger check")
 	}
-	if err := fixture.server.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC()); err != nil {
+	if err := operations.CompleteIntelligenceSourceV2Restore(ctx, restoreID, map[string]int64{connectionID: tombstoneSequence}, time.Now().UTC()); err != nil {
 		t.Fatalf("complete restore after replaying fresh tombstone high-water: %v", err)
 	}
 	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(ctx); err != nil {
@@ -1218,7 +1229,7 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_tombstone_ledger WHERE event_id=$1`, tombstoneEventID).Scan(&retainedWithoutInventory); err != nil || retainedWithoutInventory != 1 {
 		t.Fatalf("tombstone ledger did not fail closed without backup inventory: count=%d err=%v", retainedWithoutInventory, err)
 	}
-	if err := fixture.server.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
+	if err := operations.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
 		t.Fatalf("mark synthetic complete backup inventory: %v", err)
 	}
 	cleanup, err = fixture.server.cleanupIntelligenceSourceV2Retention(ctx, cleanupAt)
@@ -1235,6 +1246,21 @@ func TestIntelligenceSourceV2RetentionAndRestoreRequireFreshTombstoneReplay(t *t
 	}
 	_ = createEventID
 	_ = createSequence
+}
+
+func TestIntelligenceSourceV2OperationsRejectUnregisteredBackupAndKeepRestoreBlocked(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	operations := NewIntelligenceSourceV2Operations(fixture.server.sqlDB, fixture.server.cfg.IntelligenceSourceV2RestoreEpoch)
+	backupCreatedAt := time.Now().UTC().Add(-time.Minute)
+	tombstones, err := operations.BeginIntelligenceSourceV2Restore(ctx, "synthetic-unregistered-restore", backupCreatedAt)
+	if !errors.Is(err, httptransport.ErrIntelligenceSourceUnavailable) || len(tombstones) != 0 {
+		t.Fatalf("unregistered backup restore returned tombstones=%#v err=%v, want no tombstones and unavailable", tombstones, err)
+	}
+	var blocked bool
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT blocked FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global'`).Scan(&blocked); err != nil || !blocked {
+		t.Fatalf("unregistered backup did not leave restore gate blocked: blocked=%v err=%v", blocked, err)
+	}
 }
 
 func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) {
