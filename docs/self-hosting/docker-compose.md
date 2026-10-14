@@ -92,7 +92,56 @@ docker compose --project-directory . -f deploy/compose/production-bluegreen.yml 
 
 Store the dump outside the host and test restoring it to a disposable database. Back up MinIO using an S3 client or a quiesced volume-level snapshot; include all configured buckets, especially the files and calls buckets. Also preserve the encryption key, secrets, and deployment configuration in a secure secrets backup separate from the data backup.
 
-For a restore, stop writes by stopping the application first, restore PostgreSQL and objects, then start the stack and verify health and representative file/message reads. Do not restore a database without its matching object data or encryption key. Follow provider-specific restore procedures for managed services.
+### Intelligence Source v2 backup and restore
+
+The `intelligence-source-ops` executable records backup horizons and coordinates restore tombstone replay. It connects directly to PostgreSQL and does not start Redis or application workers. Run it as a one-shot container with `--no-deps`; the backend image must contain the revision with this executable. For the external PostgreSQL overlay, add `-f deploy/compose/external-overlay.yml` to the `docker compose` command below.
+
+Register each backup before starting its dump. Keep the exact UTC creation timestamp with the backup record; the restore command must use that same timestamp. Restorability cannot exceed 30 days.
+
+```sh
+compose() {
+  docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env "$@"
+}
+
+backup_id="backup-$(date -u '+%Y%m%dT%H%M%SZ')"
+backup_created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+restorable_until="$(date -u -d '+30 days' '+%Y-%m-%dT%H:%M:%SZ')"
+
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  backup register --backup-id "$backup_id" --created-at "$backup_created_at" \
+  --restorable-until "$restorable_until"
+
+compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup_id.dump"
+# Back up the matching object data and check that every currently restorable backup is present.
+
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  inventory verify --verified-at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+```
+
+Mark the inventory verified only after the database and object backup succeeded and you checked the complete list of currently restorable backups. If a dump fails after registration, leave the conservative horizon in place; it can delay tombstone pruning but cannot shorten retention. The existing retention worker prunes expired backup records after a current complete inventory is verified.
+
+For a database restore, keep both `INTELLIGENCE_SOURCE_ENABLED` and `INTELLIGENCE_OIDC_ENABLED` false and stop source traffic. Stop the serving backend color before restoring PostgreSQL and its matching object data. Set a fresh unpredictable `INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH` in deployment configuration outside the database backup; do not restore that value from the backup. Preserve the exact creation timestamp of the registered backup and use this sequence while the backend service is stopped:
+
+```sh
+restore_id="restore-$(date -u '+%Y%m%dT%H%M%SZ')"
+
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  restore begin --restore-id "$restore_id" --backup-created-at "$backup_created_at" \
+  > restore-tombstones.json
+```
+
+Replay every tombstone in `restore-tombstones.json` in the corresponding Intelligence consumer scope. After replay, write the consumer's per-connection applied-through sequence watermarks as one JSON object, for example `{"connection-id":123}`. Set `ledger_checked_at` to the current UTC time after checking the consumer ledger; it must be no more than five minutes old when completion runs.
+
+```sh
+ledger_checked_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+cat restore-applied-watermarks.json | compose run -T --rm --no-deps \
+  --entrypoint intelligence-source-ops backend-blue \
+  restore complete --restore-id "$restore_id" --ledger-checked-at "$ledger_checked_at"
+```
+
+Do not start the backend if `restore begin` or `restore complete` fails; source access remains unavailable and the database restore gate must not be cleared by hand. Resume the serving backend only after coordinator success. Keep both process gates off unless a separate rollout owner authorizes source access. These commands are a manual operator path: an external backup controller must still invoke registration and inventory verification, and the external Intelligence consumer must still implement tombstone replay and report watermarks.
+
+For other application restores, stop writes by stopping the application first, restore PostgreSQL and objects, then start the stack and verify health and representative file/message reads. Do not restore a database without its matching object data or encryption key. Follow provider-specific restore procedures for managed services.
 
 ## Upgrades and schema migrations
 

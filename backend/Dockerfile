@@ -17,7 +17,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /family-messenger ./cmd/server && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /storage-migrate ./cmd/storage-migrate && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /stovo-database-url ./cmd/database-url
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /stovo-database-url ./cmd/database-url && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /intelligence-source-ops ./cmd/intelligence-source-ops
 
 FROM alpine:3.21
 
@@ -29,6 +30,7 @@ RUN mkdir -p /app/uploads /app/logs && chown -R app:app /app
 COPY --from=builder /family-messenger /usr/local/bin/family-messenger
 COPY --from=builder /storage-migrate /usr/local/bin/storage-migrate
 COPY --from=builder /stovo-database-url /usr/local/bin/stovo-database-url
+COPY --from=builder /intelligence-source-ops /usr/local/bin/intelligence-source-ops
 COPY --from=atlas /atlas /usr/local/bin/atlas
 COPY migrations /app/migrations
 
