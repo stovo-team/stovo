@@ -1,3 +1,8 @@
+---
+title: "Shared call stage, floating controls, and settings"
+type: specification
+---
+
 # Shared call stage, floating controls, and settings
 
 Date: 2026-10-10

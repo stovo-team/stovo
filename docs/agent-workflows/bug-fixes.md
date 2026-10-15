@@ -1,3 +1,8 @@
+---
+title: "Bug and Issue Fixes"
+type: workflow
+---
+
 # Bug and Issue Fixes
 
 Use this workflow for every issue classified as a bug or defect, including production incidents and regressions.

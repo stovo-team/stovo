@@ -1,3 +1,8 @@
+---
+title: "Self-host on Kubernetes with Helm"
+type: operations
+---
+
 # Self-host on Kubernetes with Helm
 
 Stovo's Helm chart lives in `charts/stovo`. It creates the backend and frontend workloads, their ClusterIP Services, an optional HTTP Ingress, the Atlas migration Job, and an optional uploads PVC. It does not install PostgreSQL, Redis, S3/MinIO, ntfy, LiveKit, or Coturn; configure these dependencies separately. Read the chart's values and templates as the authoritative contract for values, probes, storage classes, and ingress fields:

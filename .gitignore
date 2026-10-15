@@ -24,6 +24,7 @@ docker-compose.override.yml
 docker-compose.yml.bak-public-access
 
 # Runtime / heavy local artifacts
+.okf-index/
 *.log
 *.pid
 *.tmp

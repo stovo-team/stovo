@@ -1,3 +1,8 @@
+---
+title: "Testing and Verification"
+type: workflow
+---
+
 # Testing and Verification
 
 - Test externally observable contracts where practical; avoid tests that only mirror private implementation details.
