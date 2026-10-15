@@ -1,9 +1,10 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useRef, useState } from "react";
-import { Archive, BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileCode, FileImage, FileSpreadsheet, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Search, Settings, Star, UserPlus, Video } from "lucide-react";
+import { Archive, BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileCode, FileImage, FileSpreadsheet, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Settings, Star, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
 import { BackButton } from "../../../components/BackButton";
+import { PopupField } from "../../../components/ui/PopupField";
 
 const MESSAGE_DELAY_PRESETS = [
   { label: "5s", value: 5 },
@@ -611,11 +612,10 @@ export function ChatDetailsPanel({
               </label>
               {chat.quietHoursEnabled && (
                 <div className="chat-info-quiet-hours-inputs">
-                  <label className="chat-info-quiet-time-field">
-                    <span>{strings.chats.details.notificationsQuietHoursFrom}</span>
-                    <input
+                  <div className="chat-info-quiet-time-field">
+                    <PopupField
+                      label={strings.chats.details.notificationsQuietHoursFrom}
                       type="time"
-                      className="chat-info-time-input"
                       value={chat.quietHoursStart ?? "22:00"}
                       onChange={(event) =>
                         void onPreferenceChange(
@@ -624,13 +624,12 @@ export function ChatDetailsPanel({
                         )
                       }
                     />
-                  </label>
+                  </div>
                   <span className="chat-info-quiet-time-sep">—</span>
-                  <label className="chat-info-quiet-time-field">
-                    <span>{strings.chats.details.notificationsQuietHoursTo}</span>
-                    <input
+                  <div className="chat-info-quiet-time-field">
+                    <PopupField
+                      label={strings.chats.details.notificationsQuietHoursTo}
                       type="time"
-                      className="chat-info-time-input"
                       value={chat.quietHoursEnd ?? "07:00"}
                       onChange={(event) =>
                         void onPreferenceChange(
@@ -639,7 +638,7 @@ export function ChatDetailsPanel({
                         )
                       }
                     />
-                  </label>
+                  </div>
                 </div>
               )}
 
@@ -698,16 +697,14 @@ export function ChatDetailsPanel({
               {chat.notificationMode === "specific_senders" && (
                 <div className="chat-info-senders-picker">
                   <p className="chat-info-senders-help">{strings.chats.details.notificationsSpecificMembersHelp}</p>
-                  <div className="chat-info-senders-search-wrap">
-                    <Search aria-hidden="true" size={16} />
-                    <input
-                      type="search"
-                      className="chat-info-senders-search"
-                      placeholder={strings.chats.details.notificationsSearchMembers}
-                      value={memberSearchDraft}
-                      onChange={(e) => setMemberSearchDraft(e.target.value)}
-                    />
-                  </div>
+                  <PopupField
+                    label={strings.chats.details.notificationsSearchMembers}
+                    type="search"
+                    className="chat-info-senders-search"
+                    placeholder={strings.chats.details.notificationsSearchMembers}
+                    value={memberSearchDraft}
+                    onChange={(e) => setMemberSearchDraft(e.target.value)}
+                  />
                   <div className="chat-info-senders-actions">
                     <button
                       type="button"

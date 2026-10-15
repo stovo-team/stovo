@@ -8,6 +8,9 @@ import { downloadFileBlob } from "../../../api/files";
 import { decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity } from "../../../api/messageCrypto";
 import { useResolvedLanguage } from "../../../i18n/LanguageContext";
 import { getChatTransferStrings, type ChatTransferStrings } from "../../../config/strings/chatTransfer";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupSelect } from "../../../components/ui/PopupSelect";
 import { validateArchive, type ChatArchive, type ChatArchiveAttachment, type ChatArchiveMessage } from "./archive";
 import { importedSourceKind, importedSourceReactions } from "./attribution";
 import { CHAT_EXPORT_PROFILES, parseChatFile, serializeChatArchive } from "./adapters";
@@ -192,11 +195,9 @@ export function ChatTransferDialog({
   const importComplete = mode === "import" && completeChat !== null;
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-      <section className="messenger-modal chat-transfer-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-transfer-title">
+    <PopupDialog className="chat-transfer-dialog" ariaLabelledBy="chat-transfer-title" onClose={busy ? undefined : onClose} closeLabel={copy.cancel} closeOnBackdrop={!busy} size="lg">
         <div className="modal-card-header">
           <h2 id="chat-transfer-title">{importComplete ? copy.imported : title}</h2>
-          <button type="button" className="quick-access-close" aria-label="Close" disabled={busy} onClick={onClose}>×</button>
         </div>
         <div className="chat-transfer-body">
           <p>{mode === "import" ? copy.importHelp : copy.exportHelp}</p>
@@ -215,19 +216,13 @@ export function ChatTransferDialog({
             </>
           )}
           {mode === "export" && !exportSource && (
-            <button type="button" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</button>
+            <PopupButton variant="primary" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</PopupButton>
           )}
           {mode === "export" && exportSource && (
-            <label className="chat-transfer-profile">
+            <div className="chat-transfer-profile">
               <span>{copy.selectProvider}</span>
-              <select value={selectedProfileId} onChange={(event) => setSelectedProfileId(event.currentTarget.value)} disabled={busy}>
-                {CHAT_EXPORT_PROFILES.map((profile) => (
-                  <option key={`${profile.providerId}:${profile.profileId}`} value={profile.profileId}>
-                    {profile.providerId} — {profile.formatVersion}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <PopupSelect ariaLabel={copy.selectProvider} value={selectedProfileId} onChange={setSelectedProfileId} disabled={busy} options={CHAT_EXPORT_PROFILES.map((profile) => ({ value: profile.profileId, label: `${profile.providerId} — ${profile.formatVersion}` }))} />
+            </div>
           )}
           {busy && <p role="status">{mode === "import" ? copy.importing : copy.exporting}</p>}
           {error && <p role="alert">{error}</p>}
@@ -254,17 +249,16 @@ export function ChatTransferDialog({
             <p className="chat-transfer-plaintext-warning" role="alert">{copy.plaintextWarning}</p>
           )}
           <div className="chat-transfer-actions">
-            <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>{copy.cancel}</button>
+            <PopupButton variant="secondary" onClick={onClose} disabled={busy}>{copy.cancel}</PopupButton>
             {mode === "import" && !importComplete && archive && (
-              <button type="button" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</button>
+              <PopupButton variant="primary" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</PopupButton>
             )}
             {mode === "export" && exportSource && (
-              <button type="button" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</button>
+              <PopupButton variant="primary" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</PopupButton>
             )}
           </div>
         </div>
-      </section>
-    </div>
+    </PopupDialog>
   );
 }
 

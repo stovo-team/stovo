@@ -26,6 +26,7 @@ export interface PopupDialogProps {
   onClose?: () => void;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  dialogRole?: "dialog" | "alertdialog";
   closeLabel?: string;
   showCloseButton?: boolean;
   size?: PopupSize;
@@ -41,6 +42,7 @@ export function PopupDialog({
   onClose,
   closeOnBackdrop = false,
   closeOnEscape = false,
+  dialogRole = "dialog",
   closeLabel = "Close dialog",
   showCloseButton = true,
   size = "md",
@@ -51,7 +53,11 @@ export function PopupDialog({
     if (!closeOnEscape || !onClose) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -66,7 +72,7 @@ export function PopupDialog({
     <PopupBackdrop className={backdropClassName} onClick={handleBackdropClick}>
       <section
         className={`popup-dialog popup-dialog--${size}${className ? ` ${className}` : ""}`}
-        role="dialog"
+        role={dialogRole}
         aria-modal="true"
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}

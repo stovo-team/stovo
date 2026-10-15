@@ -38,6 +38,11 @@ describe("PopupDialog", () => {
     expect(container.querySelector(".popup-close")?.getAttribute("aria-label")).toBe("Close dialog");
   });
 
+  it("supports alertdialog semantics for urgent confirmations", () => {
+    act(() => root.render(<PopupDialog ariaLabel="Delete message?" dialogRole="alertdialog">Confirm</PopupDialog>));
+    expect(container.querySelector('[role="alertdialog"]')?.getAttribute("aria-modal")).toBe("true");
+  });
+
   it("calls onClose when the backdrop is clicked if enabled", () => {
     const onClose = vi.fn();
     act(() => root.render(<PopupDialog ariaLabel="Dialog" onClose={onClose} closeOnBackdrop>Content</PopupDialog>));

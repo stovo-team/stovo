@@ -29,6 +29,7 @@
 .popup-dialog--lg { width: min(100%, 640px); }
 .popup-dialog--xl { width: min(100%, 840px); }
 .popup-dialog--full { width: min(100%, 1200px); max-height: calc(100vh - 48px); }
+.popup-dialog .modal-card-header { border: 0; background: transparent; }
 
 .popup-close {
   position: absolute;

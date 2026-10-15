@@ -1,5 +1,5 @@
 import { ChevronDown, Check } from "lucide-react";
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import "./Popup.css";
 
 export interface PopupSelectOption {
@@ -85,7 +85,7 @@ export function PopupSelect({
     return [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]:not(:disabled)') ?? [])];
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
     if (target.closest("input, textarea, select, [contenteditable='true']")) return;
 

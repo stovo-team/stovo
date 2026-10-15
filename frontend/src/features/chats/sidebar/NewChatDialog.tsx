@@ -5,6 +5,9 @@ import type { NewChatScreen } from "../shared/types";
 import { RealAvatar } from "./RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { BackButton } from "../../../components/BackButton";
+import { PopupCloseButton } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupField } from "../../../components/ui/PopupField";
 
 export function NewChatDialog({
   accessToken,
@@ -78,52 +81,35 @@ export function NewChatDialog({
         : strings.chats.newChat.groupTitlePlaceholder;
 
     return (
-      <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-compose-title">
+      <>
         <header className="new-chat-screen-header">
           <BackButton className="new-chat-screen-back" ariaLabel="Back" onClick={() => onScreenChange("pick")} />
           <h2 id="new-chat-compose-title">{titleLabel}</h2>
-          <button
-            type="submit"
-            form={composeFormId}
-            className="new-chat-screen-action"
-            disabled={!canCreateCompose}
-            onClick={handleFormSubmit}
-          >
-            {strings.chats.newChat.create}
-          </button>
+          <PopupCloseButton ariaLabel="Close new chat" onClick={onClose} />
         </header>
         <form
           id={composeFormId}
           className="new-chat-compose"
           onSubmit={handleFormSubmit}
         >
-          <label className="new-chat-compose-title-field">
-            <span className="sr-only">{fieldPlaceholder}</span>
-            <input
-              autoFocus
-              maxLength={255}
-              placeholder={fieldPlaceholder}
-              aria-label={fieldPlaceholder}
-              value={groupTitle}
-              onChange={(event) => onGroupTitleChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && canCreateCompose) {
-                  event.preventDefault();
-                  handleFormSubmit(event);
-                }
-              }}
-            />
-          </label>
-          <label className="search-field new-chat-screen-search">
-            <span className="ms-icon ms-icon--20" aria-hidden={true}>
-              search
-            </span>
-            <input
-              placeholder={strings.chats.searchPlaceholder}
-              value={memberSearch}
-              onChange={(event) => onMemberSearchChange(event.target.value)}
-            />
-          </label>
+          <PopupField
+            label={fieldPlaceholder}
+            autoFocus
+            maxLength={255}
+            placeholder={fieldPlaceholder}
+            value={groupTitle}
+            onChange={(event) => onGroupTitleChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && canCreateCompose) {
+                event.preventDefault();
+                handleFormSubmit(event);
+              }
+            }}
+          />
+          <PopupField label={strings.chats.searchPlaceholder} type="search" placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
+          <PopupButton type="submit" variant="primary" disabled={!canCreateCompose}>
+            {strings.chats.newChat.create}
+          </PopupButton>
           <p className="new-chat-section-label">
             {strings.chats.details.members} ({groupMemberIds.length + (currentUser ? 1 : 0)})
           </p>
@@ -191,32 +177,18 @@ export function NewChatDialog({
             </div>
           )}
         </form>
-      </section>
+      </>
     );
   }
 
   return (
-    <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
+    <>
       <header className="new-chat-screen-header">
-        <button type="button" className="new-chat-screen-close" aria-label="Close new message" onClick={onClose}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M6 6l12 12M18 6 6 18" />
-          </svg>
-        </button>
         <h2 id="new-chat-title">{strings.chats.newChat.title}</h2>
         <span className="new-chat-screen-spacer" aria-hidden={true} />
+        <PopupCloseButton ariaLabel="Close new message" onClick={onClose} />
       </header>
-      <label className="search-field new-chat-screen-search">
-        <span className="ms-icon ms-icon--20" aria-hidden={true}>
-          search
-        </span>
-        <input
-          autoFocus
-          placeholder={strings.chats.searchPlaceholder}
-          value={memberSearch}
-          onChange={(event) => onMemberSearchChange(event.target.value)}
-        />
-      </label>
+      <PopupField label={strings.chats.searchPlaceholder} type="search" autoFocus placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
       <div className="new-chat-actions">
         {canManageSpaces && <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("group")}>
           <span className="new-chat-action-icon" aria-hidden={true}>
@@ -287,7 +259,7 @@ export function NewChatDialog({
           ))
         )}
       </ul>
-    </section>
+    </>
   );
 }
 

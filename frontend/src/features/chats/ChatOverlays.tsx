@@ -8,6 +8,7 @@ import { formatFileSize, saveFileToDisk } from "../../api/files";
 import InviteModal from "../../components/InviteModal";
 import ImageLightbox from "../../components/ImageLightbox";
 import { MessageEnlargeModal } from "../../components/MessageEnlargeModal";
+import { PopupDialog } from "../../components/ui/Popup";
 import { NewChatDialog } from "./sidebar/NewChatDialog";
 import type { ChatOverviewController } from "./sidebar/types";
 import type { Chat } from "../../api/chats";
@@ -117,8 +118,16 @@ export function ChatOverlays({
     <>
       {isNewChatOpen &&
         createPortal(
-          <div className="new-chat-modal-backdrop" onMouseDown={closeNewChatScreen}>
-            <div onMouseDown={(event) => event.stopPropagation()}>
+          <PopupDialog
+            className="new-chat-screen"
+            ariaLabelledBy={newChatScreen === "pick" ? "new-chat-title" : "new-chat-compose-title"}
+            onClose={closeNewChatScreen}
+            closeOnBackdrop
+            closeOnEscape={false}
+            showCloseButton={false}
+            size="lg"
+            backdropClassName="new-chat-modal-backdrop"
+          >
               <NewChatDialog
                 accessToken={accessToken}
                 currentUser={currentUser}
@@ -138,8 +147,7 @@ export function ChatOverlays({
                 onCreateVoiceChannel={(event) => void handleCreateVoiceChat(event)}
                 onPlanGuestMeeting={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true ? () => { setMeetingChatId(meetingChats[0]?.id ?? ""); setNewMeetingChatTitle(""); setMeetingTitle(""); setMeetingCalendarRange({}); setIsMeetingPlannerOpen(true); closeNewChatScreen(); } : undefined}
               />
-            </div>
-          </div>,
+          </PopupDialog>,
           document.body
         )}
 

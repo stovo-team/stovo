@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupSelect } from "../../../components/ui/PopupSelect";
 import type { PendingLocalAttachment } from "../shared/types";
 
 export interface ScheduleMessageModalProps {
@@ -63,19 +66,6 @@ export function ScheduleMessageModal({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const parsedDate = new Date(selectedDatetimeStr);
@@ -127,30 +117,8 @@ export function ScheduleMessageModal({
   }
 
   const modalContent = (
-    <div
-      className="modal-backdrop schedule-modal-backdrop"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          e.stopPropagation();
-        }
-      }}
-    >
-      <section
-        className="messenger-modal schedule-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="schedule-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
+    <PopupDialog className="schedule-modal-card" ariaLabelledBy="schedule-modal-title" onClose={onClose} closeOnBackdrop closeOnEscape backdropClassName="schedule-modal-backdrop">
+      <div className="schedule-modal-content" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()}>
         <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <CalendarClock size={20} className="modal-card-header-icon" aria-hidden="true" />
@@ -158,14 +126,6 @@ export function ScheduleMessageModal({
               Schedule Message
             </h2>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle icon-button--plain modal-card-close-btn"
-            onClick={onClose}
-            aria-label="Close schedule dialog"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <div className="modal-card-body">
@@ -277,25 +237,13 @@ export function ScheduleMessageModal({
                   <div className="schedule-time-panel">
                     <span className="schedule-time-label"><Clock3 size={15} aria-hidden="true" /> Time</span>
                     <div className="schedule-time-controls">
-                      <label>
-                        <span className="visually-hidden">Hour</span>
-                        <select value={String(selectedDate.getHours()).padStart(2, "0")} onChange={(event) => updateSelectedTime("hours", event.target.value)}>
-                          {Array.from({ length: 24 }, (_, hour) => {
-                            const value = String(hour).padStart(2, "0");
-                            return <option key={value} value={value}>{value}</option>;
-                          })}
-                        </select>
-                      </label>
+                      <div>
+                        <PopupSelect ariaLabel="Hour" value={String(selectedDate.getHours()).padStart(2, "0")} onChange={(value) => updateSelectedTime("hours", value)} options={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, "0"), label: String(hour).padStart(2, "0") }))} />
+                      </div>
                       <span className="schedule-time-separator" aria-hidden="true">:</span>
-                      <label>
-                        <span className="visually-hidden">Minute</span>
-                        <select value={String(selectedDate.getMinutes()).padStart(2, "0")} onChange={(event) => updateSelectedTime("minutes", event.target.value)}>
-                          {Array.from({ length: 60 }, (_, minute) => {
-                            const value = String(minute).padStart(2, "0");
-                            return <option key={value} value={value}>{value}</option>;
-                          })}
-                        </select>
-                      </label>
+                      <div>
+                        <PopupSelect ariaLabel="Minute" value={String(selectedDate.getMinutes()).padStart(2, "0")} onChange={(value) => updateSelectedTime("minutes", value)} options={Array.from({ length: 60 }, (_, minute) => ({ value: String(minute).padStart(2, "0"), label: String(minute).padStart(2, "0") }))} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -309,20 +257,15 @@ export function ScheduleMessageModal({
         </div>
 
         <div className="modal-card-footer modal-card-actions modal-actions">
-          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>
+          <PopupButton variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="primary-button btn-primary"
-            disabled={!isValidFuture}
-            onClick={handleConfirm}
-          >
+          </PopupButton>
+          <PopupButton variant="primary" disabled={!isValidFuture} onClick={handleConfirm}>
             Schedule Message
-          </button>
+          </PopupButton>
         </div>
-      </section>
-    </div>
+      </div>
+    </PopupDialog>
   );
 
   if (typeof document === "undefined" || !document.body) {
