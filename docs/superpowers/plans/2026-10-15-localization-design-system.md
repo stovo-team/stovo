@@ -4,7 +4,7 @@
 
 **Goal:** Complete English/Russian UI localization, normalize frontend design values through shared tokens, fix the reported mobile and Android/passkey defects, and document the reuse rules.
 
-**Architecture:** Keep English and Russian copy in the existing typed dictionaries and guard both dictionary shape and source UI literals. Add one imported CSS token file for typography, semantic colors, and radii. Migrate authored typography and radii to it; semantic color aliases are established and applied to key theme roles and Premium styles, while specialized color literals remain a follow-up audit. Fix mobile layout, QR presentation, Android WebView origin handling, and passkey error reporting in isolated changes with focused tests.
+**Architecture:** Keep English and Russian copy in the existing typed dictionaries and guard both dictionary shape and source UI literals. The imported CSS token file owns typography, semantic colors, radii, and the deduplicated CSS palette. Static color data required by canvas/QR/persistence paths lives in `design-system/palette.ts` and is checked for parity against CSS tokens. Fix mobile layout, QR presentation, Android WebView origin handling, and passkey error reporting in isolated changes with focused tests.
 
 **Tech Stack:** React 19, TypeScript, React Router 7, Vitest, Node built-in test runner, TypeScript compiler API, CSS custom properties, Capacitor 8.
 
@@ -34,6 +34,7 @@
 - `frontend/src/config/strings/strings.test.ts`: full recursive catalog shape parity.
 - `scripts/check-ui-localization.cjs`, `scripts/check-ui-localization.test.cjs`: source scanner and its unit tests; scanner reports file and line for raw UI copy candidates.
 - `frontend/src/design-system/tokens.css`: single source for font families/scales, weights, line heights, semantic colors, and radius scale.
+- `frontend/src/design-system/palette.ts`: static color data needed by canvas, QR, and user color controls; contract-tested against the CSS palette.
 - `frontend/src/main.tsx`: loads the token stylesheet with the global frontend styles.
 - `frontend/src/styles.css`, `frontend/src/pages/AdminServerSettingsPage.css`, `frontend/src/pages/MultiAdminPage.css`, `frontend/src/features/chats/calling/floatingCallPanel.css`: migrate authored declarations to semantic tokens.
 - `frontend/src/design-system/tokens.test.ts`: enforce typography, radius, semantic color role, and inline style contracts.
@@ -154,8 +155,8 @@
 - [x] **Step 1: Extend the CSS contract test** for radius tokens and semantic theme role wiring; classify repeated shared color roles before migration.
 - [x] **Step 2: Run the focused test and confirm the required role/token assertions.**
 - [x] **Step 3: Add the semantic color and radius values once** in `design-system/tokens.css` and map existing theme variables to these roles.
-- [x] **Step 4: Migrate authored radii and audited shared color roles** to semantic tokens; specialized chart/media/demo colors remain for a classified follow-up.
-- [x] **Step 5: Run the token test and full frontend suite**; confirm typography/radius contracts and semantic alias wiring.
+- [x] **Step 4: Migrate authored radii and all static production CSS/inline colors** to semantic/palette tokens; move colors that must remain literal data into `design-system/palette.ts`.
+- [x] **Step 5: Run the token test and full frontend suite**; confirm typography/radius contracts, no raw style colors, and CSS/TypeScript palette parity.
 - [x] **Step 6: Commit** as `[Fix] centralize frontend color and radius tokens`.
 
 ### Task 7: Move notification mute selector below copy on mobile
@@ -260,10 +261,19 @@
 ## Self-Review
 
 - Spec coverage: catalog parity and full literal migration are Tasks 1–4; typography, colors, and radii are Tasks 5–6; mobile selector and QR are Tasks 7–8; Android routing and passkeys are Tasks 9–10; contributor documentation and checks are Task 11.
-- Implementation outcome: all app-owned untranslated UI candidates are removed by `npm run check:i18n`; all 242 frontend test files and 1,652 tests pass. Typography and radius scales are centralized and contract-tested. Semantic theme color aliases are centralized and key shared roles use them; specialized illustration/preview colors still need a separate classification and migration pass.
+- Implementation outcome: all app-owned untranslated UI candidates are removed by `npm run check:i18n`; typography and radius scales are centralized and contract-tested. Static CSS/inline presentation colors use the palette in `tokens.css`; static TypeScript values for canvas, QR, and color controls use `palette.ts` and are checked against the CSS palette. Existing theme and plugin palettes remain in their configuration modules.
 - Android-origin backend regression test is present but could not be run because Go is not installed. Android build/device verification is unavailable (`ANDROID_HOME` unset and `frontend/android/gradlew` missing). `okf-agent` is also not installed; canonical Markdown docs were searched directly.
-- Final verification: `npm run check:i18n`, `npm run lint`, `npm run build`, `npm test -- --run`, and `git diff --check` pass. A first full-suite run during a simultaneous build had one 5-second guest-meeting test timeout; that focused test passed alone and the serial full-suite run passed.
+- Final verification: the full frontend suite passes (242 files, 1,657 tests); the focused token/mobile regression suite passes (20 tests); `npm run check:i18n`, `npm run lint`, `npm run build`, and `git diff --check` pass. Production build also caught and helped correct three malformed font-weight declarations from the color migration.
 - Each failure mode in Review Focus is exercised by the named task tests.
-- The router interface is defined once and consumed by `App`; string keys remain in the existing English/Russian shape; token names are consistent across the test and styles.
+- Capacitor uses its HTTPS local origin and backend allowlists include it; string keys remain in the existing English/Russian shape; token names are checked against production styles.
 - Translation commits all precede typography/token commits, and each reported defect with a focused reproduction receives its own fix commit.
 - The localization inventory contains demo-preview and attribute candidates; the scanner must classify and document exceptions instead of treating every technical/data string as copy.
+
+### Follow-up task: Complete production color tokenization
+
+- [x] Add a failing token contract for raw colors in all production CSS, static TSX styling, and implementation strings.
+- [x] Move all authored production CSS colors to deduplicated `--color-palette-*` variables and preserve common semantic aliases.
+- [x] Move static canvas, QR, editor, appearance, storage-cover, and demo colors to `design-system/palette.ts` and ensure each value exists in the CSS palette.
+- [x] Enforce that future production colors use tokens/configuration, with explicit exceptions for user-selected color data, existing theme/plugin config, and the encoded SVG asset.
+- [x] Run focused/full frontend verification and commit as `[Fix] centralize production color values` (`9588cc2`).
+- [x] Update the reuse guide, agent instructions, spec, plan, and size baseline; commit documentation separately.
