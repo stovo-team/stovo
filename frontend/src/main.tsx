@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import "./design-system/tokens.css";
 import "./styles.css";
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
