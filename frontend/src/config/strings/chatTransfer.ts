@@ -1,4 +1,5 @@
 export type ChatTransferStrings = {
+  transferSectionTitle: string;
   importAction: string;
   exportAction: string;
   importTitle: string;
@@ -9,7 +10,6 @@ export type ChatTransferStrings = {
   reviewExport: string;
   downloadExport: string;
   importAsNewChat: string;
-  cancel: string;
   importing: string;
   exporting: string;
   messages: (count: number) => string;
@@ -33,6 +33,7 @@ export type ChatTransferStrings = {
 };
 
 const english: ChatTransferStrings = {
+  transferSectionTitle: "Import and export",
   importAction: "Import chat from file",
   exportAction: "Export chat",
   importTitle: "Import chat from file",
@@ -43,7 +44,6 @@ const english: ChatTransferStrings = {
   reviewExport: "Review export",
   downloadExport: "Download export",
   importAsNewChat: "Import as new chat",
-  cancel: "Cancel",
   importing: "Importing chat…",
   exporting: "Preparing export…",
   messages: (count) => `${count} message${count === 1 ? "" : "s"}`,
@@ -67,6 +67,7 @@ const english: ChatTransferStrings = {
 };
 
 const russian: ChatTransferStrings = {
+  transferSectionTitle: "Импорт и экспорт",
   importAction: "Импортировать чат из файла",
   exportAction: "Экспортировать чат",
   importTitle: "Импорт чата из файла",
@@ -77,7 +78,6 @@ const russian: ChatTransferStrings = {
   reviewExport: "Просмотреть экспорт",
   downloadExport: "Скачать экспорт",
   importAsNewChat: "Импортировать как новый чат",
-  cancel: "Отмена",
   importing: "Импорт чата…",
   exporting: "Подготовка экспорта…",
   messages: (count) => `${count} сообщ.`,

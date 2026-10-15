@@ -33,6 +33,7 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
 import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
+import { ChatTransferSettingsActions } from "../transfer/ChatTransferSettingsActions";
 
 export function SharedContentThumb({
   accessToken,
@@ -148,8 +149,7 @@ export function ChatDetailsPanel({
   pendingMessageDelay,
   messageDelayStatus,
   onPreferenceChange,
-  onTitleDraftChange,
-  onDescriptionChange,
+  onTitleDraftChange, onDescriptionChange, onImported,
   editingChatPhotoFile,
   onCloseEditChatPhoto,
   onSaveCroppedChatPhoto,
@@ -208,7 +208,7 @@ export function ChatDetailsPanel({
     notice: string
   ) => void;
   onTitleDraftChange: (value: string) => void;
-  onDescriptionChange?: (description: string) => Promise<boolean>;
+  onDescriptionChange?: (description: string) => Promise<boolean>; onImported?: (chat: Chat) => void;
 }) {
   const strings = useStrings();
   const { authRequest } = useAuth();
@@ -446,6 +446,7 @@ export function ChatDetailsPanel({
         </header>
 
         <div className="chat-info-body">
+          <ChatTransferSettingsActions chat={chat} accessToken={accessToken} currentUserId={currentUserId} onImported={onImported} />
           <div className="chat-info-section">
             <div className="chat-info-island chat-info-wallpaper">
               <div className="chat-info-wallpaper-copy">
