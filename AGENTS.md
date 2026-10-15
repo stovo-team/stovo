@@ -40,4 +40,4 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 
 ## Active pull requests
 
-- Chat import/export V1: https://github.com/stovo-team/stovo/pull/164
+- Chat import/export UI follow-up: https://github.com/stovo-team/stovo/pull/172
