@@ -60,7 +60,9 @@ describe("meeting intelligence popover design", () => {
     expect(captionsCard).not.toContain("Caption translation");
     expect(captionsCard).not.toContain("meeting-intel-card-subbar");
     const badgeRules = Array.from(styles.matchAll(/\.meeting-intel-restricted-badge\s*\{([^}]*)\}/g), (match) => match[1]);
-    expect(badgeRules.at(-1)).toMatch(/#bfdbfe/);
+    expect(badgeRules.at(-1)).toContain("color: var(--color-premium-text)");
+    expect(badgeRules.at(-1)).toContain("background: var(--color-premium-surface)");
+    expect(badgeRules.at(-1)).toContain("var(--color-premium-border)");
   });
 
   it("centers the AI Notes preparation toast in the viewport", () => {

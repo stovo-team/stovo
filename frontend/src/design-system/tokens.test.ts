@@ -75,4 +75,17 @@ describe("shared design tokens", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("provides configurable semantic theme colors for shared UI roles", () => {
+    const tokens = read("src/design-system/tokens.css");
+    for (const token of [
+      "--color-text-primary", "--color-text-secondary", "--color-text-muted",
+      "--color-background-page", "--color-background-panel", "--color-surface",
+      "--color-border", "--color-accent", "--color-focus", "--color-danger",
+      "--color-success", "--color-warning", "--color-premium-text",
+      "--color-premium-surface", "--color-premium-border",
+    ]) {
+      expect(tokens).toContain(`${token}:`);
+    }
+  });
 });

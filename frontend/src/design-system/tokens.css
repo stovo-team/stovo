@@ -44,7 +44,11 @@
   --color-surface: var(--surface-card, #ffffff);
   --color-border: var(--border-default, #e5e7eb);
   --color-accent: var(--accent-primary, #2aabee);
+  --color-focus: var(--focus-ring, var(--accent-primary, #2aabee));
   --color-danger: var(--danger, #ef4444);
   --color-success: var(--success, #22c55e);
   --color-warning: var(--warning, #f59e0b);
+  --color-premium-text: #bfdbfe;
+  --color-premium-surface: rgba(37, 99, 235, .24);
+  --color-premium-border: rgba(96, 165, 250, .4);
 }

@@ -31285,7 +31285,7 @@ button.checklist-add-item-btn:hover,
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
 .meeting-intel-restricted-badge {
   display: inline-flex; align-items: center; width: max-content; padding: 2px 8px;
-  color: #bfdbfe; background: rgba(37, 99, 235, .24); border: 1px solid rgba(96, 165, 250, .4);
+  color: var(--color-premium-text); background: var(--color-premium-surface); border: 1px solid var(--color-premium-border);
   border-radius: var(--radius-pill); font-size: var(--font-size-micro); font-weight: var(--font-weight-bold);
 }
 
