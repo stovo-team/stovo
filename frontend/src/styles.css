@@ -30909,8 +30909,7 @@ button.checklist-add-item-btn:hover,
 .guest-preview-controls .guest-device-menu-trigger:hover, .guest-device-menu-trigger[aria-expanded="true"] { background: color-mix(in srgb, var(--accent-primary) 13%, transparent); color: var(--text-primary); }
 .guest-device-menu-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .guest-device-menu-trigger svg { transition: transform .16s ease; }
-.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 15px; bottom: calc(100% + .65rem); box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; grid-template-rows: auto minmax(0, 1fr); left: 50%; max-height: min(320px, calc(100dvh - 5rem)); min-width: 220px; overflow: hidden; padding: .4rem; position: absolute; transform: translateX(-50%); z-index: 12; }
-.guest-device-menu::before { background: inherit; border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); bottom: -6px; content: ""; height: 9px; left: 50%; position: absolute; transform: translateX(-50%) rotate(45deg); width: 9px; }
+.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 18px; bottom: calc(100% + .65rem); box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; grid-template-rows: auto minmax(0, 1fr); left: 50%; max-height: min(320px, calc(100dvh - 5rem)); min-width: 220px; overflow: hidden; padding: .4rem; position: absolute; transform: translateX(-50%); z-index: 12; }
 .guest-device-menu-heading { display: grid; margin: 0 .18rem .14rem; padding: .2rem .25rem; position: relative; }
 .guest-device-menu-heading span { color: #fff; font-size: .9rem; font-weight: 750; line-height: 1.2; }
 .guest-device-menu-options { display: grid; gap: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: .1rem; scrollbar-color: color-mix(in srgb, var(--accent-primary) 55%, transparent) transparent; scrollbar-width: thin; }
@@ -30923,7 +30922,6 @@ button.checklist-add-item-btn:hover,
 .guest-prejoin-preview { overflow: visible; }
 .guest-prejoin-preview video { border-radius: inherit; }
 .guest-device-menu { bottom: auto; top: calc(100% + .65rem); }
-.guest-device-menu::before { border-bottom: 0; border-right: 0; border-left: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); bottom: auto; top: -6px; }
 .guest-device-menu .guest-device-menu-option { color: var(--text-primary); }
 .guest-prejoin-panel input { border-radius: 999px !important; }
 .guest-prejoin-panel { display: flex; flex-direction: column; }
@@ -31303,7 +31301,6 @@ button.checklist-add-item-btn:hover,
 .guest-call-controls .guest-device-menu-trigger { align-items: center; background: transparent; border: 0; border-radius: 0 999px 999px 0; color: rgba(255, 255, 255, .7); cursor: pointer; display: inline-flex; height: 46px; justify-content: center; padding: 0; width: 27px; }
 .guest-call-controls .guest-device-menu-trigger:hover, .guest-call-controls .guest-device-menu-trigger[aria-expanded="true"] { background: rgba(255, 255, 255, .08); color: #fff; }
 .guest-call-controls .guest-device-menu { bottom: calc(100% + .65rem); top: auto; }
-.guest-call-controls .guest-device-menu::before { border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-left: 0; border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 0; bottom: -6px; top: auto; }
 .guest-call-controls .guest-device-menu-option { align-items: center; background: transparent; border: 0; border-radius: 9px; color: #fff; cursor: pointer; display: flex; font: inherit; font-size: .78rem; gap: .55rem; justify-content: space-between; line-height: 1.25; min-height: 29px; padding: .3rem .5rem; text-align: left; width: 100%; }
 .guest-call-controls .guest-device-menu-option:hover, .guest-call-controls .guest-device-menu-option[aria-selected="true"] { background: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
 
@@ -31367,7 +31364,6 @@ button.checklist-add-item-btn:hover,
 
 @media (max-height: 700px) {
   .guest-preview-controls .guest-device-menu { bottom: calc(100% + .65rem); top: auto; }
-  .guest-preview-controls .guest-device-menu::before { border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-left: 0; border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 0; bottom: -6px; top: auto; }
 }
 
 /* ── Unstyled button fixes ──────────────────────────────────────────────── */

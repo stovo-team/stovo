@@ -22,6 +22,8 @@ import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { useEffect, useRef, useState } from "react";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -285,17 +287,14 @@ export function DesktopCallControls({
 
       {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
-        <div className="call-invite-modal" role="dialog" aria-label="Invite to call">
+        <PopupDialog
+          className="call-invite-modal"
+          ariaLabel="Invite to call"
+          onClose={() => setIsCallInviteOpen(false)}
+          size="sm"
+        >
           <div className="call-invite-modal-header">
             <h3>Add members to call</h3>
-            <button
-              type="button"
-              className="icon-button subtle"
-              aria-label="Close invite modal"
-              onClick={() => setIsCallInviteOpen(false)}
-            >
-              ✕
-            </button>
           </div>
           <div className="call-invite-member-list">
             {members
@@ -318,23 +317,21 @@ export function DesktopCallControls({
               ))}
           </div>
           <div className="call-invite-modal-actions">
-            <button
-              type="button"
-              className="action-button primary"
+            <PopupButton
+              variant="primary"
               disabled={callInviteSelection.length === 0}
               onClick={() => void sendCallInvites()}
             >
               Invite ({callInviteSelection.length})
-            </button>
-            <button
-              type="button"
-              className="action-button subtle"
+            </PopupButton>
+            <PopupButton
+              variant="secondary"
               onClick={() => setIsCallInviteOpen(false)}
             >
               Cancel
-            </button>
+            </PopupButton>
           </div>
-        </div>
+        </PopupDialog>
       )}
 
       {/* ── Peer name (incoming) ── */}

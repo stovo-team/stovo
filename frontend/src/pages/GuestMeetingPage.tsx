@@ -19,6 +19,8 @@ import { SharedCallStage } from "../features/chats/calling/SharedCallStage";
 import { CALL_CONTROLS_REVEAL_EVENT, SharedCallControlPanel } from "../features/chats/calling/SharedCallControlPanel";
 import { useCallUIPreferences } from "../features/chats/calling/callUIPreferences";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
 import { CallSettingsDialog } from "../features/chats/calling/CallSettingsDialog";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
@@ -686,7 +688,21 @@ export default function GuestMeetingPage() {
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`} onPointerDown={() => { if (isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }} onPointerMove={() => { if (!isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }}>
-        {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">Still waiting for someone?</h2><p>You’re the only person in this meeting. You’ll be disconnected in one minute unless you choose to stay.</p><div><button type="button" className="secondary-button" onClick={() => void leave()} >Leave meeting</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>Stay in meeting</button></div></section></div>}
+        {emptyRoomWarning && (
+          <PopupDialog
+            className="guest-empty-room-timeout"
+            ariaLabelledBy="guest-empty-room-timeout-title"
+            onClose={stayInEmptyRoom}
+            size="sm"
+          >
+            <h2 id="guest-empty-room-timeout-title">Still waiting for someone?</h2>
+            <p>You’re the only person in this meeting. You’ll be disconnected in one minute unless you choose to stay.</p>
+            <div>
+              <PopupButton variant="secondary" onClick={() => void leave()}>Leave meeting</PopupButton>
+              <PopupButton variant="primary" onClick={stayInEmptyRoom}>Stay in meeting</PopupButton>
+            </div>
+          </PopupDialog>
+        )}
         <LiveCaptionsOverlay
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}

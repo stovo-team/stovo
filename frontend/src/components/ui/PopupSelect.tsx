@@ -13,9 +13,11 @@ export interface PopupSelectProps {
   value: string;
   onChange: (value: string) => void;
   ariaLabel?: string;
+  triggerAriaLabel?: string;
   labelledBy?: string;
   disabled?: boolean;
   className?: string;
+  triggerClassName?: string;
   placeholder?: string;
   emptyMessage?: string;
   renderOption?: (option: PopupSelectOption, selected: boolean) => ReactNode;
@@ -27,9 +29,11 @@ export function PopupSelect({
   value,
   onChange,
   ariaLabel,
+  triggerAriaLabel,
   labelledBy,
   disabled = false,
   className = "",
+  triggerClassName = "",
   placeholder = "Select an option",
   emptyMessage = "No options available",
   renderOption,
@@ -127,8 +131,8 @@ export function PopupSelect({
       <button
         ref={triggerRef}
         type="button"
-        className="popup-select__trigger"
-        aria-label={ariaLabel ? `${ariaLabel}: ${selected?.label ?? placeholder}` : undefined}
+        className={`popup-select__trigger${triggerClassName ? ` ${triggerClassName}` : ""}`}
+        aria-label={triggerAriaLabel ?? (ariaLabel ? `${ariaLabel}: ${selected?.label ?? placeholder}` : undefined)}
         aria-labelledby={labelledBy}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -161,6 +165,12 @@ export function PopupSelect({
               disabled={option.disabled}
               tabIndex={-1}
               onClick={() => selectOption(option)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectOption(option);
+                }
+              }}
             >
               {renderOption ? renderOption(option, isSelected) : <span>{option.label}</span>}
               {isSelected ? <Check className="popup-select__check" size={16} aria-hidden="true" /> : null}

@@ -1,4 +1,5 @@
 import { CallDevice } from "../../../realtime/CallController";
+import { PopupBackdrop } from "../../../components/ui/Popup";
 
 export function CallSpeakerSheet({
   devices,
@@ -17,12 +18,11 @@ export function CallSpeakerSheet({
   const hasEnumerable = outputDevices.length > 0;
 
   return (
-    <div
+    <PopupBackdrop
       className="call-speaker-sheet-backdrop"
-      role="presentation"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={onClose}
     >
-      <div className="call-speaker-sheet" role="dialog" aria-label="Audio output">
+      <div className="call-speaker-sheet" role="dialog" aria-label="Audio output" onClick={(e) => e.stopPropagation()}>
         <div className="call-speaker-sheet-title">Audio output</div>
 
         {!hasEnumerable && (
@@ -76,6 +76,6 @@ export function CallSpeakerSheet({
           </button>
         ))}
       </div>
-    </div>
+    </PopupBackdrop>
   );
 }

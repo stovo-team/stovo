@@ -1,10 +1,11 @@
 import { RefObject } from "react";
-import { Smartphone, Volume2, X } from "lucide-react";
+import { Smartphone, Volume2 } from "lucide-react";
 import {
   CallCapabilities,
   CallDevice,
   CallSettings,
 } from "../../../realtime/CallController";
+import { PopupBackdrop, PopupCloseButton } from "../../../components/ui/Popup";
 import { CallDeviceSelect } from "./CallDeviceSelect";
 import { useCallAudioTests } from "./useCallAudioTests";
 
@@ -70,25 +71,21 @@ export function CallAudioSettingsPopup({
   embedded?: boolean;
 }) {
   const audioTest = useCallAudioTests(localStream, settings);
-  return (
+  const content = (
     <div
-      className={embedded ? "call-settings-embedded-content" : "call-audio-popup-backdrop"}
-      role={embedded ? undefined : "presentation"}
-      onMouseDown={!embedded ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
+      ref={popupRef}
+      className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
+      role={embedded ? "region" : "dialog"}
+      aria-modal={embedded ? undefined : true}
+      aria-label="Audio settings"
+      onClick={!embedded ? (e) => e.stopPropagation() : undefined}
     >
-      <div
-        ref={popupRef}
-        className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
-        role={embedded ? "region" : "dialog"}
-        aria-modal={embedded ? undefined : true}
-        aria-label="Audio settings"
-      >
-      {!embedded && <div className="call-audio-popup-header">
-        <span>Audio settings</span>
-        <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
-          <X aria-hidden="true" size={14} />
-        </button>
-      </div>}
+      {!embedded && (
+        <div className="call-audio-popup-header">
+          <span>Audio settings</span>
+          <PopupCloseButton className="call-audio-popup-close" ariaLabel="Close" autoFocus onClick={onClose} />
+        </div>
+      )}
 
       <div className="call-audio-popup-body">
         {warning && <p className="call-audio-popup-warning">{warning}</p>}
@@ -258,6 +255,15 @@ export function CallAudioSettingsPopup({
         </section>
       </div>
     </div>
-    </div>
+  );
+
+  if (embedded) {
+    return <div className="call-settings-embedded-content">{content}</div>;
+  }
+
+  return (
+    <PopupBackdrop className="call-audio-popup-backdrop" onClick={onClose}>
+      {content}
+    </PopupBackdrop>
   );
 }
