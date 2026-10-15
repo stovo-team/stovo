@@ -2,18 +2,21 @@ import { act, createRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { strings } from "../../../config/strings/english";
+const mockStrings = vi.hoisted(() => ({ useStrings: vi.fn() }));
+
+import { russianStrings, strings } from "../../../config/strings";
 import * as unfurlApi from "../../../api/unfurl";
 import type { FamilyFile } from "../../../api/files";
 import type { Chat } from "../../../api/chats";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
 import { ChatDetailsPanel, SharedContentThumb } from "./ChatDetailsPanel";
+import { AddPeopleDialog } from "./AddPeopleDialog";
 
 vi.mock("../../../hooks/useFilePreviewUrl", () => ({ default: vi.fn() }));
 vi.mock("../../../auth/AuthContext", () => ({
   useAuth: () => ({ authRequest: vi.fn().mockResolvedValue({ active_plugins: [] }) })
 }));
-vi.mock("../../../i18n/LanguageContext", () => ({ useStrings: () => strings }));
+vi.mock("../../../i18n/LanguageContext", () => ({ useStrings: mockStrings.useStrings }));
 vi.mock("../sidebar/RealAvatar", () => ({ RealAvatar: () => null }));
 vi.mock("../../../components/BackButton", () => ({ BackButton: () => <button type="button">Back</button> }));
 vi.mock("../../../components/ChatStatsDrawer", () => ({ default: () => null }));
@@ -124,6 +127,7 @@ function renderPanel(detailsTab: "files" | "links", sharedContentItems: any[]) {
 describe("Chat details shared content", () => {
   beforeEach(() => {
     onFocusMessage.mockReset();
+    mockStrings.useStrings.mockReturnValue(strings);
     vi.mocked(useFilePreviewUrl).mockReset();
   });
 
@@ -173,6 +177,21 @@ describe("Chat details shared content", () => {
     expect(container.querySelector("button svg")).not.toBeNull();
     act(() => (container.querySelector("button") as HTMLButtonElement).click());
     expect(onFocusMessage).toHaveBeenCalledOnce();
+  });
+
+  it("renders shared-content tabs and the add-participants action in Russian", async () => {
+    mockStrings.useStrings.mockReturnValue(russianStrings);
+    let panel!: HTMLDivElement;
+    await act(async () => { panel = renderPanel("files", []); });
+    const tabs = Array.from(panel.querySelectorAll(".chat-info-tab"), (tab) => tab.textContent?.trim());
+    expect(tabs).toEqual(["Медиа", "Аудио", "Файлы", "Ссылки"]);
+
+    let dialog!: HTMLDivElement;
+    await act(async () => {
+      dialog = render(<AddPeopleDialog accessToken={null} members={[]} onAdd={vi.fn()} onClose={vi.fn()} />);
+    });
+    expect(document.body.textContent).toContain("Добавить участников");
+    expect(document.body.textContent).not.toContain("Add people");
   });
 
   it("renders file names and distinct icons for spreadsheet and archive types", () => {
