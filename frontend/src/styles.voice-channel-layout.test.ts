@@ -35,6 +35,13 @@ describe("voice channel layout styles", () => {
     expect(styleRules(".call-popup-group-call--sharing:not(.call-popup-minimized):not(.call-popup-fullscreen) .call-popup-ctrl-row")).toMatch(/flex:\s*0 0 auto/);
   });
 
+  it("keeps the pre-join button docked at the bottom of the voice room", () => {
+    const prejoinDock = styleRules(".voice-channel-room:not(.is-connected):not(.guest-call-room) .voice-room-bottom-bar");
+    expect(prejoinDock).toMatch(/position:\s*absolute/);
+    expect(prejoinDock).toMatch(/bottom:\s*0/);
+    expect(prejoinDock).toMatch(/inset-inline:\s*0/);
+  });
+
   it("makes voice-channel status avatars larger with less space under the channel name", () => {
     expect(styleRules(".chat-list-voice-avatar")).toMatch(/height:\s*24px/);
     expect(styleRules(".chat-list-voice-avatar")).toMatch(/width:\s*24px/);
