@@ -136,6 +136,78 @@
 .popup-field__helper { color: var(--text-secondary); }
 .popup-field__error { color: var(--danger); }
 
+.popup-select { position: relative; width: 100%; }
+.popup-select__trigger {
+  display: flex;
+  width: 100%;
+  height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.popup-select__trigger:hover:not(:disabled),
+.popup-select--open .popup-select__trigger { border-color: var(--accent-primary); }
+.popup-select__trigger:focus-visible { outline: 3px solid var(--accent-ring); outline-offset: 2px; }
+.popup-select__trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+.popup-select__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popup-select__chevron { width: 16px; height: 16px; flex: 0 0 16px; transition: transform 120ms ease; }
+.popup-select--open .popup-select__chevron { transform: rotate(180deg); }
+.popup-select__menu[hidden] { display: none; }
+.popup-select__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 1100;
+  display: grid;
+  max-height: min(280px, 50vh);
+  gap: 4px;
+  overflow: auto;
+  padding: 8px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+}
+
+.popup-select__option {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.popup-select__option:hover:not(:disabled),
+.popup-select__option:focus-visible { background: var(--background-tertiary); outline: none; }
+.popup-select__option--selected { background: var(--accent-soft); }
+.popup-select__option:disabled { opacity: 0.48; cursor: not-allowed; }
+.popup-select__check { flex: 0 0 16px; color: var(--accent-primary); }
+.popup-select__empty { padding: 12px; color: var(--text-secondary); font-size: 13px; }
+.popup-select__footer { display: grid; gap: 8px; padding: 8px 4px 4px; }
+
 @media (max-width: 600px) {
   .popup-backdrop { padding: 16px; }
   .popup-dialog { max-height: calc(100vh - 32px); }
