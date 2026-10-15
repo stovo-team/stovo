@@ -1,5 +1,6 @@
 import { ReactNode, useMemo } from "react";
 import { useStrings } from "../i18n/LanguageContext";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { Check, FileText, Pencil } from "lucide-react";
 import * as Y from "yjs";
 import type { Canvas, CanvasReference, CanvasUpdate } from "../api/canvas";
@@ -223,14 +224,14 @@ function isDarkColor(color?: string): boolean {
 }
 
 function resolveStrokeColor(color?: string): string {
-  if (!color || color === "transparent") return "#818cf8";
-  if (isDarkColor(color)) return "#f1f5f9";
+  if (!color || color === "transparent") return DESIGN_COLOR_VALUES.canvasPreview.defaultStroke;
+  if (isDarkColor(color)) return DESIGN_COLOR_VALUES.canvasPreview.lightStroke;
   return color;
 }
 
 function resolveFillColor(color?: string): string {
-  if (!color || color === "transparent") return "rgba(129, 140, 248, 0.16)";
-  if (isDarkColor(color)) return "rgba(241, 245, 249, 0.14)";
+  if (!color || color === "transparent") return DESIGN_COLOR_VALUES.canvasPreview.defaultFill;
+  if (isDarkColor(color)) return DESIGN_COLOR_VALUES.canvasPreview.lightFill;
   return color;
 }
 

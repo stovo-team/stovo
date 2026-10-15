@@ -38,10 +38,10 @@ describe("call speaking-indicator CSS contract", () => {
     for (const activeTile of [voiceCard, voiceList]) {
       expect(activeTile).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
     }
-    expect(callTile).toMatch(/outline:\s*1px solid #22c55e/);
-    expect(rulesFor(".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0 0 0 2px rgba\(34, 197, 94, \.82\)/);
-    expect(status).toContain("#22c55e");
-    expect(voiceStatus).toContain("#22c55e");
+    expect(callTile).toMatch(/outline:\s*1px solid var\(--color-palette-8b8f7c3d4541\)/);
+    expect(rulesFor(".call-grid__tile.is-speaking .call-grid__avatar-circle")).toContain("box-shadow: 0 0 0 2px var(--color-palette-449c31647178)");
+    expect(status).toContain("var(--color-palette-8b8f7c3d4541)");
+    expect(voiceStatus).toContain("var(--color-palette-8b8f7c3d4541)");
   });
 
   it("does not draw an active halo around a guest meeting avatar", () => {

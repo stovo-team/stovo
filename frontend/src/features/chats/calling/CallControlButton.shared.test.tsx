@@ -134,8 +134,8 @@ describe("shared call control button", () => {
     const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
     const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
-    expect(endRules).toMatch(/background(?:-color)?:\s*#(?:dc2626|ef4444|ff3b30)/i);
-    expect(endRules).toMatch(/color:\s*#fff/);
+    expect(endRules).toMatch(/background(?:-color)?:\s*var\(--color-palette-3871da342003\)/i);
+    expect(endRules).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
     expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
   });
 

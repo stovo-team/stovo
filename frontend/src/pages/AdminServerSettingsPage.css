@@ -40,8 +40,8 @@
 
 .admin-page .server-settings-placeholder {
   align-items: center;
-  background: #11151a;
-  border: 1px solid #2d3743;
+  background: var(--color-palette-175f28ccdb1f);
+  border: 1px solid var(--color-palette-cb1462d0d7f8);
   border-radius: var(--radius-surface);
   box-sizing: border-box;
   color: var(--text-secondary);

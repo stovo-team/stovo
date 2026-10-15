@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import {
   CalendarDays,
   Check,
@@ -115,7 +116,7 @@ const chats: Chat[] = [
     time: "10:36",
     type: "group",
     members: 18,
-    avatarBg: "#3b82f6",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[0],
     avatarText: "LR",
     avatarImage: "/avatars/chat-launch-room.webp",
     messages: [
@@ -199,7 +200,7 @@ const chats: Chat[] = [
     time: "10:42",
     type: "group",
     members: 42,
-    avatarBg: "#6366f1",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[1],
     avatarText: "AH",
     avatarImage: "/avatars/chat-allhands.webp",
     messages: [
@@ -254,7 +255,7 @@ const chats: Chat[] = [
     time: "09:15",
     type: "channel",
     subscribers: 42,
-    avatarBg: "#8b5cf6",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[2],
     avatarIcon: "megaphone",
     messages: [
       {
@@ -291,7 +292,7 @@ const chats: Chat[] = [
     type: "voice",
     voiceInfo: "3 active",
     disabled: true,
-    avatarBg: "#10b981",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[3],
     avatarIcon: "voice",
     messages: [],
   },
@@ -303,7 +304,7 @@ const chats: Chat[] = [
     time: "Yesterday",
     type: "group",
     members: 11,
-    avatarBg: "#0d9488",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[4],
     avatarText: "AT",
     avatarImage: "/avatars/chat-team-alpha.webp",
     messages: [
@@ -357,7 +358,7 @@ const chats: Chat[] = [
     time: "Sep 11",
     type: "group",
     members: 9,
-    avatarBg: "#f59e0b",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[5],
     avatarText: "AC",
     avatarImage: "/avatars/chat-architecture.webp",
     messages: [
@@ -960,9 +961,9 @@ function FilesScreen() {
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   const folders = [
-    { name: "Q3 Launch Assets", detail: "12 files · 18 members", color: "#24364b", locked: false },
-    { name: "Client Deliverables", detail: "28 files · 6 clients", color: "#315f9a", locked: true },
-    { name: "Executive Records", detail: "19 files · Confidential", color: "#5b4a92", locked: true },
+    { name: "Q3 Launch Assets", detail: "12 files · 18 members", color: DESIGN_COLOR_VALUES.demo.collectionCovers[0], locked: false },
+    { name: "Client Deliverables", detail: "28 files · 6 clients", color: DESIGN_COLOR_VALUES.demo.collectionCovers[1], locked: true },
+    { name: "Executive Records", detail: "19 files · Confidential", color: DESIGN_COLOR_VALUES.demo.collectionCovers[2], locked: true },
   ];
 
   const files = [
@@ -970,42 +971,42 @@ function FilesScreen() {
       name: "Q3-launch-brief.pdf",
       size: "2.4 MB",
       type: "PDF",
-      badgeColor: "#ef4444",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[0],
       icon: FileText,
     },
     {
       name: "Launch readiness.canvas",
       size: "18 cards",
       type: "CANVAS",
-      badgeColor: "#8b5cf6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[1],
       icon: StickyNote,
     },
     {
       name: "Security-Compliance-Audit.docx",
       size: "1.8 MB",
       type: "DOCX",
-      badgeColor: "#3b82f6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[2],
       icon: FileType,
     },
     {
       name: "Q3-Financial-Model.xlsx",
       size: "3.4 MB",
       type: "XLSX",
-      badgeColor: "#10b981",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[3],
       icon: FileSpreadsheet,
     },
     {
       name: "Atlas-Architecture-Diagram.canvas",
       size: "24 cards",
       type: "CANVAS",
-      badgeColor: "#8b5cf6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[1],
       icon: StickyNote,
     },
     {
       name: "Acme-Phase1-Signoff.pdf",
       size: "1.1 MB",
       type: "PDF",
-      badgeColor: "#ef4444",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[0],
       icon: FileText,
     },
   ];

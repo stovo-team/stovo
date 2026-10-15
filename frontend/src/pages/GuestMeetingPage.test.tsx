@@ -163,7 +163,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const connectingPageRule = css.match(/\.guest-meeting-page--connecting\s*\{([^}]*)\}/)?.[1] ?? "";
     const connectingLinkRule = css.match(/\.guest-meeting-page--connecting \.guest-stovo-marketing\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(connectingPageRule).toMatch(/background:\s*#000/);
+    expect(connectingPageRule).toContain("background: var(--color-palette-7b2817bf9b80)");
     expect(connectingLinkRule).toMatch(/position:\s*fixed/);
     expect(connectingLinkRule).toMatch(/bottom:/);
   });

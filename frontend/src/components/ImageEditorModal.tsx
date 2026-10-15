@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2, X } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
 import { useStrings } from "../i18n/LanguageContext";
 
@@ -24,16 +25,7 @@ interface ImageEditorModalProps {
   onClose: () => void;
 }
 
-const COLOR_PRESETS = [
-  "#ffffff",
-  "#ef4444",
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-  "#000000"
-];
+const COLOR_PRESETS = DESIGN_COLOR_VALUES.imageEditor.presetColors;
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
   const copy = useStrings().imageEditor;
   const penSizes = [
@@ -54,7 +46,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   const [selectedRatio, setSelectedRatio] = useState<string>("free");
 
   // Drawing
-  const [drawColor, setDrawColor] = useState<string>("#ef4444");
+  const [drawColor, setDrawColor] = useState<string>(DESIGN_COLOR_VALUES.imageEditor.defaultStroke);
   const [drawWidth, setDrawWidth] = useState<number>(4);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);

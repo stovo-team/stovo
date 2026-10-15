@@ -505,7 +505,7 @@ export function MobileActiveScreen({
 
           {/* Case 3: No remote video, no screen share, but local camera is active */}
           {!showRemoteVideo && !isSharingLocalScreen && isCameraEnabled && (
-            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "#000", pointerEvents: "auto" }}>
+            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "var(--color-palette-7b2817bf9b80)", pointerEvents: "auto" }}>
               <video
                 ref={mobileLocalRef}
                 autoPlay

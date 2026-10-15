@@ -25,7 +25,7 @@ describe("native mobile chat styling", () => {
 
   it("hides chat rows behind the mobile filter chrome with an opaque black fade", () => {
     expect(stylesSource).toMatch(
-      /\.messenger-shell\.chat-list-view \.chat-sidebar-header::after \{[\s\S]*?background:\s*linear-gradient\(to bottom, #000 0%, #000 90%, transparent 100%\);/
+      /\.messenger-shell\.chat-list-view \.chat-sidebar-header::after \{[\s\S]*?background:\s*linear-gradient\(to bottom, var\(--color-palette-7b2817bf9b80\) 0%, var\(--color-palette-7b2817bf9b80\) 90%, transparent 100%\);/
     );
     expect(stylesSource).toMatch(
       /\.messenger-shell\.chat-list-view \.chat-sidebar-header \{[\s\S]*?isolation:\s*isolate;/

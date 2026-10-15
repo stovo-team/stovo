@@ -41,8 +41,8 @@ export class ErrorBoundary extends Component<Props, State> {
             alignItems: "center",
             justifyContent: "center",
             padding: "24px",
-            background: "var(--background-primary, #ffffff)",
-            color: "var(--text-primary, #111827)",
+            background: "var(--background-primary, var(--color-palette-f2074b6cef37))",
+            color: "var(--text-primary, var(--color-palette-dd15e6f7d489))",
             fontFamily: "system-ui, -apple-system, sans-serif",
             textAlign: "center"
           }}
@@ -52,15 +52,15 @@ export class ErrorBoundary extends Component<Props, State> {
               maxWidth: "480px",
               padding: "32px",
               borderRadius: "var(--radius-bubble)",
-              background: "var(--surface-card, #ffffff)",
-              border: "1px solid var(--border-default, #e5e7eb)",
-              boxShadow: "0 12px 32px rgba(0, 0, 0, 0.1)"
+              background: "var(--surface-card, var(--color-palette-f2074b6cef37))",
+              border: "1px solid var(--border-default, var(--color-palette-bfd4f8ffcad7))",
+              boxShadow: "0 12px 32px var(--color-palette-4f6d03b41724)"
             }}
           >
             <h2 style={{ margin: "0 0 12px", fontSize: "var(--font-size-heading-small)", fontWeight: "var(--font-weight-semibold)" }}>
               {copy.somethingWentWrong}
             </h2>
-            <p style={{ margin: "0 0 20px", fontSize: "var(--font-size-small)", color: "var(--text-secondary, #6b7280)" }}>
+            <p style={{ margin: "0 0 20px", fontSize: "var(--font-size-small)", color: "var(--text-secondary, var(--color-palette-66341b70b395))" }}>
               {this.state.error?.message || copy.unexpectedError}
             </p>
             <button
@@ -70,8 +70,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 window.location.reload();
               }}
               style={{
-                background: "var(--accent-primary, #2aabee)",
-                color: "#ffffff",
+                background: "var(--accent-primary, var(--color-palette-a5384157bc1a))",
+                color: "var(--color-palette-f2074b6cef37)",
                 border: "none",
                 borderRadius: "var(--radius-pill)",
                 padding: "10px 24px",

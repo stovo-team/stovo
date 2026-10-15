@@ -512,7 +512,7 @@ export function TranscriptPreview() {
                 onClick={() => setIsPlaying(!isPlaying)}
                 aria-label={isPlaying ? copy.pauseCallAudio : copy.playCallAudio}
               >
-                {isPlaying ? <Pause size={14} fill="#ffffff" /> : <Play size={14} fill="#ffffff" style={{ marginLeft: "2px" }} />}
+                {isPlaying ? <Pause size={14} fill="var(--color-palette-f2074b6cef37)" /> : <Play size={14} fill="var(--color-palette-f2074b6cef37)" style={{ marginLeft: "2px" }} />}
               </button>
               <div className="stovo-player-time">
                 <strong>{isPlaying ? "14:28" : "00:00"}</strong>

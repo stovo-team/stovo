@@ -151,7 +151,7 @@ describe("message context menu glass treatment", () => {
   });
 
   it("shares the surface across the emoji picker and attachment file menu", () => {
-    expect(styles).toContain("--chat-popup-surface: rgba(48, 50, 56, 0.94);");
+    expect(styles).toContain("--chat-popup-surface: var(--color-palette-e14ae6e5ea08);");
     expect(rule(".emoji-picker")).toContain("background: var(--chat-popup-surface);");
     expect(rule(".emoji-picker")).toContain("border: 0;");
     const webEmojiPicker = lastRule(':root[data-platform="web"] .emoji-picker');
@@ -170,7 +170,7 @@ describe("mobile chat chrome", () => {
       "background: transparent;"
     );
     expect(rule(".messenger-shell.chat-list-view .chat-list")).toContain(
-      "mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);"
+      "mask-image: linear-gradient(to bottom, transparent 0%, var(--color-palette-7b2817bf9b80) 12px);"
     );
     expect(mobileChatRule(".app-frame > .app-nav")).toContain(
       "background: transparent;"
@@ -219,7 +219,7 @@ describe("native conversation viewport and presence", () => {
   it("uses a status-bar-safe black header gradient and shows typing next to the chat name", () => {
     expect(
       lastRule(':root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail-header--floating::before')
-    ).toContain("linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0) 100%)");
+    ).toContain("linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-190bdc64d2dc) 100%)");
     expect(chatHeader).toContain('className="chat-title-row"');
     expect(chatHeader).toContain('className="chat-presence"');
     expect(chatHeader.indexOf('className="typing-dots"')).toBeGreaterThan(

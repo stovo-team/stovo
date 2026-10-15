@@ -73,7 +73,7 @@ describe("message archive grouped view", () => {
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(styles).toContain("background: color-mix(in oklab, var(--island-surface) 94%, transparent);");
     expect(styles).toContain(".quick-access-panel-tabs button.active");
-    expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*#ffffff;/);
+    expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--color-palette-f2074b6cef37\);/);
     expect(styles).not.toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--accent-primary\);/);
   });
 

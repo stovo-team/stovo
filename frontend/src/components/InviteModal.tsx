@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { createInvite, inviteUrlForServer } from "../api/family";
 import { ApiError, getApiUrl } from "../api/client";
 import { shareContent } from "../native/nativeSharePlugin";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { useStrings } from "../i18n/LanguageContext";
 
 type InviteModalProps = {
@@ -80,7 +81,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         const dataUrl = await QRCode.toDataURL(currentServerInviteUrl, {
           margin: 2,
           width: 240,
-          color: { dark: "#111827", light: "#ffffff" }
+          color: DESIGN_COLOR_VALUES.inviteQr
         });
         if (cancelled) return;
         setQrDataUrl(dataUrl);

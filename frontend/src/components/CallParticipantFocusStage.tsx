@@ -3,9 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import type { RemoteMedia } from "../realtime/call/types";
 import { useStrings } from "../i18n/LanguageContext";
 
-const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "#000" };
-const avatarStyle: CSSProperties = { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: "var(--font-size-heading-small)" };
-const labelStyle: CSSProperties = { position: "absolute", left: 8, bottom: 8, padding: "2px 8px", borderRadius: "var(--radius-small)", background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: "var(--font-size-caption)", zIndex: 3 };
+const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "var(--color-palette-7b2817bf9b80)" };
+const avatarStyle: CSSProperties = { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-palette-f1147865f078)", fontSize: "var(--font-size-heading-small)" };
+const labelStyle: CSSProperties = { position: "absolute", left: 8, bottom: 8, padding: "2px 8px", borderRadius: "var(--radius-small)", background: "var(--color-palette-e16ece2e238b)", color: "var(--color-palette-f2074b6cef37)", fontSize: "var(--font-size-caption)", zIndex: 3 };
 
 function initial(label: string) {
   return label.trim().charAt(0).toUpperCase() || "?";

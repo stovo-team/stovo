@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useStrings } from "../i18n/LanguageContext";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { applyGammaCorrection, buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
 import { BackButton } from "./BackButton";
 
@@ -102,7 +103,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
       const context = canvas.getContext("2d", { willReadFrequently: adjustments.gamma !== 1 });
       if (!context) throw new Error("Could not create image canvas");
 
-      context.fillStyle = "#111827";
+      context.fillStyle = DESIGN_COLOR_VALUES.wallpaperEditor.canvasBackground;
       context.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const baseScale = Math.max(OUTPUT_WIDTH / image.naturalWidth, OUTPUT_HEIGHT / image.naturalHeight);
       const scale = baseScale * adjustments.zoom;
