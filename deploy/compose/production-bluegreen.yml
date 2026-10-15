@@ -34,6 +34,7 @@ x-backend: &backend
     # When set, this takes precedence over the POSTGRES_* values above. It is
     # the connection URL for a managed/external PostgreSQL instance.
     DATABASE_URL: ${DATABASE_URL:-}
+    INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH: ${INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH:-}
     REDIS_HOST: ${REDIS_HOST:-redis}
     REDIS_PORT: ${REDIS_PORT:-6379}
     REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
