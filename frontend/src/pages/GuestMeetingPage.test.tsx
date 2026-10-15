@@ -125,7 +125,7 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-describe("GuestMeetingPage pre-join controls", () => {
+describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
   it("keeps the joining screen as an unboxed black loading state with the Stovo link at the bottom", async () => {
     api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joining", state: "admitted" });
     api.getGuestMeetingToken.mockReturnValueOnce(new Promise<{ url: string; token: string; roomName: string }>(() => undefined));

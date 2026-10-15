@@ -143,42 +143,43 @@ export function PopupSelect({
         <span className="popup-select__value">{selected?.label ?? placeholder}</span>
         <ChevronDown className="popup-select__chevron" size={16} aria-hidden="true" />
       </button>
-      <div
-        id={menuId}
-        ref={menuRef}
-        className="popup-select__menu"
-        role="listbox"
-        aria-label={ariaLabel}
-        aria-labelledby={labelledBy}
-        hidden={!open}
-      >
-        {options.length ? options.map((option) => {
-          const isSelected = option.value === value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              data-value={option.value}
-              aria-selected={isSelected}
-              className={`popup-select__option${isSelected ? " popup-select__option--selected" : ""}`}
-              disabled={option.disabled}
-              tabIndex={-1}
-              onClick={() => selectOption(option)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  selectOption(option);
-                }
-              }}
-            >
-              {renderOption ? renderOption(option, isSelected) : <span>{option.label}</span>}
-              {isSelected ? <Check className="popup-select__check" size={16} aria-hidden="true" /> : null}
-            </button>
-          );
-        }) : <div className="popup-select__empty">{emptyMessage}</div>}
-        {menuFooter ? <div className="popup-select__footer">{menuFooter}</div> : null}
-      </div>
+      {open && (
+        <div
+          id={menuId}
+          ref={menuRef}
+          className="popup-select__menu"
+          role="listbox"
+          aria-label={ariaLabel}
+          aria-labelledby={labelledBy}
+        >
+          {options.length ? options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                data-value={option.value}
+                aria-selected={isSelected}
+                className={`popup-select__option${isSelected ? " popup-select__option--selected" : ""}`}
+                disabled={option.disabled}
+                tabIndex={-1}
+                onClick={() => selectOption(option)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectOption(option);
+                  }
+                }}
+              >
+                {renderOption ? renderOption(option, isSelected) : <span>{option.label}</span>}
+                {isSelected ? <Check className="popup-select__check" size={16} aria-hidden="true" /> : null}
+              </button>
+            );
+          }) : <div className="popup-select__empty">{emptyMessage}</div>}
+          {menuFooter ? <div className="popup-select__footer">{menuFooter}</div> : null}
+        </div>
+      )}
     </div>
   );
 }

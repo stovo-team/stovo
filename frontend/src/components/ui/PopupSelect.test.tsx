@@ -73,7 +73,7 @@ describe("PopupSelect", () => {
     act(() => unavailable?.click());
     expect(onChange).not.toHaveBeenCalled();
 
-    act(() => root.render(<PopupSelect ariaLabel="Color" options={[]} value="" onChange={onChange} />));
+    act(() => root.render(<PopupSelect key="empty" ariaLabel="Color" options={[]} value="" onChange={onChange} />));
     act(() => container.querySelector<HTMLButtonElement>(".popup-select__trigger")?.click());
     expect(container.querySelector('[role="listbox"]')?.textContent).toContain("No options available");
     expect(container.querySelectorAll('[role="option"]')).toHaveLength(0);
