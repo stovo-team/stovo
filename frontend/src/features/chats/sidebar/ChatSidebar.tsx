@@ -171,7 +171,6 @@ export function ChatSidebar({
                       <Server aria-hidden="true" size={16} />
                       <span>
                         <strong>{displayFamilyName}</strong>
-                        <small>{strings.spaceSwitcher.currentSpace}</small>
                       </span>
                     </button>
                   )}

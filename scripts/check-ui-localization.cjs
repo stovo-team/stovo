@@ -9,6 +9,7 @@ const SOURCE_EXTENSIONS = new Set(['.tsx', '.ts', '.jsx', '.js']);
 function isUiCopy(value) {
   const text = value.trim();
   if (!text || /^https?:\/\//i.test(text) || text.startsWith('/') || text.includes('://')) return false;
+  if (text === 'Stovo') return false; // Product name is intentionally not translated.
   if (/^[a-z][\w.-]*$/.test(text)) return false;
   if (/^[A-Z0-9_.-]+$/.test(text) && !/\s/.test(text)) return false;
   return /\s/.test(text) || /^[A-ZА-ЯЁ][\p{L}\p{N}'’!?.,:()-]*$/u.test(text);

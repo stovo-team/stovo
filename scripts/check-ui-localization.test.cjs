@@ -70,3 +70,9 @@ test('ignores developer diagnostics written to console', () => {
     assert.deepEqual(collectUiStringViolations(root), []);
   });
 });
+
+test('ignores the untranslated product brand name', () => {
+  withSource({ 'Brand.tsx': '<h1>Stovo</h1><Logo title="Stovo" />' }, (root) => {
+    assert.deepEqual(collectUiStringViolations(root), []);
+  });
+});

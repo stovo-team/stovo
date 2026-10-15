@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Capacitor } from "@capacitor/core";
 import QRCode from "qrcode";
 import * as client from "../../api/client";
-import { strings } from "../../config/strings";
+import { russianStrings, strings } from "../../config/strings";
 import { ProfileSettingsTab } from "./ProfileSettingsTab";
 
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));
@@ -60,6 +60,14 @@ describe("Profile Settings Android sign-in", () => {
     expect(container.textContent).toContain("Create Android sign-in QR");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("renders passkey and Android QR copy in Russian", async () => {
+    props.strings = russianStrings;
+    await render();
+    expect(container.textContent).toContain("Ключи доступа");
+    expect(container.textContent).toContain("QR-код для входа на Android");
+    expect(container.textContent).not.toContain("Android sign-in QR");
   });
 
   it("creates an authenticated grant and displays the encoded current-server QR and expiry", async () => {

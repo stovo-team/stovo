@@ -8,6 +8,7 @@ import { ApiError, getApiUrl } from "../../api/client";
 import { beginPasskeyRegistration, createAndroidQRLogin, finishPasskeyRegistration } from "../../api/auth";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
+import { useResolvedLanguage } from "../../i18n/LanguageContext";
 
 export type ProfileForm = {
   displayName: string;
@@ -44,6 +45,7 @@ type Props = {
 
 export function ProfileSettingsTab(props: Props) {
   const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const language = useResolvedLanguage();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
   const [androidQR, setAndroidQR] = useState<{ image: string; expiresAt: string } | null>(null);
@@ -61,7 +63,7 @@ export function ProfileSettingsTab(props: Props) {
       const image = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
       setAndroidQR({ image, expiresAt: grant.expiresAt });
     } catch (err) {
-      setAndroidQRError(err instanceof ApiError ? String(err.message) : "Could not create Android sign-in QR. Try again.");
+      setAndroidQRError(err instanceof ApiError ? String(err.message) : strings.security.androidQrCreateFailed);
     } finally {
       setAndroidQRBusy(false);
     }
@@ -75,10 +77,10 @@ export function ProfileSettingsTab(props: Props) {
       const ceremony = await beginPasskeyRegistration(accessToken);
       const credential = await startRegistration({ optionsJSON: ceremony.publicKey as never });
       await finishPasskeyRegistration(accessToken, ceremony.ceremonyId, credential);
-      setPasskeyMessage("Passkey added. You can now use it to sign in.");
+      setPasskeyMessage(strings.security.passkeyAdded);
     } catch (err) {
       if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setPasskeyMessage(err instanceof ApiError ? String(err.message) : "Could not add passkey. Try again over HTTPS.");
+        setPasskeyMessage(err instanceof ApiError ? String(err.message) : strings.security.addPasskeyFailed);
       }
     } finally {
       setPasskeyBusy(false);
@@ -105,19 +107,19 @@ export function ProfileSettingsTab(props: Props) {
         <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
       </form>
       <section className="profile-detail-form">
-        <h3><KeyRound aria-hidden="true" size={20} /> Passkeys</h3>
-        <p className="muted-copy">Use your device screen lock or password manager to sign in without remembering a password.</p>
-        <button type="button" className="save-button primary-button" onClick={() => void addPasskey()} disabled={!accessToken || passkeyUnavailable || passkeyBusy || isSaving}>{passkeyBusy ? "Adding…" : "Add a passkey"}</button>
-        {passkeyUnavailable && <p className="muted-copy">Passkeys require HTTPS and a supported browser or Android WebView.</p>}
+        <h3><KeyRound aria-hidden="true" size={20} /> {strings.security.passkeys}</h3>
+        <p className="muted-copy">{strings.security.passkeyDescription}</p>
+        <button type="button" className="save-button primary-button" onClick={() => void addPasskey()} disabled={!accessToken || passkeyUnavailable || passkeyBusy || isSaving}>{passkeyBusy ? strings.security.addingPasskey : strings.security.addPasskey}</button>
+        {passkeyUnavailable && <p className="muted-copy">{strings.security.passkeyUnsupported}</p>}
         {passkeyMessage && <p role="status" className="muted-copy">{passkeyMessage}</p>}
       </section>
       {!Capacitor.isNativePlatform() && <section className="profile-detail-form">
-        <h3>Android sign-in QR</h3>
-        <p className="muted-copy">Scan this QR in the Stovo Android app to sign in to your account. Keep it private; it expires in two minutes.</p>
-        <button type="button" className="save-button primary-button" onClick={() => void generateAndroidQR()} disabled={!accessToken || androidQRBusy || isSaving}>{androidQRBusy ? "Creating…" : androidQR ? "Regenerate Android sign-in QR" : "Create Android sign-in QR"}</button>
+        <h3>{strings.security.androidQrTitle}</h3>
+        <p className="muted-copy">{strings.security.androidQrDescription}</p>
+        <button type="button" className="save-button primary-button" onClick={() => void generateAndroidQR()} disabled={!accessToken || androidQRBusy || isSaving}>{androidQRBusy ? strings.security.androidQrCreating : androidQR ? strings.security.androidQrRegenerate : strings.security.androidQrCreate}</button>
         {androidQR && <div aria-live="polite">
-          <img src={androidQR.image} alt="Android sign-in QR code" width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
-          <p className="muted-copy">Expires: <time dateTime={androidQR.expiresAt}>{new Date(androidQR.expiresAt).toLocaleString()}</time></p>
+          <img src={androidQR.image} alt={strings.security.androidQrAlt} width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
+          <p className="muted-copy">{strings.security.expires} <time dateTime={androidQR.expiresAt}>{new Date(androidQR.expiresAt).toLocaleString(language)}</time></p>
         </div>}
         {androidQRError && <p role="alert" className="muted-copy">{androidQRError}</p>}
       </section>}

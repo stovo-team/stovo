@@ -117,6 +117,7 @@ describe("ChatSidebar compose action", () => {
     const trigger = container.querySelector<HTMLButtonElement>(".server-switcher-trigger");
     expect(trigger?.getAttribute("aria-label")).toBe("Select space");
     act(() => { trigger?.click(); });
+    expect(container.textContent).not.toContain("Current space");
     const connect = container.querySelector<HTMLButtonElement>(".server-switcher-connect");
     expect(connect?.textContent?.trim()).toBe("Connect Space");
     act(() => { connect?.click(); });
