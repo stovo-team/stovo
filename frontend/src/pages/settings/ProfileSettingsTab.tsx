@@ -9,6 +9,7 @@ import { beginPasskeyRegistration, createAndroidQRLogin, finishPasskeyRegistrati
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
 import { useResolvedLanguage } from "../../i18n/LanguageContext";
+import { passkeyRegistrationErrorMessage } from "./passkeyErrorMessage";
 
 export type ProfileForm = {
   displayName: string;
@@ -79,9 +80,7 @@ export function ProfileSettingsTab(props: Props) {
       await finishPasskeyRegistration(accessToken, ceremony.ceremonyId, credential);
       setPasskeyMessage(strings.security.passkeyAdded);
     } catch (err) {
-      if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setPasskeyMessage(err instanceof ApiError ? String(err.message) : strings.security.addPasskeyFailed);
-      }
+      setPasskeyMessage(passkeyRegistrationErrorMessage(err, strings) ?? "");
     } finally {
       setPasskeyBusy(false);
     }
