@@ -9,15 +9,15 @@
 }
 
 .admin-page .server-settings-select .guest-link-select-trigger {
-  border-radius: 14px;
-  font-size: 0.86rem;
-  font-weight: 500;
+  border-radius: var(--radius-surface);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
   min-height: 42px;
   padding: 0 12px;
 }
 
 .admin-page .server-settings-select .guest-link-select-menu {
-  border-radius: 14px;
+  border-radius: var(--radius-surface);
   top: calc(100% + 4px);
 }
 
@@ -42,7 +42,7 @@
   align-items: center;
   background: #11151a;
   border: 1px solid #2d3743;
-  border-radius: 14px;
+  border-radius: var(--radius-surface);
   box-sizing: border-box;
   color: var(--text-secondary);
   display: flex;

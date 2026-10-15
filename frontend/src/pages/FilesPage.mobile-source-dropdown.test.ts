@@ -25,11 +25,11 @@ describe("Storage mobile source dropdown", () => {
   });
 
   it("keeps file-details close in the header, not over the preview image", () => {
-    expect(page).toContain('aria-label="Close file details"');
+    expect(page).toContain("aria-label={strings.files.closeDetails}");
     expect(page).not.toContain('className="storage-preview-close"');
     expect(page).not.toContain('aria-label="Close file preview"');
     expect(styles).toMatch(
-      /@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-detail-header \.mobile-back-button[\s\S]*border-radius:\s*999px/
+      /@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-detail-header \.mobile-back-button[\s\S]*border-radius:\s*var\(--radius-pill\)/
     );
     expect(styles).toMatch(
       /@media \(max-width:\s*960px\)[\s\S]*\.storage-page\.has-storage-selection \.storage-details-panel[\s\S]*width:\s*90%/
@@ -39,7 +39,7 @@ describe("Storage mobile source dropdown", () => {
   it("keeps an AMOLED black storage canvas and a pill source trigger after selection", () => {
     expect(styles).toMatch(/\.storage-page\s*\{[^}]*background:\s*var\(--canvas-amoled/);
     expect(styles).toMatch(
-      /@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-source-trigger[\s\S]*border-radius:\s*999px/
+      /@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-source-trigger[\s\S]*border-radius:\s*var\(--radius-pill\)/
     );
   });
 
@@ -48,7 +48,7 @@ describe("Storage mobile source dropdown", () => {
       /\.storage-mobile-source-trigger:active:not\(:disabled\)[\s\S]*?transform:\s*none/
     );
     expect(styles).toMatch(
-      /\.storage-mobile-source-menu button \{[\s\S]*?border-radius:\s*22px/
+      /\.storage-mobile-source-menu button \{[\s\S]*?border-radius:\s*var\(--radius-panel\)/
     );
   });
 });

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { getAppStrings, getSystemLanguage } from "../config/strings";
 
 interface Props {
   children: ReactNode;
@@ -30,6 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      const copy = getAppStrings(getSystemLanguage()).errors;
       return (
         <div
           style={{
@@ -49,17 +51,17 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               maxWidth: "480px",
               padding: "32px",
-              borderRadius: "20px",
+              borderRadius: "var(--radius-bubble)",
               background: "var(--surface-card, #ffffff)",
               border: "1px solid var(--border-default, #e5e7eb)",
               boxShadow: "0 12px 32px rgba(0, 0, 0, 0.1)"
             }}
           >
-            <h2 style={{ margin: "0 0 12px", fontSize: "1.25rem", fontWeight: 600 }}>
-              Something went wrong
+            <h2 style={{ margin: "0 0 12px", fontSize: "var(--font-size-heading-small)", fontWeight: "var(--font-weight-semibold)" }}>
+              {copy.somethingWentWrong}
             </h2>
-            <p style={{ margin: "0 0 20px", fontSize: "0.875rem", color: "var(--text-secondary, #6b7280)" }}>
-              {this.state.error?.message || "An unexpected error occurred."}
+            <p style={{ margin: "0 0 20px", fontSize: "var(--font-size-small)", color: "var(--text-secondary, #6b7280)" }}>
+              {this.state.error?.message || copy.unexpectedError}
             </p>
             <button
               type="button"
@@ -71,14 +73,14 @@ export class ErrorBoundary extends Component<Props, State> {
                 background: "var(--accent-primary, #2aabee)",
                 color: "#ffffff",
                 border: "none",
-                borderRadius: "9999px",
+                borderRadius: "var(--radius-pill)",
                 padding: "10px 24px",
-                fontSize: "0.875rem",
-                fontWeight: 600,
+                fontSize: "var(--font-size-small)",
+                fontWeight: "var(--font-weight-semibold)",
                 cursor: "pointer"
               }}
             >
-              Reload application
+              {copy.reloadApplication}
             </button>
           </div>
         </div>

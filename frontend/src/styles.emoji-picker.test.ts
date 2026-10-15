@@ -55,7 +55,7 @@ const composerIconControlRule = (state = "") => {
 describe("docked emoji picker styles", () => {
   it("keeps composer attachment and emoji controls as plain icons", () => {
     expect(composerIconControlRule()).toContain("background: transparent;");
-    expect(composerIconControlRule()).toContain("border-radius: 50%;");
+    expect(composerIconControlRule()).toContain("border-radius: var(--radius-circle);");
     expect(composerIconControlRule(":hover")).toContain("background: color-mix(");
     expect(composerIconControlRule(":focus-visible")).toContain("background: color-mix(");
     expect(composerIconControlRule(":focus-visible")).toContain("box-shadow: none;");
@@ -143,11 +143,11 @@ describe("message context menu glass treatment", () => {
   it("uses the shared dark gray surface without an outer border", () => {
     expect(rule(".message-context-menu")).toContain("background: var(--chat-popup-surface);");
     expect(rule(".message-context-menu")).toContain("backdrop-filter: blur(24px) saturate(1.35);");
-    expect(rule(".message-context-menu")).toContain("border-radius: 24px;");
+    expect(rule(".message-context-menu")).toContain("border-radius: var(--radius-panel);");
     expect(rule(".message-context-menu")).toContain("border: 0;");
     expect(rule(".message-context-menu")).not.toContain("inset 0 1px");
-    expect(rule(".message-context-menu button")).toContain("border-radius: 14px;");
-    expect(rule(".message-context-reactions button")).toContain("border-radius: 50%;");
+    expect(rule(".message-context-menu button")).toContain("border-radius: var(--radius-surface);");
+    expect(rule(".message-context-reactions button")).toContain("border-radius: var(--radius-circle);");
   });
 
   it("shares the surface across the emoji picker and attachment file menu", () => {
@@ -307,9 +307,9 @@ describe("desktop chat refinements", () => {
 
 describe("emoji-only message sizes", () => {
   it("sizes the Markdown message body for one, two, and three emoji", () => {
-    expect(rule(".message-bubble.emoji-only-xl .message-body")).toContain("font-size: 3rem;");
-    expect(rule(".message-bubble.emoji-only-lg .message-body")).toContain("font-size: 2rem;");
-    expect(rule(".message-bubble.emoji-only-md .message-body")).toContain("font-size: 1.25rem;");
+    expect(rule(".message-bubble.emoji-only-xl .message-body")).toContain("font-size: var(--font-size-display);");
+    expect(rule(".message-bubble.emoji-only-lg .message-body")).toContain("font-size: var(--font-size-display-small);");
+    expect(rule(".message-bubble.emoji-only-md .message-body")).toContain("font-size: var(--font-size-heading-small);");
   });
 
   it("keeps outgoing emoji-only messages flush with the right edge", () => {

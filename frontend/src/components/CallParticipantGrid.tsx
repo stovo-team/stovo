@@ -54,7 +54,7 @@ const gridStyle: CSSProperties = {
 const tileStyle: CSSProperties = {
   position: "relative",
   background: "#080808",
-  borderRadius: "18px",
+  borderRadius: "var(--radius-bubble)",
   overflow: "hidden",
   minHeight: "120px",
   aspectRatio: "16 / 9",

@@ -144,7 +144,7 @@ export default function InvitePage() {
               <Smartphone aria-hidden="true" size={18} />
               {strings.invite.openInApp}
             </button>
-            <div className="auth-divider" style={{ margin: "0.75rem 0", textAlign: "center", opacity: 0.7, fontSize: "0.85rem" }}>
+            <div className="auth-divider" style={{ margin: "0.75rem 0", textAlign: "center", opacity: 0.7, fontSize: "var(--font-size-small)" }}>
               <span>{strings.invite.orContinueInBrowser}</span>
             </div>
           </div>

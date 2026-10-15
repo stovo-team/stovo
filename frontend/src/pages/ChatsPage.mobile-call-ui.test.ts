@@ -44,7 +44,7 @@ describe("mobile active video call UI", () => {
     expect(mobileActiveSource).toContain("Let the blackout paint before facingMode/mirror state updates");
     expect(mobileActiveSource).toContain("setPreviewFacingMode(nextFacing)");
     expect(mobileActiveSource).toContain("dst.srcObject = null");
-    expect(styles).toContain(".mobile-active-pip {\n  position: absolute;\n  width: 104px;\n  height: 140px;\n  border: 2px solid rgba(255, 255, 255, 0.35);\n  border-radius: 8px;\n  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.42);\n  background: #000;");
+    expect(styles).toContain(".mobile-active-pip {\n  position: absolute;\n  width: 104px;\n  height: 140px;\n  border: 2px solid rgba(255, 255, 255, 0.35);\n  border-radius: var(--radius-control);\n  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.42);\n  background: #000;");
   });
 
   it("hides only the lower controls after inactivity and lets a screen tap reveal them", () => {

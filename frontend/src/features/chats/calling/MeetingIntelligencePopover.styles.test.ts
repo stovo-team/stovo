@@ -38,28 +38,29 @@ describe("meeting intelligence popover design", () => {
     expect(component).toContain("isRecActive ? <Square");
     expect(component).toContain("<Circle size={17}");
     const button = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
-    expect(button).toMatch(/border-radius:\s*50%/);
+    expect(button).toMatch(/border-radius:\s*var\(--radius-circle\)/);
     expect(button).toMatch(/min-width:\s*28px/);
     expect(button).toMatch(/flex:\s*0 0 28px/);
     expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/width:\s*28px/);
     expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/height:\s*28px/);
     expect(ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
     const titleRules = Array.from(styles.matchAll(/\.meeting-intel-popover--inline-menu \.meeting-intel-name\s*\{([^}]*)\}/g), (match) => match[1]);
-    expect(titleRules.at(-1)).toMatch(/font-size:\s*\.875rem/);
+    expect(titleRules.at(-1)).toMatch(/font-size:\s*var\(--font-size-small\)/);
   });
 
   it("keeps Live Captions disabled and places its Premium badge beside the switch", () => {
     const captionsCard = component.slice(component.indexOf("{/* Live Captions"));
-    expect(captionsCard).toContain('aria-label="Live Captions unavailable"');
+    expect(captionsCard).toContain("aria-label={copy.liveCaptionsUnavailable}");
     expect(captionsCard).toContain("defaultChecked={false}");
     expect(captionsCard).toContain("disabled");
     expect(captionsCard).toContain('aria-disabled="true"');
     expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-title')).toMatch(/color:\s*var\(--text-muted\)/);
     expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-icon')).toMatch(/color:\s*var\(--text-muted\)/);
-    expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf('aria-label="Premium feature"'));
+    expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf("aria-label={copy.premiumFeature}"));
     expect(captionsCard).not.toContain("Caption translation");
     expect(captionsCard).not.toContain("meeting-intel-card-subbar");
-    expect(ruleFor('.meeting-intel-restricted-badge[aria-label="Premium feature"]')).toMatch(/#bfdbfe/);
+    const badgeRules = Array.from(styles.matchAll(/\.meeting-intel-restricted-badge\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(badgeRules.at(-1)).toMatch(/#bfdbfe/);
   });
 
   it("centers the AI Notes preparation toast in the viewport", () => {

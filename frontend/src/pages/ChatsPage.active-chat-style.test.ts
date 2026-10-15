@@ -13,7 +13,7 @@ describe("active chat list item styling", () => {
     expect(activeRule).toContain(
       "background: color-mix(in oklab, var(--accent-soft) 28%, transparent);"
     );
-    expect(activeRule).toContain("border-radius: 22px;");
+    expect(activeRule).toContain("border-radius: var(--radius-panel);");
     expect(activeRule).not.toContain("border-left");
   });
 

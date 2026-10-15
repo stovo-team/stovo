@@ -23,7 +23,7 @@ const avatarStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   color: "#ccc",
-  fontSize: "1.25rem",
+  fontSize: "var(--font-size-heading-small)",
   letterSpacing: "0.02em",
 };
 
@@ -32,10 +32,10 @@ const labelStyle: CSSProperties = {
   left: 8,
   bottom: 8,
   padding: "2px 8px",
-  borderRadius: 4,
+  borderRadius: "var(--radius-small)",
   background: "rgba(0,0,0,0.55)",
   color: "#fff",
-  fontSize: 12,
+  fontSize: "var(--font-size-caption)",
   zIndex: 3,
 };
 

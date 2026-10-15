@@ -152,7 +152,7 @@ export default function MultiAdminPage() {
       });
       setNewName("");
       loadServers();
-      showToast(`Space "${res.name}" provisioned cleanly!`);
+      showToast(copy.settingsSaved(res.name));
     } catch (err: any) {
       alert(err.message || "Failed to create space");
     }
@@ -243,7 +243,7 @@ export default function MultiAdminPage() {
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
           <div style={styles.badgePill}>{copy.supervisor}</div>
-          <h1 style={styles.title}>Stovo Supervisor</h1>
+          <h1 style={styles.title}>{copy.title}</h1>
           <p style={styles.subtitle}>{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
@@ -319,7 +319,7 @@ export default function MultiAdminPage() {
             <div style={styles.statLabel} className="statLabel">{copy.advancedMonitoring}</div>
             <div style={styles.monitoringStatus} className="monitoringStatus">
               <span style={styles.monitoringDisabledButton}>{copy.monitoringDisabled}</span>
-              <span className="premium-feature-badge">Premium</span>
+              <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>
             </div>
           </div>
         </div>
@@ -362,14 +362,14 @@ export default function MultiAdminPage() {
                   {servers.map((s: ServerRecord) => (
                     <tr key={s.id} style={styles.tr} className="supervisor-space-row">
                       <td style={styles.td} className="td">#{s.id}</td>
-                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }} className="td">{s.name}</td>
+                      <td style={{ ...styles.td, fontWeight: "var(--font-weight-bold)", color: "#ffffff" }} className="td">{s.name}</td>
                       <td style={styles.td} className="td">
                         <a
                           href={`/s/${s.slug}`}
                           target="_blank"
                           rel="noreferrer"
                           style={styles.linkPill}
-                          title={`Open ${s.name} space in new tab`}
+                          title={copy.openSpace(s.name)}
                         >
                           /s/{s.slug}
                           <ExternalLink size={13} aria-hidden="true" style={{ marginLeft: 6 }} />
@@ -385,24 +385,24 @@ export default function MultiAdminPage() {
                         <div style={styles.actionGroup} className="actionGroup">
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`${copy.settings}: ${s.name}`}
+                            title={copy.settingsFor(s.name)}
                             style={styles.iconActionButton}
                             className="iconActionButton"
-                            aria-label={`${copy.settings}: ${s.name}`}
+                            aria-label={copy.settingsFor(s.name)}
                           >
                             <Settings2 size={19} aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
-                            title={`${copy.invite}: ${s.name}`}
+                            title={copy.inviteFor(s.name)}
                             style={styles.iconActionButton}
                             className="iconActionButton"
-                            aria-label={`${copy.invite}: ${s.name}`}
+                            aria-label={copy.inviteFor(s.name)}
                           >
                             <UserPlus size={19} aria-hidden="true" />
                           </button>
                           <div className="space-actions-menu-wrap">
-                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={`${copy.moreActions}: ${s.name}`} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
+                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={copy.actionsFor(s.name)} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
                             {openMenu === s.slug && <div className="space-actions-menu" role="menu">
                               <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); void handleCopyGhostToken(s.slug); }}><KeyRound size={16} />{copy.ghostToken}</button>
                               <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenu(null); void handleDelete(s.slug); }}><Trash2 size={16} />{copy.delete}</button>
@@ -423,13 +423,13 @@ export default function MultiAdminPage() {
       {editingServer && (
         <div style={styles.modalOverlay} className="modalOverlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
           <div style={styles.modalCard} className="modalCard" role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
-            <button type="button" style={styles.modalCloseButton} className="modalCloseButton" aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><X size={23} strokeWidth={1.8} aria-hidden="true" /></button>
+            <button type="button" style={styles.modalCloseButton} className="modalCloseButton" aria-label={copy.closeSettings} onClick={() => setEditingServer(null)} disabled={savingSettings}><X size={23} strokeWidth={1.8} aria-hidden="true" /></button>
             <div style={styles.badgePill} className="badgePill">{copy.spaceSettings}</div>
             <h3 id="space-settings-title" style={styles.modalTitle} className="modalTitle">{editingServer.name}</h3>
             <p style={styles.modalSubtitle} className="modalSubtitle">{copy.manageSpace}</p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
-              <div className="supervisor-settings-tabs" role="tablist" aria-label="Space settings">
+              <div className="supervisor-settings-tabs" role="tablist" aria-label={copy.spaceSettings}>
                 {([['general', copy.generalTab], ['ai', strings.admin.serverSettings.aiFunctions], ['chats', strings.admin.rbac.supervisorChatTypes], ['premium', strings.admin.encryption.premium]] as const).map(([id, label]) => <button type="button" role="tab" aria-selected={settingsTab === id} className={settingsTab === id ? "active" : ""} key={id} onClick={() => setSettingsTab(id)}>{label}</button>)}
               </div>
 
@@ -487,20 +487,20 @@ export default function MultiAdminPage() {
           <div style={styles.modalCard} className="modalCard">
             <h3 style={styles.modalTitle} className="modalTitle">{copy.createSpaceTitle}</h3>
             <p style={styles.modalSubtitle}>
-              Spins up a dedicated space environment with isolated backend, database, and storage.
+              {copy.createDescription}
             </p>
 
             {createResult ? (
               <div style={styles.resultBox}>
-                <div style={{ fontWeight: 700, color: "#34d399", marginBottom: 8, fontSize: 15 }}>
-                  Space Provisioned
+                <div style={{ fontWeight: "var(--font-weight-bold)", color: "#34d399", marginBottom: 8, fontSize: "var(--font-size-small)" }}>
+                  {copy.provisioned}
                 </div>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
-                  Admin account created. You can log in directly or share the invite link:
+                <p style={{ fontSize: "var(--font-size-caption)", color: "#9ca3af", marginBottom: 12 }}>
+                  {copy.adminCreated}
                 </p>
-                <div style={{ backgroundColor: "#1c1c1e", padding: 14, borderRadius: 16, marginBottom: 14, fontSize: 13 }}>
-                  <div><strong>Username:</strong> {createResult.adminUser}</div>
-                  <div><strong>Password:</strong> {createResult.adminPassword}</div>
+                <div style={{ backgroundColor: "#1c1c1e", padding: 14, borderRadius: "var(--radius-surface)", marginBottom: 14, fontSize: "var(--font-size-caption)" }}>
+                  <div><strong>{copy.username}:</strong> {createResult.adminUser}</div>
+                  <div><strong>{copy.password}:</strong> {createResult.adminPassword}</div>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
                   <a
@@ -509,16 +509,16 @@ export default function MultiAdminPage() {
                     rel="noreferrer"
                     style={{ ...styles.primaryPillButton, textDecoration: "none", textAlign: "center" }}
                   >
-                    Open Space Login
+                    {copy.openLogin}
                   </a>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(createResult.inviteUrl);
-                      showToast("Invite link copied to clipboard!");
+                      showToast(copy.copyInviteLink);
                     }}
                     style={styles.secondaryPillButton}
                   >
-                    Copy Invite Link
+                    {copy.copyInviteLink}
                   </button>
                   <button
                     onClick={() => {
@@ -527,7 +527,7 @@ export default function MultiAdminPage() {
                     }}
                     style={{ ...styles.secondaryPillButton, marginTop: 8 }}
                   >
-                    Close
+                    {copy.close}
                   </button>
                 </div>
               </div>
@@ -537,7 +537,7 @@ export default function MultiAdminPage() {
                   {copy.spaceName}
                   <input
                     type="text"
-                    placeholder="e.g. Awesome Corp"
+                    placeholder={copy.namePlaceholder}
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     style={styles.inputPill}
@@ -572,10 +572,10 @@ export default function MultiAdminPage() {
                     onClick={() => setIsCreateOpen(false)}
                     style={styles.secondaryPillButton}
                   >
-                    Cancel
+                    {copy.cancel}
                   </button>
                   <button type="submit" style={styles.primaryPillButton}>
-                    Provision Server
+                    {copy.provisionServer}
                   </button>
                 </div>
               </form>
@@ -607,31 +607,31 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 400,
     backgroundColor: "#1c1c1e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 28,
+    borderRadius: "var(--radius-panel)",
     padding: 36,
     boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8)",
   },
   badgePill: {
     display: "inline-block",
     padding: "6px 14px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     backgroundColor: "rgba(96, 165, 250, 0.12)",
     color: "#60a5fa",
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
     marginBottom: 16,
     border: "1px solid rgba(96, 165, 250, 0.25)",
   },
   title: {
-    fontSize: 28,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: "0 0 6px 0",
     letterSpacing: "-0.5px",
     color: "#ffffff",
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: "var(--font-size-small)",
     color: "#9ca3af",
     marginBottom: 28,
     lineHeight: 1.5,
@@ -645,17 +645,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     color: "#d1d5db",
   },
   inputPill: {
     padding: "12px 20px",
     backgroundColor: "#2c2c2e",
     border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     color: "#ffffff",
-    fontSize: 14,
+    fontSize: "var(--font-size-small)",
     outline: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -664,9 +664,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#c66b24",
     color: "#ffffff",
     border: "none",
-    borderRadius: 999,
-    fontWeight: 700,
-    fontSize: 14,
+    borderRadius: "var(--radius-pill)",
+    fontWeight: "var(--font-weight-bold)",
+    fontSize: "var(--font-size-small)",
     cursor: "pointer",
     boxShadow: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -676,9 +676,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#2c2c2e",
     color: "#e5e7eb",
     border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: 14,
+    borderRadius: "var(--radius-pill)",
+    fontWeight: "var(--font-weight-semibold)",
+    fontSize: "var(--font-size-small)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -691,7 +691,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#2c2c2e",
     color: "#e5e7eb",
     border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -699,9 +699,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 14,
     backgroundColor: "rgba(239, 68, 68, 0.15)",
     border: "1px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: 16,
+    borderRadius: "var(--radius-surface)",
     color: "#f87171",
-    fontSize: 13,
+    fontSize: "var(--font-size-caption)",
     marginBottom: 16,
     lineHeight: 1.4,
   },
@@ -719,8 +719,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 4,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: 0,
     color: "#ffffff",
     letterSpacing: "-0.5px",
@@ -743,20 +743,20 @@ const styles: Record<string, React.CSSProperties> = {
   statCard: {
     backgroundColor: "#1c1c1e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 24,
+    borderRadius: "var(--radius-panel)",
     padding: 24,
     boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
     transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease",
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: 500,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-medium)",
     color: "#9ca3af",
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 26,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
     color: "#ffffff",
   },
   monitoringStatus: {
@@ -768,17 +768,17 @@ const styles: Record<string, React.CSSProperties> = {
   monitoringDisabledButton: {
     padding: "6px 10px",
     border: "1px solid rgba(255,255,255,.12)",
-    borderRadius: 10,
+    borderRadius: "var(--radius-control)",
     background: "rgba(255,255,255,.05)",
     color: "#9ca3af",
-    fontSize: 13,
-    fontWeight: 650,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "default",
   },
   panelCard: {
     backgroundColor: "#1c1c1e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 28,
+    borderRadius: "var(--radius-panel)",
     padding: 32,
     boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
   },
@@ -789,8 +789,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading-small)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: 0,
     color: "#ffffff",
   },
@@ -805,20 +805,20 @@ const styles: Record<string, React.CSSProperties> = {
   },
   th: {
     padding: "12px 20px",
-    fontSize: 12,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     color: "#6b7280",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
   tr: {
     backgroundColor: "#2c2c2e",
-    borderRadius: 20,
+    borderRadius: "var(--radius-bubble)",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   td: {
     padding: "18px 20px",
-    fontSize: 14,
+    fontSize: "var(--font-size-small)",
     color: "#d1d5db",
   },
   linkPill: {
@@ -828,21 +828,21 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#93c5fd",
     border: "1px solid rgba(96, 165, 250, 0.25)",
     padding: "6px 16px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     fontFamily: "monospace",
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     textDecoration: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   statusPill: {
     padding: "6px 14px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     backgroundColor: "rgba(52, 211, 153, 0.15)",
     color: "#34d399",
     border: "1px solid rgba(52, 211, 153, 0.3)",
-    fontSize: 12,
-    fontWeight: 700,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
   },
   actionGroup: {
@@ -858,7 +858,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: 40,
     padding: 0,
     border: "1px solid #45464a",
-    borderRadius: "50%",
+    borderRadius: "var(--radius-circle)",
     backgroundColor: "#252629",
     color: "#d5d9e0",
     cursor: "pointer",
@@ -868,9 +868,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "rgba(52, 211, 153, 0.15)",
     color: "#34d399",
     border: "1px solid rgba(52, 211, 153, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -879,9 +879,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "rgba(129, 140, 248, 0.15)",
     color: "#a5b4fc",
     border: "1px solid rgba(129, 140, 248, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -894,7 +894,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "rgba(239, 68, 68, 0.15)",
     color: "#fca5a5",
     border: "1px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -902,7 +902,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     padding: 60,
     color: "#9ca3af",
-    fontSize: 15,
+    fontSize: "var(--font-size-small)",
   },
   modalOverlay: {
     position: "fixed",
@@ -924,13 +924,13 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 440,
     backgroundColor: "#1c1c1e",
     border: "1px solid rgba(255, 255, 255, 0.12)",
-    borderRadius: 32,
+    borderRadius: "var(--radius-panel)",
     padding: 36,
     boxShadow: "0 30px 70px rgba(0, 0, 0, 0.9)",
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading-small)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: "0 0 8px 0",
     color: "#ffffff",
   },
@@ -943,14 +943,14 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     width: 40,
     height: 40,
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     border: "1px solid rgba(255,255,255,.12)",
     background: "#2c2c2e",
     color: "#d1d5db",
     cursor: "pointer",
   },
   modalSubtitle: {
-    fontSize: 14,
+    fontSize: "var(--font-size-small)",
     color: "#9ca3af",
     marginBottom: 24,
     lineHeight: 1.5,
@@ -965,7 +965,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#2c2c2e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
     padding: 20,
-    borderRadius: 24,
+    borderRadius: "var(--radius-panel)",
   },
   settingsPillButton: {
     display: "inline-flex",
@@ -976,9 +976,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "rgba(96, 165, 250, 0.15)",
     color: "#60a5fa",
     border: "1px solid rgba(96, 165, 250, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -988,19 +988,19 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   tabBadgeActive: {
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     padding: "3px 8px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     backgroundColor: "rgba(52, 211, 153, 0.15)",
     color: "#34d399",
     border: "1px solid rgba(52, 211, 153, 0.3)",
   },
   tabBadgeInactive: {
-    fontSize: 11,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     padding: "3px 8px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     color: "#6b7280",
     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -1012,7 +1012,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 10,
     backgroundColor: "#2c2c2e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 20,
+    borderRadius: "var(--radius-bubble)",
     padding: 14,
   },
   tabToggleRow: {
@@ -1023,12 +1023,12 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "6px 4px",
   },
   tabToggleTitle: {
-    fontSize: 14,
-    fontWeight: 700,
+    fontSize: "var(--font-size-small)",
+    fontWeight: "var(--font-weight-bold)",
     color: "#ffffff",
   },
   tabToggleDesc: {
-    fontSize: 12,
+    fontSize: "var(--font-size-caption)",
     color: "#9ca3af",
     marginTop: 2,
   },
@@ -1046,10 +1046,10 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#ffffff",
     border: "1px solid rgba(96, 165, 250, 0.4)",
     padding: "14px 24px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     boxShadow: "0 15px 30px rgba(0, 0, 0, 0.8)",
     zIndex: 1100,
-    fontWeight: 600,
-    fontSize: 14,
+    fontWeight: "var(--font-weight-semibold)",
+    fontSize: "var(--font-size-small)",
   },
 };

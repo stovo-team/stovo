@@ -96,8 +96,8 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("falls back to Android's picker when the in-app media query is empty or fails", () => {
-    expect(mediaGridSource).toContain("No photos or videos found in the in-app gallery.");
-    expect(mediaGridSource).toContain("Unable to load the in-app gallery.");
+    expect(mediaGridSource).toContain("copy.emptyGallery");
+    expect(mediaGridSource).toContain("copy.galleryError");
     expect(attachmentSheetSource).toContain("onChooseGallery={() => { onPick(\"gallery\"); closeSheet(); }}");
   });
 
@@ -125,7 +125,7 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(rule).toContain("flex: 0 0 36px;");
     expect(rule).toContain("min-width: 36px;");
     expect(rule).toContain("min-height: 36px;");
-    expect(rule).toContain("border-radius: 999px;");
+    expect(rule).toContain("border-radius: var(--radius-pill);");
   });
 
   it("supports sliding up from top to open full screen, sliding down to restore default state, and sliding down more to close", () => {
