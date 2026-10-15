@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { Chat, Message } from "../../../api/chats";
 import type { ChatImportPreparedContent, ChatExportSource } from "../../../api/chatTransfer";
@@ -192,8 +193,10 @@ export function ChatTransferDialog({
   const title = mode === "import" ? copy.importTitle : copy.exportTitle;
   const importComplete = mode === "import" && completeChat !== null;
 
-  return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="modal-backdrop chat-transfer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
       <section className="messenger-modal chat-transfer-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-transfer-title">
         <div className="modal-card-header">
           <h2 id="chat-transfer-title">{importComplete ? copy.imported : title}</h2>
@@ -216,7 +219,7 @@ export function ChatTransferDialog({
             </>
           )}
           {mode === "export" && !exportSource && (
-            <button type="button" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</button>
+            <button className="chat-transfer-primary-action" type="button" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</button>
           )}
           {mode === "export" && exportSource && (
             <label className="chat-transfer-profile">
@@ -255,17 +258,17 @@ export function ChatTransferDialog({
             <p className="chat-transfer-plaintext-warning" role="alert">{copy.plaintextWarning}</p>
           )}
           <div className="chat-transfer-actions">
-            <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>{copy.cancel}</button>
             {mode === "import" && !importComplete && archive && (
-              <button type="button" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</button>
+              <button className="chat-transfer-primary-action" type="button" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</button>
             )}
             {mode === "export" && exportSource && (
-              <button type="button" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</button>
+              <button className="chat-transfer-primary-action" type="button" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</button>
             )}
           </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }
 

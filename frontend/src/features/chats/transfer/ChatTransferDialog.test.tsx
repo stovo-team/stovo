@@ -84,12 +84,12 @@ afterEach(() => {
 });
 
 function mount(mode: "import" | "export", onClose = vi.fn(), onImported = vi.fn()) {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
   roots.push(root);
   act(() => root.render(<ChatTransferDialog mode={mode} chat={chat} accessToken="access-token" currentUserId="user-1" onClose={onClose} onImported={onImported} />));
-  return { container, onClose, onImported };
+  return { container: document.body, onClose, onImported };
 }
 
 async function chooseFile(container: HTMLElement) {
@@ -103,7 +103,19 @@ async function chooseFile(container: HTMLElement) {
 }
 
 describe("ChatTransferDialog", () => {
-  it("previews the locally parsed one-chat file and cancel performs no import write", async () => {
+  it("mounts above chat stacking contexts and closes without an extra cancel action", async () => {
+    const { container, onClose } = mount("import");
+    const backdrop = container.querySelector(".modal-backdrop.chat-transfer-backdrop");
+
+    expect(backdrop?.parentElement).toBe(document.body);
+    expect(Array.from(container.querySelectorAll("button")).some((button) => button.textContent?.includes("Cancel"))).toBe(false);
+
+    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    await act(async () => close?.click());
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("previews the locally parsed one-chat file and closing performs no import write", async () => {
     const { container, onClose } = mount("import");
     await chooseFile(container);
 
@@ -113,8 +125,8 @@ describe("ChatTransferDialog", () => {
     expect(container.textContent).toContain("Mira");
     expect(container.textContent).toContain("Rich formatting was flattened");
 
-    const cancel = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Cancel"));
-    await act(async () => cancel?.click());
+    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    await act(async () => close?.click());
     expect(commitChatImport).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
@@ -140,13 +152,13 @@ describe("ChatTransferDialog", () => {
   it("uses the space's default encryption protocol rather than the selected chat's legacy protocol", async () => {
     getFamily.mockResolvedValue({ defaultMessageEncryptionProtocol: "end_to_end" });
     const legacyChat = { ...chat, encryptionProtocol: "legacy_plaintext" } as Chat;
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
     roots.push(root);
     act(() => root.render(<ChatTransferDialog mode="import" chat={legacyChat} accessToken="access-token" currentUserId="user-1" onClose={vi.fn()} />));
-    await chooseFile(container);
-    const confirm = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Import as new chat"));
+    await chooseFile(document.body);
+    const confirm = Array.from(document.body.querySelectorAll("button")).find((button) => button.textContent?.includes("Import as new chat"));
     await act(async () => confirm?.click());
 
     expect(getFamily).toHaveBeenCalledWith("access-token");
@@ -278,13 +290,13 @@ describe("ChatTransferDialog", () => {
     expect(serializedArchive.messages[0]).not.toHaveProperty("encryptionMetadata");
   });
 
-  it("canceling the export confirmation does not decrypt or serialize", async () => {
+  it("closing the export confirmation does not decrypt or serialize", async () => {
     getChatExportSource.mockResolvedValue({ chatId: chat.id, chat, messages: [] });
     const { container } = mount("export");
     const review = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Review export"));
     await act(async () => review?.click());
-    const cancel = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Cancel"));
-    await act(async () => cancel?.click());
+    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    await act(async () => close?.click());
 
     expect(decryptMessages).not.toHaveBeenCalled();
     expect(serializeChatArchive).not.toHaveBeenCalled();

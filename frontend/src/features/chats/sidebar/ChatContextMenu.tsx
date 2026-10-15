@@ -5,9 +5,9 @@ import {
   CheckCheck,
   Download,
   FolderMinus,
-  Import,
   MessageCircle,
-  Star
+  Star,
+  Upload
 } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
@@ -112,14 +112,14 @@ export function ChatContextMenu({
 
       {onImportChat && (
         <button type="button" role="menuitem" onClick={() => { onImportChat(chat); onClose(); }}>
-          <Import size={16} aria-hidden="true" />
+          <Download size={16} aria-hidden="true" />
           <span>{importChatLabel}</span>
         </button>
       )}
 
       {onExportChat && (
         <button type="button" role="menuitem" onClick={() => { onExportChat(chat); onClose(); }}>
-          <Download size={16} aria-hidden="true" />
+          <Upload size={16} aria-hidden="true" />
           <span>{exportChatLabel}</span>
         </button>
       )}

@@ -393,6 +393,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               messageDelayStatus={detailsActions.messageDelayStatus}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
               onDescriptionChange={detailsActions.handleDescriptionChange}
+              onImported={() => { void chatOverview.refreshChats(); }}
               onTitleDraftChange={setChatTitleDraft}
             />
           )}

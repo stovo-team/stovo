@@ -30763,32 +30763,53 @@ button.checklist-add-item-btn:hover,
 .quick-access-settings .modal-card-header h2 { font-size: var(--font-size-body); margin: 0; }
 
 .chat-transfer-dialog {
+  background: var(--background-primary, var(--surface-card));
+  border-color: var(--border-default);
   box-sizing: border-box;
+  box-shadow: 0 24px 64px var(--color-palette-86def6ffcd19);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
+  font-size: var(--font-size-small);
   gap: 12px;
   max-height: min(88vh, 760px);
   max-width: 620px;
   overflow: auto;
   padding: 18px;
+  position: relative;
   width: min(calc(100vw - 32px), 620px);
 }
-.chat-transfer-dialog .modal-card-header { align-items: center; display: flex; justify-content: space-between; }
-.chat-transfer-dialog .modal-card-header h2 { margin: 0; }
+.chat-transfer-backdrop { backdrop-filter: blur(4px); isolation: isolate; z-index: 2147483647; }
+.chat-transfer-dialog .modal-card-header { align-items: center; background: transparent; border: 0 !important; display: flex; flex-shrink: 0; justify-content: space-between; padding: 0 0 2px; }
+.chat-transfer-dialog .modal-card-header h2 { font-size: var(--font-size-body-large); letter-spacing: -.015em; line-height: var(--line-height-heading); margin: 0; }
 .chat-transfer-dialog .quick-access-close { align-items: center; background: transparent; border: 0; border-radius: var(--radius-control); color: inherit; cursor: pointer; display: inline-flex; font-size: var(--font-size-heading-small); height: 34px; justify-content: center; width: 34px; }
-.chat-transfer-body { display: grid; gap: 12px; }
-.chat-transfer-body > p { margin: 0; }
-.chat-transfer-file-label, .chat-transfer-profile { display: grid; gap: 6px; }
-.chat-transfer-file-label input, .chat-transfer-profile select { box-sizing: border-box; max-width: 100%; width: 100%; }
-.chat-transfer-preview { border: 1px solid var(--border-default, var(--color-palette-33b95d4c2e2b)); border-radius: var(--radius-surface); display: grid; gap: 8px; max-height: 38vh; overflow: auto; padding: 12px; }
+.chat-transfer-body { display: grid; gap: 14px; }
+.chat-transfer-body > p { color: var(--text-secondary); line-height: 1.5; margin: 0; }
+.chat-transfer-file-label, .chat-transfer-profile { display: grid; gap: 7px; }
+.chat-transfer-file-label > span, .chat-transfer-profile > span { color: var(--text-secondary); font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); }
+.chat-transfer-file-label input, .chat-transfer-profile select { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-input, 18px); box-sizing: border-box; color: var(--text-primary); font: inherit; max-width: 100%; min-height: 46px; padding: 8px 12px; width: 100%; }
+.chat-transfer-file-label input::file-selector-button { background: var(--accent-primary); border: 0; border-radius: var(--radius-pill); color: var(--button-primary-text, var(--color-palette-f2074b6cef37)); cursor: pointer; font: inherit; font-weight: var(--font-weight-semibold); margin-right: 10px; padding: 8px 14px; }
+.chat-transfer-file-label input::file-selector-button:hover { background: var(--accent-primary-hover); }
+.chat-transfer-profile select { cursor: pointer; }
+.chat-transfer-preview { background: color-mix(in srgb, var(--accent-primary) 7%, var(--background-primary)); border: 0; border-radius: var(--radius-surface); color: var(--text-primary); display: grid; gap: 9px; max-height: 38vh; overflow: auto; padding: 14px; }
+.chat-transfer-preview h3 { font-size: var(--font-size-body); font-weight: var(--font-weight-bold); }
 .chat-transfer-preview h3, .chat-transfer-preview p { margin: 0; overflow-wrap: anywhere; }
 .chat-transfer-preview ul { margin: 6px 0 0; padding-left: 20px; }
-.chat-transfer-preview li { overflow-wrap: anywhere; }
-.chat-transfer-plaintext-warning { border-left: 3px solid var(--warning-color, var(--color-palette-2c7b28f4efcb)); padding: 8px 10px; }
+.chat-transfer-preview li { color: var(--text-secondary); overflow-wrap: anywhere; }
+.chat-transfer-plaintext-warning { background: color-mix(in srgb, var(--warning) 12%, transparent); border-left: 3px solid var(--warning); border-radius: var(--radius-control); color: var(--text-secondary) !important; padding: 12px 14px; }
 .chat-transfer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .chat-transfer-actions button { min-height: 38px; }
 .chat-transfer-actions .secondary-button { margin-right: auto; }
-.modal-backdrop:has(.chat-transfer-dialog) { isolation: isolate; z-index: 2147483647; }
+.chat-transfer-primary-action { align-items: center; align-self: start; background: var(--accent-primary); border: 0; border-radius: var(--radius-pill); color: var(--button-primary-text, var(--color-palette-f2074b6cef37)); cursor: pointer; display: inline-flex; font: inherit; font-weight: var(--font-weight-bold); justify-content: center; min-height: 44px; padding: 0 18px; transition: background-color var(--motion-fast), transform var(--motion-press); width: fit-content; }
+.chat-transfer-primary-action:hover:not(:disabled) { background: var(--accent-primary-hover); }
+.chat-transfer-primary-action:active:not(:disabled) { transform: scale(.98); }
+.chat-transfer-primary-action:disabled { cursor: default; opacity: .58; }
+.chat-transfer-actions button:focus-visible, .chat-transfer-file-label input:focus-visible, .chat-transfer-profile select:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.chat-transfer-settings-actions { display: grid; gap: 4px; padding: 6px; }
+.chat-transfer-settings-action { align-items: center; background: transparent; border: 0; border-radius: var(--radius-surface); color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: var(--font-weight-semibold); gap: 12px; min-height: 48px; padding: 10px 12px; text-align: left; transition: background-color var(--motion-fast), color var(--motion-fast); width: 100%; }
+.chat-transfer-settings-action > svg { color: var(--accent-primary); flex: 0 0 auto; }
+.chat-transfer-settings-action:hover { background: color-mix(in srgb, var(--accent-primary) 12%, transparent); }
+.chat-transfer-settings-action:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 1px; }
 .message-import-attribution { border-left: 2px solid var(--stovo-primary); color: var(--text-muted); display: grid; font-size: var(--font-size-caption); gap: 2px; margin-block: 4px; padding-left: 8px; }
 .message-import-attribution strong { color: var(--text-secondary); font-weight: var(--font-weight-semibold); }
 .quick-access-close { align-items: center; background: color-mix(in oklab, var(--text-muted) 18%, transparent); border: 0; border-radius: var(--radius-circle); box-sizing: border-box; color: var(--text-muted); cursor: pointer; display: inline-flex; flex: 0 0 30px; height: 30px !important; justify-content: center; max-height: 30px; max-width: 30px; min-height: 30px !important; min-width: 30px; padding: 0; width: 30px !important; }
