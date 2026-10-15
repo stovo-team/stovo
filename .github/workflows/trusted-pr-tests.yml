@@ -33,7 +33,7 @@ jobs:
               - '.github/workflows/pipeline.yml'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/**'
               - 'scripts/check-solid-boundaries.sh'
               - 'docs/engineering/size-baseline.tsv'

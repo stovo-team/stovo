@@ -41,8 +41,8 @@ coverage/
 /e2e/playwright-report/
 tmp/
 temp/
-ntfy/cache/
-ntfy/data/
+deploy/ntfy/cache/
+deploy/ntfy/data/
 
 .env.production.bak
 *.bak
@@ -62,12 +62,7 @@ features.db
 
 # Local helper scripts
 /scripts/*
-!/scripts/ensure-docker-buildx.sh
-!/scripts/ensure-docker-buildx.test.sh
 !/scripts/check-solid-boundaries.sh
-!/scripts/deploy-environment.sh
-!/scripts/deploy-stage.sh
-!/scripts/deploy-environment.test.ps1
 !/scripts/update-solid-baselines.sh
 !/scripts/check-solid.cjs
 /docker-compose.test.ps1

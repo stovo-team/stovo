@@ -7,7 +7,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'migrations/master/**'
+      - 'deploy/migrations/master/**'
       - 'deploy/caddy/Caddyfile'
       - 'deploy/caddy/Caddyfile.internal'
       - 'deploy/compose/production-multiserver.yml'
@@ -58,7 +58,7 @@ jobs:
               - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/caddy/Caddyfile'
               - 'deploy/caddy/Caddyfile.internal'
               - 'deploy/compose/production-multiserver.yml'
@@ -66,7 +66,7 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/deploy-environment.sh'
+              - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
 
@@ -326,7 +326,7 @@ jobs:
               "$@"
             }
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
@@ -397,7 +397,7 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
@@ -466,7 +466,7 @@ jobs:
             for _ in $(seq 1 30); do if sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
-            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+            for migration in $(find deploy/migrations/master -maxdepth 1 -name '*.sql' | sort); do
               echo "Applying master migration: $migration"
               cat "$migration" | sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
             done

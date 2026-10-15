@@ -5,10 +5,10 @@ type: operations
 
 # Self-host on Kubernetes with Helm
 
-Stovo's Helm chart lives in `charts/stovo`. It creates the backend and frontend workloads, their ClusterIP Services, an optional HTTP Ingress, the Atlas migration Job, and an optional uploads PVC. It does not install PostgreSQL, Redis, S3/MinIO, ntfy, LiveKit, or Coturn; configure these dependencies separately. Read the chart's values and templates as the authoritative contract for values, probes, storage classes, and ingress fields:
+Stovo's Helm chart lives in `deploy/charts/stovo`. It creates the backend and frontend workloads, their ClusterIP Services, an optional HTTP Ingress, the Atlas migration Job, and an optional uploads PVC. It does not install PostgreSQL, Redis, S3/MinIO, ntfy, LiveKit, or Coturn; configure these dependencies separately. Read the chart's values and templates as the authoritative contract for values, probes, storage classes, and ingress fields:
 
 ```sh
-helm show values charts/stovo
+helm show values deploy/charts/stovo
 ```
 
 The chart expects external PostgreSQL, Redis-compatible cache/presence and Redis Streams services, and ntfy/LiveKit/TURN integrations when enabled. Its default `STORAGE_PROVIDER` is `local`: uploaded files are stored on the chart's uploads PVC. Supply chart runtime credentials through a Kubernetes Secret; do not commit secret values in a values file or pass them in a recorded shell history.
@@ -27,16 +27,16 @@ The chart does not deploy media or notification services. Operate LiveKit, Cotur
 Run these commands from the repository root:
 
 ```sh
-helm lint charts/stovo --values my-values.yaml
-helm template stovo charts/stovo --values my-values.yaml
-helm template stovo charts/stovo --namespace stovo --values my-values.yaml
+helm lint deploy/charts/stovo --values my-values.yaml
+helm template stovo deploy/charts/stovo --values my-values.yaml
+helm template stovo deploy/charts/stovo --namespace stovo --values my-values.yaml
 ```
 
 Before installing, review the rendered manifests for the target namespace and cluster, especially Secret references, PVC sizes/storage classes, ingress host/TLS, service ports, probes and resource requests/limits. `helm template` renders locally; it does not validate cluster-specific admission policies or availability of storage classes.
 
 ## Configure secrets
 
-Create the Secret named by `existingSecret` (default `stovo-secrets`). The backend and migration Job read credential fields from this pre-existing Secret, using the exact key names listed in `charts/stovo/values.yaml` and templates. Required database, Redis, and auth keys are individual Secret references, so missing required keys prevent the pod/job from starting. The backend requires `DATABASE_URL`, `REDIS_URL`, `REDIS_JOBS_URL`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `INVITE_TOKEN_SECRET`, and `MESSAGE_ENCRYPTION_KEY`; the encryption key must be a base64 encoding of exactly 32 random bytes. `DATABASE_URL` should include the provider's required TLS mode; keep URLs containing embedded credentials in the Secret.
+Create the Secret named by `existingSecret` (default `stovo-secrets`). The backend and migration Job read credential fields from this pre-existing Secret, using the exact key names listed in `deploy/charts/stovo/values.yaml` and templates. Required database, Redis, and auth keys are individual Secret references, so missing required keys prevent the pod/job from starting. The backend requires `DATABASE_URL`, `REDIS_URL`, `REDIS_JOBS_URL`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `INVITE_TOKEN_SECRET`, and `MESSAGE_ENCRYPTION_KEY`; the encryption key must be a base64 encoding of exactly 32 random bytes. `DATABASE_URL` should include the provider's required TLS mode; keep URLs containing embedded credentials in the Secret.
 
 For the default local storage provider, S3 credentials are not needed. If switching to S3, set `STORAGE_PROVIDER`, `MINIO_ENDPOINT`, `MINIO_SECURE`, and bucket names in `backend.env`; put `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in the Secret. If `TURN_ENABLED` is true, also provide `TURN_USERNAME` and `TURN_PASSWORD`. Set `app.livekitUrl` when a public LiveKit endpoint is configured; the chart then requires `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in the Secret. For other integration credentials such as `GROQ_API_KEY` or `NTFY_PUBLISH_TOKEN`, add their names to `secrets.additionalKeys`. Keep connection URLs and credentials in Secret keys rather than a checked-in values file.
 
@@ -91,7 +91,7 @@ ingress:
 Replace the example registry, immutable tags, host, and ingress class with values for your cluster. Add `imagePullSecrets` if the registry is private. The example leaves calls disabled; set the media URLs and credentials separately if you operate LiveKit and TURN.
 
 ```sh
-helm upgrade --install stovo charts/stovo --namespace stovo --create-namespace --values my-values.yaml
+helm upgrade --install stovo deploy/charts/stovo --namespace stovo --create-namespace --values my-values.yaml
 kubectl -n stovo get deploy,svc,pvc,pods
 ```
 
@@ -119,9 +119,9 @@ Before restore or an incompatible upgrade, stop or scale down application writes
 Review release notes and create verified database/object backups. Inspect changes, lint, and render before upgrading:
 
 ```sh
-helm lint charts/stovo --values my-values.yaml
-helm template stovo charts/stovo --namespace stovo --values my-values.yaml
-helm upgrade stovo charts/stovo --namespace stovo --values my-values.yaml
+helm lint deploy/charts/stovo --values my-values.yaml
+helm template stovo deploy/charts/stovo --namespace stovo --values my-values.yaml
+helm upgrade stovo deploy/charts/stovo --namespace stovo --values my-values.yaml
 kubectl -n stovo rollout status deployment/stovo-stovo-backend
 kubectl -n stovo rollout status deployment/stovo-stovo-frontend
 ```

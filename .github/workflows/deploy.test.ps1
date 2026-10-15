@@ -67,7 +67,8 @@ if ($workflow -notmatch 'docker_with_space_recovery\(\)' -or
     throw "Deployment must safely reclaim unused Docker artifacts and retry after an out-of-space failure."
 }
 
-if ($workflow -notmatch 'migrations/master') {
+if ($workflow -notmatch 'deploy/migrations/master' -or
+    $workflow -notmatch 'find deploy/migrations/master') {
     throw "Deployment must apply master database migrations."
 }
 
@@ -86,7 +87,7 @@ if ($workflow -notmatch "SELECT slug FROM servers ORDER BY slug" -or
     throw "Deployment must migrate every registered and live tenant backend."
 }
 
-if ($workflow -notmatch 'scripts/deploy-environment\.sh' -or
+if ($workflow -notmatch 'deploy/scripts/deploy-environment\.sh' -or
     $workflow -notmatch '\.github/workflows/pipeline\.yml') {
     throw "Changes to migration deployment logic must never be classified as frontend-only."
 }

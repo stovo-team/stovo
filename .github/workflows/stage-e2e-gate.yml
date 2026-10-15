@@ -29,7 +29,7 @@ jobs:
           STAGE_PATH: /opt/stovo/stage
           STAGE_URL: ${{ inputs.stage_url || vars.STAGE_URL }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: bash scripts/deploy-stage.sh
+        run: bash deploy/scripts/deploy-stage.sh
 
   stage-e2e:
     name: Run E2E against stage
