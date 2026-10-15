@@ -1,4 +1,5 @@
 import { ReactNode, useMemo } from "react";
+import { useStrings } from "../i18n/LanguageContext";
 import { Check, FileText, Pencil } from "lucide-react";
 import * as Y from "yjs";
 import type { Canvas, CanvasReference, CanvasUpdate } from "../api/canvas";
@@ -453,7 +454,7 @@ function safeMarkdownImageSource(source: string): string | null {
   return null;
 }
 
-function renderInlineMarkdown(text: string) {
+function renderInlineMarkdown(text: string, currentImage: (label: string) => string) {
   const parts: ReactNode[] = [];
   const regex = /!\[[^\]]*\](?:\([^)]+\)|\[[^\]]*\])?|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~/g;
   let lastIndex = 0;
@@ -472,8 +473,8 @@ function renderInlineMarkdown(text: string) {
       parts.push(safeSource ? (
         <img key={match.index} className="canvas-md-image" src={safeSource} alt={imageLabel} loading="lazy" />
       ) : (
-        <span key={match.index} className="canvas-md-image" role="img" aria-label={`Image: ${imageLabel}`}>
-          Image: {decodeMarkdownEntities(imageLabel)}
+        <span key={match.index} className="canvas-md-image" role="img" aria-label={currentImage(decodeMarkdownEntities(imageLabel))}>
+          {currentImage(decodeMarkdownEntities(imageLabel))}
         </span>
       ));
       lastIndex = match.index + full.length;
@@ -509,7 +510,7 @@ function renderInlineMarkdown(text: string) {
 }
 
 /** Renders a single markdown line in rich styling */
-function RichMarkdownLine({ line, index }: { line: string; index: number }) {
+function RichMarkdownLine({ line, index, currentImage }: { line: string; index: number; currentImage: (label: string) => string }) {
   // Checkbox: - [ ] or - [x]
   const checkMatch = /^[-*+]\s+\[([ xX])\]\s*(.*)$/.exec(line);
   if (checkMatch) {
@@ -520,7 +521,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
           {isChecked ? <Check size={10} strokeWidth={3} /> : null}
         </span>
         <span className={isChecked ? "canvas-md-check-done" : ""}>
-          {renderInlineMarkdown(checkMatch[2])}
+          {renderInlineMarkdown(checkMatch[2], currentImage)}
         </span>
       </div>
     );
@@ -531,7 +532,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   if (h1Match) {
     return (
       <div key={index} className="canvas-md-line canvas-md-h1">
-        {renderInlineMarkdown(h1Match[1])}
+        {renderInlineMarkdown(h1Match[1], currentImage)}
       </div>
     );
   }
@@ -541,7 +542,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   if (h2Match) {
     return (
       <div key={index} className="canvas-md-line canvas-md-h2">
-        {renderInlineMarkdown(h2Match[1])}
+        {renderInlineMarkdown(h2Match[1], currentImage)}
       </div>
     );
   }
@@ -551,7 +552,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   if (h3Match) {
     return (
       <div key={index} className="canvas-md-line canvas-md-h3">
-        {renderInlineMarkdown(h3Match[1])}
+        {renderInlineMarkdown(h3Match[1], currentImage)}
       </div>
     );
   }
@@ -562,7 +563,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
     return (
       <div key={index} className="canvas-md-line canvas-md-bullet">
         <span className="canvas-md-bullet-dot" aria-hidden="true" />
-        <span>{renderInlineMarkdown(bulletMatch[1])}</span>
+        <span>{renderInlineMarkdown(bulletMatch[1], currentImage)}</span>
       </div>
     );
   }
@@ -573,7 +574,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
     return (
       <div key={index} className="canvas-md-line canvas-md-numbered">
         <span className="canvas-md-num">{numMatch[1]}.</span>
-        <span>{renderInlineMarkdown(numMatch[2])}</span>
+        <span>{renderInlineMarkdown(numMatch[2], currentImage)}</span>
       </div>
     );
   }
@@ -583,7 +584,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   if (quoteMatch) {
     return (
       <blockquote key={index} className="canvas-md-line canvas-md-quote">
-        {renderInlineMarkdown(quoteMatch[1])}
+        {renderInlineMarkdown(quoteMatch[1], currentImage)}
       </blockquote>
     );
   }
@@ -606,7 +607,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   // Normal paragraph line
   return (
     <p key={index} className="canvas-md-line canvas-md-p">
-      {renderInlineMarkdown(line)}
+      {renderInlineMarkdown(line, currentImage)}
     </p>
   );
 }
@@ -649,6 +650,7 @@ export function RichCanvasPreview({
   /** Use the original compact, Markdown-first presentation for storage tiles. */
   storageCompact?: boolean;
 }) {
+  const copy = useStrings().sharedUi;
   const blocks = useMemo(
     () => markdownContent === undefined
       ? parseCanvasBlocks(updates, canvas.title)
@@ -715,7 +717,7 @@ export function RichCanvasPreview({
           <div className="canvas-empty-icon-wrap">
             <Pencil size={18} />
           </div>
-          <div className="canvas-preview-empty-text">Empty canvas</div>
+          <div className="canvas-preview-empty-text">{copy.emptyCanvas}</div>
         </div>
       </div>
     );
@@ -761,7 +763,7 @@ export function RichCanvasPreview({
                 <div
                   key={item.id || `wb-${itemIdx}`}
                   className="canvas-preview-inline-whiteboard"
-                  aria-label="Whiteboard drawing"
+                  aria-label={copy.whiteboardDrawing}
                 >
                   <WhiteboardSvgView
                     elements={item.elements}
@@ -777,6 +779,7 @@ export function RichCanvasPreview({
                     key={`line-${itemIdx}-${lineIdx}`}
                     line={line}
                     index={lineIdx}
+                    currentImage={copy.currentImage}
                   />
                 ))}
               </div>

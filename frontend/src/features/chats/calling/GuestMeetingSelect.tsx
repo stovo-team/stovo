@@ -1,5 +1,7 @@
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useStrings } from "../../../i18n/LanguageContext";
+import { getAppStrings, getSystemLanguage } from "../../../config/strings";
 
 export type GuestMeetingSelectOption = { value: string; label: string };
 
@@ -14,6 +16,8 @@ export function GuestMeetingSelect({ ariaLabel, options, value, onChange, newCha
   newChatTitle?: string;
   onNewChatTitleChange?: (title: string) => void;
 }) {
+  const appStrings = useStrings();
+  const copy = appStrings.sharedUi ?? getAppStrings(getSystemLanguage()).sharedUi;
   const [open, setOpen] = useState(false);
   const listId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -59,7 +63,7 @@ export function GuestMeetingSelect({ ariaLabel, options, value, onChange, newCha
 
   return (
     <span className={`guest-link-select${className ? ` ${className}` : ""}`} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }} onKeyDown={handleKeyDown}>
-      <button ref={triggerRef} type="button" className="guest-link-select-trigger" aria-label={`${ariaLabel}: ${selected?.label ?? "No selection"}`} aria-controls={listId} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => {
+      <button ref={triggerRef} type="button" className="guest-link-select-trigger" aria-label={copy.selectedOptionLabel(ariaLabel, selected?.label ?? copy.noSelection)} aria-controls={listId} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => {
         if (open) setOpen(false);
         else {
           selectedValueOnOpenRef.current = value;
@@ -76,11 +80,11 @@ export function GuestMeetingSelect({ ariaLabel, options, value, onChange, newCha
           }
         }}><span>{option.label}</span>{option.value === value && <Check size={15} aria-hidden="true" />}</button>)}
         {onNewChatTitleChange && <span className="guest-link-select-create">
-          <span className="guest-link-select-create-label">Or in a new chat</span>
+          <span className="guest-link-select-create-label">{copy.orInNewChat}</span>
           <input
-            aria-label="New meeting chat name"
+            aria-label={copy.newMeetingChatName}
             maxLength={255}
-            placeholder="e.g. Design review"
+            placeholder={copy.designReviewPlaceholder}
             value={newChatTitle}
             onChange={(event) => { onNewChatTitleChange(event.target.value); onChange(event.target.value.trim() ? "new" : options[0]?.value ?? ""); }}
           />

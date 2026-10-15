@@ -1,5 +1,6 @@
 import React, { Fragment, useState } from "react";
 import { hasPlainLinkPrefixAt, inlineTokenEnd } from "./messageMarkdownInlineUtils";
+import { useStrings } from "./i18n/LanguageContext";
 
 export type StovoMarkdownNode =
   | { type: "text"; value: string }
@@ -595,6 +596,7 @@ function Spoiler({
   keyPrefix: string;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const strings = useStrings();
   const hasInteractiveContent = containsInteractiveNode(nodes);
 
   if (revealed && hasInteractiveContent) {
@@ -609,7 +611,7 @@ function Spoiler({
     <button
       type="button"
       className={`message-spoiler${revealed ? " is-revealed" : ""}`}
-      aria-label="Reveal spoiler"
+      aria-label={strings.chats.composer.revealSpoiler}
       aria-expanded={revealed}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => {

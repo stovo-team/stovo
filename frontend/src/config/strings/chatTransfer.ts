@@ -29,6 +29,7 @@ export type ChatTransferStrings = {
   error: string;
   originalAuthor: (name: string) => string;
   importedFrom: (provider: string) => string;
+  attributionLabel: (author: string, provider: string) => string;
   multipleChatsUnsupported: string;
 };
 
@@ -63,6 +64,7 @@ const english: ChatTransferStrings = {
   error: "Could not process this chat export. Check the file and try again.",
   originalAuthor: (name) => `Original author: ${name}`,
   importedFrom: (provider) => `Imported from ${provider}`,
+  attributionLabel: (author, provider) => `Original author: ${author} · Imported from ${provider}`,
   multipleChatsUnsupported: "This file contains multiple chats. Choose a one-chat export; whole-space imports are planned for V2."
 };
 
@@ -97,6 +99,7 @@ const russian: ChatTransferStrings = {
   error: "Не удалось обработать экспорт чата. Проверьте файл и попробуйте снова.",
   originalAuthor: (name) => `Исходный автор: ${name}`,
   importedFrom: (provider) => `Импортировано из ${provider}`,
+  attributionLabel: (author, provider) => `Исходный автор: ${author} · импортировано из ${provider}`,
   multipleChatsUnsupported: "В файле несколько чатов. Выберите экспорт одного чата; импорт всего пространства запланирован на V2."
 };
 

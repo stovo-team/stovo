@@ -410,7 +410,7 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
               <button
                 type="button"
                 className="quick-switcher-clear-button"
-                aria-label="Clear search"
+                aria-label={strings.sharedUi.clearSearch}
                 onClick={() => {
                   setQuery("");
                   setSelectedIndex(0);
@@ -501,7 +501,7 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
               {" "}{strings.quickSwitcher.hintSelect}
             </span>
             <span>
-              <kbd>Esc</kbd>
+              <kbd>{strings.sharedUi.escape}</kbd>
               {" "}{strings.quickSwitcher.hintClose}
             </span>
           </div>

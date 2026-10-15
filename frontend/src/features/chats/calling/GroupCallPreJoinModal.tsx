@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type GroupCallPreJoinModalProps = {
   chatTitle?: string | null;
@@ -17,6 +18,7 @@ export function GroupCallPreJoinModal({
   onClose,
   onJoin,
 }: GroupCallPreJoinModalProps) {
+  const copy = useStrings().sharedUi;
   const [micMuted, setMicMuted] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(callType === "video");
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -82,7 +84,7 @@ export function GroupCallPreJoinModal({
     <div className="group-call-prejoin-backdrop" role="dialog" aria-modal="true">
       <div className="group-call-prejoin-card">
         <div className="group-call-prejoin-header">
-          <h2 className="group-call-prejoin-title">Join Group Call?</h2>
+          <h2 className="group-call-prejoin-title">{copy.joinGroupCallQuestion}</h2>
           {chatTitle && <p className="group-call-prejoin-subtitle">{chatTitle}</p>}
         </div>
 
@@ -101,7 +103,7 @@ export function GroupCallPreJoinModal({
               <span className="ms-icon ms-icon--48" aria-hidden="true">
                 {callType === "video" ? "videocam_off" : "mic"}
               </span>
-              <p>{micMuted ? "Microphone muted" : "Ready to join audio"}</p>
+              <p>{micMuted ? copy.microphoneMuted : copy.readyForAudio}</p>
             </div>
           )}
         </div>
@@ -112,12 +114,12 @@ export function GroupCallPreJoinModal({
             type="button"
             className={`group-call-prejoin-btn${micMuted ? " is-off" : ""}`}
             onClick={() => setMicMuted(!micMuted)}
-            aria-label={micMuted ? "Unmute microphone" : "Mute microphone"}
+            aria-label={micMuted ? copy.unmuteMicrophone : copy.muteMicrophone}
           >
             <span className="ms-icon" aria-hidden="true">
               {micMuted ? "mic_off" : "mic"}
             </span>
-            <span>{micMuted ? "Muted" : "Mic On"}</span>
+            <span>{micMuted ? copy.muted : copy.micOn}</span>
           </button>
 
           {callType === "video" && (
@@ -125,12 +127,12 @@ export function GroupCallPreJoinModal({
               type="button"
               className={`group-call-prejoin-btn${!cameraEnabled ? " is-off" : ""}`}
               onClick={() => setCameraEnabled(!cameraEnabled)}
-              aria-label={cameraEnabled ? "Turn off camera" : "Turn on camera"}
+              aria-label={cameraEnabled ? copy.turnOffCamera : copy.turnOnCamera}
             >
               <span className="ms-icon" aria-hidden="true">
                 {cameraEnabled ? "videocam" : "videocam_off"}
               </span>
-              <span>{cameraEnabled ? "Camera On" : "Camera Off"}</span>
+              <span>{cameraEnabled ? copy.cameraOn : copy.cameraOff}</span>
             </button>
           )}
         </div>
@@ -142,7 +144,7 @@ export function GroupCallPreJoinModal({
             className="group-call-prejoin-cancel-btn"
             onClick={onClose}
           >
-            Cancel
+            {copy.cancel}
           </button>
           <button
             type="button"
@@ -163,7 +165,7 @@ export function GroupCallPreJoinModal({
               <polyline points="15 3 21 3 21 9" />
               <line x1="10" y1="14" x2="21" y2="3" />
             </svg>
-            <span>Join Call</span>
+            <span>{copy.joinCall}</span>
           </button>
         </div>
       </div>

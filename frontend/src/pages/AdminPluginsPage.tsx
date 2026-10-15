@@ -17,7 +17,7 @@ const pluginDetails: Record<string, PluginDetail> = {
   "plugin-checklist": { name: "checklist", description: "checklistDescription", icon: CheckSquare, eyebrow: "tasks", preview: "checklist" }
 };
 
-function SharedCanvasPreview() {
+function SharedCanvasPreview({ copy }: { copy: PluginStrings }) {
   return (
     <div className="plugin-preview plugin-preview--canvas" aria-hidden="true">
       <svg className="plugin-canvas-svg" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -69,12 +69,12 @@ function SharedCanvasPreview() {
         <g transform="translate(142, 52)">
           <path d="M0 0 L9 9 L5 10 L8 15 L6 16 L3 11 L1 13 Z" fill="#ec4899" />
           <rect x="11" y="9" width="36" height="15" rx="4" fill="#ec4899" />
-          <text x="16" y="20" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="system-ui, sans-serif">Mia</text>
+          <text x="16" y="20" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="system-ui, sans-serif">{copy.collaboratorMia}</text>
         </g>
         <g transform="translate(230, 72)">
           <path d="M0 0 L9 9 L5 10 L8 15 L6 16 L3 11 L1 13 Z" fill="#38bdf8" />
           <rect x="11" y="9" width="40" height="15" rx="4" fill="#38bdf8" />
-          <text x="15" y="20" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="system-ui, sans-serif">Noah</text>
+          <text x="15" y="20" fill="#fff" fontSize="9" fontWeight="bold" fontFamily="system-ui, sans-serif">{copy.collaboratorNoah}</text>
         </g>
       </svg>
     </div>
@@ -129,15 +129,15 @@ function HandDrawnDiagramPreview({ copy }: { copy: PluginStrings }) {
 function PluginPreview({ kind, copy }: { kind: PluginDetail["preview"]; copy: PluginStrings }) {
   if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true">
     <div className="plugin-preview-top"><span /><span /><span /><small>{copy.previewPulse}</small></div>
-    <div className="plugin-preview-stat"><small>{copy.messagesThisWeek}</small><strong>128</strong><b>↗ 24%</b></div>
+    <div className="plugin-preview-stat"><small>{copy.messagesThisWeek}</small><strong>128</strong><b>{copy.growthSample}</b></div>
     <div className="plugin-preview-curve"><i /><i /><i /><i /><i /><i /></div>
     <div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div>
     <div className="plugin-preview-legend"><span>{copy.monday}</span><span>{copy.wednesday}</span><span>{copy.sunday}</span></div>
   </div>;
-  if (kind === "canvas") return <SharedCanvasPreview />;
+  if (kind === "canvas") return <SharedCanvasPreview copy={copy} />;
   if (kind === "diagrams") return <HandDrawnDiagramPreview copy={copy} />;
   if (kind === "checklist") return <div className="plugin-preview plugin-preview--checklist" aria-hidden="true">
-    <div className="plugin-checklist-label">{copy.today} <b>3 / 5</b></div>
+    <div className="plugin-checklist-label">{copy.today} <b>{copy.checklistProgressSample}</b></div>
     <div className="plugin-checklist-sheet"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>{copy.groceries}</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>{copy.errands}</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>{copy.checklistTasks}</span></div></div>
     <span className="plugin-checklist-sticker">✓</span>
   </div>;
@@ -179,7 +179,7 @@ export default function AdminPluginsPage() {
         const pluginDescription = detail ? copy[detail.description] : copy.optionalExtension;
         const Icon = detail?.icon ?? Layers3;
         return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail?.preview ?? "generic"} copy={copy} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail ? copy[detail.eyebrow] : copy.extension}</small><h2>{pluginName}</h2></span></div><p>{pluginDescription}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? copy.active : copy.paused}</span><label className="plugin-switch"><input type="checkbox" aria-label={copy.enablePlugin(pluginName)} checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">{copy.enablePlugin(pluginName)}</em></label></footer></article>;
-      })}<article className="plugin-showcase-card is-development" aria-label={`${copy.diagrams}: ${copy.development}`}><PluginPreview kind="diagrams" copy={copy} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Layers3 size={20} /></span><span><small>{copy.canvas}</small><h2>{copy.diagrams}</h2></span></div><p>{copy.diagramsDescription}</p></div><footer className="plugin-showcase-footer"><span className="plugin-status">{copy.development}</span></footer></article><article className="plugin-add-card is-development" aria-label={`${copy.serverPlugins}: ${copy.development}`}><span><Puzzle size={26} /></span><strong>{copy.serverPlugins}</strong><p>{copy.serverPluginsDescription}</p><small>{copy.development}</small></article></section>
+      })}<article className="plugin-showcase-card is-development" aria-label={copy.diagramDevelopment}><PluginPreview kind="diagrams" copy={copy} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Layers3 size={20} /></span><span><small>{copy.canvas}</small><h2>{copy.diagrams}</h2></span></div><p>{copy.diagramsDescription}</p></div><footer className="plugin-showcase-footer"><span className="plugin-status">{copy.development}</span></footer></article><article className="plugin-add-card is-development" aria-label={copy.serverDevelopment}><span><Puzzle size={26} /></span><strong>{copy.serverPlugins}</strong><p>{copy.serverPluginsDescription}</p><small>{copy.development}</small></article></section>
       {!plugins.length && !error && <p className="stats-state">{copy.loading}</p>}</>}
   </section>
   </main>;

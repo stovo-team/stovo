@@ -29,6 +29,7 @@ import { formatComposerSelection, type FormattingKind } from "../composerFormatt
 import { ImageEditorModal } from "./ImageEditorModal";
 import { PendingAttachmentCard } from "../features/chats/composer/PendingAttachmentCard";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import { useStrings } from "../i18n/LanguageContext";
 
 export function MessageEnlargeModal({
   content,
@@ -53,6 +54,8 @@ export function MessageEnlargeModal({
   onAddAttachments?: (files: File[]) => void;
   onSend?: () => void;
 }) {
+  const copy = useStrings().chats.composer.expanded;
+  const composerCopy = useStrings().chats.composer;
   const [draft, setDraft] = useState(content);
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -240,19 +243,19 @@ function parseDraftSegments(text: string): DraftSegment[] {
         className="message-enlarge-modal message-enlarge-modal--fullscreen"
         role="dialog"
         aria-modal="true"
-        aria-label="Compose Message"
+        aria-label={copy.composeMessage}
         onClick={(event) => event.stopPropagation()}
       >
         {/* Modal Header */}
         <header className="message-enlarge-header">
           {editable ? (
-            <div className="message-enlarge-toolbar" role="toolbar" aria-label="Formatting controls">
+            <div className="message-enlarge-toolbar" role="toolbar" aria-label={copy.formattingControls}>
               <div className="toolbar-section toolbar-section--formatting">
                 <button
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("bold")}
-                  title="Bold (**text**)"
+                  title={copy.bold}
                 >
                   <Bold size={16} />
                 </button>
@@ -260,7 +263,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("italic")}
-                  title="Italic (*text*)"
+                  title={copy.italic}
                 >
                   <Italic size={16} />
                 </button>
@@ -268,7 +271,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("underline")}
-                  title="Underline (<u>text</u>)"
+                  title={copy.underline}
                 >
                   <Underline size={16} />
                 </button>
@@ -276,7 +279,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("strikethrough")}
-                  title="Strikethrough (~~text~~)"
+                  title={copy.strikethrough}
                 >
                   <Strikethrough size={16} />
                 </button>
@@ -284,7 +287,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("code")}
-                  title="Code (`code`)"
+                  title={copy.code}
                 >
                   <Code size={16} />
                 </button>
@@ -292,7 +295,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("spoiler")}
-                  title="Spoiler (||text||)"
+                  title={copy.spoiler}
                 >
                   <EyeOff size={16} />
                 </button>
@@ -300,7 +303,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => applyFormat("quote")}
-                  title="Quote (> text)"
+                  title={copy.quote}
                 >
                   <Quote size={16} />
                 </button>
@@ -314,7 +317,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       setShowListMenu(!showListMenu);
                       setShowHeadingMenu(false);
                     }}
-                    title="Lists (Bullet, Numbered, Checklist)"
+                    title={copy.lists}
                   >
                     <List size={16} />
                   </button>
@@ -322,7 +325,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     <div className="toolbar-dropdown-menu">
                       <button
                         type="button"
-                        title="Bullet List (- item)"
+                        title={copy.bulletList}
                         onClick={() => {
                           insertTextAtCursor("- ");
                           setShowListMenu(false);
@@ -332,7 +335,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Numbered List (1. item)"
+                        title={copy.numberedList}
                         onClick={() => {
                           insertTextAtCursor("1. ");
                           setShowListMenu(false);
@@ -342,7 +345,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Task Checklist (- [ ] item)"
+                        title={copy.checklist}
                         onClick={() => {
                           insertTextAtCursor("- [ ] ");
                           setShowListMenu(false);
@@ -363,7 +366,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       setShowHeadingMenu(!showHeadingMenu);
                       setShowListMenu(false);
                     }}
-                    title="Headings (H1 - H6)"
+                    title={copy.headings}
                   >
                     <Heading size={16} />
                   </button>
@@ -371,7 +374,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     <div className="toolbar-dropdown-menu">
                       <button
                         type="button"
-                        title="Heading 1 (# title)"
+                        title={copy.heading(1, "#")}
                         onClick={() => {
                           insertTextAtCursor("# ");
                           setShowHeadingMenu(false);
@@ -381,7 +384,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Heading 2 (## title)"
+                        title={copy.heading(2, "##")}
                         onClick={() => {
                           insertTextAtCursor("## ");
                           setShowHeadingMenu(false);
@@ -391,7 +394,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Heading 3 (### title)"
+                        title={copy.heading(3, "###")}
                         onClick={() => {
                           insertTextAtCursor("### ");
                           setShowHeadingMenu(false);
@@ -401,7 +404,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Heading 4 (#### title)"
+                        title={copy.heading(4, "####")}
                         onClick={() => {
                           insertTextAtCursor("#### ");
                           setShowHeadingMenu(false);
@@ -411,7 +414,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Heading 5 (##### title)"
+                        title={copy.heading(5, "#####")}
                         onClick={() => {
                           insertTextAtCursor("##### ");
                           setShowHeadingMenu(false);
@@ -421,7 +424,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       </button>
                       <button
                         type="button"
-                        title="Heading 6 (###### title)"
+                        title={copy.heading(6, "######")}
                         onClick={() => {
                           insertTextAtCursor("###### ");
                           setShowHeadingMenu(false);
@@ -437,7 +440,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   type="button"
                   className="toolbar-btn"
                   onClick={() => insertTextAtCursor("[text](url)")}
-                  title="Insert Link ([text](url))"
+                  title={copy.insertLink}
                 >
                   <Link size={16} />
                 </button>
@@ -445,7 +448,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
             </div>
           ) : (
             <div className="message-enlarge-title-group">
-              <h2 className="message-enlarge-title">Message Preview</h2>
+              <h2 className="message-enlarge-title">{copy.messagePreview}</h2>
             </div>
           )}
 
@@ -453,8 +456,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
             <button
               type="button"
               className="message-enlarge-circle-btn"
-              aria-label="Shrink composer to standard view"
-              title="Shrink composer"
+              aria-label={copy.shrinkAria}
+              title={copy.shrinkTitle}
               onClick={onClose}
             >
               <Minimize2 size={16} aria-hidden="true" />
@@ -470,7 +473,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
               {pendingAttachments.length > 0 && (
                 <div className="compose-modal-attachments">
                   <div className="compose-modal-attachments-header">
-                    <span>Attached Documents & Files ({pendingAttachments.length}):</span>
+                    <span>{copy.attachedDocuments(pendingAttachments.length)}</span>
                   </div>
                   <div className="pending-attachments">
                     {pendingAttachments.map((pending) => (
@@ -492,12 +495,12 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     if (segment.type === "media") {
                       return (
                         <div key={segment.key} className="inline-media-prerender-card">
-                          <img src={segment.url} alt={segment.alt || "Prerendered inline media"} />
+                          <img src={segment.url} alt={segment.alt || copy.inlineMedia} />
                           <button
                             type="button"
                             className="inline-media-prerender-remove"
-                            title={`Remove ${segment.alt || "inline media"}`}
-                            aria-label={`Remove ${segment.alt || "inline media"}`}
+                            title={copy.removeMedia(segment.alt)}
+                            aria-label={copy.removeMedia(segment.alt)}
                             onClick={() => handleRemoveMediaSegment(segment.fullMatch)}
                           >
                             <X size={14} />
@@ -510,7 +513,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                         key={segment.key}
                         className="message-enlarge-editor message-enlarge-editor--segment"
                         value={segment.content}
-                        placeholder={idx === 0 ? "Type your message here…" : ""}
+                        placeholder={idx === 0 ? copy.placeholder : ""}
                         onChange={(e) => handleSegmentTextChange(idx, e.target.value)}
                       />
                     );
@@ -521,7 +524,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                   ref={textareaRef}
                   className="message-enlarge-editor"
                   value={draft}
-                  placeholder="Type your message here…"
+                  placeholder={copy.placeholder}
                   autoFocus
                   onChange={(event) => handleTextChange(event.target.value)}
                 />
@@ -552,8 +555,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     type="button"
                     className="message-enlarge-circle-btn message-enlarge-circle-btn--action"
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach image, video or document (inline)"
-                    aria-label="File picker"
+                    title={copy.attachInline}
+                    aria-label={copy.filePicker}
                   >
                     <Paperclip size={18} />
                   </button>
@@ -570,8 +573,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     type="button"
                     className={`message-enlarge-circle-btn message-enlarge-circle-btn--action${isEmojiPickerOpen ? " is-active" : ""}`}
                     onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-                    title="Add Emoji"
-                    aria-label="Add Emoji"
+                    title={copy.addEmoji}
+                    aria-label={copy.addEmoji}
                   >
                     <Smile size={18} />
                   </button>
@@ -582,8 +585,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       type="button"
                       className="message-enlarge-circle-btn message-enlarge-circle-btn--danger"
                       onClick={() => handleTextChange("")}
-                      title="Clear text"
-                      aria-label="Clear text"
+                      title={copy.clearText}
+                      aria-label={copy.clearText}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -601,8 +604,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
                         onSend();
                         onClose();
                       }}
-                      title="Send message"
-                      aria-label="Send message"
+                      title={composerCopy.sendMessageAria}
+                      aria-label={composerCopy.sendMessageAria}
                     >
                       <Send size={18} />
                     </button>
@@ -611,8 +614,8 @@ function parseDraftSegments(text: string): DraftSegment[] {
                       type="button"
                       className="message-enlarge-circle-btn message-enlarge-circle-btn--send"
                       onClick={onClose}
-                      title="Done editing"
-                      aria-label="Done editing"
+                      title={copy.doneEditing}
+                      aria-label={copy.doneEditing}
                     >
                       <Check size={18} />
                     </button>
@@ -645,12 +648,13 @@ function parseDraftSegments(text: string): DraftSegment[] {
 }
 
 export function MessageEnlargeButton({ onClick }: { onClick: () => void }) {
+  const copy = useStrings().chats.composer.expanded;
   return (
     <button
       type="button"
       className="message-enlarge-button"
-      aria-label="Enlarge message composer"
-      title="Enlarge composer (full screen editor)"
+      aria-label={copy.enlargeAria}
+      title={copy.enlargeTitle}
       onClick={(event) => {
         event.stopPropagation();
         onClick();

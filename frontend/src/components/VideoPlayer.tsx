@@ -16,6 +16,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useStrings } from "../i18n/LanguageContext";
 
 import { type FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
@@ -100,6 +101,8 @@ export function VideoPlayer({
   beforePlay,
   autoplay = true,
 }: VideoPlayerProps) {
+  const strings = useStrings();
+  const copy = strings.videoPlayer;
   const rootRef = useRef<HTMLDialogElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
@@ -391,10 +394,10 @@ export function VideoPlayer({
         {videoNode}
 
         {!canLoad && !disabledReason && (
-          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>Download video</button>
+          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>{strings.sharedUi.downloadVideo}</button>
         )}
         {canLoad && isLoading && !error && !disabledReason && (
-          <div className="video-player-status" role="status" aria-live="polite">Loading video…</div>
+          <div className="video-player-status" role="status" aria-live="polite">{copy.loading}</div>
         )}
         {disabledReason && (
           <div className="video-player-status" role="status">{disabledReason}</div>
@@ -403,15 +406,15 @@ export function VideoPlayer({
 
         <div
           className="video-player-controls"
-          aria-label="Video controls"
+          aria-label={copy.controls}
           onClick={stopPropagation}
           onPointerDown={stopPropagation}
         >
             <button
               type="button"
               data-control="play-pause"
-              aria-label={isPlaying ? "Pause video" : "Play video"}
-              title={isPlaying ? "Pause video" : "Play video"}
+              aria-label={isPlaying ? copy.pause : copy.play}
+              title={isPlaying ? copy.pause : copy.play}
               disabled={Boolean(disabledReason) || !sourceUrl}
               onClick={() => { if (isPlaying) pause(); else void play({ unmuted: true }); }}
             >
@@ -422,7 +425,7 @@ export function VideoPlayer({
             <input
               type="range"
               data-control="seek"
-              aria-label="Seek video"
+              aria-label={copy.seek}
               min={0}
               max={duration > 0 ? duration : 0}
               step="any"
@@ -438,7 +441,7 @@ export function VideoPlayer({
                 }
               }}
             />
-            <output data-control="time" aria-label="Video time">
+            <output data-control="time" aria-label={copy.time}>
               {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
             </output>
             <button

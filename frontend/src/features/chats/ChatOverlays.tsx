@@ -13,6 +13,7 @@ import type { ChatOverviewController } from "./sidebar/types";
 import type { Chat } from "../../api/chats";
 import { GuestMeetingLinkControl } from "./calling/GuestMeetingLinkControl";
 import { GuestMeetingSelect } from "./calling/GuestMeetingSelect";
+import { useStrings } from "../../i18n/LanguageContext";
 
 import type { PendingLocalAttachment } from "./shared/types";
 
@@ -75,6 +76,7 @@ export function ChatOverlays({
   onAddAttachments,
   onSendMessage
 }: ChatOverlaysProps) {
+  const copy = useStrings().sharedUi;
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const meetingChats = chats.filter((chat) => chat.type === "family" || chat.type === "group" || chat.type === "direct");
   const [meetingChatId, setMeetingChatId] = useState("");
@@ -145,9 +147,9 @@ export function ChatOverlays({
 
       {isMeetingPlannerOpen && createPortal(
         <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
-          <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
-            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""} onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined} onQueueAnnouncement={onQueueChatMessage} newChatTitle={newMeetingChatTitle} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">Select a chat above.</p>}</div>
+          <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label={copy.planGuestMeeting} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="guest-meeting-planner-header"><h2>{copy.createMeetingLink}</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label={copy.close} onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
+            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>{copy.meetingChat}</span><GuestMeetingSelect ariaLabel={copy.meetingChat} value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? copy.untitledChat }))} newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""} onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined} onQueueAnnouncement={onQueueChatMessage} newChatTitle={newMeetingChatTitle} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">{copy.selectChatAbove}</p>}</div>
           </section>
         </div>, document.body)}
 

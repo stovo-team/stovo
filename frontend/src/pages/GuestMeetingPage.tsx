@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
 import { ArrowUpRight, Link2Off, Settings, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
@@ -44,10 +45,10 @@ import { updateMutedParticipantIds } from "./guestParticipantMuteState";
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
 
-function guestJoinErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : "Could not join meeting";
+function guestJoinErrorMessage(error: unknown, fallback: string, connectionError: string) {
+  const message = error instanceof Error ? error.message : fallback;
   return /invalid API key|could not establish signal connection/i.test(message)
-    ? "Could not connect to the meeting. Please try again shortly."
+    ? connectionError
     : message;
 }
 
@@ -65,6 +66,9 @@ function regionalStovoSite() {
 }
 
 export default function GuestMeetingPage() {
+  const strings = useStrings();
+  const text = strings.meetings.guest;
+  const language = useResolvedLanguage();
   const { preferences: callUIPreferences, patchPreferences } = useCallUIPreferences();
   const { token } = useParams();
   const { accessToken, currentUser } = useAuth();
@@ -649,16 +653,16 @@ export default function GuestMeetingPage() {
       roomRef.current = null;
       setMeetingRoomId(null);
 	  if (isExpiredGuestMeetingError(e)) { showExpiredLink(); return; }
-      setError(guestJoinErrorMessage(e));
+      setError(guestJoinErrorMessage(e, text.couldNotJoin, text.couldNotConnect));
       setState("error");
     }
   }
-  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); setWasDisconnectedForEmptyRoom(false); try { const session = await createGuestMeetingSession(token, name, accessToken); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : "Could not join meeting"); } }
-  useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }), 2500); return () => window.clearInterval(timer); }, [state, token]);
+  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); setWasDisconnectedForEmptyRoom(false); try { const session = await createGuestMeetingSession(token, name, accessToken); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : text.couldNotJoin); } }
+  useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError(text.hostRemoved); setState("blocked"); } }).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }), 2500); return () => window.clearInterval(timer); }, [state, token]);
   async function leave({ dueToEmptyRoom = false }: { dueToEmptyRoom?: boolean } = {}) { emptyRoomTimeoutRef.current?.setAlone(false); setEmptyRoomWarning(false); if (!dueToEmptyRoom) setWasDisconnectedForEmptyRoom(false); await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; setMeetingRoomId(null); markCurrentGuestSessionLeft(); setRemoteStreams([]); setRemoteParticipantCount(0); setState("name"); void startLocalMedia(); }
   async function leaveForEmptyRoomTimeout() { setWasDisconnectedForEmptyRoom(true); await leave({ dueToEmptyRoom: true }); }
   function stayInEmptyRoom() { setEmptyRoomWarning(false); emptyRoomTimeoutRef.current?.stay(); }
-  const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
+  const participantCopy = preview?.guestCount ? text.guestCount(preview.guestCount) : text.noGuests;
   const isSpeaking = isCallSpeakingActive(speakingIndicatorState);
   const guestCallSettings: CallSettings = { ...audioProcessing, inputGain, outputVolume, inputDeviceId: microphoneDeviceId, outputDeviceId: speakerDeviceId, videoDeviceId: cameraDeviceId, micMuted: !microphoneEnabled, soundDisabled: !speakerEnabled, cameraEnabled, screenSharing: isScreenSharing, cameraFacingMode, speakerMode: speakerEnabled ? "large" : "small" };
   const guestCallCapabilities = { canSelectInputDevice: Boolean(navigator.mediaDevices?.getUserMedia), canSelectOutputDevice: "setSinkId" in HTMLMediaElement.prototype,
@@ -680,13 +684,13 @@ export default function GuestMeetingPage() {
     const remoteScreenShare = remoteStreams.find((remote) => remote.screenStream?.getVideoTracks().some((track) => track.readyState === "live"));
     const hasScreenShare = hasLocalScreenShare || Boolean(remoteScreenShare);
     const cameraTiles = [
-      { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
-      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
+      { id: "local", label: `${guestDisplayName} (${text.yourScreen})`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
+      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: text.guestNumber(index + 1), stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
     ];
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
-      <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`} onPointerDown={() => { if (isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }} onPointerMove={() => { if (!isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }}>
-        {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">Still waiting for someone?</h2><p>You’re the only person in this meeting. You’ll be disconnected in one minute unless you choose to stay.</p><div><button type="button" className="secondary-button" onClick={() => void leave()} >Leave meeting</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>Stay in meeting</button></div></section></div>}
+      <section className="guest-call-room voice-channel-room" aria-label={text.meetingTitle(preview?.title)} onPointerDown={() => { if (isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }} onPointerMove={() => { if (!isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }}>
+        {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">{text.stillWaiting}</h2><p>{text.onlyPerson}</p><div><button type="button" className="secondary-button" onClick={() => void leave()}>{text.leaveMeeting}</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>{text.stayMeeting}</button></div></section></div>}
         <LiveCaptionsOverlay
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}
@@ -694,19 +698,19 @@ export default function GuestMeetingPage() {
           speakerDisplayName={guestDisplayName}
         />
         <header className="guest-call-header">
-          <div><strong>{preview?.title || "Guest meeting"}</strong><span>{participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
+          <div><strong>{preview?.title || text.meetingTitle()}</strong><span>{text.participantsCount(participantCount)}</span></div>
         </header>
         <SharedCallStage ref={callStageRef} cameraFit={callUIPreferences.cameraFit} isMobile={isMobile} isSharing={hasScreenShare} className="voice-room-stage">
-          {hasScreenShare ? <div className={`guest-call-spotlight${useBottomScreenShareRail ? " guest-call-spotlight--bottom" : ""}`} aria-label="Shared screen and cameras">
+          {hasScreenShare ? <div className={`guest-call-spotlight${useBottomScreenShareRail ? " guest-call-spotlight--bottom" : ""}`} aria-label={text.sharedScreenCameras}>
             <div className="guest-call-screen-stage">
-              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile>}
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${guestDisplayName} (${text.yourScreen}) — ${text.screen}`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${text.guestNumber(remoteStreams.indexOf(remoteScreenShare) + 1)} — ${text.screen}`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile>}
             </div>
-            <aside className="guest-call-camera-rail" aria-label="Participant cameras">
+            <aside className="guest-call-camera-rail" aria-label={text.participantCameras}>
               {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : participant.speaking ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>
                 {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className={`voice-participant-video-feed${audioProcessing.mirrorLocalVideo && cameraFacingMode === "user" ? " is-mirrored" : ""}`} /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
               </GuestParticipantTile>)}
             </aside>
-          </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
+          </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label={text.participants}>
             <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeaking} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className={`voice-participant-video-feed${audioProcessing.mirrorLocalVideo && cameraFacingMode === "user" ? " is-mirrored" : ""}`} />}</GuestParticipantTile>
             {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={remoteMutedUserIds.includes(remote.id)} speaking={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id)} avatar={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
           </div>}
@@ -714,13 +718,13 @@ export default function GuestMeetingPage() {
         {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
         <div className="voice-room-bottom-bar">
           <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
-          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Meeting controls">
-            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
-            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
-            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
-            <CallControlButton action="audio-output" state="idle" className="voice-dock-btn guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
-            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
-            <CallControlButton action="screen-share" state={isScreenSharing ? "active" : "idle"} className="voice-dock-btn" label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"} onClick={() => void toggleScreenShare()} />
+          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label={text.controls}>
+            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.microphone} action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.speaker} action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+            <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.camera} action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
+            <CallControlButton action="audio-output" state="idle" className="voice-dock-btn guest-mobile-output-control" aria-label={text.audioOutput} label={text.audioOutput} onClick={cycleAudioOutput} />
+            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn guest-mobile-flip-control" aria-label={text.flipCamera} label={text.flipCamera} onClick={() => void flipCamera()} />
+            <CallControlButton action="screen-share" state={isScreenSharing ? "active" : "idle"} className="voice-dock-btn" label={isScreenSharing ? text.stopScreenSharing : text.shareScreen} title={isScreenSharing ? text.stopScreenSharing : text.shareScreen} onClick={() => void toggleScreenShare()} />
 
             {/* Stovo Intelligence Button */}
             <div className="voice-more-menu-anchor">
@@ -734,15 +738,15 @@ export default function GuestMeetingPage() {
                     : ""
                 }`}
                 type="button"
-                aria-label="Stovo Intelligence"
-                title="Stovo Intelligence (Notes, Recording, Captions)"
+                aria-label={text.intelligence}
+                title={text.intelligenceDescription}
                 aria-haspopup="true"
                 aria-expanded={isIntelligenceOpen}
                 onClick={() => setIsIntelligenceOpen((open) => !open)}
               >
                 <IconIntelligence size={20} />
                 {(effectiveRecordingState === "recording" || effectiveNotesState === "recording") && (
-                  <span className="voice-dock-badge-dot" title="Intelligence Active" />
+                  <span className="voice-dock-badge-dot" title={text.intelligenceActive} />
                 )}
               </button>
 
@@ -779,10 +783,10 @@ export default function GuestMeetingPage() {
             </div>
 
             <div className="guest-settings guest-call-settings" ref={settingsRef}>
-              <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
+              <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label={text.openDeviceSettings} aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
               {audioSettingsPopup}
             </div>
-            <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={() => void leave()} label="Leave meeting" title="Leave meeting" />
+            <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={() => void leave()} label={text.leaveMeeting} title={text.leaveMeeting} />
           </div>
           </SharedCallControlPanel>
         </div>
@@ -792,30 +796,30 @@ export default function GuestMeetingPage() {
 
   if (state === "joining") return <GuestMeetingConnectingScreen stovoSite={stovoSite} />;
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
-    {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
-    {wasDisconnectedForEmptyRoom && <p className="guest-empty-room-ended" role="status">You left the meeting because nobody else joined. You can join again whenever you’re ready.</p>}
+    {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">{text.expired}</h1><p>{text.askHostForLink}</p></div></section>}
+    {wasDisconnectedForEmptyRoom && <p className="guest-empty-room-ended" role="status">{text.disconnectedEmpty}</p>}
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">
-        <div className="guest-preview-label">{guestDisplayName}</div>
+            <div className="guest-preview-label">{guestDisplayName}</div>
         <div className="guest-settings" ref={settingsRef}>
-          <button ref={settingsButtonRef} className="guest-settings-trigger" type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={22} /></button>
+          <button ref={settingsButtonRef} className="guest-settings-trigger" type="button" aria-label={text.openDeviceSettings} aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={22} /></button>
           {audioSettingsPopup}
         </div>
         <video ref={localRef} className={cameraEnabled ? "visible" : ""} autoPlay muted playsInline />
         {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
-        <div className={`guest-preview-controls shared-call-controls${!isMobile ? " guest-call-controls" : ""}`} role="toolbar" aria-label="Preview controls">
-          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
-          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
-          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
-          <CallControlButton action="audio-output" state="idle" className="guest-preview-action guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
-          <CallControlButton action="flip-camera" state="idle" className="guest-preview-action guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
+        <div className={`guest-preview-controls shared-call-controls${!isMobile ? " guest-call-controls" : ""}`} role="toolbar" aria-label={text.previewControls}>
+          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.microphone} action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.speaker} action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+          <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label={text.camera} action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
+          <CallControlButton action="audio-output" state="idle" className="guest-preview-action guest-mobile-output-control" aria-label={text.audioOutput} label={text.audioOutput} onClick={cycleAudioOutput} />
+          <CallControlButton action="flip-camera" state="idle" className="guest-preview-action guest-mobile-flip-control" aria-label={text.flipCamera} label={text.flipCamera} onClick={() => void flipCamera()} />
         </div>
         {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
       </section>
-      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
+      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || text.join}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString(language)}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>{text.yourName}<input autoFocus required minLength={2} maxLength={80} value={name} placeholder={text.enterYourName} onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">{text.join}</button><small>{text.linkExpires} {preview ? new Date(preview.expiresAt).toLocaleString(language) : text.soon}</small></form>
     </div>}
-    {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
+    {state === "waiting" && <p className="muted-copy">{text.waitingForHost}</p>}
     {error && <p className="error-text">{error}</p>}
-    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <ArrowUpRight size={16} aria-hidden="true" /></a>
+    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">{text.privateSpaceMarketing} <ArrowUpRight size={16} aria-hidden="true" /></a>
   </section></main>;
 }

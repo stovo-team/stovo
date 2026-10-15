@@ -120,7 +120,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedLink(true);
       window.setTimeout(() => setCopiedLink(false), 1600);
     } catch {
-      setError("Could not copy invite link");
+      setError(strings.sharedUi.copyInviteLinkFailed);
     }
   }
 
@@ -151,7 +151,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedQr(true);
       window.setTimeout(() => setCopiedQr(false), 1600);
     } catch {
-      setError("Could not copy QR code");
+      setError(strings.sharedUi.copyQrFailed);
     }
   }
 

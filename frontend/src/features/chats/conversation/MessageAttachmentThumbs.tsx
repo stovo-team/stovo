@@ -42,6 +42,7 @@ export function MessageImageAttachment({
   file: FamilyFile;
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
 }) {
+  const copy = useStrings().sharedUi;
   const previewUrl = useFilePreviewUrl(accessToken, file, true);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -65,7 +66,7 @@ export function MessageImageAttachment({
     <button
       type="button"
       className="message-photo-attachment"
-      aria-label={`${previewUrl ? "Open" : "Download"} ${file.originalName}`}
+      aria-label={copy.openOrDownloadFile(Boolean(previewUrl), file.originalName)}
       disabled={!previewUrl && !accessToken}
       onClick={() => void openOrDownload()}
     >
@@ -73,7 +74,7 @@ export function MessageImageAttachment({
         <img src={previewUrl} alt="" />
       ) : (
         <span className="message-photo-placeholder" aria-hidden="true">
-          <Image size={28} />{isDownloading ? " Downloading…" : " Download"}
+          <Image size={28} />{isDownloading ? ` ${copy.downloading}` : ` ${copy.download}`}
         </span>
       )}
     </button>
@@ -101,6 +102,7 @@ export function AttachmentCard({
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
   videoAutoplay?: boolean;
 }) {
+  const copy = useStrings().sharedUi;
   const isImage = isImageAttachment(file);
   const isVideo = Boolean(file?.mimeType?.startsWith("video/"));
   const isAudio = Boolean(file?.mimeType?.startsWith("audio/"));
@@ -176,7 +178,7 @@ export function AttachmentCard({
         <button
           type="button"
           className="attachment-preview-button"
-          aria-label={`Open ${file.originalName} full view`}
+          aria-label={copy.openFullView(file.originalName)}
           disabled={!previewUrl}
           onClick={() => {
             if (previewUrl) {
@@ -205,7 +207,7 @@ export function AttachmentCard({
       </div>
       {accessToken && (
         <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
-          Save
+          {copy.save}
         </button>
       )}
     </article>

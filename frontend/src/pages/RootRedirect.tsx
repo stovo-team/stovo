@@ -5,6 +5,7 @@ import { fetchSetupStatus } from "../api/auth";
 import { getClusterPrefix, isServerUrlConfigured } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Capacitor } from "@capacitor/core";
+import { useStrings } from "../i18n/LanguageContext";
 
 export function getUnconfiguredRootPath(isNative: boolean): string {
   // The browser root is intentionally the master console. A native install is
@@ -28,6 +29,7 @@ export function getDefaultAppPath(
 }
 
 export default function RootRedirect() {
+  const copy = useStrings().sharedUi;
   const { currentUser, isLoading } = useAuth();
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [navTabs, setNavTabs] = useState<{ chats?: boolean; storage?: boolean; plans?: boolean; settings?: boolean } | undefined>(undefined);
@@ -64,7 +66,7 @@ export default function RootRedirect() {
   }
 
   if (isLoading || setupRequired === null) {
-    return <main className="app-shell">Checking server state...</main>;
+    return <main className="app-shell">{copy.checkingServer}</main>;
   }
 
   return <Navigate to={setupRequired ? `${prefix}/setup` : `${prefix}/login`} replace />;

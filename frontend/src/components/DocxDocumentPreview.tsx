@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useStrings } from "../i18n/LanguageContext";
 
 const ALLOWED_TAGS = new Set([
   "a", "blockquote", "br", "caption", "code", "em", "h1", "h2", "h3", "h4",
@@ -54,6 +55,7 @@ export function applyDocxPageFit(host: HTMLElement, wrapper: HTMLElement, page: 
 }
 
 export function DocxDocumentPreview({ blob, fitToWidth = false }: { blob: Blob; fitToWidth?: boolean }) {
+  const copy = useStrings().sharedUi;
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,7 +96,7 @@ export function DocxDocumentPreview({ blob, fitToWidth = false }: { blob: Blob; 
         }
       } catch (err) {
         console.error("Failed to render DOCX preview:", err);
-        if (!cancelled) setError("Document couldn’t be rendered on this device.");
+        if (!cancelled) setError(copy.documentNotRendered);
       }
     })();
 
@@ -103,7 +105,7 @@ export function DocxDocumentPreview({ blob, fitToWidth = false }: { blob: Blob; 
       resizeObserver?.disconnect();
       host.replaceChildren();
     };
-  }, [blob, fitToWidth]);
+  }, [blob, copy.documentNotRendered, fitToWidth]);
 
   return (
     <div className="document-viewer-docx" ref={hostRef}>

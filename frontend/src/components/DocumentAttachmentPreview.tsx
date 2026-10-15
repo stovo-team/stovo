@@ -22,6 +22,7 @@ import {
 } from "./pdfViewerZoom";
 import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
 import { useMarkdownCanvasConversion } from "./useMarkdownCanvasConversion";
+import { useStrings } from "../i18n/LanguageContext";
 
 function normalizeDocumentMarkdown(source: string): string {
   return source
@@ -159,6 +160,7 @@ function pdfJsAssetUrl(path: string): string {
 }
 
 function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }) {
+  const copy = useStrings().auditUi;
   const hostRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(1);
@@ -303,13 +305,13 @@ function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }
         if (!cancelled && doc.numPages > maxPages) {
           const note = document.createElement("p");
           note.className = "document-preview-truncated";
-          note.textContent = `Showing first ${maxPages} of ${doc.numPages} pages. Save the file for the full PDF.`;
+          note.textContent = copy.pdfTruncated(maxPages, doc.numPages);
           host.appendChild(note);
         }
         await doc.destroy();
       } catch (err) {
         console.error("Failed to render PDF preview:", err);
-        if (!cancelled) setError("PDF couldn’t be rendered on this device.");
+        if (!cancelled) setError(copy.pdfUnavailable);
       }
     })();
 
@@ -347,6 +349,7 @@ export function DocumentAttachmentPreview({
   hideActions?: boolean;
   inlinePreview?: boolean;
 }) {
+  const copy = useStrings().auditUi;
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [resolvedSizeBytes, setResolvedSizeBytes] = useState<number | null>(null);
@@ -379,8 +382,8 @@ export function DocumentAttachmentPreview({
               <button
                 type="button"
                 className="document-preview-open"
-                aria-label={`Open ${file.originalName}`}
-                title="Open"
+                aria-label={copy.openFile(file.originalName)}
+                title={copy.open}
                 onClick={(e) => {
                   e.stopPropagation();
                   setViewerOpen(true);
@@ -392,8 +395,8 @@ export function DocumentAttachmentPreview({
                 <button
                   type="button"
                   className="document-preview-save"
-                  aria-label={`Save ${file.originalName}`}
-                  title="Save"
+                  aria-label={copy.saveFile(file.originalName)}
+                  title={copy.save}
                   onClick={(e) => {
                     e.stopPropagation();
                     void saveFileToDisk(accessToken, file);
@@ -450,6 +453,7 @@ export function DocumentViewerModal({
   onResolvedSize: (sizeBytes: number) => void;
   onClose: () => void;
 }) {
+  const copy = useStrings().auditUi;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -494,7 +498,7 @@ export function DocumentViewerModal({
         setTable(await loadTablePreview(file, blob));
       })
       .catch(() => {
-        if (!cancelled) setError("Document couldn’t load.");
+        if (!cancelled) setError(copy.documentLoadFailed);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -542,14 +546,12 @@ export function DocumentViewerModal({
                 disabled={!accessToken || loading || textContent === null || isConverting || isLoadingChatChoices || Boolean(createdCanvasId) || (!file.chatId && Boolean(chatChoices?.length) && !chosenChatId)}
                 onClick={() => void convertToCanvas()}
               >
-                {isConverting ? "Converting…" : isLoadingChatChoices ? "Loading chats…" : !file.chatId && !chosenChatId ? "Choose chat" : "Convert to Canvas"}
+                {isConverting ? copy.converting : isLoadingChatChoices ? copy.loadingChats : !file.chatId && !chosenChatId ? copy.chooseChat : copy.convertCanvas}
                 {!isConverting && !isLoadingChatChoices && <ArrowRight size={15} aria-hidden="true" />}
               </button>
             )}
-            <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
-              Save
-            </button>
-            <button type="button" className="document-viewer-close" aria-label="Close" onClick={onClose}>
+            <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>{copy.save}</button>
+            <button type="button" className="document-viewer-close" aria-label={copy.close} onClick={onClose}>
               <X size={18} aria-hidden="true" />
             </button>
           </div>
@@ -558,17 +560,17 @@ export function DocumentViewerModal({
         <div className="document-viewer-body">
           {!loading && !error && isMarkdown && chatChoices && !file.chatId && (
             <label className="document-viewer-canvas-chat-picker">
-              <span>Save Canvas in chat</span>
+              <span>{copy.saveCanvasInChat}</span>
               <select className="document-viewer-canvas-chat" value={chosenChatId} onChange={(event) => setChosenChatId(event.target.value)}>
-                <option value="">Select a chat</option>
-                {chatChoices.map((chat) => <option key={chat.id} value={chat.id}>{chat.title || "Untitled chat"}</option>)}
+                <option value="">{copy.selectChat}</option>
+                {chatChoices.map((chat) => <option key={chat.id} value={chat.id}>{chat.title || copy.untitledChat}</option>)}
               </select>
             </label>
           )}
           {loading && (
             <div className="document-preview-status" role="status">
               <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
-              Loading document…
+              {copy.loadingDocument}
             </div>
           )}
           {error && (
@@ -584,22 +586,22 @@ export function DocumentViewerModal({
           {!loading && !error && conversionError && (
             <div className="document-preview-error" role="alert">
               {conversionError}
-              {createdCanvasId && <button type="button" onClick={openCreatedCanvas}>Open Canvas</button>}
+              {createdCanvasId && <button type="button" onClick={openCreatedCanvas}>{copy.openCanvas}</button>}
             </div>
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && isMarkdown && (
-            <article className="document-viewer-markdown" dangerouslySetInnerHTML={{ __html: renderDocumentMarkdown(textContent || "(Empty document)") }} />
+            <article className="document-viewer-markdown" dangerouslySetInnerHTML={{ __html: renderDocumentMarkdown(textContent || copy.emptyDocument) }} />
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && !isMarkdown && (
-            <pre className="document-viewer-text">{textContent || "(Empty document)"}</pre>
+            <pre className="document-viewer-text">{textContent || copy.emptyDocument}</pre>
           )}
 
           {!loading && !error && kind === "table" && table && activeSheet && (
             <div className="document-preview-table-wrap document-viewer-table-wrap">
               {table.sheets.length > 1 && (
-                <div className="document-preview-sheet-tabs" role="tablist" aria-label="Sheets">
+                <div className="document-preview-sheet-tabs" role="tablist" aria-label={copy.sheets}>
                   {table.sheets.map((sheet, index) => (
                     <button
                       key={sheet.name}

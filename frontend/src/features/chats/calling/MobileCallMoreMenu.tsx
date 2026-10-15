@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MoreVertical, Settings2 } from "lucide-react";
 import { CallControlButton } from "./CallControlButton";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function MobileCallMoreMenu({
   isSharing,
@@ -15,6 +16,8 @@ export function MobileCallMoreMenu({
   onToggleScreenShare: () => void;
   children?: ReactNode;
 }) {
+  const strings = useStrings();
+  const copy = strings.auditUi;
   const [isOpen, setIsOpen] = useState(false);
   const [menuOffset, setMenuOffset] = useState(0);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -69,7 +72,7 @@ export function MobileCallMoreMenu({
         ref={triggerRef}
         type="button"
         className={`mobile-active-ctrl-btn${isOpen ? " active" : ""}`}
-        aria-label="More options"
+        aria-label={copy.moreOptions}
         data-shape="circle"
         data-fixed-size="true"
         aria-expanded={isOpen}
@@ -78,10 +81,10 @@ export function MobileCallMoreMenu({
         <MoreVertical size={20} aria-hidden="true" />
       </button>
       {isOpen && (
-        <div ref={menuRef} className="mobile-active-more-menu" style={{ left: `${-menuOffset}px` }} role="group" aria-label="More call options">
-          <CallControlButton action="screen-share" label={isSharing ? "Stop sharing" : "Share screen"} state={isSharing ? "active" : "idle"} onClick={() => { setIsOpen(false); onToggleScreenShare(); }}><span>{isSharing ? "Stop sharing" : "Share screen"}</span></CallControlButton>
-          <button type="button" aria-label="Settings" onClick={() => { setIsOpen(false); onOpenSettings?.(); }}>
-            <Settings2 size={17} aria-hidden="true" /><span>Settings</span>
+        <div ref={menuRef} className="mobile-active-more-menu" style={{ left: `${-menuOffset}px` }} role="group" aria-label={copy.moreCallOptions}>
+          <CallControlButton action="screen-share" label={isSharing ? copy.stopSharing : copy.shareScreen} state={isSharing ? "active" : "idle"} onClick={() => { setIsOpen(false); onToggleScreenShare(); }}><span>{isSharing ? copy.stopSharing : copy.shareScreen}</span></CallControlButton>
+          <button type="button" aria-label={strings.auditUi.settings} onClick={() => { setIsOpen(false); onOpenSettings?.(); }}>
+            <Settings2 size={17} aria-hidden="true" /><span>{strings.auditUi.settings}</span>
           </button>
           {children}
         </div>

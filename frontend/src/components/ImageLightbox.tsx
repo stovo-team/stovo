@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Download, MoreVertical, Share2, X } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { shareContent } from "../native/nativeSharePlugin";
+import { useStrings } from "../i18n/LanguageContext";
 
 interface ImageLightboxProps {
   imageUrl: string;
@@ -25,6 +26,7 @@ export default function ImageLightbox({
   onShare,
   onGoToMessage
 }: ImageLightboxProps) {
+  const copy = useStrings().imageViewer;
   const prefersReducedMotion = useReducedMotion();
   const [isClosing, setIsClosing] = useState(false);
   const [isReady, setIsReady] = useState(prefersReducedMotion);
@@ -52,7 +54,7 @@ export default function ImageLightbox({
     const result = await shareContent({
       title,
       url: imageUrl,
-      dialogTitle: title || "Share media"
+      dialogTitle: title || copy.shareMedia
     });
 
     if (result.fallbackToCopy && typeof navigator !== "undefined" && navigator.clipboard && imageUrl) {
@@ -62,7 +64,7 @@ export default function ImageLightbox({
         // Clipboard fallback failed
       }
     }
-  }, [imageUrl, onShare, title]);
+  }, [copy.shareMedia, imageUrl, onShare, title]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -123,7 +125,7 @@ export default function ImageLightbox({
         <button
           type="button"
           className="image-lightbox-close"
-          aria-label="Close image preview"
+          aria-label={copy.closePreview}
           onClick={requestClose}
         >
           <X aria-hidden="true" size={24} strokeWidth={2.25} />
@@ -137,8 +139,8 @@ export default function ImageLightbox({
             <button
               type="button"
               className="image-lightbox-download"
-              title="Download"
-              aria-label="Download"
+              title={copy.download}
+              aria-label={copy.download}
               onClick={onDownload}
             >
               <Download aria-hidden="true" size={18} />
@@ -147,8 +149,8 @@ export default function ImageLightbox({
           <button
             type="button"
             className="image-lightbox-share"
-            title="Share"
-            aria-label="Share media"
+            title={copy.share}
+            aria-label={copy.shareMedia}
             onClick={() => void handleShare()}
           >
             <Share2 aria-hidden="true" size={18} />
@@ -158,7 +160,7 @@ export default function ImageLightbox({
               <button
                 type="button"
                 className="image-lightbox-more"
-                aria-label="More image actions"
+                aria-label={copy.moreActions}
                 aria-expanded={isActionsOpen}
                 onClick={() => setIsActionsOpen((open) => !open)}
               >
@@ -170,14 +172,14 @@ export default function ImageLightbox({
                   className="image-lightbox-action-menu"
                   onClick={onGoToMessage}
                 >
-                  Go to message
+                  {copy.goToMessage}
                 </button>
               )}
             </div>
           )}
         </div>
       </header>
-      <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={`Full view of ${title}`}>
+      <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={copy.fullView(title)}>
         <img src={imageUrl} alt={title} decoding="async" />
       </div>
     </div>,

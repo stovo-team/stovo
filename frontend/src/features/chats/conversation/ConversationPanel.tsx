@@ -125,6 +125,7 @@ export function ConversationPanel({
   onCreateChecklist
 }: ConversationPanelProps) {
   const strings = useStrings();
+  const copy = strings.auditUi;
   const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
   const isActiveVoiceChannel = selectedChat?.type === "voice" && callSession?.activeCallChatId === selectedChat.id && callPhase !== "idle";
 
@@ -314,7 +315,7 @@ export function ConversationPanel({
   if (!selectedChat) {
     if (activeChatId) {
       return (
-        <div className="chat-loading-surface" aria-busy="true" aria-label="Loading chat">
+        <div className="chat-loading-surface" aria-busy="true" aria-label={copy.loadingChat}>
           <div className="chat-loading-header">
             <span className="skeleton-avatar" />
             <span className="chat-list-copy">
@@ -343,12 +344,12 @@ export function ConversationPanel({
           <div className="chat-empty-icon-pill">
             <MessageCircle aria-hidden="true" size={38} />
           </div>
-          <h2 className="chat-empty-title">Select a chat</h2>
+          <h2 className="chat-empty-title">{copy.selectChat}</h2>
           <p className="chat-empty-subtitle">
-            Choose a conversation on the left, or start a new small-circle chat.
+              {copy.chooseConversation}
           </p>
           <button type="button" className="chat-empty-action-pill" onClick={onOpenNewChat}>
-            New message
+            {copy.newMessage}
           </button>
         </div>
       </div>
@@ -430,17 +431,17 @@ export function ConversationPanel({
           </span>
           <input
             autoFocus
-            aria-label="Search this chat"
-            placeholder="Search this chat"
+            aria-label={copy.searchThisChat}
+            placeholder={copy.searchThisChat}
             value={messageSearch}
             onChange={(event) => setMessageSearch(event.target.value)}
           />
           <button
             type="button"
             className="message-search-option"
-            aria-label="Match whole words"
+            aria-label={copy.wholeWords}
             aria-pressed={wholeWordSearch}
-            title="Match whole words"
+            title={copy.wholeWords}
             onClick={() => setWholeWordSearch((value) => !value)}
           >
             W
@@ -448,9 +449,9 @@ export function ConversationPanel({
           <button
             type="button"
             className="message-search-option"
-            aria-label="Match case"
+            aria-label={copy.matchCase}
             aria-pressed={caseSensitiveSearch}
-            title="Match case"
+            title={copy.matchCase}
             onClick={() => setCaseSensitiveSearch((value) => !value)}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 9 5l5 13M6 13h6M14 18l3-8 3 8M15.3 14h3.4" /></svg>
@@ -459,7 +460,7 @@ export function ConversationPanel({
           <button
             type="button"
             className="message-search-option message-search-close"
-            aria-label="Close message search"
+            aria-label={copy.closeSearch}
             onClick={closeMessageSearch}
           >
             <span className="ms-icon ms-icon--20" aria-hidden={true}>
@@ -489,7 +490,7 @@ export function ConversationPanel({
               <button
                 type="button"
                 className="pinned-banner-click-area"
-                aria-label="Go to pinned message"
+                aria-label={copy.goToPinned}
                 onClick={openPinnedMessages}
               >
                 <span className="pinned-banner-eyebrow" aria-live="polite">
@@ -605,7 +606,7 @@ export function ConversationPanel({
             />
           )}
           {isMessageSelectionMode ? (
-            <div className="message-selection-actions" role="toolbar" aria-label="Selected message actions">
+            <div className="message-selection-actions" role="toolbar" aria-label={copy.selectedMessageActions}>
               {selectedMessageIds.length === 1 && (
                 <>
                   {!threadRootMessageId && (
@@ -635,7 +636,7 @@ export function ConversationPanel({
                       }}
                     >
                       <Reply aria-hidden="true" size={22} />
-                      <span>Reply</span>
+                      <span>{copy.reply}</span>
                     </button>
                   )}
                 </>
@@ -650,7 +651,7 @@ export function ConversationPanel({
                 }}
               >
                 <Forward aria-hidden="true" size={22} />
-                <span>Forward</span>
+                <span>{copy.forward}</span>
               </button>
             </div>
           ) : (

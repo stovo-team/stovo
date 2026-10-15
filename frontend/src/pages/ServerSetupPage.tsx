@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { setApiUrlOverride } from "../api/client";
 import StovoLogo from "../components/StovoLogo";
+import { useStrings } from "../i18n/LanguageContext";
 
 function normalizeUrl(value: string): string | null {
   const trimmed = value.trim();
@@ -19,6 +20,8 @@ function normalizeUrl(value: string): string | null {
 }
 
 export default function ServerSetupPage() {
+  const strings = useStrings();
+  const copy = strings.serverSetup;
   const navigate = useNavigate();
   const location = useLocation();
   const [url, setUrl] = useState("");
@@ -35,7 +38,7 @@ export default function ServerSetupPage() {
     event.preventDefault();
     const normalized = normalizeUrl(url);
     if (!normalized) {
-      setError("Enter a valid URL, e.g. https://stovo.example.com or http://192.168.1.100:8000");
+      setError(copy.invalidUrl);
       return;
     }
     setError(null);
@@ -45,7 +48,7 @@ export default function ServerSetupPage() {
         signal: AbortSignal.timeout(8000)
       });
       if (!res.ok && res.status !== 401) {
-        setError(`Space replied with ${res.status} — check the URL`);
+        setError(copy.serverReply(res.status));
         return;
       }
       const data = await res.json().catch(() => null);
@@ -59,7 +62,7 @@ export default function ServerSetupPage() {
       if (deviceLogin === "1") loginParams.set("deviceLogin", "1");
       navigate(`/login${loginParams.size ? `?${loginParams}` : ""}`, { replace: true });
     } catch (err) {
-      setError(`Cannot reach ${normalized} — ${String(err)}`);
+      setError(copy.cannotReach(normalized, String(err)));
     } finally {
       setIsTesting(false);
     }
@@ -68,19 +71,19 @@ export default function ServerSetupPage() {
   return (
     <main className="app-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Setup</p>
+        <p className="eyebrow">{strings.brand.setup}</p>
         <StovoLogo className="app-brand-logo" title="Stovo" />
-        <h1>Space address</h1>
+        <h1>{copy.title}</h1>
         <p className="muted-copy">
-          Enter the address of your Stovo space. Use <strong>https://</strong> for domain names.
+          {copy.hint} <strong>{copy.hintHttps}</strong> {copy.hintSuffix}
         </p>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            Space URL
+            {copy.serverUrl}
             <input
               required
               type="url"
-              placeholder="https://stovo.example.com"
+              placeholder={copy.placeholder}
               autoComplete="url"
               value={url}
               onChange={(event) => {
@@ -91,11 +94,11 @@ export default function ServerSetupPage() {
           </label>
           {error && <p className="error-text">{error}</p>}
           <button type="submit" disabled={isTesting}>
-            {isTesting ? "Testing connection…" : "Connect"}
+            {isTesting ? copy.testingConnection : copy.connect}
           </button>
         </form>
         <p className="secondary-link">
-          For local network: <code>http://192.168.1.100:8000</code>
+          {copy.localNetworkHint} <code>{copy.localNetworkExample}</code>
         </p>
       </section>
     </main>
