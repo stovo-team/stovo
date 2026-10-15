@@ -19,9 +19,21 @@ const (
 )
 
 type intelligenceSourceV2RetentionResult struct {
-	PayloadsPurged   int64
 	TombstonesPruned int64
 	BackupsPruned    int64
+}
+
+// IntelligenceSourceV2RestoreTombstone describes a metadata-only invalidation
+// entry; it does not contain source content.
+type IntelligenceSourceV2RestoreTombstone struct {
+	EventID      string    `json:"event_id"`
+	ConnectionID string    `json:"connection_id"`
+	ResourceID   string    `json:"resource_id"`
+	RevisionID   string    `json:"revision_id"`
+	ChatID       string    `json:"chat_id"`
+	Sequence     int64     `json:"sequence"`
+	Reason       string    `json:"reason"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 func (s *Server) requireIntelligenceSourceV2RestoreReady(ctx context.Context) error {
@@ -101,10 +113,8 @@ func emitIntelligenceSourceV2ScopeTombstone(ctx context.Context, tx *sql.Tx, con
 	return nil
 }
 
-// intelligenceSourceV2Operations binds the shared coordinator to this
-// server's configured restore epoch and injected clock.
 func (s *Server) intelligenceSourceV2Operations() *IntelligenceSourceV2Operations {
-	return newIntelligenceSourceV2Operations(s.sqlDB, s.cfg.IntelligenceSourceV2RestoreEpoch, s.intelligenceOIDCNow)
+	return newIntelligenceSourceV2Operations(s.sqlDB, s.intelligenceOIDCNow)
 }
 
 // RegisterIntelligenceSourceV2BackupHorizon records one backup's actual
@@ -130,13 +140,6 @@ func (s *Server) cleanupIntelligenceSourceV2Retention(ctx context.Context, now t
 	}
 	defer func() { _ = tx.Rollback() }()
 	var result intelligenceSourceV2RetentionResult
-	payloads, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_source_v2_revision_payloads WHERE retention_expires_at<=$1`, now.UTC())
-	if err != nil {
-		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if result.PayloadsPurged, err = payloads.RowsAffected(); err != nil {
-		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
 	var restoreBlocked bool
 	err = tx.QueryRowContext(ctx, `SELECT blocked FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global' FOR UPDATE`).Scan(&restoreBlocked)
 	if err != nil {
@@ -179,15 +182,35 @@ func (s *Server) cleanupIntelligenceSourceV2Retention(ctx context.Context, now t
 	return result, nil
 }
 
-// BeginIntelligenceSourceV2Restore blocks all v2 source routes before it
-// returns any tombstones. The caller must replay every returned event and then
-// report per-connection sequence watermarks to complete the restore.
+// BeginIntelligenceSourceV2Restore blocks all v2 source routes. Reopening is
+// deliberately unavailable until an independent tombstone ledger or verified
+// consumer scope reset is integrated; Messenger database state alone can roll
+// back with the content backup and cannot prove tombstone freshness.
 func (s *Server) BeginIntelligenceSourceV2Restore(ctx context.Context, restoreID string, backupCreatedAt time.Time) ([]IntelligenceSourceV2RestoreTombstone, error) {
-	return s.intelligenceSourceV2Operations().BeginIntelligenceSourceV2Restore(ctx, restoreID, backupCreatedAt)
+	if s.sqlDB == nil || restoreID == "" || len(restoreID) > 256 || backupCreatedAt.IsZero() || strings.TrimSpace(s.cfg.IntelligenceSourceV2RestoreEpoch) == "" {
+		return nil, httptransport.ErrIntelligenceSourceInvalidRequest
+	}
+	tx, err := s.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, "UPDATE public.intelligence_source_v2_restore_gate SET blocked=true,active_restore_id=$1,backup_created_at=$2,ledger_verified_at=NULL,updated_at=$3 WHERE gate_id='global'", restoreID, backupCreatedAt.UTC(), s.intelligenceOIDCNow())
+	if err != nil {
+		return nil, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
+		return nil, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, httptransport.ErrIntelligenceSourceUnavailable
+	}
+	return nil, httptransport.ErrIntelligenceSourceUnavailable
 }
 
-// CompleteIntelligenceSourceV2Restore opens source routes only after the
-// consumer replay watermarks cover every current post-backup tombstone.
-func (s *Server) CompleteIntelligenceSourceV2Restore(ctx context.Context, restoreID string, appliedThrough map[string]int64, ledgerCheckedAt time.Time) error {
-	return s.intelligenceSourceV2Operations().CompleteIntelligenceSourceV2Restore(ctx, restoreID, appliedThrough, ledgerCheckedAt)
+// CompleteIntelligenceSourceV2Restore cannot reopen routes from a ledger that
+// was restored from the same database snapshot as the content it must suppress.
+// Keep the global gate closed until an independent proof source is wired in.
+func (s *Server) CompleteIntelligenceSourceV2Restore(context.Context, string, map[string]int64, time.Time) error {
+	return httptransport.ErrIntelligenceSourceUnavailable
 }

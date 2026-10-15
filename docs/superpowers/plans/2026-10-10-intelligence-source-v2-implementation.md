@@ -1,3 +1,8 @@
+---
+title: "Messenger Intelligence Source v2 Implementation Plan"
+type: implementation-plan
+---
+
 # Messenger Intelligence Source v2 Implementation Plan
 
 **Status:** Approved; implementation in progress
@@ -106,8 +111,8 @@ The phases are sequential because each uses the identity or persistence boundary
 
 **Consumes:** Task 6's immutable revision and event IDs. **Produces:** deletion/revoke invalidation, bounded tombstone retention, payload purge, and fail-closed restore gating.
 
-1. Add failing integration tests for member/visibility/move/restore invalidation, independent grant and connection revocation, immediate exact-read denial, deletion payload purge with unchanged revision identity, metadata-only tombstone survival, content backup retention no longer than 30 days, tombstone retention through the full restorable-backup horizon plus safety margin, and restore refusal until tombstones newer than the backup are replayed. Add handler tests for metadata-only access after read revocation and fail-closed cleanup/storage failure. Run red. **Expected:** tests fail for absent lifecycle/purge/restore behavior, not because of an unrelated fixture or environment error.
-2. Implement v2 capture for message and access lifecycle transitions; add payload-purge/retention state and tombstone ledger migration `backend/migrations/20261010130000_add_intelligence_source_v2_retention.sql`; implement cleanup/restore validation in `backend/internal/app/intelligence_source_v2_retention.go`. Do not delete/cascade-delete tombstones needed by a restorable backup. Keep unavailable historical payload reads indistinguishable from not-found.
+1. Add failing integration tests for member/visibility/move/restore invalidation, independent grant and connection revocation, immediate exact-read denial, deletion payload purge with unchanged revision identity, active payload retention while its source remains available, metadata-only tombstone survival, content backup retention no longer than 30 days, tombstone retention through the full restorable-backup horizon plus safety margin, and fail-closed restore behavior when an independent tombstone proof is unavailable. Add handler tests for metadata-only access after read revocation and fail-closed cleanup/storage failure. Run red. **Expected:** tests fail for absent lifecycle/purge/restore behavior, not because of an unrelated fixture or environment error.
+2. Implement v2 capture for message and access lifecycle transitions; add source-lifecycle purge and tombstone/backup retention state in migration `backend/migrations/20261010130000_add_intelligence_source_v2_retention.sql`; implement cleanup/restore validation in `backend/internal/app/intelligence_source_v2_retention.go`. Active payloads do not expire by age. Do not reopen routes after database restore using only tombstones restored from that same database; keep restore gated until an independent ledger or verified consumer scope reset is integrated. Do not delete/cascade-delete tombstones needed by a restorable backup. Keep unavailable historical payload reads indistinguishable from not-found.
 3. Add or update the operator/runbook contract in `docs/integrations/intelligence-source-v2.md` with disabled-by-default setup, key rotation, migration/retention behavior, restore fail-closed operation, no-live-canary boundary, and the unverified Intelligence consumer suppression obligations. Do not include usable production secrets or enable a tenant.
 4. Run the full backend and frontend checks, Atlas hash/checksum check, review migration trigger/order invariants, and inspect audit/log paths for content/credential leakage. **Expected:** all required unit/contract/frontend checks pass; PostgreSQL tests pass with disposable services; `atlas.sum` is clean; no source text or credentials appear in audit/log paths. Commit the retention slice.
 

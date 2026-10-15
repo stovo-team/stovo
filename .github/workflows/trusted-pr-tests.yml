@@ -33,12 +33,25 @@ jobs:
               - '.github/workflows/pipeline.yml'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/**'
               - 'scripts/check-solid-boundaries.sh'
               - 'docs/engineering/size-baseline.tsv'
               - '.github/workflows/trusted-pr-tests.yml'
               - '.github/workflows/pipeline.yml'
+
+  pipeline-contract:
+    name: Pipeline Contract
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: Verify pipeline workflow contract
+        run: bash .github/workflows/pipeline.test.sh
 
   frontend-ci:
     name: Frontend CI

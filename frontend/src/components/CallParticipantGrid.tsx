@@ -4,7 +4,17 @@ import type { FamilyFile } from "../api/files";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 import { CallParticipantTile } from "./CallParticipantTile";
-import { getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize } from "../features/chats/calling/screenShareLayout";
+import { getMockScreenShareLayout, getScreenShareBottomRailHeight, getScreenShareLayout, getScreenSharePresenterSize, getScreenStreamAspectRatio } from "../features/chats/calling/screenShareLayout";
+import { MockScreenSharePreview } from "../features/chats/calling/MockScreenSharePreview";
+import { getCallGallerySize } from "../features/chats/calling/callGalleryLayout";
+
+type ScreenPresenter = {
+  userId: string;
+  displayName: string;
+  screenStream: MediaStream | null;
+  isMuted?: boolean;
+  isMock?: boolean;
+};
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -20,6 +30,7 @@ type CallParticipantGridProps = {
   onFlipLocalCamera?: () => void;
   isFlippingCamera?: boolean;
   localVideoPlaceholder?: ReactNode;
+  mockScreenShareOwner?: { userId: string; displayName: string } | null;
   mobileSingleRemote?: boolean;
   isLocalPrimary?: boolean;
   onToggleMobileStage?: () => void;
@@ -76,6 +87,7 @@ export default function CallParticipantGrid({
   onFlipLocalCamera,
   isFlippingCamera,
   localVideoPlaceholder,
+  mockScreenShareOwner = null,
   mobileSingleRemote = false,
   isLocalPrimary = false,
   onToggleMobileStage,
@@ -88,6 +100,7 @@ export default function CallParticipantGrid({
 }: CallParticipantGridProps) {
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
   const [stageSize, setStageSize] = useState<{ width: number; height: number } | null>(null);
+  const [measuredScreenAspectRatio, setMeasuredScreenAspectRatio] = useState<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -124,24 +137,52 @@ export default function CallParticipantGrid({
     localStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false),
   );
 
-  const presenter =
-    localScreenStream && localScreenStream.getVideoTracks().some((t) => t.readyState !== "ended")
-      ? { userId: localUserLabel, screenStream: localScreenStream }
-      : remoteMedia.find(
-          (m) =>
-            m.hasScreenShare &&
-            m.screenStream &&
-            m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
-        );
+  const localScreenPresenter = localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended")
+    ? { userId: localUserLabel, displayName: localUserLabel, screenStream: localScreenStream, isMuted: isLocalMuted }
+    : null;
+  const remoteScreenPresenter = remoteMedia.find(
+    (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
+  );
+  const presenter: ScreenPresenter | null = localScreenPresenter
+    ? localScreenPresenter
+    : remoteScreenPresenter
+      ? {
+          userId: remoteScreenPresenter.userId,
+          displayName: participantProfiles[remoteScreenPresenter.userId]?.displayName ?? remoteScreenPresenter.userId,
+          screenStream: remoteScreenPresenter.screenStream,
+          isMuted: remoteScreenPresenter.isMuted,
+        }
+      : mockScreenShareOwner
+        ? {
+            ...mockScreenShareOwner,
+            screenStream: null,
+            isMuted: mockScreenShareOwner.displayName === localUserLabel
+              ? isLocalMuted
+              : Boolean(remoteMedia.find((media) => media.userId === mockScreenShareOwner.userId)?.isMuted),
+            isMock: true,
+          }
+        : null;
   const isPresenting = Boolean(presenter);
-
+  const screenAspectRatio = presenter?.isMock ? 16 / 9 : measuredScreenAspectRatio ?? getScreenStreamAspectRatio(presenter?.screenStream);
+  const screenAspectRatioCss = screenAspectRatio === 16 / 9 ? "16 / 9" : String(screenAspectRatio);
+  useEffect(() => {
+    setMeasuredScreenAspectRatio(null);
+  }, [presenter?.userId, presenter?.screenStream]);
   const count = 1 + remoteMedia.length;
-  const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
+  const useMobilePair = isMobileLayout && !mobileSingleRemote && !isPresenting && count === 2;
+  const useLandscapeParticipantSizing = (isPresenting || useMobilePair) && !mobileSingleRemote;
+  const participantTileStyle = useLandscapeParticipantSizing
+    ? { ...tileStyle, minWidth: 0, minHeight: 0 }
+    : tileStyle;
+
+  const columns = useMobilePair ? 1 : Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
+  const gallerySize = !isPresenting && !mobileSingleRemote && stageSize ? getCallGallerySize(stageSize.width, stageSize.height, count, columns) : null;
 
   const useScreenShareRail = isPresenting && !mobileSingleRemote && !isMobileLayout;
+  const getPresenterLayout = presenter?.isMock ? getMockScreenShareLayout : getScreenShareLayout;
   const useBottomScreenShareRail = useScreenShareRail && (
     stageSize
-      ? getScreenShareLayout(stageSize.width, stageSize.height, remoteMedia.length + 1) === "bottom"
+      ? getPresenterLayout(stageSize.width, stageSize.height, remoteMedia.length + 1, screenAspectRatio) === "bottom"
       : remoteMedia.length >= 4
   );
   const screenPresenterSize = useScreenShareRail && stageSize
@@ -150,6 +191,7 @@ export default function CallParticipantGrid({
       stageSize.height,
       useBottomScreenShareRail ? "bottom" : "side",
       getScreenShareBottomRailHeight(window.innerHeight),
+      screenAspectRatio,
     )
     : null;
   const useMobilePresentationRow = isPresenting && isMobileLayout && !mobileSingleRemote;
@@ -168,7 +210,7 @@ export default function CallParticipantGrid({
   const localTile = (
     <CallParticipantTile
       className="call-grid__tile call-grid__tile--local"
-      style={mobileSingleRemote ? { ...tileStyle, width: "100%", height: "100%", minHeight: 0, aspectRatio: "auto" } : tileStyle}
+      style={mobileSingleRemote ? { ...tileStyle, width: "100%", height: "100%", minHeight: 0, aspectRatio: "auto" } : participantTileStyle}
       label={localUserLabel}
       stream={localStream}
       showVideo={localHasVideo || Boolean(localVideoPlaceholder)}
@@ -183,7 +225,6 @@ export default function CallParticipantGrid({
       profilePhoto={participantProfiles[localUserLabel]?.profilePhoto ?? null}
       mobilePrimary={mobileSingleRemote && isLocalPrimary}
       mobilePip={mobileSingleRemote && !isLocalPrimary}
-      onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(localUserLabel)}
     />
   );
 
@@ -194,8 +235,8 @@ export default function CallParticipantGrid({
     const stream = preferScreen ? remote.screenStream : remote.stream;
     const isRemoteSpeaking = isCallConnected && !remote.isMuted && (speakingUserIds.includes(remote.userId) || (isPeerSpeaking && remoteMedia.length === 1));
     return (
-      <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", width: "100%", height: "100%", aspectRatio: isPresenting && !mobileSingleRemote ? "16 / 9" : undefined }}>
-        <CallParticipantTile className="call-grid__tile call-grid__tile--remote" style={tileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
+      <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", minWidth: 0, width: useLandscapeParticipantSizing ? undefined : "100%", height: useLandscapeParticipantSizing ? undefined : "100%", aspectRatio: useLandscapeParticipantSizing ? "16 / 9" : undefined }}>
+        <CallParticipantTile className="call-grid__tile call-grid__tile--remote" style={participantTileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
       </div>
     );
   });
@@ -204,34 +245,41 @@ export default function CallParticipantGrid({
     <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
   ) : (
     <div
-      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
+      className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
+        ...(useBottomScreenShareRail || useMobilePresentationRow ? { alignContent: "start" } : {}),
+        ...(gallerySize ? { "--gallery-width": `${gallerySize.width}px`, "--gallery-height": `${gallerySize.height}px` } as CSSProperties : {}),
         gridTemplateColumns: useScreenShareRail
-          ? undefined
+          ? useBottomScreenShareRail
+            ? undefined
+            : `${Math.round(screenPresenterSize?.width ?? 560)}px ${Math.round((screenPresenterSize?.width ?? 560) / 5)}px`
           : useMobilePresentationRow
           ? "minmax(0, 1fr)"
           : isPresenting
           ? "repeat(auto-fit, minmax(120px, 1fr))"
           : `repeat(${columns}, minmax(0, 1fr))`,
+        justifyContent: useScreenShareRail && !useBottomScreenShareRail ? "space-between" : undefined,
       }}
     >
-      {presenter?.screenStream ? (
+      {presenter ? (
         <CallParticipantTile
           className="call-grid__tile call-grid__tile--screen"
           style={useScreenShareRail
             ? useBottomScreenShareRail
-              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
-              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: "16 / 9", alignSelf: "center", justifySelf: "center" }
+              ? { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "2", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "start", justifySelf: "start" }
+              : { ...landscapePresenterTileStyle, gridColumn: "1", gridRow: "1", width: screenPresenterSize?.width ?? "100%", height: screenPresenterSize?.height ?? "auto", maxWidth: "100%", maxHeight: "100%", aspectRatio: screenAspectRatioCss, ["--screen-aspect-ratio" as string]: screenAspectRatioCss, alignSelf: "center", justifySelf: "start" }
             : useMobilePresentationRow
-              ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: "16 / 9", maxHeight: "none" }
+              ? { ...tileStyle, gridColumn: "1 / -1", width: "100%", height: "auto", minHeight: 0, aspectRatio: screenAspectRatioCss, maxHeight: "none", ["--screen-aspect-ratio" as string]: screenAspectRatioCss }
               : landscapePresenterTileStyle}
-          label={presenter.userId}
+          label={presenter.displayName}
           stream={presenter.screenStream}
-          showVideo
+          showVideo={Boolean(presenter.screenStream)}
           isScreen
-          isMuted={presenter.userId === localUserLabel ? isLocalMuted : "isMuted" in presenter && Boolean(presenter.isMuted)}
+          isMuted={Boolean(presenter.isMuted)}
           isConnected={isCallConnected}
+          localVideoPlaceholder={presenter.isMock ? <MockScreenSharePreview ownerName={presenter.displayName} /> : undefined}
+          onVideoMetadata={(width, height) => { if (width > 0 && height > 0) setMeasuredScreenAspectRatio(width / height); }}
         />
       ) : null}
 

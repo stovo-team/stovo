@@ -21,6 +21,7 @@ describe("new message dialog on web", () => {
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
     expect(newChatDialog).toContain('className="new-chat-screen-close"');
     expect(newChatDialog).toContain('aria-label="Close new message"');
+    expect(newChatDialog).toContain("onClick={onClose}");
     expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
 

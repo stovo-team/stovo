@@ -1,19 +1,5 @@
--- V2 source payloads expire within thirty days. Immutable revision and event
--- identities remain available after payload removal.
-ALTER TABLE public.intelligence_source_v2_revision_payloads
-    ADD COLUMN retention_expires_at timestamptz;
-
-UPDATE public.intelligence_source_v2_revision_payloads
-SET retention_expires_at=created_at+interval '30 days';
-
-ALTER TABLE public.intelligence_source_v2_revision_payloads
-    ALTER COLUMN retention_expires_at SET NOT NULL,
-    ALTER COLUMN retention_expires_at SET DEFAULT (now()+interval '30 days'),
-    ADD CONSTRAINT intelligence_source_v2_payload_retention_bound
-        CHECK (retention_expires_at <= created_at+interval '30 days');
-
-CREATE INDEX intelligence_source_v2_payload_retention
-    ON public.intelligence_source_v2_revision_payloads(retention_expires_at);
+-- Active v2 payloads follow the Messenger source lifecycle. Backup copies are
+-- bounded independently by the registered restore horizons below.
 
 -- The operator registers each content backup's actual restore horizon. The
 -- database rejects horizons beyond the v2 thirty-day content-backup contract.

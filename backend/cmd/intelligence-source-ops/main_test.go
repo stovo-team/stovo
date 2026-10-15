@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"stovo-messenger/backend/internal/app"
 )
 
 type backupRegistration struct {
@@ -17,23 +15,9 @@ type backupRegistration struct {
 	until     time.Time
 }
 
-type restoreBegin struct {
-	id        string
-	createdAt time.Time
-}
-
-type restoreCompletion struct {
-	id             string
-	appliedThrough map[string]int64
-	checkedAt      time.Time
-}
-
 type fakeCoordinator struct {
 	registrations []backupRegistration
 	verifiedAt    []time.Time
-	begins        []restoreBegin
-	completions   []restoreCompletion
-	tombstones    []app.IntelligenceSourceV2RestoreTombstone
 	err           error
 }
 
@@ -44,20 +28,6 @@ func (f *fakeCoordinator) RegisterIntelligenceSourceV2BackupHorizon(_ context.Co
 
 func (f *fakeCoordinator) MarkIntelligenceSourceV2BackupInventoryVerified(_ context.Context, verifiedAt time.Time) error {
 	f.verifiedAt = append(f.verifiedAt, verifiedAt)
-	return f.err
-}
-
-func (f *fakeCoordinator) BeginIntelligenceSourceV2Restore(_ context.Context, id string, createdAt time.Time) ([]app.IntelligenceSourceV2RestoreTombstone, error) {
-	f.begins = append(f.begins, restoreBegin{id: id, createdAt: createdAt})
-	return f.tombstones, f.err
-}
-
-func (f *fakeCoordinator) CompleteIntelligenceSourceV2Restore(_ context.Context, id string, appliedThrough map[string]int64, checkedAt time.Time) error {
-	watermarks := make(map[string]int64, len(appliedThrough))
-	for connectionID, sequence := range appliedThrough {
-		watermarks[connectionID] = sequence
-	}
-	f.completions = append(f.completions, restoreCompletion{id: id, appliedThrough: watermarks, checkedAt: checkedAt})
 	return f.err
 }
 
@@ -101,58 +71,39 @@ func TestRunInventoryVerifyRejectsInvalidTimestamp(t *testing.T) {
 	}
 }
 
-func TestRunRestoreBeginWritesMetadataJSON(t *testing.T) {
-	coordinator := &fakeCoordinator{tombstones: []app.IntelligenceSourceV2RestoreTombstone{{
-		EventID: "event-1", ConnectionID: "connection-1", ResourceID: "resource-1", RevisionID: "revision-1", ChatID: "chat-1", Sequence: 7, Reason: "message_deleted", CreatedAt: time.Date(2026, 10, 14, 8, 0, 0, 0, time.UTC),
-	}}}
-	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"restore", "begin", "--restore-id", "restore-9", "--backup-created-at", "2026-10-14T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator)
-	if code != 0 || len(coordinator.begins) != 1 {
-		t.Fatalf("run code=%d begin calls=%d stderr=%q", code, len(coordinator.begins), stderr.String())
-	}
-	if got, want := coordinator.begins[0], (restoreBegin{id: "restore-9", createdAt: time.Date(2026, 10, 14, 8, 0, 0, 0, time.UTC)}); got != want {
-		t.Fatalf("begin call = %#v, want %#v", got, want)
-	}
-	const want = `{"tombstones":[{"event_id":"event-1","connection_id":"connection-1","resource_id":"resource-1","revision_id":"revision-1","chat_id":"chat-1","sequence":7,"reason":"message_deleted","created_at":"2026-10-14T08:00:00Z"}]}`
-	if got := strings.TrimSpace(stdout.String()); got != want {
-		t.Fatalf("stdout = %q, want metadata-only tombstones", got)
-	}
-}
-
-func TestRunRestoreCompleteReadsWatermarksFromStdin(t *testing.T) {
+func TestRunRestoreOperationsRequireIndependentProof(t *testing.T) {
 	coordinator := &fakeCoordinator{}
-	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"restore", "complete", "--restore-id", "restore-9", "--ledger-checked-at", "2026-10-14T08:00:00Z"}, strings.NewReader(`{"connection-1":7,"connection-2":13}`), &stdout, &stderr, coordinator)
-	if code != 0 || len(coordinator.completions) != 1 {
-		t.Fatalf("run code=%d completion calls=%d stderr=%q", code, len(coordinator.completions), stderr.String())
+	cases := [][]string{
+		{"restore", "begin", "--restore-id", "restore-9", "--backup-created-at", "2026-10-14T08:00:00Z"},
+		{"restore", "complete", "--restore-id", "restore-9", "--ledger-checked-at", "2026-10-14T08:00:00Z"},
 	}
-	call := coordinator.completions[0]
-	if call.id != "restore-9" || !call.checkedAt.Equal(time.Date(2026, 10, 14, 8, 0, 0, 0, time.UTC)) || len(call.appliedThrough) != 2 || call.appliedThrough["connection-1"] != 7 || call.appliedThrough["connection-2"] != 13 {
-		t.Fatalf("completion call = %#v", call)
+	for _, args := range cases {
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), args, strings.NewReader(`{"connection-1":7}`), &stdout, &stderr, coordinator)
+		if code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "independent proof") {
+			t.Fatalf("restore command was not rejected safely: args=%v code=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
+		}
 	}
-	if got := strings.TrimSpace(stdout.String()); got != `{"ok":true}` {
-		t.Fatalf("stdout = %q, want success JSON", got)
+	if len(coordinator.registrations) != 0 || len(coordinator.verifiedAt) != 0 {
+		t.Fatalf("restore command invoked backup coordinator: registrations=%v verifications=%v", coordinator.registrations, coordinator.verifiedAt)
 	}
 }
 
-func TestRunRejectsMalformedArgumentsAndJSON(t *testing.T) {
+func TestRunRejectsMalformedArguments(t *testing.T) {
 	cases := []struct {
-		name  string
-		args  []string
-		input string
+		name string
+		args []string
 	}{
-		{name: "unknown command", args: []string{"restore", "finish"}},
+		{name: "unknown command", args: []string{"backup", "unknown"}},
 		{name: "missing required flag", args: []string{"inventory", "verify"}},
 		{name: "unexpected flag", args: []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00Z", "--extra", "secret"}},
-		{name: "malformed JSON", args: []string{"restore", "complete", "--restore-id", "restore-1", "--ledger-checked-at", "2026-10-14T08:00:00Z"}, input: `{"connection-1":`},
-		{name: "multiple JSON values", args: []string{"restore", "complete", "--restore-id", "restore-1", "--ledger-checked-at", "2026-10-14T08:00:00Z"}, input: `{"connection-1":7}{"connection-2":8}`},
-		{name: "JSON is not an object", args: []string{"restore", "complete", "--restore-id", "restore-1", "--ledger-checked-at", "2026-10-14T08:00:00Z"}, input: `[]`},
+		{name: "incomplete restore command", args: []string{"restore"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			coordinator := &fakeCoordinator{}
 			var stdout, stderr bytes.Buffer
-			if code := run(context.Background(), tc.args, strings.NewReader(tc.input), &stdout, &stderr, coordinator); code == 0 {
+			if code := run(context.Background(), tc.args, strings.NewReader(""), &stdout, &stderr, coordinator); code == 0 {
 				t.Fatalf("malformed input accepted: stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
 			if stdout.Len() != 0 {

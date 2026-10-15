@@ -5,7 +5,11 @@ import CallParticipantGrid from "./src/components/CallParticipantGrid";
 import { CallControlButton } from "./src/features/chats/calling/CallControlButton";
 import { CallDeviceControl } from "./src/features/chats/calling/CallDeviceControl";
 import { CallParticipantStage } from "./src/features/chats/calling/CallParticipantStage";
-import { CallAudioSettingsPopup } from "./src/features/chats/calling/CallAudioSettingsPopup";
+import { SharedCallStage } from "./src/features/chats/calling/SharedCallStage";
+import { SharedCallControlPanel } from "./src/features/chats/calling/SharedCallControlPanel";
+import { CallDeviceControls } from "./src/features/chats/calling/CallDeviceControls";
+import { CallSettingsDialog } from "./src/features/chats/calling/CallSettingsDialog";
+import { useCallUIPreferences } from "./src/features/chats/calling/callUIPreferences";
 import IconIntelligence from "./src/components/icons/IconIntelligence";
 import { MeetingIntelligencePopover } from "./src/features/chats/calling/MeetingIntelligencePopover";
 import { DEFAULT_CALL_SETTINGS, type CallCapabilities, type CallDevice, type RemoteMedia } from "./src/realtime/call/types";
@@ -57,23 +61,28 @@ export function CallUiPreview() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [lastControlMovement, setLastControlMovement] = useState(0);
   const [selfViewFullscreen, setSelfViewFullscreen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [mobileMenuOffset, setMobileMenuOffset] = useState(0);
-  const popupRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const mobileMoreTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const patchSettings = (patch: Partial<typeof settings>) => setSettings((previous) => ({ ...previous, ...patch }));
+  const revealControls = () => {
+    setControlsVisible(true);
+    setLastControlMovement((movement) => movement + 1);
+  };
+  const { preferences, patchPreferences } = useCallUIPreferences();
   const remoteMedia = createRemoteParticipants(participantCount);
 
   useEffect(() => {
-    if (!controlsVisible || minimized || !mobile) return;
-    const timer = window.setTimeout(() => setControlsVisible(false), 15_000);
+    if (!controlsVisible || minimized || !preferences.autoHideControls) return;
+    const timer = window.setTimeout(() => setControlsVisible(false), 12_000);
     return () => window.clearTimeout(timer);
-  }, [controlsVisible, minimized, mobile]);
+  }, [controlsVisible, lastControlMovement, minimized, preferences.autoHideControls, mobile]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -146,9 +155,10 @@ export function CallUiPreview() {
   const screenShareControl = <CallControlButton action="screen-share" className="call-ctrl-btn" label={screenSharing ? "Stop sharing" : "Share screen"} state={screenSharing ? "active" : "idle"} onClick={() => setScreenSharing((sharing) => !sharing)} />;
   const endCallControl = <CallControlButton action="end-call" className="call-ctrl-btn end-btn" label="End call" data-shape="circle" data-fixed-size="true" />;
   const isGuestMeeting = kind === "Guest meeting";
+  const isVoiceChannel = kind === "Voice channel";
 
   return (
-    <main className={`call-preview-page${mobile ? " call-preview-mobile" : ""}`}>
+    <main className={`call-preview-page${mobile ? " call-preview-mobile" : ""}`} onPointerMove={revealControls}>
       <div className="call-preview-toolbar">
         <div className="call-preview-switches" aria-label="Call surface">
           {["Direct call", "Group call", "Voice channel", "Guest meeting"].map((label) => (
@@ -171,7 +181,7 @@ export function CallUiPreview() {
       {minimized ? (
         <button type="button" className="call-preview-restore" aria-label="Restore call" onClick={() => setMinimized(false)}>Restore call</button>
       ) : (
-        <section className={`call-preview-panel${screenSharing ? " is-sharing" : ""}${mobileLandscape ? " is-landscape-mobile" : ""}`} aria-label={`${kind} preview`} data-mobile-orientation={mobileLandscape ? "landscape" : "portrait"}>
+        <section className={`call-preview-panel${screenSharing ? " is-sharing" : ""}${mobileLandscape ? " is-landscape-mobile" : ""}`} aria-label={`${kind} preview`} data-mobile-orientation={mobileLandscape ? "landscape" : "portrait"} data-voice-channel={isVoiceChannel ? "true" : "false"}>
           <header className="call-preview-header">
             <div className="call-preview-header-title"><strong>{kind}</strong></div>
             <div className={`call-preview-header-actions${showFocusedCall ? " call-preview-focus-header" : ""}`} data-narrow-layout={showFocusedCall ? "compact" : undefined}>
@@ -180,7 +190,58 @@ export function CallUiPreview() {
               {!isGuestMeeting && <button type="button" className="call-preview-minimize" aria-label="Minimize call" title="Minimize call" onClick={() => { setMoreOpen(false); setMinimized(true); }}><Minimize2 size={18} aria-hidden="true" /></button>}
             </div>
           </header>
-          {showFocusedCall && focusedPerson ? (
+          {isVoiceChannel ? (
+            <div className="voice-channel-room call-preview-voice-room">
+              <SharedCallStage cameraFit={preferences.cameraFit} isSharing={screenSharing} className="voice-room-stage">
+                <div className="voice-room-participant-content">
+                  <CallParticipantGrid
+                    localStream={null}
+                    remoteMedia={remoteMedia}
+                    mockScreenShareOwner={screenSharing ? { userId: "Alex Morgan", displayName: "Alex Morgan" } : null}
+                    localUserLabel="You"
+                    callType="video"
+                    isLocalSpeaking={false}
+                    speakingUserIds={["Alex Morgan"]}
+                    localVideoPlaceholder={settings.cameraEnabled ? <div className={`call-preview-camera-feed${settings.cameraFacingMode === "environment" ? " is-back-camera" : ""}`} aria-label="Your camera preview"><span>Camera preview</span></div> : undefined}
+                  />
+                </div>
+              </SharedCallStage>
+              <div className="voice-room-bottom-bar">
+                <SharedCallControlPanel autoHide={preferences.autoHideControls}>
+                  <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+                    <CallDeviceControls
+                      settings={settings}
+                      devices={devices}
+                      capabilities={capabilities}
+                      controlClassName="voice-dock-btn"
+                      onPatch={patchSettings}
+                      onToggleCamera={() => patchSettings({ cameraEnabled: !settings.cameraEnabled })}
+                    />
+                    <CallControlButton action="screen-share" state={screenSharing ? "active" : "idle"} className="voice-dock-btn" onClick={() => setScreenSharing((sharing) => !sharing)} label={screenSharing ? "Stop sharing" : "Share screen"} />
+                    <div className="voice-more-menu-anchor">
+                      <button ref={intelligenceButtonRef} type="button" className={`voice-dock-btn voice-dock-btn--intel${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button>
+                    </div>
+                    <button type="button" className="voice-dock-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}><Settings2 size={20} aria-hidden="true" /></button>
+                    <CallControlButton action="end-call" className="voice-dock-btn voice-dock-btn--disconnect" label="Disconnect from Voice Channel" />
+                  </div>
+                </SharedCallControlPanel>
+              </div>
+              <MeetingIntelligencePopover
+                isOpen={intelligenceOpen}
+                onClose={() => setIntelligenceOpen(false)}
+                anchorElement={intelligenceButtonRef.current}
+                notesState="idle"
+                onToggleNotes={() => undefined}
+                recordingState="idle"
+                recordingTimer="00:00"
+                onToggleRecording={() => undefined}
+                isCaptionsEnabled={false}
+                onToggleCaptions={() => undefined}
+                targetLanguage="en"
+                onChangeTargetLanguage={() => undefined}
+              />
+            </div>
+          ) : showFocusedCall && focusedPerson ? (
             <div className="call-preview-focus-stage" aria-label="Focused participant">
               <div className="call-preview-focus-main" data-focus-main={focusedPerson.userId}>
                 {focusedHasVideo ? <div className="call-preview-camera-feed" aria-label={`${focusedPerson.userId} video`} /> : <div className="call-preview-avatar call-preview-focus-avatar" aria-label={`${focusedPerson.userId} avatar`}>{focusedPerson.userId.slice(0, 1).toUpperCase()}</div>}
@@ -212,7 +273,7 @@ export function CallUiPreview() {
               </div>}
             </div>
           ) : mobile && !showParticipantGrid ? (
-            <div className="call-preview-mobile-stage call-popup-video-area" onPointerDown={() => setControlsVisible((visible) => !visible)}>
+            <div className="call-preview-mobile-stage call-popup-video-area" onPointerDown={(event) => { if (event.pointerType === "touch") setControlsVisible(true); }}>
               {!selfViewFullscreen ? (
                 <button type="button" className="call-preview-stage-primary" aria-label="Remote participant" data-stage-role="remote-primary" onClick={() => setFocusedParticipant("Alex Morgan")}>
                   <div className="call-preview-avatar call-preview-remote-avatar">A</div><strong>Alex Morgan</strong><span>Connected</span>
@@ -249,7 +310,7 @@ export function CallUiPreview() {
               )}
             </div>
           ) : (
-            <CallParticipantStage className="shared-call-stage call-popup-video-area" onClick={openParticipant} onPointerDown={() => mobile && setControlsVisible((visible) => !visible)}>
+            <CallParticipantStage className="shared-call-stage call-popup-video-area" onClick={openParticipant} onPointerDown={(event) => { if (event.pointerType === "touch") setControlsVisible(true); }}>
               <CallParticipantGrid
                 localStream={null}
                 remoteMedia={remoteMedia}
@@ -261,7 +322,7 @@ export function CallUiPreview() {
               />
             </CallParticipantStage>
           )}
-          <div ref={panelRef} className={`call-preview-control-rows shared-call-controls guest-call-controls${mobile && !controlsVisible ? " is-hidden" : ""}`} aria-hidden={mobile && !controlsVisible} data-layout={mobile ? "mobile-one-row" : "desktop-one-row"} data-no-wrap={mobile ? "true" : undefined} onPointerDown={(event) => event.stopPropagation()}>
+          {!isVoiceChannel && <div ref={panelRef} className={`call-preview-control-rows shared-call-controls guest-call-controls${preferences.autoHideControls && !controlsVisible ? " is-hidden" : ""}`} aria-hidden={preferences.autoHideControls && !controlsVisible} data-layout={mobile ? "mobile-one-row" : "desktop-one-row"} data-no-wrap={mobile ? "true" : undefined} onPointerDown={(event) => event.stopPropagation()}>
             {mobile ? (
               <div className="call-preview-control-row" data-no-wrap="true" data-equal-gap="true">
                   <CallControlButton action="microphone" className="call-ctrl-btn" label={settings.micMuted ? "Unmute" : "Toggle Microphone"} aria-label="Toggle Microphone" toggle state={settings.micMuted ? "muted" : "active"} data-shape="circle" data-fixed-size="true" onClick={() => patchSettings({ micMuted: !settings.micMuted })} />
@@ -280,9 +341,9 @@ export function CallUiPreview() {
             ) : (
               <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button ref={intelligenceButtonRef} type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button></div>{screenShareControl}{endCallControl}</div>
             )}
-          </div>
+          </div>}
           <MeetingIntelligencePopover
-            isOpen={!mobile && intelligenceOpen}
+            isOpen={!mobile && !isVoiceChannel && intelligenceOpen}
             onClose={() => setIntelligenceOpen(false)}
             anchorElement={intelligenceButtonRef.current}
             notesState="idle"
@@ -298,15 +359,16 @@ export function CallUiPreview() {
           />
         </section>
       )}
-      {settingsOpen && <CallAudioSettingsPopup
-        popupRef={popupRef}
+      {settingsOpen && <CallSettingsDialog
+        initialTab="general"
+        preferences={preferences}
         isMobile={mobile}
         settings={settings}
         capabilities={capabilities}
         devices={devices}
-        trackStatus={null}
         warning={null}
         onPatch={patchSettings}
+        onPreferencePatch={patchPreferences}
         onClose={() => setSettingsOpen(false)}
       />}
       {focusedContent && <div className="call-preview-fullscreen-backdrop" role="presentation" onClick={() => setFocusedContent(null)}>

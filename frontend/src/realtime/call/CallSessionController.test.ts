@@ -146,6 +146,60 @@ describe("CallSessionController call quality", () => {
   });
 });
 
+describe("CallSessionController camera lifecycle", () => {
+  it("removes ended camera tracks before reacquiring a 720p, 30fps camera", async () => {
+    let readyState: MediaStreamTrackState = "live";
+    const oldTrack = {
+      id: "old-camera",
+      kind: "video",
+      get readyState() { return readyState; },
+      stop: vi.fn(() => { readyState = "ended"; }),
+    } as unknown as MediaStreamTrack;
+    const nextTrack = { id: "new-camera", kind: "video", readyState: "live", stop: vi.fn() } as unknown as MediaStreamTrack;
+    let tracks = [oldTrack];
+    const stream = {
+      getTracks: () => tracks,
+      getVideoTracks: () => tracks.filter((track) => track.kind === "video"),
+      getAudioTracks: () => [],
+      addTrack: vi.fn((track: MediaStreamTrack) => { tracks.push(track); }),
+      removeTrack: vi.fn((track: MediaStreamTrack) => { tracks = tracks.filter((item) => item !== track); }),
+    } as unknown as MediaStream;
+    const mesh = {
+      setLocalStream: vi.fn(),
+      republishLocalTracks: vi.fn(async () => undefined),
+      renegotiateAll: vi.fn(async () => undefined),
+    };
+    const getUserMedia = vi.fn(async () => ({ getVideoTracks: () => [nextTrack] } as unknown as MediaStream));
+    const previousDescriptor = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
+    const controller = new CallSessionController({} as never, "token", {
+      createMesh: () => mesh,
+      createSFU: () => ({}),
+    } as unknown as MediaEngineFactory);
+    Object.assign(controller, { localStream: stream, sourceStream: stream, peerReady: true });
+
+    try {
+      await controller.toggleVideo(false);
+      await controller.toggleVideo(true);
+
+      expect(oldTrack.stop).toHaveBeenCalledOnce();
+      expect(stream.removeTrack).toHaveBeenCalledWith(oldTrack);
+      expect(stream.getVideoTracks()).toEqual([nextTrack]);
+      expect(getUserMedia).toHaveBeenCalledWith({
+        video: expect.objectContaining({
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        }),
+      });
+      expect(mesh.republishLocalTracks).toHaveBeenLastCalledWith();
+    } finally {
+      if (previousDescriptor) Object.defineProperty(navigator, "mediaDevices", previousDescriptor);
+      else Reflect.deleteProperty(navigator, "mediaDevices");
+    }
+  });
+});
+
 
 describe("call speech sampling", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });

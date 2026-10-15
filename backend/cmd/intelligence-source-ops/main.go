@@ -17,16 +17,10 @@ import (
 type coordinator interface {
 	RegisterIntelligenceSourceV2BackupHorizon(context.Context, string, time.Time, time.Time) error
 	MarkIntelligenceSourceV2BackupInventoryVerified(context.Context, time.Time) error
-	BeginIntelligenceSourceV2Restore(context.Context, string, time.Time) ([]app.IntelligenceSourceV2RestoreTombstone, error)
-	CompleteIntelligenceSourceV2Restore(context.Context, string, map[string]int64, time.Time) error
 }
 
 type operationResult struct {
 	OK bool `json:"ok"`
-}
-
-type restoreBeginResult struct {
-	Tombstones []app.IntelligenceSourceV2RestoreTombstone `json:"tombstones"`
 }
 
 func main() {
@@ -53,11 +47,11 @@ func runMain() int {
 
 	operationCtx, cancelOperation := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelOperation()
-	operations := app.NewIntelligenceSourceV2Operations(db, cfg.IntelligenceSourceV2RestoreEpoch)
+	operations := app.NewIntelligenceSourceV2Operations(db)
 	return run(operationCtx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, operations)
 }
 
-func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer, operations coordinator) int {
+func run(ctx context.Context, args []string, _ io.Reader, stdout, stderr io.Writer, operations coordinator) int {
 	if operations == nil || len(args) < 2 {
 		return writeFailure(stderr, "invalid command", 2)
 	}
@@ -95,41 +89,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		}
 		return writeJSON(stdout, stderr, operationResult{OK: true})
 
-	case args[0] == "restore" && args[1] == "begin":
-		values, ok := parseExactFlags(args[2:], "restore-id", "backup-created-at")
-		if !ok {
-			return writeFailure(stderr, "invalid arguments", 2)
-		}
-		backupCreatedAt, ok := parseUTCTimestamp(values["backup-created-at"])
-		if !ok {
-			return writeFailure(stderr, "invalid timestamp", 2)
-		}
-		tombstones, err := operations.BeginIntelligenceSourceV2Restore(ctx, values["restore-id"], backupCreatedAt)
-		if err != nil {
-			return writeFailure(stderr, "operation failed", 1)
-		}
-		if tombstones == nil {
-			tombstones = []app.IntelligenceSourceV2RestoreTombstone{}
-		}
-		return writeJSON(stdout, stderr, restoreBeginResult{Tombstones: tombstones})
-
-	case args[0] == "restore" && args[1] == "complete":
-		values, ok := parseExactFlags(args[2:], "restore-id", "ledger-checked-at")
-		if !ok {
-			return writeFailure(stderr, "invalid arguments", 2)
-		}
-		checkedAt, ok := parseUTCTimestamp(values["ledger-checked-at"])
-		if !ok {
-			return writeFailure(stderr, "invalid timestamp", 2)
-		}
-		appliedThrough, ok := decodeWatermarks(stdin)
-		if !ok {
-			return writeFailure(stderr, "invalid watermark JSON", 2)
-		}
-		if err := operations.CompleteIntelligenceSourceV2Restore(ctx, values["restore-id"], appliedThrough, checkedAt); err != nil {
-			return writeFailure(stderr, "operation failed", 1)
-		}
-		return writeJSON(stdout, stderr, operationResult{OK: true})
+	case args[0] == "restore":
+		return writeFailure(stderr, "restore operations unavailable until independent proof is integrated", 1)
 
 	default:
 		return writeFailure(stderr, "invalid command", 2)
@@ -176,27 +137,6 @@ func parseUTCTimestamp(raw string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return parsed.UTC(), true
-}
-
-func decodeWatermarks(reader io.Reader) (map[string]int64, bool) {
-	if reader == nil {
-		return nil, false
-	}
-	decoder := json.NewDecoder(reader)
-	var watermarks map[string]int64
-	if err := decoder.Decode(&watermarks); err != nil || watermarks == nil {
-		return nil, false
-	}
-	for connectionID, sequence := range watermarks {
-		if strings.TrimSpace(connectionID) == "" || sequence < 0 {
-			return nil, false
-		}
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		return nil, false
-	}
-	return watermarks, true
 }
 
 func writeJSON(stdout, stderr io.Writer, value any) int {

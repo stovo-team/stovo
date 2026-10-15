@@ -9,6 +9,7 @@ const roots: Root[] = [];
 afterEach(() => {
   while (roots.length) act(() => roots.pop()?.unmount());
   document.body.innerHTML = "";
+  localStorage.clear();
   vi.useRealTimers();
 });
 
@@ -45,6 +46,20 @@ function previewCssRules(selector: string) {
 }
 
 describe("call UI preview interactions", () => {
+  it("switches between General, Audio, and Camera in the settings dialog", () => {
+    const container = mountPreview();
+    click(container, "Audio settings");
+
+    const selectedTab = () => container.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim();
+    expect(selectedTab()).toBe("General");
+    act(() => container.querySelector<HTMLButtonElement>('[role="tab"]:nth-child(2)')?.click());
+    expect(selectedTab()).toBe("Audio");
+    expect(container.querySelector('[aria-label="Audio settings"]')).not.toBeNull();
+    act(() => container.querySelector<HTMLButtonElement>('[role="tab"]:nth-child(3)')?.click());
+    expect(selectedTab()).toBe("Camera");
+    expect(container.querySelector('[aria-label="Camera settings"]')).not.toBeNull();
+  });
+
   it("shows camera flip only while camera is enabled and flips its facing mode", () => {
     const container = mountPreview();
     click(container, "Mobile");
@@ -173,19 +188,27 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector('.call-preview-header button[title="Minimize call"]')).toBeNull();
   });
 
-  it("keeps desktop controls visible after 15 seconds and pointer interactions", () => {
+  it("auto-hides desktop controls after 12 seconds and reveals them on pointer movement", () => {
     vi.useFakeTimers();
     const container = mountPreview();
     click(container, "Desktop");
     const controls = container.querySelector(".call-preview-control-rows") as HTMLDivElement;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
-    act(() => vi.advanceTimersByTime(20_000));
+    act(() => vi.advanceTimersByTime(11_999));
     expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => vi.advanceTimersByTime(1));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
     const stage = container.querySelector(".shared-call-stage") as HTMLElement;
     act(() => stage.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    act(() => stage.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
     expect(controls.getAttribute("aria-hidden")).toBe("false");
-    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Toggle Microphone"]')?.click());
+    act(() => vi.advanceTimersByTime(11_999));
+    act(() => stage.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+    act(() => vi.advanceTimersByTime(11_999));
     expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => vi.advanceTimersByTime(1));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("shows screen sharing as the full-view surface and does not make it a focus action", () => {
@@ -211,6 +234,44 @@ describe("call UI preview interactions", () => {
     click(container, "More options");
     clickMenuItem(container, "Screen Share");
     expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
+  });
+
+  it("uses the voice-channel stage with an overlaid control dock and participant rail for screen sharing", () => {
+    const container = mountPreview();
+    const voiceChannel = Array.from(container.querySelectorAll<HTMLButtonElement>('.call-preview-switches[aria-label="Call surface"] button'))
+      .find((button) => button.textContent?.trim() === "Voice channel");
+    act(() => voiceChannel?.click());
+    expect(container.querySelector(".voice-channel-room .voice-room-stage")).not.toBeNull();
+    click(container, "Share screen");
+
+    expect(container.querySelector('.voice-room-stage[data-sharing="true"]')).not.toBeNull();
+    expect(container.querySelector(".voice-room-stage .call-grid--screen-share")).not.toBeNull();
+    expect(container.querySelector(".voice-room-bottom-bar .shared-call-control-panel")).not.toBeNull();
+    expect(container.querySelector('[role="toolbar"][aria-label="Voice Channel Controls"]')).not.toBeNull();
+  });
+
+  it("renders only one Stovo Intelligence dialog in the voice-channel preview", () => {
+    const container = mountPreview();
+    const voiceChannel = Array.from(container.querySelectorAll<HTMLButtonElement>('.call-preview-switches[aria-label="Call surface"] button'))
+      .find((button) => button.textContent?.trim() === "Voice channel");
+    act(() => voiceChannel?.click());
+    click(container, "Stovo Intelligence");
+    expect(document.body.querySelectorAll('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toHaveLength(1);
+  });
+
+  it("restores the local camera preview after disabling and enabling it again in a voice channel", () => {
+    const container = mountPreview();
+    const voiceChannel = Array.from(container.querySelectorAll<HTMLButtonElement>('.call-preview-switches[aria-label="Call surface"] button'))
+      .find((button) => button.textContent?.trim() === "Voice channel");
+    act(() => voiceChannel?.click());
+    const cameraToggle = () => container.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+
+    act(() => cameraToggle()?.click());
+    expect(container.querySelector('.voice-room-stage .call-grid__tile--local [aria-label="Your camera preview"]')).not.toBeNull();
+    act(() => cameraToggle()?.click());
+    expect(container.querySelector('.voice-room-stage .call-grid__tile--local [aria-label="Your camera preview"]')).toBeNull();
+    act(() => cameraToggle()?.click());
+    expect(container.querySelector('.voice-room-stage .call-grid__tile--local [aria-label="Your camera preview"]')).not.toBeNull();
   });
 
   it.each(["Desktop", "Mobile"])('%s screen sharing stops only through the standard share toggle', (viewport) => {
@@ -341,7 +402,8 @@ describe("call UI preview interactions", () => {
   it("updates the selected device from the settings panel", () => {
     const container = mountPreview();
     click(container, "Audio settings");
-    const input = container.querySelector<HTMLButtonElement>('.call-audio-popup [aria-label="Select Microphone"]');
+    act(() => container.querySelector<HTMLButtonElement>('[role="tab"]:nth-child(2)')?.click());
+    const input = container.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]');
     expect(input).not.toBeNull();
     act(() => input?.click());
     const option = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="option"]'))
@@ -382,13 +444,14 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).toBeNull();
   });
 
-  it("opens the existing audio/video settings UI when Settings is selected from the mobile More menu", () => {
+  it("opens the shared settings dialog when Settings is selected from the mobile More menu", () => {
     const container = mountPreview();
     click(container, "Mobile");
     act(() => container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]')?.click());
     clickMenuItem(container, "Settings");
 
-    expect(container.querySelector('[role="dialog"][aria-label="Audio settings"], [role="dialog"][aria-label="Video settings"]')).not.toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Call settings"]')).not.toBeNull();
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe("General");
   });
 
   it("starts screen sharing when Screen Share is selected from the mobile More menu", () => {
@@ -587,16 +650,18 @@ describe("call UI preview interactions", () => {
     expect(rows[0].querySelector('[aria-label="More options"]')).toBeNull();
   });
 
-  it("auto-hides call controls after 15 seconds and reveals them after tapping the stage", () => {
+  it("auto-hides call controls after 12 seconds and reveals them when the pointer moves", () => {
     vi.useFakeTimers();
     const container = mountPreview();
     click(container, "Mobile");
     const controls = container.querySelector(".call-preview-control-rows") as HTMLDivElement;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
-    act(() => vi.advanceTimersByTime(15_000));
+    act(() => vi.advanceTimersByTime(12_000));
     expect(controls.getAttribute("aria-hidden")).toBe("true");
     const stage = container.querySelector(".call-popup-video-area") as HTMLDivElement;
     act(() => stage.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("true");
+    act(() => stage.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
     expect(controls.getAttribute("aria-hidden")).toBe("false");
   });
 });

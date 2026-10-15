@@ -65,10 +65,19 @@ test("simulates a video call between two demo users in separate tabs without med
         __mockMediaCalls?: number;
         __mockRtcConnections?: number;
         __mockAudioContexts?: number;
+        __mockAudioPlays?: number;
       };
       mockWindow.__mockMediaCalls = 0;
       mockWindow.__mockRtcConnections = 0;
       mockWindow.__mockAudioContexts = 0;
+      mockWindow.__mockAudioPlays = 0;
+      Object.defineProperty(HTMLAudioElement.prototype, "play", {
+        configurable: true,
+        value: () => {
+          mockWindow.__mockAudioPlays += 1;
+          return Promise.resolve();
+        },
+      });
       const devices = navigator.mediaDevices ?? ({} as MediaDevices);
       Object.defineProperty(navigator, "mediaDevices", {
         configurable: true,
@@ -155,6 +164,18 @@ test("simulates a video call between two demo users in separate tabs without med
   await expect(thirdPage.locator(".call-grid__tile--remote")).toHaveCount(2);
   await expect(page.locator(".call-grid__tile")).toHaveCount(3);
   await expect(secondPage.locator(".call-grid__tile")).toHaveCount(3);
+  const sharedScreen = page.getByRole("img", { name: "Stovo Demo's shared screen" });
+  await page.getByRole("button", { name: "Share screen" }).click();
+  await expect(sharedScreen).toBeVisible();
+  await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
+  await expect(page.locator(".call-grid__tile--screen")).toHaveAttribute("style", /aspect-ratio: 16 \/ 9/);
+  await expect(secondPage.locator(".call-grid__tile--screen")).toHaveAttribute("style", /aspect-ratio: 16 \/ 9/);
+  await page.getByRole("button", { name: "Stop sharing screen" }).click();
+  await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
+  await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Share screen" }).click();
+  await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
+  await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
   const microphoneButton = page.getByRole("button", { name: "Toggle Microphone" });
   await microphoneButton.click();
   await expect(microphoneButton).toHaveAttribute("aria-pressed", "true");
@@ -166,18 +187,20 @@ test("simulates a video call between two demo users in separate tabs without med
   for (const targetPage of [page, secondPage, thirdPage, declinedPage]) {
     expect(await targetPage.evaluate(() => (window as Window & { __mockRtcConnections?: number }).__mockRtcConnections)).toBe(0);
     expect(await targetPage.evaluate(() => (window as Window & { __mockAudioContexts?: number }).__mockAudioContexts)).toBe(0);
+    expect(await targetPage.evaluate(() => (window as Window & { __mockAudioPlays?: number }).__mockAudioPlays)).toBe(0);
+    expect(await targetPage.evaluate(() => (window as Window & { __mockMediaCalls?: number }).__mockMediaCalls)).toBe(0);
   }
 
+  await page.close();
+  await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
+  await expect(thirdPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
+  await expect(secondPage.getByRole("dialog", { name: "Active call" })).toBeVisible();
+  await expect(thirdPage.getByRole("dialog", { name: "Active call" })).toBeVisible();
   await secondPage.getByRole("button", { name: "End call" }).click();
   await expect(secondPage.locator(".call-popup")).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Active call" })).toBeVisible();
-  await expect(thirdPage.getByRole("dialog", { name: "Active call" })).toBeVisible();
-  await thirdPage.getByRole("button", { name: "End call" }).click();
-  await expect(page.locator(".call-popup")).toHaveCount(0);
   await expect(thirdPage.locator(".call-popup")).toHaveCount(0);
   await expect(declinedPage.locator(".call-popup")).toHaveCount(0);
   expect(socketRequests).toEqual([]);
-  await secondPage.close();
   await thirdPage.close();
   await declinedPage.close();
 });

@@ -486,7 +486,7 @@ export default class MeshMediaEngine {
     state: PeerState,
   ) {
     const audioTrack = stream.getAudioTracks()[0] ?? null;
-    const videoTrack = stream.getVideoTracks()[0] ?? null;
+    const videoTrack = stream.getVideoTracks().find((track) => track.readyState !== "ended") ?? null;
     const screenTrackId = this.localScreenTrack?.id ?? state.screenSender?.track?.id;
 
     const audioSender = pc.getSenders().find((s) => s.track?.kind === "audio");

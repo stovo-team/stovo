@@ -20,6 +20,8 @@ type AuthRoutes struct {
 	PasskeyRegistrationVerify    stdhttp.Handler
 	PasskeyAuthenticationOptions stdhttp.Handler
 	PasskeyAuthenticationVerify  stdhttp.Handler
+	AndroidQRLoginCreate         stdhttp.Handler
+	AndroidQRLoginRedeem         stdhttp.Handler
 	QRLoginCreate                stdhttp.Handler
 	QRLoginStatus                stdhttp.Handler
 	QRLoginApprove               stdhttp.Handler
@@ -51,6 +53,12 @@ func RegisterAuthRoutes(router chi.Router, routes AuthRoutes) {
 	router.Post("/api/auth/passkeys/registration/verify", routes.PasskeyRegistrationVerify.ServeHTTP)
 	router.Post("/api/auth/passkeys/authentication/options", routes.PasskeyAuthenticationOptions.ServeHTTP)
 	router.Post("/api/auth/passkeys/authentication/verify", routes.PasskeyAuthenticationVerify.ServeHTTP)
+	if routes.AndroidQRLoginCreate != nil {
+		router.Post("/api/auth/android-qr-login", routes.AndroidQRLoginCreate.ServeHTTP)
+	}
+	if routes.AndroidQRLoginRedeem != nil {
+		router.Post("/api/auth/android-qr-login/{requestID}/redeem", routes.AndroidQRLoginRedeem.ServeHTTP)
+	}
 	router.Post("/api/auth/qr-login", routes.QRLoginCreate.ServeHTTP)
 	router.Get("/api/auth/qr-login/{requestID}", routes.QRLoginStatus.ServeHTTP)
 	router.Post("/api/auth/qr-login/{requestID}/approve", routes.QRLoginApprove.ServeHTTP)

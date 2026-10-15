@@ -4,6 +4,10 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  platform: "web",
+  beginPasskeyRegistration: vi.fn(),
+  finishPasskeyRegistration: vi.fn(),
+  startRegistration: vi.fn(),
   authRequest: vi.fn(),
   getMembers: vi.fn(),
   currentUser: { id: "owner-1", role: "owner", displayName: "Owner", email: "owner@example.com", bio: "", timezone: "UTC" },
@@ -11,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   logout: vi.fn()
 }));
 
+vi.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => mocks.platform !== "web", getPlatform: () => mocks.platform }, registerPlugin: vi.fn(() => ({})) }));
+
+vi.mock("../api/auth", () => ({ beginPasskeyRegistration: mocks.beginPasskeyRegistration, finishPasskeyRegistration: mocks.finishPasskeyRegistration, createAndroidQRLogin: vi.fn() }));
+vi.mock("@simplewebauthn/browser", () => ({ startRegistration: mocks.startRegistration }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ accessToken: "owner-token", authRequest: mocks.authRequest, currentUser: mocks.currentUser, updateCurrentUser: mocks.updateCurrentUser, logout: mocks.logout })
 }));
@@ -41,6 +49,12 @@ describe("SettingsPage profile save", () => {
   let root: Root | null = null;
 
   beforeEach(() => {
+    mocks.platform = "web";
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window, "PublicKeyCredential", { configurable: true, value: class PublicKeyCredential {} });
+    mocks.beginPasskeyRegistration.mockResolvedValue({ ceremonyId: "registration-1", publicKey: { challenge: "challenge" } });
+    mocks.startRegistration.mockReset().mockResolvedValue({ id: "credential-1" });
+    mocks.finishPasskeyRegistration.mockResolvedValue({});
     mocks.authRequest.mockImplementation(async (path: string, options?: { method?: string; body?: Record<string, unknown> }) => {
       if (path === "/api/family" && !options) return { id: "family-1", name: "Stakhov Family" };
       if (path === "/api/privacy/blocks") return [];
@@ -59,6 +73,8 @@ describe("SettingsPage profile save", () => {
     container = null;
     root = null;
     document.body.innerHTML = "";
+    delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
+    delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
     vi.clearAllMocks();
   });
 
@@ -82,4 +98,39 @@ describe("SettingsPage profile save", () => {
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH" }));
     expect(mocks.authRequest.mock.calls.some(([path, options]) => path === "/api/family" && options?.method === "PATCH")).toBe(false);
   });
+  async function openPasskeys() {
+    await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });
+    await act(async () => container?.querySelector<HTMLButtonElement>('button[aria-label="Open profile settings"]')?.click());
+    return [...container!.querySelectorAll("button")].find((button) => button.textContent === "Add a passkey")!;
+  }
+  it("enrolls a passkey on supported Android", async () => {
+    mocks.platform = "android";
+    const button = await openPasskeys();
+    expect(button.disabled).toBe(false);
+    await act(async () => button.click());
+    expect(mocks.beginPasskeyRegistration).toHaveBeenCalledWith("owner-token");
+    expect(mocks.finishPasskeyRegistration).toHaveBeenCalledWith("owner-token", "registration-1", { id: "credential-1" });
+    expect(container?.textContent).toContain("Passkey added");
+  });
+  it.each(["missing API", "insecure context", "ios"])("keeps enrollment unavailable with %s", async (reason) => {
+    mocks.platform = reason === "ios" ? "ios" : "android";
+    if (reason !== "ios") Object.defineProperty(window, reason === "missing API" ? "PublicKeyCredential" : "isSecureContext", { configurable: true, value: reason === "missing API" ? undefined : false });
+    const button = await openPasskeys();
+    expect(button.disabled).toBe(true);
+    expect(container?.textContent).toContain("Passkeys require HTTPS and a supported browser");
+    expect(container?.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+  });
+  it.each(["NotAllowedError", "AbortError", "UnknownError"])("allows enrollment retry after %s", async (name) => {
+    mocks.platform = "android";
+    mocks.startRegistration.mockRejectedValueOnce(new DOMException("provider error", name));
+    const button = await openPasskeys();
+    expect(button.disabled).toBe(false);
+    await act(async () => button.click());
+    expect(container?.textContent?.includes("Could not add passkey")).toBe(name === "UnknownError");
+    expect(mocks.finishPasskeyRegistration).not.toHaveBeenCalled();
+    expect(button.disabled).toBe(false);
+    await act(async () => button.click());
+    expect(mocks.finishPasskeyRegistration).toHaveBeenCalledOnce();
+  });
+
 });

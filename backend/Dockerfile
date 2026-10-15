@@ -9,6 +9,7 @@ WORKDIR /app
 ENV GOTOOLCHAIN=auto
 
 COPY go.mod go.sum ./
+COPY third_party/socketio/go.mod third_party/socketio/go.sum ./third_party/socketio/
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 

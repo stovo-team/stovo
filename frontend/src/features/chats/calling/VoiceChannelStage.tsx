@@ -10,7 +10,6 @@ import {
   Settings,
   UserPlus,
   Video,
-  VideoOff,
   Volume2
 } from "lucide-react";
 
@@ -32,6 +31,10 @@ import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { enableCallCamera } from "./callCamera";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
+import { hasScreenSharePresentation } from "./screenSharePresentation";
+import { SharedCallStage } from "./SharedCallStage";
+import { SharedCallControlPanel } from "./SharedCallControlPanel";
+import { useCallUIPreferences } from "./callUIPreferences";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -57,6 +60,7 @@ export function VoiceChannelStage({
   onToggleExpanded,
 }: VoiceChannelStageProps) {
   const strings = useStrings();
+  const { preferences: callUIPreferences } = useCallUIPreferences();
   const voiceStrings = strings.chats.voiceRoom;
   const {
     callPhase,
@@ -187,6 +191,7 @@ export function VoiceChannelStage({
   };
 
   const handleOpenSettings = () => {
+    window.dispatchEvent(new CustomEvent("stovo:open-call-settings", { detail: "general" }));
     if (setIsCallAudioPopupOpen) {
       setIsCallAudioPopupOpen(true);
     } else if (setIsCallSettingsMenuOpen) {
@@ -255,12 +260,9 @@ export function VoiceChannelStage({
   }
 
   const isListMode = participantCount > 9;
-  const hasActiveScreenShare = Boolean(
-    localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended") ||
-    callRemoteMedia?.some(
-      (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
-    ),
-  );
+  const mockScreenShareOwnerId = isCurrentChannelActive ? session.mockScreenShareUserId : null;
+  const hasActiveScreenShare = hasScreenSharePresentation(mockScreenShareOwnerId, localScreenStream, callRemoteMedia);
+  const mockScreenShareOwner = mockScreenShareOwnerId ? { userId: mockScreenShareOwnerId, displayName: resolveMemberInfo(mockScreenShareOwnerId).rawDisplayName } : null;
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
@@ -283,13 +285,14 @@ export function VoiceChannelStage({
         </button>
       )}
       {/* Main Stage / Participant Grid or List */}
-      <CallParticipantStage className="shared-call-stage voice-room-stage">
+      <SharedCallStage cameraFit={callUIPreferences.cameraFit} isSharing={hasActiveScreenShare} className="voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
           {hasActiveScreenShare ? (
           <CallParticipantGrid
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
             remoteMedia={callRemoteMedia ?? []}
+            mockScreenShareOwner={mockScreenShareOwner}
             localUserLabel={currentUser?.displayName ?? "You"}
             mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
             callType={callType}
@@ -385,6 +388,7 @@ export function VoiceChannelStage({
                     {hasActiveVideo && videoStream ? (
                       <div className="voice-participant-video-container">
                         <video
+                          disablePictureInPicture disableRemotePlayback controlsList="nofullscreen noremoteplayback"
                           ref={(el) => {
                             if (el && videoStream && el.srcObject !== videoStream) {
                               el.srcObject = videoStream;
@@ -393,7 +397,7 @@ export function VoiceChannelStage({
                           autoPlay
                           playsInline
                           muted={info.isSelf}
-                          className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
+                          className={`voice-participant-video-feed${hasScreenShare ? " is-screen-share" : ""}${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
                         {info.isSelf && !hasScreenShare && callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream) && (
                           <CallControlButton
@@ -454,7 +458,7 @@ export function VoiceChannelStage({
         )}
 
         </div>
-      </CallParticipantStage>
+      </SharedCallStage>
 
       {participantCount > 0 && canAddPeople && onOpenAddPeople && (
         <button
@@ -484,6 +488,7 @@ export function VoiceChannelStage({
             </button>
           </div>
         ) : (
+          <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
           <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
             <CallDeviceControls settings={callAudioSettings} devices={callAudioDevices} capabilities={callAudioCapabilities} controlClassName="voice-dock-btn" labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }} toggleLabels={{ microphone: callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone"), camera: callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera") }} deviceStrings={voiceStrings} onPatch={(patch) => void applyCallAudioPatch(patch)} onToggleCamera={handleToggleVideo} />
 
@@ -573,6 +578,7 @@ export function VoiceChannelStage({
 
             <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={handleLeave} title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} />
           </div>
+          </SharedCallControlPanel>
         )}
       </div>
     </div>

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash .github/workflows/backend-dockerfiles.test.sh
+node .github/workflows/multiserver-routing.test.mjs
+
 awk '
   function fail(message) {
     print message > "/dev/stderr"
@@ -59,6 +62,7 @@ awk '
     job_runner[job] = runner
   }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
+  job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
   (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
   job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
@@ -70,12 +74,13 @@ awk '
   END {
     if (!global_contents_read) fail("The workflow token must have read-only contents access by default.")
     if (!changes_contents_read) fail("The changes job must retain contents: read permission.")
+    if (!changes_fetches_full_history) fail("Detect Changes must fetch full history so merge pushes can compare against the previous push commit.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
     if (insecure_node_override) fail("The pipeline must not enable the insecure Node.js runtime override.")
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
       fail("Frontend CI must run only when frontend paths changed.")
     }
-    if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\''") {
+    if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only") {
       fail("Backend CI must run only when backend paths changed.")
     }
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
@@ -97,7 +102,7 @@ awk '
     }
 
     expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
-    expected_backend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.backend == '\''true'\''"
+    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
       fail("Frontend deploy must require a master push and the frontend path filter.")
     }
@@ -129,11 +134,11 @@ grep -Fq 'RUN --mount=type=cache,target=/root/.npm \' frontend/Dockerfile || {
   echo "The frontend npm dependency install must retain its BuildKit cache mount." >&2
   exit 1
 }
-if [ "$(grep -Fc 'bash scripts/ensure-docker-buildx.sh' .github/workflows/pipeline.yml)" -lt 2 ]; then
+if [ "$(grep -Fc 'bash deploy/scripts/ensure-docker-buildx.sh' .github/workflows/pipeline.yml)" -lt 2 ]; then
   echo "Both production deployment jobs must ensure Docker Buildx before building images." >&2
   exit 1
 fi
-bash scripts/ensure-docker-buildx.test.sh
+bash deploy/scripts/ensure-docker-buildx.test.sh
 
 awk '
   /docker_with_space_recovery\(\)/ { in_recovery = 1; in_command = 0; in_failure_branch = 0 }
@@ -158,6 +163,23 @@ grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   echo "PR checkout must not persist a write-capable GitHub token." >&2
   exit 1
 }
+awk '
+  /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
+  /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
+  in_pipeline_contract && /^    runs-on: ubuntu-latest$/ { pipeline_contract_uses_hosted_runner = 1 }
+  in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
+  END {
+    if (!pipeline_contract_uses_hosted_runner) {
+      print "Pipeline contract tests must run on the GitHub-hosted PR runner." > "/dev/stderr"
+      failed = 1
+    }
+    if (!pipeline_contract_runs_tests) {
+      print "Trusted PR checks must run pipeline.test.sh before merge." > "/dev/stderr"
+      failed = 1
+    }
+    if (failed) exit 1
+  }
+' "$trusted_pr_workflow"
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
@@ -189,8 +211,24 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-grep -Fq 'version: v2.14.0' .github/workflows/pipeline.yml || {
-  echo "Backend CI must pin golangci-lint to v2.14.0." >&2
+grep -Fq 'install-mode: none' .github/workflows/pipeline.yml || {
+  echo "Backend CI must use the golangci-lint binary preinstalled on its persistent runner." >&2
+  exit 1
+}
+grep -Fq 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' .github/workflows/pipeline.yml || {
+  echo "Backend CI must add the runner-local golangci-lint installation directory to PATH." >&2
+  exit 1
+}
+grep -Fq 'GOLANGCI_LINT_VERSION: 2.14.0' .github/workflows/pipeline.yml || {
+  echo "Backend CI must pin and verify the preinstalled golangci-lint version." >&2
+  exit 1
+}
+grep -Fq 'version="$(golangci-lint --version)"' .github/workflows/pipeline.yml || {
+  echo "Backend CI must check the preinstalled golangci-lint version before running it." >&2
+  exit 1
+}
+grep -Fq 'if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then' .github/workflows/pipeline.yml || {
+  echo "Backend CI must fail when the preinstalled golangci-lint version does not match its pin." >&2
   exit 1
 }
 grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {

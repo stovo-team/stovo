@@ -52,6 +52,7 @@ export function ChatSidebar({
     setChatFilter,
     filteredChats,
     chatsBySection,
+    refreshChats,
     openNewChatScreen
   } = overview;
 
@@ -251,6 +252,7 @@ export function ChatSidebar({
         hasLoadedOverview={hasLoadedOverview}
         chatsBySection={chatsBySection}
         filteredChats={filteredChats}
+        refreshChats={refreshChats}
         chatFilter={chatFilter}
         familyId={familyId}
         canManageFolders={canManageFolders}

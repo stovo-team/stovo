@@ -7,7 +7,12 @@ import (
 
 type AuthMethodCeremony struct {
 	FamilyID, UserID, InviteTokenHash string
-	SessionData                      []byte
+	SessionData                       []byte
+}
+
+type AndroidQRLoginGrant struct {
+	FamilyID, UserID string
+	ExpiresAt        time.Time
 }
 
 type QRLoginRecord struct {
@@ -17,8 +22,8 @@ type QRLoginRecord struct {
 
 type PasskeyInviteAcceptance struct {
 	UserID, FamilyID, Username, PasswordHash, DisplayName, Role string
-	InviteID, FamilyChatID, CredentialID, CredentialData       string
-	CredentialRecordID, RefreshTokenID, RefreshTokenHash       string
+	InviteID, FamilyChatID, CredentialID, CredentialData        string
+	CredentialRecordID, RefreshTokenID, RefreshTokenHash        string
 	RefreshExpiresAt, CreatedAt, IPAddress                      string
 	ProfileVisibility, LastSeenVisibility                       string
 	ReadReceiptsEnabled                                         bool
@@ -34,6 +39,8 @@ type AuthMethodsStore interface {
 	PasskeyOwner(context.Context, string) (string, error)
 	UpdatePasskeyCredential(context.Context, string, []byte) error
 	CleanupExpiredAuthRequests(context.Context) error
+	CreateAndroidQRLoginGrant(ctx context.Context, idHash, familyID, userID string, expiresAt time.Time) error
+	ConsumeAndroidQRLoginGrant(ctx context.Context, idHash string) (AndroidQRLoginGrant, error)
 	CreateQRLogin(context.Context, string, string, time.Time) error
 	QRLogin(context.Context, string) (QRLoginRecord, error)
 	ClaimQRLogin(context.Context, string) (string, error)

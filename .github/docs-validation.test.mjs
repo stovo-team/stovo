@@ -46,6 +46,16 @@ function markdownFiles(directory, found = []) {
   return found;
 }
 
+function sourceFiles(directory, found = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!['.git', 'node_modules', 'dist', 'coverage', 'build', 'vendor'].includes(entry.name)) sourceFiles(file, found);
+    } else if (entry.isFile() && /\.(?:go|kt|java|ts|tsx|js|jsx|yml|yaml|gradle|properties)$/.test(entry.name)) found.push(file);
+  }
+  return found;
+}
+
 test('README links to the maintained deployment and contributor guides', () => {
   const readme = read('README.md');
   for (const file of ['CONTRIBUTING.md', 'SECURITY.md', 'docs/README.md', 'docs/self-hosting/docker-compose.md', 'docs/self-hosting/kubernetes.md']) {
@@ -212,6 +222,11 @@ test('all Markdown local links and GitHub heading anchors resolve', () => {
 test('documented Compose filenames and backticked config names match repository configuration', () => {
   const allMarkdownFiles = markdownFiles(root);
   const allMarkdown = allMarkdownFiles.map((file) => readFileSync(file, 'utf8')).join('\n');
+  const implementation = [
+    ...sourceFiles(path.join(root, 'backend')),
+    ...sourceFiles(path.join(root, 'frontend')),
+    ...sourceFiles(path.join(root, '.github/workflows')),
+  ].map((file) => readFileSync(file, 'utf8')).join('\n');
   // README is an immutable target-branch blob in this cleanup. Keep checking
   // operational Compose commands in maintained docs without rewriting it.
   const composeDocs = allMarkdownFiles.filter((file) => path.relative(root, file) !== 'README.md');
@@ -226,7 +241,9 @@ test('documented Compose filenames and backticked config names match repository 
   }
   for (const [, name] of allMarkdown.matchAll(/`([A-Z][A-Z0-9_]{2,})`/g)) {
     if (/^(?:HTTP|HTTPS|API|URL|JWT|S3|AWS|GCP|CPU|RAM|TLS|UDP|TCP|DNS|CI|CD|JSON|YAML|SQL|SPA|CSS|MCP|RBAC)$/.test(name)) continue;
-    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name)) || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name);
+    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
+      || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name)
+      || implementation.includes(name);
     if (!known) errors.push(`unknown config name ${name}`);
   }
   assert.deepEqual(errors, []);
@@ -241,6 +258,9 @@ test('Compose production and external-storage overlays resolve with the document
   assert.equal(base.status, 0, base.stderr);
   const defaultConfig = JSON.parse(base.stdout);
   const defaultServices = Object.keys(defaultConfig.services);
+  const ntfyConfigMount = defaultConfig.services.ntfy.volumes.find((volume) => volume.target === '/etc/ntfy/server.yml');
+  assert.equal(ntfyConfigMount?.source, path.join(root, 'deploy/ntfy/server.yml'), 'ntfy config must resolve from deploy/');
+  assert.ok(existsSync(path.join(root, 'deploy/ntfy/server.yml')), 'ntfy config must exist at its declared source');
   assert.equal(
     defaultConfig.services.caddy.environment.BACKEND_UPSTREAMS,
     'backend-blue:8000',
@@ -288,8 +308,8 @@ test('External overlay keeps backend dependency gates', { skip: 'Known pre-exist
 });
 
 test('Helm chart exists and requires externally managed credentials', () => {
-  const chart = path.join(root, 'charts/stovo/Chart.yaml');
-  const values = path.join(root, 'charts/stovo/values.yaml');
+  const chart = path.join(root, 'deploy/charts/stovo/Chart.yaml');
+  const values = path.join(root, 'deploy/charts/stovo/values.yaml');
   assert.ok(existsSync(chart), 'missing Helm chart metadata');
   assert.ok(existsSync(values), 'missing Helm values');
   const text = readFileSync(values, 'utf8');
@@ -302,9 +322,9 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   if (version.error?.code === 'ENOENT') return t.skip('Helm CLI is unavailable');
   assert.equal(version.status, 0, version.stderr);
   const imageOverrides = ['--set', 'backend.image.repository=registry.example.test/stovo/backend', '--set', 'backend.image.tag=v1.2.3', '--set', 'frontend.image.repository=registry.example.test/stovo/frontend', '--set', 'frontend.image.tag=v1.2.3'];
-  const lint = cli('helm', ['lint', 'charts/stovo', ...imageOverrides]);
+  const lint = cli('helm', ['lint', 'deploy/charts/stovo', ...imageOverrides]);
   assert.equal(lint.status, 0, lint.stdout + lint.stderr);
-  const render = cli('helm', ['template', 'stovo', 'charts/stovo', ...imageOverrides]);
+  const render = cli('helm', ['template', 'stovo', 'deploy/charts/stovo', ...imageOverrides]);
   assert.equal(render.status, 0, render.stderr);
   const documents = render.stdout.split(/^---\s*$/m).map((text) => ({
     text,
@@ -340,7 +360,7 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   assert.doesNotMatch(render.stdout, /change_me|changeme|devkey/i);
   assert.doesNotMatch(render.stdout, /^kind:\s*Secret\s*$/m, 'chart must use an external Secret, not render Secret resources');
 
-  const custom = cli('helm', ['template', 'stovo', 'charts/stovo',
+  const custom = cli('helm', ['template', 'stovo', 'deploy/charts/stovo',
     '--set', 'app.domain=chat.example.test',
     '--set', 'backend.image.repository=registry.example.test/stovo/backend',
     '--set', 'backend.image.tag=release-42',

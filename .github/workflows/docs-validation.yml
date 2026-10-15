@@ -7,7 +7,7 @@ on:
       - 'CONTRIBUTING.md'
       - 'SECURITY.md'
       - 'docs/**'
-      - 'charts/stovo/**'
+      - 'deploy/charts/stovo/**'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/docs-validation.test.mjs'
       - '.github/workflows/docs-validation.yml'
@@ -20,7 +20,7 @@ on:
       - 'CONTRIBUTING.md'
       - 'SECURITY.md'
       - 'docs/**'
-      - 'charts/stovo/**'
+      - 'deploy/charts/stovo/**'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/docs-validation.test.mjs'
       - '.github/workflows/docs-validation.yml'
@@ -44,13 +44,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          helm template stovo charts/stovo \
+          helm template stovo deploy/charts/stovo \
             --set backend.image.repository=registry.example.test/stovo/backend \
             --set backend.image.tag=v1.2.3 \
             --set frontend.image.repository=registry.example.test/stovo/frontend \
             --set frontend.image.tag=v1.2.3 \
             | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -kubernetes-version 1.30.0 -
-          helm template stovo charts/stovo \
+          helm template stovo deploy/charts/stovo \
             --set app.domain=chat.example.test \
             --set backend.image.repository=registry.example.test/stovo/backend \
             --set backend.image.tag=release-42 \

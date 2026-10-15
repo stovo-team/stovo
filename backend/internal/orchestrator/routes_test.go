@@ -1,9 +1,38 @@
 package orchestrator
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
+
+func TestProductionMultiserverOrchestratorReceivesPublicAppURL(t *testing.T) {
+	composePath := filepath.Join("..", "..", "..", "deploy", "compose", "production-multiserver.yml")
+	composeYAML, err := os.ReadFile(composePath)
+	if err != nil {
+		t.Fatalf("read production multi-server Compose config: %v", err)
+	}
+
+	var compose struct {
+		Services map[string]struct {
+			Environment map[string]string `yaml:"environment"`
+		} `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(composeYAML, &compose); err != nil {
+		t.Fatalf("parse production multi-server Compose config: %v", err)
+	}
+
+	orchestrator, ok := compose.Services["orchestrator"]
+	if !ok {
+		t.Fatal("production multi-server Compose config has no orchestrator service")
+	}
+	if got, want := orchestrator.Environment["APP_URL"], "${APP_URL:-http://localhost:8000}"; got != want {
+		t.Fatalf("orchestrator APP_URL mapping = %q, want %q", got, want)
+	}
+}
 
 func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {

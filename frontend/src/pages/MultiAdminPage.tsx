@@ -24,7 +24,7 @@ export default function MultiAdminPage() {
     localStorage.getItem("master_admin_token")
   );
   const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("changeme_master_pass");
+  const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
   const [servers, setServers] = useState<ServerRecord[]>([]);
@@ -108,11 +108,16 @@ export default function MultiAdminPage() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Autofill can update the DOM without firing React input events.
+    const credentials = new FormData(e.currentTarget);
     setLoginError("");
     try {
-      const authToken = await masterLogin(username, password);
+      const authToken = await masterLogin(
+        String(credentials.get("username") ?? ""),
+        String(credentials.get("password") ?? "")
+      );
       localStorage.setItem("master_admin_token", authToken);
       setToken(authToken);
     } catch (err: any) {
@@ -248,6 +253,8 @@ export default function MultiAdminPage() {
               {copy.username}
               <input
                 type="text"
+                name="username"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 style={styles.inputPill}
@@ -258,6 +265,8 @@ export default function MultiAdminPage() {
               {copy.password}
               <input
                 type="password"
+                name="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={styles.inputPill}

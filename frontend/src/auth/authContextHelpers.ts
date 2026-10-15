@@ -42,5 +42,5 @@ export async function clearAuthSession(profileId: string | null): Promise<void> 
 }
 
 export function isExpiredAuthError(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+  return error instanceof ApiError && error.status === 401;
 }

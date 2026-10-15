@@ -212,7 +212,8 @@
 }
 
 .call-popup.call-popup-group-call:not(.call-popup-minimized):not(.call-popup-fullscreen) {
-  width: min(640px, calc(100vw - 40px));
+  width: min(960px, calc(100vw - 40px));
+  height: min(640px, calc(100dvh - 40px));
   max-height: calc(100dvh - 40px);
   box-sizing: border-box;
   padding: 20px 24px 24px;
@@ -268,6 +269,95 @@
   gap: 14px;
 }
 
+.mock-screen-share-preview {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: clamp(22px, 4.2vw, 38px) minmax(0, 1fr) clamp(5px, 1vw, 9px);
+  overflow: hidden;
+  background: #f4f6fb;
+  color: #172033;
+  font: 500 clamp(6px, .82vw, 12px)/1.3 Inter, system-ui, sans-serif;
+  text-align: left;
+}
+.mock-screen-share-preview__topbar {
+  display: flex;
+  align-items: center;
+  gap: clamp(5px, 1vw, 12px);
+  min-width: 0;
+  padding: 0 clamp(7px, 1.3vw, 16px);
+  background: #fff;
+  border-bottom: 1px solid #e6e9f0;
+  color: #5c6475;
+}
+.mock-screen-share-preview__window-dots {
+  width: clamp(14px, 2.2vw, 26px);
+  height: clamp(4px, .6vw, 7px);
+  flex: 0 0 auto;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #f87171 0 30%, #fbbf24 30% 65%, #34d399 65%);
+}
+.mock-screen-share-preview__topbar-status {
+  margin-left: auto;
+  overflow: hidden;
+  color: #737b8c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mock-screen-share-preview__content {
+  display: grid;
+  grid-template-columns: minmax(52px, 17%) minmax(0, 1fr);
+  min-height: 0;
+}
+.mock-screen-share-preview__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .8vw, 10px);
+  min-width: 0;
+  padding: clamp(5px, 1.2vw, 14px);
+  background: #202a42;
+  color: #dce3f1;
+}
+.mock-screen-share-preview__brand-mark {
+  display: grid;
+  width: clamp(13px, 2.1vw, 24px);
+  height: clamp(13px, 2.1vw, 24px);
+  place-items: center;
+  margin-bottom: clamp(3px, .5vw, 7px);
+  border-radius: 7px;
+  background: #6274ee;
+  color: #fff;
+  font-weight: 800;
+}
+.mock-screen-share-preview__sidebar-item {
+  overflow: hidden;
+  padding: clamp(2px, .45vw, 5px) clamp(3px, .65vw, 8px);
+  border-radius: 5px;
+  color: #abb5ca;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mock-screen-share-preview__sidebar-item.is-active { background: #34415f; color: #fff; }
+.mock-screen-share-preview__document {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, .8vw, 10px);
+  min-width: 0;
+  padding: clamp(8px, 2vw, 24px) clamp(10px, 2.4vw, 30px);
+  background: #f8f9fc;
+}
+.mock-screen-share-preview__eyebrow { color: #70798b; font-size: .72em; font-weight: 700; letter-spacing: .12em; }
+.mock-screen-share-preview__document strong { color: #18243b; font-size: clamp(10px, 1.7vw, 24px); font-weight: 700; }
+.mock-screen-share-preview__document-rule { height: 1px; margin: clamp(1px, .3vw, 4px) 0; background: #dfe4ed; }
+.mock-screen-share-preview__line { display: block; width: 72%; height: clamp(2px, .4vw, 5px); border-radius: 9px; background: #d9dfeb; }
+.mock-screen-share-preview__line--wide { width: 92%; }
+.mock-screen-share-preview__line--short { width: 48%; }
+.mock-screen-share-preview__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(3px, .8vw, 9px); margin: clamp(2px, .5vw, 7px) 0; }
+.mock-screen-share-preview__cards span { display: flex; flex-direction: column; gap: clamp(2px, .4vw, 5px); min-width: 0; padding: clamp(4px, .9vw, 11px); border: 1px solid #e2e7f0; border-radius: 6px; background: #fff; color: #59647a; }
+.mock-screen-share-preview__cards b { color: #6274ee; font-size: .78em; }
+.mock-screen-share-preview__taskbar { display: flex; justify-content: center; gap: clamp(3px, .6vw, 7px); background: #e8ebf2; }
+.mock-screen-share-preview__taskbar span { width: clamp(3px, .6vw, 7px); height: clamp(3px, .6vw, 7px); margin-top: 1px; border-radius: 50%; background: #8c96aa; }
+
 .call-popup-group-call.call-popup-fullscreen.call-popup-group-call--sharing .shared-call-stage .call-grid--screen-share {
   width: 100% !important;
   max-width: 100% !important;
@@ -290,7 +380,7 @@
   align-self: stretch;
 }
 
-.call-popup-group-participants.voice-grid--2 {
+.call-popup-group-call .call-popup-group-participants.voice-grid--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto;
 }
@@ -446,10 +536,11 @@
 /* ── Video area inside popup ── */
 .call-popup-video-area {
   position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #111;
-  min-height: 180px;
+  flex: 1 1 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  min-height: 0;
 }
 .call-popup-video-area.call-popup-video-area-hidden {
   display: none;
@@ -820,7 +911,7 @@
 }
 
 .call-grid--screen-share {
-  grid-template-columns: minmax(0, 1fr) minmax(112px, min(16%, 168px));
+  grid-template-columns: minmax(0, 5fr) minmax(112px, 1fr);
   grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
   gap: 12px;
@@ -832,7 +923,7 @@
   width: 100%;
   height: auto;
   min-height: 0;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--screen-aspect-ratio, 16 / 9);
   align-self: stretch;
   justify-self: stretch;
 }
@@ -843,11 +934,13 @@
   min-width: 0;
   min-height: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   align-self: stretch;
   align-content: start;
   gap: 8px;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .call-grid__participant-pin {
@@ -859,11 +952,18 @@
 
 .call-grid__remote-rail {
   display: grid;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  min-width: 0;
+  overflow-x: hidden;
   align-content: start;
   gap: 8px;
   min-height: 0;
   overflow-y: auto;
+}
+
+@container (min-width: 240px) {
+  .call-grid__remote-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .call-grid__remote-rail > [data-participant-id] {
@@ -876,12 +976,12 @@
 
 .call-grid--screen-share-bottom {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .call-grid--screen-share-bottom .call-grid__tile--screen {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 2;
   align-self: center;
   height: auto;
   max-height: 100%;
@@ -891,7 +991,7 @@
 
 .call-grid--screen-share-bottom .call-grid__participant-rail {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   display: flex;
   height: clamp(72px, 11vh, 90px);
   align-items: flex-start;
@@ -902,9 +1002,10 @@
 
 .call-grid--screen-share-bottom .call-grid__participant-pin,
 .call-grid--screen-share-bottom .call-grid__remote-rail > [data-participant-id] {
-  flex: 0 0 clamp(84px, 12vw, 128px);
+  flex: 0 0 auto;
+  width: auto;
   height: 100% !important;
-  aspect-ratio: auto;
+  aspect-ratio: 16 / 9;
 }
 
 .call-grid--screen-share-bottom .call-grid__remote-rail {
@@ -931,9 +1032,11 @@
 }
 
 .shared-call-stage .call-grid--screen-share > .call-grid__tile--screen {
+  width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--screen-aspect-ratio, 16 / 9);
   align-self: center;
+  justify-self: stretch;
   max-height: 100%;
   max-width: 100%;
 }
@@ -967,9 +1070,10 @@
 
   .call-grid--screen-share .call-grid__participant-pin,
   .call-grid--screen-share .call-grid__remote-rail > [data-participant-id] {
-    flex: 0 0 clamp(72px, 10vw, 112px);
+    flex: 0 0 auto;
+    width: auto;
     height: 100% !important;
-    aspect-ratio: auto;
+    aspect-ratio: 16 / 9;
   }
 
   .call-grid--screen-share .call-grid__participant-pin .call-grid__avatar-circle,
@@ -985,6 +1089,18 @@
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
+  }
+
+  .call-grid--screen-share-bottom {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .call-grid--screen-share-bottom > .call-grid__tile--screen {
+    grid-row: 2;
+  }
+
+  .call-grid--screen-share-bottom .call-grid__participant-rail {
+    grid-row: 1;
   }
 }
 
@@ -15015,6 +15131,20 @@ span.message-spoiler.is-revealed {
   gap: 8px;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.mobile-active-top-bar:has(.mobile-active-invite-btn) {
+  left: 16px;
+  right: 16px;
+  justify-content: space-between;
+}
+.mobile-active-top-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.mobile-active-top-actions .mobile-active-landscape-open {
+  position: static;
+  inset: auto;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  z-index: auto;
+}
 
 .mobile-active-top-bar.mobile-active-controls--hidden {
   opacity: 0;
@@ -15447,9 +15577,9 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
 }
 
 .meeting-intel-toggle-btn {
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
   border-radius: 50%;
   font-size: 0.74rem;
@@ -15461,7 +15591,7 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 36px;
+  flex: 0 0 28px;
   transition: all 0.15s ease;
 }
 
@@ -17327,8 +17457,8 @@ button.attachment-nav-item:focus-visible {
 
 .new-chat-screen-close {
   align-items: center;
-  background: transparent;
-  border: none;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
   border-radius: 50%;
   color: var(--text-secondary);
   cursor: pointer;
@@ -17352,7 +17482,7 @@ button.attachment-nav-item:focus-visible {
 }
 
 .new-chat-screen-close:hover {
-  background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent);
+  background: var(--background-tertiary);
   color: var(--text-primary);
 }
 
@@ -17414,16 +17544,6 @@ button.attachment-nav-item:focus-visible {
   border-radius: 24px;
   box-shadow: none;
   margin: 0 0 12px;
-}
-
-.add-people-dialog .new-chat-screen-close {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
-}
-
-.add-people-dialog .new-chat-screen-close:hover {
-  background: var(--background-tertiary);
 }
 
 .add-people-dialog .new-chat-section-label {
@@ -25947,10 +26067,17 @@ button.chat-info-title-edit:active:not(:disabled) {
   max-width: min(1120px, calc((100dvh - 220px) * 16 / 9)) !important;
   width: min(100%, 1120px, calc((100dvh - 220px) * 16 / 9)) !important;
   height: auto !important;
-  max-height: calc(100% - 24px);
+  max-height: 100%;
   aspect-ratio: 16 / 9;
   align-self: center;
 }
+.shared-call-stage .call-grid:not(.call-grid--presenting):not(.call-grid--mobile-single):not(.call-grid--mobile-pair) {
+  width: var(--gallery-width, 100%) !important;
+  height: var(--gallery-height, auto) !important;
+  max-width: 100% !important;
+  aspect-ratio: auto;
+}
+.shared-call-stage .call-grid:not(.call-grid--presenting) .call-grid__tile { min-height: 0 !important; }
 .shared-call-stage .call-grid--presenting { aspect-ratio: 19 / 9; }
 .shared-call-stage .call-grid--presenting.call-grid--screen-share {
   width: 100% !important;
@@ -25987,9 +26114,163 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .shared-call-controls {
+  --surface-raised: #292a2d;
+  --border-default: #41434a;
   align-items: center;
   justify-content: center;
   gap: 12px;
+}
+
+.shared-call-control-panel {
+  align-items: center;
+  background: rgba(24, 25, 28, .9);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 22px;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  left: 50%;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  position: absolute;
+  transform: translateX(-50%);
+  transition: opacity .18s ease, translate .18s ease;
+  z-index: 30;
+}
+.shared-call-control-panel > .shared-call-controls { background: transparent; border: 0; padding: 0; }
+.shared-call-control-panel > .mobile-active-controls { position: relative; inset: auto; width: auto; max-width: none; padding: 0; background: transparent; }
+.mobile-active-screen .shared-call-control-panel {
+  width: max-content;
+  max-width: calc(100vw - 24px);
+}
+.mobile-active-screen .shared-call-control-panel > .mobile-active-controls {
+  position: relative;
+  inset: auto;
+  display: flex;
+  padding: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  width: max-content;
+  gap: clamp(0px, 1vw, 6px);
+  background: transparent;
+}
+.mobile-active-screen .shared-call-control-panel .mobile-active-ctrl,
+.mobile-active-screen .shared-call-control-panel .mobile-active-more-anchor { flex: 0 0 auto; min-width: 0; }
+.mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn {
+  box-sizing: border-box;
+  flex: 0 0 clamp(44px, 13vw, 48px);
+  width: clamp(44px, 13vw, 48px);
+  height: clamp(44px, 13vw, 48px);
+  min-width: clamp(44px, 13vw, 48px);
+  min-height: clamp(44px, 13vw, 48px);
+  border-radius: 50%;
+  padding: 0;
+}
+.mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn svg { display: block; flex: 0 0 auto; width: 20px; height: 20px; }
+.call-popup.call-popup-fullscreen .shared-call-control-panel > .call-popup-ctrl-row {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.shared-call-control-panel[data-auto-hide="true"][data-visible="false"] {
+  opacity: 0;
+  pointer-events: none;
+  translate: 0 8px;
+}
+.shared-call-control-panel[data-auto-hide="true"]:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+  translate: 0 0;
+}
+.call-settings-dialog {
+  background: rgba(20, 21, 24, .98);
+  border: 1px solid var(--border-default, rgba(255,255,255,.14));
+  border-radius: 20px;
+  box-shadow: 0 24px 90px rgba(0,0,0,.5);
+  color: var(--text-primary, #fff);
+  display: flex;
+  flex-direction: column;
+  height: min(560px, calc(100dvh - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow: hidden;
+  width: min(820px, calc(100vw - 32px));
+}
+.call-invite-modal {
+  position: fixed;
+  z-index: 10001;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 14px;
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 18px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 22px;
+  background: rgba(25, 26, 30, .96);
+  color: var(--text-primary, #fff);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .55);
+  backdrop-filter: blur(18px);
+}
+.call-invite-modal-header,
+.call-invite-modal-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.call-invite-modal-header h3 { margin: 0; font: inherit; font-size: 1rem; font-weight: 650; }
+.call-invite-member-list { display: grid; gap: 4px; max-height: min(42dvh, 320px); overflow: auto; }
+.call-invite-member-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 12px; border: 1px solid transparent; border-radius: 12px; cursor: pointer; }
+.call-invite-member-row:hover { background: rgba(255, 255, 255, .07); }
+.call-invite-member-row input[type="checkbox"] { appearance: none; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.28); border-radius: 6px; box-sizing: border-box; cursor: pointer; flex: 0 0 20px; height: 20px; margin: 0; position: relative; width: 20px; }
+.call-invite-member-row input[type="checkbox"]:checked { background: var(--accent-primary, #60a5fa); border-color: var(--accent-primary, #60a5fa); }
+.call-invite-member-row input[type="checkbox"]:checked::after { border: solid #fff; border-width: 0 2px 2px 0; content: ""; height: 9px; left: 6px; position: absolute; top: 2px; transform: rotate(45deg); width: 5px; }
+.call-invite-member-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-primary, #60a5fa); outline-offset: 2px; }
+.call-invite-modal-actions { justify-content: flex-end; }
+.call-invite-modal-actions .action-button { border-radius: 999px; min-height: 42px; padding: 0 20px; }
+.call-invite-modal-actions .action-button.primary { background: var(--accent-primary, #60a5fa); border: 1px solid var(--accent-primary, #60a5fa); color: #fff; }
+.call-invite-modal-actions .action-button.subtle { background: transparent; border: 1px solid rgba(255,255,255,.28); color: var(--text-primary, #fff); }
+.call-settings-dialog-header {
+  align-items: center;
+  border-bottom: 1px solid var(--border-default, rgba(255,255,255,.12));
+  display: flex;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 10px 18px;
+}
+.call-settings-dialog-layout { display: grid; flex: 1 1 auto; grid-template-columns: 168px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.call-settings-tabs { border-right: 1px solid var(--border-default, rgba(255,255,255,.12)); display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; }
+.call-settings-tabs button { justify-content: flex-start; background: transparent; border: 0; border-radius: 10px; color: var(--text-secondary, #a1a1aa); cursor: pointer; font: inherit; padding: 10px 12px; text-align: left; }
+.call-settings-tabs button[aria-selected="true"] { background: rgba(255,255,255,.1); color: var(--text-primary, #fff); }
+.call-settings-tabs button:focus-visible { outline: 2px solid var(--accent-primary, #60a5fa); }
+.call-settings-panel-wrap { min-height: 0; min-width: 0; overflow: auto; padding: 16px; }
+.call-settings-panel-wrap .call-settings-embedded-content { display: contents; }
+.call-settings-panel-wrap .call-settings-embedded-panel { background: transparent; border: 0; box-shadow: none; max-height: none; max-width: none; overflow: visible; padding: 0; width: 100%; }
+.call-settings-panel-wrap .call-audio-popup-body { max-height: none; overflow: visible; padding: 0; }
+.call-settings-general h3, .call-settings-camera-fit h3 { font-size: .9rem; margin: 0 0 12px; }
+.call-settings-general .call-audio-toggle-row { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.call-settings-camera-fit { border-top: 1px solid var(--border-default, rgba(255,255,255,.12)); display: grid; gap: 10px; margin-top: 16px; padding-top: 16px; }
+.call-settings-camera-fit label { align-items: center; display: flex; gap: 8px; }
+.call-settings-camera-fit input[type="radio"] { appearance: none; width: 18px; height: 18px; flex: 0 0 18px; margin: 0; border: 1px solid var(--border-default); border-radius: 50%; background: var(--surface-card); }
+.call-settings-camera-fit input[type="radio"]:checked { border: 5px solid var(--accent-primary); }
+.call-settings-camera-fit input[type="radio"]:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.shared-call-stage-layout[data-camera-fit="cover"] .call-grid__tile:not(.call-grid__tile--screen) video,
+.shared-call-stage-layout[data-camera-fit="cover"] .call-grid--screen-share .call-grid__participant-rail .call-grid__tile video,
+.shared-call-stage-layout[data-camera-fit="cover"] .guest-call-camera-tile video,
+.shared-call-stage-layout[data-camera-fit="cover"] .voice-room-participant-content .voice-participant-video-feed:not(.is-screen-share) { object-fit: cover; }
+.shared-call-stage-layout[data-camera-fit="fit"] .call-grid__tile:not(.call-grid__tile--screen) video,
+.shared-call-stage-layout[data-camera-fit="fit"] .call-grid--screen-share .call-grid__participant-rail .call-grid__tile video,
+.shared-call-stage-layout[data-camera-fit="fit"] .guest-call-camera-tile video,
+.shared-call-stage-layout[data-camera-fit="fit"] .voice-room-participant-content .voice-participant-video-feed:not(.is-screen-share) { object-fit: contain; }
+@media (prefers-reduced-motion: reduce) {
+  .shared-call-control-panel { transition: none; }
+}
+@media (max-width: 640px) {
+  .call-settings-dialog { border-radius: 16px; height: min(560px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); width: calc(100vw - 24px); }
+  .call-settings-dialog-layout { grid-template-columns: 104px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .call-settings-tabs { border-bottom: 0; border-right: 1px solid var(--border-default, rgba(255,255,255,.12)); flex-direction: column; padding: 10px 6px; }
+  .call-settings-tabs button { flex: 0 0 auto; padding: 9px 6px; text-align: left; }
+  .call-settings-panel-wrap { padding: 12px; }
 }
 
 .shared-call-controls .call-ctrl-btn,
@@ -30471,6 +30752,36 @@ button.checklist-add-item-btn:hover,
 .quick-access-settings { box-sizing: border-box; gap: 2px; max-width: 420px; padding: 14px; width: min(calc(100vw - 32px), 420px); }
 .quick-access-settings .modal-card-header { align-items: center; border: 0 !important; display: flex; justify-content: space-between; padding: 2px 2px 8px; }
 .quick-access-settings .modal-card-header h2 { font-size: .92rem; margin: 0; }
+
+.chat-transfer-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(88vh, 760px);
+  max-width: 620px;
+  overflow: auto;
+  padding: 18px;
+  width: min(calc(100vw - 32px), 620px);
+}
+.chat-transfer-dialog .modal-card-header { align-items: center; display: flex; justify-content: space-between; }
+.chat-transfer-dialog .modal-card-header h2 { margin: 0; }
+.chat-transfer-dialog .quick-access-close { align-items: center; background: transparent; border: 0; border-radius: 8px; color: inherit; cursor: pointer; display: inline-flex; font-size: 22px; height: 34px; justify-content: center; width: 34px; }
+.chat-transfer-body { display: grid; gap: 12px; }
+.chat-transfer-body > p { margin: 0; }
+.chat-transfer-file-label, .chat-transfer-profile { display: grid; gap: 6px; }
+.chat-transfer-file-label input, .chat-transfer-profile select { box-sizing: border-box; max-width: 100%; width: 100%; }
+.chat-transfer-preview { border: 1px solid var(--border-default, rgba(127, 127, 127, .3)); border-radius: 12px; display: grid; gap: 8px; max-height: 38vh; overflow: auto; padding: 12px; }
+.chat-transfer-preview h3, .chat-transfer-preview p { margin: 0; overflow-wrap: anywhere; }
+.chat-transfer-preview ul { margin: 6px 0 0; padding-left: 20px; }
+.chat-transfer-preview li { overflow-wrap: anywhere; }
+.chat-transfer-plaintext-warning { border-left: 3px solid var(--warning-color, #d08a00); padding: 8px 10px; }
+.chat-transfer-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.chat-transfer-actions button { min-height: 38px; }
+.chat-transfer-actions .secondary-button { margin-right: auto; }
+.modal-backdrop:has(.chat-transfer-dialog) { isolation: isolate; z-index: 2147483647; }
+.message-import-attribution { border-left: 2px solid var(--stovo-primary); color: var(--text-muted); display: grid; font-size: .78rem; gap: 2px; margin-block: 4px; padding-left: 8px; }
+.message-import-attribution strong { color: var(--text-secondary); font-weight: 600; }
 .quick-access-close { align-items: center; background: color-mix(in oklab, var(--text-muted) 18%, transparent); border: 0; border-radius: 50%; box-sizing: border-box; color: var(--text-muted); cursor: pointer; display: inline-flex; flex: 0 0 30px; height: 30px !important; justify-content: center; max-height: 30px; max-width: 30px; min-height: 30px !important; min-width: 30px; padding: 0; width: 30px !important; }
 .quick-access-close:hover { background: color-mix(in oklab, var(--text-muted) 30%, transparent); color: var(--text-primary); }
 .quick-access-setting { align-items: center; cursor: pointer; display: flex; gap: 12px; justify-content: space-between; padding: 7px 3px; user-select: none; }
@@ -30635,7 +30946,7 @@ button.checklist-add-item-btn:hover,
   aspect-ratio: auto;
   right: 12px;
   bottom: max(calc(env(safe-area-inset-bottom, 0px) + 104px), 116px);
-  z-index: 20;
+  z-index: 34;
   border-radius: 8px;
   cursor: pointer;
 }
@@ -30866,7 +31177,7 @@ button.checklist-add-item-btn:hover,
   justify-content: space-evenly;
   gap: clamp(2px, 1.5vw, 10px);
   padding: 12px 8px max(env(safe-area-inset-bottom, 0px), 12px);
-  background: linear-gradient(transparent, rgba(0, 0, 0, .9) 25%);
+  background: transparent;
 }
 .mobile-active-top-bar { left: 16px; right: auto; }
 .mobile-active-screenshare-bar { left: 50%; right: auto; transform: translateX(-50%); }
@@ -30876,8 +31187,8 @@ button.checklist-add-item-btn:hover,
 .mobile-active-controls .mobile-active-ctrl-lbl { display: none; }
 .mobile-active-controls .mobile-active-ctrl-btn { width: clamp(48px, 13vw, 58px); height: clamp(48px, 13vw, 58px); }
 .mobile-active-controls .mobile-active-ctrl-btn.muted:not(.end) { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .07); color: #fff; }
-.call-popup.call-popup-fullscreen > .call-popup-header,
-.call-popup.call-popup-fullscreen > .call-popup-video-area { display: none; }
+.call-popup.call-popup-fullscreen:has(.mobile-active-screen) > .call-popup-header,
+.call-popup.call-popup-fullscreen:has(.mobile-active-screen) > .call-popup-video-area { display: none; }
 
 .mobile-active-video-stage .call-grid--mobile-presentation {
   position: absolute !important;
@@ -30885,7 +31196,7 @@ button.checklist-add-item-btn:hover,
   display: grid !important;
   align-content: start;
   grid-template-columns: minmax(0, 1fr) !important;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   width: auto !important;
   height: auto !important;
@@ -30896,16 +31207,28 @@ button.checklist-add-item-btn:hover,
   overflow: hidden;
 }
 .mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__tile--screen {
-  width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9;
+  grid-row: 2;
+  width: 100%; height: auto; min-height: 0; aspect-ratio: var(--screen-aspect-ratio, 16 / 9);
+}
+.mobile-active-video-stage .shared-call-participants-toggle {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__mobile-participant-row {
+  grid-row: 1;
 }
 .call-grid__mobile-participant-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-content: start;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
   min-width: 0;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: 84px;
+  scrollbar-width: thin;
 }
 .call-grid--mobile-presentation-many .call-grid__mobile-participant-row {
   flex-wrap: nowrap;
@@ -30918,16 +31241,16 @@ button.checklist-add-item-btn:hover,
 .call-grid__mobile-participant-row > .call-grid__tile,
 .call-grid__mobile-participant-row > [data-participant-id] {
   position: relative;
-  flex: 0 1 76px;
-  width: 76px;
-  height: 76px;
+  flex: 0 0 144px;
+  width: 144px;
+  height: 81px;
   min-height: 0;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
   overflow: hidden;
 }
 .call-grid__mobile-participant-row [data-participant-id] > .call-grid__tile {
-  width: 100%; height: 100%; min-height: 0; aspect-ratio: 1 / 1; border-radius: inherit;
+  width: 100%; height: 100%; min-height: 0; aspect-ratio: 16 / 9; border-radius: inherit;
 }
 .call-grid__profile-avatar {
   display: grid;
@@ -30942,14 +31265,15 @@ button.checklist-add-item-btn:hover,
 .call-grid__mobile-participant-row .call-grid__label { left: 3px; right: 3px; bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
 .call-grid__mobile-participant-row .call-grid__participant-status { display: none; }
 .meeting-intel-inline-toggle {
-  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
-  color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left;
+  box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px;
+  color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left; font: inherit;
 }
 .meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
-  width: auto; min-width: 58px; height: 32px; min-height: 32px; flex: 0 0 auto;
-  padding: 0 12px; border-radius: 9px; font-size: .78rem;
+  box-sizing: border-box; width: 28px; min-width: 28px; height: 28px; min-height: 28px; flex: 0 0 28px;
+  padding: 0; border-radius: 50%; font: inherit;
 }
+.meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
 .meeting-intel-restricted-badge[aria-label="Premium feature"] {
   display: inline-flex; align-items: center; width: max-content; padding: 2px 8px;
   color: #bfdbfe; background: rgba(37, 99, 235, .24); border: 1px solid rgba(96, 165, 250, .4);
@@ -30959,7 +31283,7 @@ button.checklist-add-item-btn:hover,
 @media (max-width: 420px) {
   .mobile-active-video-stage .call-grid--mobile-presentation { inset-inline: 6px; }
   .call-grid__mobile-participant-row > .call-grid__tile,
-  .call-grid__mobile-participant-row > [data-participant-id] { flex-basis: 64px; width: 64px; height: 64px; }
+  .call-grid__mobile-participant-row > [data-participant-id] { flex-basis: 128px; width: 128px; height: 72px; }
 }
 
 .meeting-intel-popover--inline-menu {
@@ -30978,10 +31302,12 @@ button.checklist-add-item-btn:hover,
 }
 
 .meeting-intel-popover--inline-menu .meeting-intel-content { padding: 0; display: grid; gap: 2px; }
-.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 6px 10px 4px; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 0; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-inline-toggle { min-height: 44px; padding: 0 12px; font: inherit; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { font: inherit; }
 .meeting-intel-popover--inline-menu .meeting-intel-title-row { gap: 7px; }
 .meeting-intel-popover--inline-menu .meeting-intel-logo { width: 16px; height: 16px; }
-.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-secondary); font-size: 11px; font-weight: 650; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-primary); font-size: .875rem; font-weight: 500; }
 .meeting-intel-popover--inline-menu .meeting-intel-card { padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; }
 .meeting-intel-popover--inline-menu .meeting-intel-card:hover { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
 .meeting-intel-popover--inline-menu .meeting-intel-card-head { min-height: 30px; }
@@ -31080,6 +31406,85 @@ button.checklist-add-item-btn:hover,
   padding: 1rem;
 }
 
+/* Shared call stage chrome: the toggle floats above the stage and never
+   consumes screen-share area. Collapsing hides only participant visuals; the
+   call grid and its remote audio pool remain mounted. */
+.shared-call-stage-layout {
+  position: relative;
+}
+.shared-call-stage-layout.mobile-active-video-stage {
+  inset: 0;
+  position: absolute;
+}
+.shared-call-stage-content {
+  display: flex;
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.call-popup-group-call:not(.call-popup-fullscreen) { padding-bottom: 100px !important; }
+.shared-call-participants-toggle {
+  align-items: center;
+  background: rgba(40, 41, 45, .92);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  z-index: 20;
+}
+.shared-call-participants-toggle:hover,
+.shared-call-participants-toggle:focus-visible {
+  background: rgba(68, 70, 76, .96);
+  outline: 2px solid var(--accent-primary, #60a5fa);
+  outline-offset: 2px;
+}
+.shared-call-stage-layout[data-sharing="true"][data-participants-collapsed="true"] .call-grid--screen-share {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+.call-popup.call-popup-group-call--sharing.call-popup-fullscreen > .shared-call-stage-layout[data-sharing="true"][data-participants-collapsed="true"] {
+  inset: 0;
+  position: absolute;
+}
+.shared-call-stage-layout[data-participants-collapsed="true"] .call-grid__participant-rail,
+.shared-call-stage-layout[data-participants-collapsed="true"] .call-grid__mobile-participant-row,
+.shared-call-stage-layout[data-participants-collapsed="true"] .guest-call-camera-rail {
+  display: none !important;
+}
+.shared-call-stage-layout[data-sharing="true"][data-participants-collapsed="true"] .call-grid--screen-share > .call-grid__tile--screen {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: min(100%, calc(100dvh * var(--screen-aspect-ratio, 16 / 9))) !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: var(--screen-aspect-ratio, 16 / 9) !important;
+  justify-self: center !important;
+}
+.shared-call-stage-layout[data-sharing="true"][data-participants-collapsed="true"] .guest-call-spotlight {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+.shared-call-stage-layout[data-sharing="true"][data-participants-collapsed="true"] .guest-call-screen-tile {
+  width: min(100%, calc(100dvh * 16 / 9)) !important;
+  height: auto !important;
+  justify-self: center;
+}
+
 .guest-call-header {
   left: 50%;
   position: fixed;
@@ -31133,7 +31538,7 @@ button.checklist-add-item-btn:hover,
 .guest-call-spotlight {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(112px, min(16%, 168px));
+  grid-template-columns: minmax(0, 5fr) minmax(112px, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: auto;
   max-height: 100%;
@@ -31161,7 +31566,7 @@ button.checklist-add-item-btn:hover,
   aspect-ratio: 16 / 9;
   align-self: center;
   height: auto;
-  justify-self: center;
+  justify-self: stretch;
   max-height: 100%;
   min-height: 0;
   max-width: 100%;
@@ -31247,6 +31652,14 @@ button.checklist-add-item-btn:hover,
 .guest-call-camera-tile .voice-participant-state { font-size: .65rem; line-height: 1.15; }
 .guest-call-camera-tile .guest-call-avatar-placeholder svg { height: 70%; width: 70%; }
 .guest-call-room .voice-room-bottom-bar { flex-shrink: 0; }
+.voice-room-bottom-bar:has(.shared-call-control-panel) {
+  background: transparent;
+  border: 0;
+  flex: 0 0 0;
+  height: 0;
+  overflow: visible;
+  padding: 0;
+}
 .guest-call-room .voice-participant-card.is-speaking .guest-call-avatar-placeholder {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, .82), 0 0 18px rgba(34, 197, 94, .24);
 }
@@ -31280,7 +31693,7 @@ button.checklist-add-item-btn:hover,
 .guest-call-controls .guest-device-control {
   align-items: center;
   background: rgba(255, 255, 255, .08);
-  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, .24));
   border-radius: 999px;
   display: flex;
   height: 48px;
@@ -31801,8 +32214,167 @@ button.minimized-call-button--end:active:not(:disabled) {
 .minimized-call--video .minimized-call-button:not(.minimized-call-button--end) { background: rgb(0 0 0 / 55%); color: #fff; }
 
 .voice-channel-room .voice-room-stage {
-  padding-top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px);
+  bottom: 0;
+  flex: 0 0 auto;
+  height: auto;
+  inset: 0;
+  padding: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 4px) 16px 16px;
+  position: absolute;
+  z-index: 0;
 }
-.voice-room-participant-content { justify-content: center; }
+.voice-room-participant-content { justify-content: flex-start; padding-top: 4px; }
+.voice-channel-room:not(.is-connected):not(.guest-call-room) .voice-room-bottom-bar {
+  bottom: 0;
+  inset-inline: 0;
+  position: absolute;
+}
+.voice-channel-room .voice-room-bottom-bar:has(.shared-call-control-panel) {
+  background: transparent;
+  border: 0;
+  bottom: 0;
+  flex: 0 0 0;
+  height: 0;
+  inset-inline: 0;
+  overflow: visible;
+  padding: 0;
+  position: absolute;
+  z-index: 30;
+}
+.voice-channel-room .call-grid--screen-share-bottom .call-grid__participant-rail { align-items: flex-start; }
 .voice-room-member-invite, .voice-room-expand-button { box-sizing: border-box; flex-shrink: 0; }
 .chat-list-item:has(.chat-list-voice-participants) { padding-block: 5px; }
+
+/* Two participants use the available mobile height in a single landscape column. */
+.mobile-active-video-stage .call-grid--mobile-pair {
+  width: min(calc(100% - 24px), calc((100dvh - 60px - 90px - 8px - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 8 / 9)) !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none;
+  aspect-ratio: auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+
+.call-popup-group-call:not(.call-popup-fullscreen):not(.call-popup-minimized) .call-popup-audio-stage:not(:empty) {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+}
+
+/* Keep expanded group-call chrome over the presentation. The stage can fill
+   the popup when participants collapse without moving the header actions. */
+.call-popup.call-popup-group-call.call-popup-fullscreen { position: fixed; }
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-video-area {
+  inset: 0;
+  position: absolute;
+  z-index: 1;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header {
+  inset: 16px 20px auto;
+  pointer-events: none;
+  position: absolute;
+  z-index: 40;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-header-actions,
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-header-invite {
+  pointer-events: auto;
+}
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header .call-popup-status { pointer-events: none; }
+.call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-ctrl-row { position: relative; z-index: 35; }
+
+/* Shared call controls have one neutral surface across active, muted, and
+   camera states; state remains communicated by icon and accessible name. */
+.shared-call-controls .call-ctrl-btn,
+.shared-call-controls .voice-dock-btn,
+.shared-call-controls .mobile-active-ctrl-btn,
+.shared-call-controls .guest-device-control > button,
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active,
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active),
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active) {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.is-muted {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn.end-btn {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+}
+.shared-call-controls .call-ctrl-btn:hover,
+.shared-call-controls .call-ctrl-btn:active,
+.shared-call-controls .mobile-active-ctrl-btn:hover,
+.shared-call-controls .mobile-active-ctrl-btn:active,
+.shared-call-controls .voice-dock-btn--disconnect:hover,
+.shared-call-controls .voice-dock-btn--disconnect:active {
+  background: var(--surface-raised, #292a2d) !important;
+  border-color: var(--border-default, #41434a) !important;
+  color: #fff !important;
+  transform: none;
+}
+
+.shared-call-controls .call-ctrl-btn.end-btn:hover,
+.shared-call-controls .call-ctrl-btn.end-btn:active,
+.shared-call-controls .mobile-active-ctrl-btn.end:hover,
+.shared-call-controls .mobile-active-ctrl-btn.end:active,
+.shared-call-controls .voice-dock-btn--disconnect:hover,
+.shared-call-controls .voice-dock-btn--disconnect:active {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+  transform: none;
+}
+
+.call-invite-modal-actions .action-button.primary {
+  border-radius: 999px;
+  background: var(--accent-primary, #60a5fa) !important;
+  border: 1px solid var(--accent-primary, #60a5fa) !important;
+  color: #fff !important;
+}
+.call-invite-modal-actions .action-button.subtle {
+  border-radius: 999px;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.28) !important;
+  color: var(--text-primary, #fff) !important;
+}

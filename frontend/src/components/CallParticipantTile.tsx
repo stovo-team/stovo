@@ -69,6 +69,7 @@ export function CallParticipantTile({
   isConnected = true,
   accessToken,
   profilePhoto,
+  onVideoMetadata,
 }: {
   label: string;
   stream: MediaStream | null;
@@ -88,6 +89,7 @@ export function CallParticipantTile({
   isConnected?: boolean;
   accessToken?: string | null;
   profilePhoto?: FamilyFile | null;
+  onVideoMetadata?: (width: number, height: number) => void;
 }) {
   return (
     <div
@@ -121,8 +123,12 @@ export function CallParticipantTile({
           }}
           autoPlay
           playsInline
+          disablePictureInPicture
+          disableRemotePlayback
+          controlsList="nofullscreen noremoteplayback"
           muted
           ref={(el) => bindStream(el, stream)}
+          onLoadedMetadata={(event) => onVideoMetadata?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
         />
       ) : localVideoPlaceholder ? (
         localVideoPlaceholder

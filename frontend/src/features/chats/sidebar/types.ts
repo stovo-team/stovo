@@ -12,6 +12,7 @@ export type ChatOverviewController = {
   setChatFilter: (filter: ChatFilter) => void;
   filteredChats: Chat[];
   chatsBySection: Record<ChatSectionKey, Chat[]>;
+  refreshChats: () => Promise<void>;
   isNewChatOpen: boolean;
   newChatScreen: NewChatScreen;
   newChatMemberSearch: string;

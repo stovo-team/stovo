@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
-import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallSettingsContextMenu } from "./CallSettingsContextMenu";
 import { CallSpeakerSheet } from "./CallSpeakerSheet";
+import { CallSettingsDialog, type CallSettingsTab } from "./CallSettingsDialog";
+import { useCallUIPreferences } from "./callUIPreferences";
+import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallVideoSettingsPopup } from "./CallVideoSettingsPopup";
 import { DesktopCallControls } from "./DesktopCallControls";
 import { GroupCallActiveBanner } from "./GroupCallActiveBanner";
@@ -42,6 +44,8 @@ export { CallFeatureProvider } from "./CallFeatureContext";
  * before a call starts.
  */
 export function CallFeature() {
+  const [settingsInitialTab, setSettingsInitialTab] = useState<CallSettingsTab>("general");
+  const { preferences: callUIPreferences, patchPreferences } = useCallUIPreferences();
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const { pathname } = useLocation();
   const {
@@ -102,6 +106,14 @@ export function CallFeature() {
   const isOnChatsRoute = /^(?:\/s\/[^/]+)?\/app\/chats(?:\/[^/]+)?\/?$/.test(pathname);
   const routeMinimized = callPhase !== "idle" && !isOnChatsRoute;
   useEffect(() => { if (callPhase === "idle") resetFloatingCallPosition(); }, [callPhase]);
+  useEffect(() => {
+    const handleOpenSettings = (event: Event) => {
+      const tab = (event as CustomEvent<CallSettingsTab>).detail;
+      if (tab === "general" || tab === "audio" || tab === "camera") setSettingsInitialTab(tab);
+    };
+    window.addEventListener("stovo:open-call-settings", handleOpenSettings);
+    return () => window.removeEventListener("stovo:open-call-settings", handleOpenSettings);
+  }, []);
   const effectiveIsCallMinimized = isCallMinimized || routeMinimized;
   const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
   const shouldUseFullscreenSurface = isMobileViewport || (isGroupCallSharing && !effectiveIsCallMinimized);
@@ -131,6 +143,13 @@ export function CallFeature() {
       profilePhoto: currentUser.profilePhoto ?? null,
     };
   }
+  const mockScreenShareOwnerId = session.mockScreenShareUserId;
+  const mockScreenShareOwnerUser = mockScreenShareOwnerId === currentUser?.id
+    ? currentUser
+    : [...members, ...(activeChat?.members ?? [])].find((member) => member.id === mockScreenShareOwnerId);
+  const mockScreenShareOwner = mockScreenShareOwnerId
+    ? { userId: mockScreenShareOwnerId, displayName: mockScreenShareOwnerUser?.displayName ?? mockScreenShareOwnerId }
+    : null;
 
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
@@ -252,7 +271,10 @@ export function CallFeature() {
                   })
                 }
                 onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
-                onOpenSettings={() => setIsCallAudioPopupOpen(true)}
+                onOpenSettings={() => {
+                  window.dispatchEvent(new CustomEvent("stovo:open-call-settings", { detail: "general" }));
+                  setIsCallAudioPopupOpen(true);
+                }}
                 onEnd={() => void endActiveCall()}
                 onShrink={() => session.setIsCallMinimized(true)}
                 notice={callNotice}
@@ -261,10 +283,11 @@ export function CallFeature() {
                 socketRef={session.socketRef}
                 isGroupCall={isGroupCall}
                 participantProfiles={participantProfiles}
+                mockScreenShareOwner={mockScreenShareOwner}
               />
             )}
 
-            <DesktopCallControls />
+            <DesktopCallControls mockScreenShareOwner={mockScreenShareOwner} />
           </section>
         </>
       )}
@@ -274,37 +297,30 @@ export function CallFeature() {
           anchorRef={callSettingsButtonRef}
           menuRef={callSettingsMenuRef}
           onOpenAudioSettings={() => {
+            setSettingsInitialTab("audio");
             setIsCallSettingsMenuOpen(false);
             setIsCallAudioPopupOpen(true);
           }}
           onOpenVideoSettings={() => {
+            setSettingsInitialTab("camera");
             setIsCallSettingsMenuOpen(false);
             setIsCallVideoPopupOpen(true);
           }}
         />
       )}
-      {isCallAudioPopupOpen && (
-        <CallAudioSettingsPopup
-          popupRef={callAudioPopupRef}
-          isMobile={isMobileViewport}
+      {(isCallAudioPopupOpen || isCallVideoPopupOpen) && (
+        <CallSettingsDialog
+          initialTab={settingsInitialTab}
+          preferences={callUIPreferences}
           settings={callAudioSettings}
           capabilities={callAudioCapabilities}
           devices={callAudioDevices}
-          trackStatus={callTrackStatus}
           localStream={audioCallRef.current?.getLocalStream() ?? localVideoStream}
           warning={callAudioWarning}
           onPatch={(patch) => void applyCallAudioPatch(patch)}
-          onClose={() => setIsCallAudioPopupOpen(false)}
-        />
-      )}
-      {isCallVideoPopupOpen && (
-        <CallVideoSettingsPopup
-          settings={callAudioSettings}
-          capabilities={callAudioCapabilities}
-          devices={callAudioDevices}
+          onPreferencePatch={patchPreferences}
+          onClose={() => { setIsCallAudioPopupOpen(false); setIsCallVideoPopupOpen(false); }}
           isMobile={isMobileViewport}
-          onPatch={(patch) => void applyCallAudioPatch(patch)}
-          onClose={() => setIsCallVideoPopupOpen(false)}
         />
       )}
       {isSpeakerSheetOpen && (

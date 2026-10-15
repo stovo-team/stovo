@@ -19,4 +19,4 @@ jobs:
           DEPLOY_HOST: ${{ vars.DEV_DEPLOY_HOST }}
           DEV_PATH: /opt/stovo/dev
           DEV_URL: ${{ vars.DEV_URL }}
-        run: bash scripts/deploy-environment.sh dev
+        run: bash deploy/scripts/deploy-environment.sh dev

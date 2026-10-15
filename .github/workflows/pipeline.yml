@@ -7,7 +7,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'migrations/master/**'
+      - 'deploy/migrations/master/**'
       - 'deploy/caddy/Caddyfile'
       - 'deploy/caddy/Caddyfile.internal'
       - 'deploy/compose/production-multiserver.yml'
@@ -18,6 +18,11 @@ on:
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
   workflow_dispatch:
+    inputs:
+      backend_deploy_only:
+        description: 'Deploy backend immediately, skipping CI and frontend jobs'
+        type: boolean
+        default: false
 
 concurrency:
   group: pipeline-${{ github.ref }}
@@ -33,10 +38,12 @@ jobs:
     permissions:
       contents: read
     outputs:
-      frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
+      frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - name: Verify pipeline workflow contract
         run: bash .github/workflows/pipeline.test.sh
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -51,7 +58,7 @@ jobs:
               - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/caddy/Caddyfile'
               - 'deploy/caddy/Caddyfile.internal'
               - 'deploy/compose/production-multiserver.yml'
@@ -59,7 +66,7 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/deploy-environment.sh'
+              - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
 
@@ -88,7 +95,7 @@ jobs:
   backend-ci:
     name: Backend CI
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only
     runs-on: [self-hosted, tests]
     services:
       postgres:
@@ -137,10 +144,22 @@ jobs:
             git diff -- ent
             exit 1
           fi
+      - name: Add runner tools to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify preinstalled golangci-lint
+        env:
+          GOLANGCI_LINT_VERSION: 2.14.0
+        run: |
+          version="$(golangci-lint --version)"
+          echo "$version"
+          if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then
+            echo "Expected golangci-lint ${GOLANGCI_LINT_VERSION}, got: ${version}" >&2
+            exit 1
+          fi
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          version: v2.14.0
+          install-mode: none
           working-directory: backend
           verify: true
           skip-cache: true
@@ -279,7 +298,13 @@ jobs:
             get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
 
             docker_with_space_recovery() {
-              deploy_log="$(mktemp)"
+              if ! deploy_log="$(mktemp 2>/dev/null)"; then
+                echo "Could not create deployment log in the default temp directory; falling back to /dev/shm." >&2
+                if ! deploy_log="$(mktemp /dev/shm/stovo-deploy.XXXXXX 2>/dev/null)"; then
+                  echo "Could not create deployment log in the default temp directory or /dev/shm." >&2
+                  return 1
+                fi
+              fi
               if "$@" >"$deploy_log" 2>&1; then
                 cat "$deploy_log"
                 rm -f "$deploy_log"
@@ -301,7 +326,7 @@ jobs:
               "$@"
             }
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
@@ -328,7 +353,7 @@ jobs:
   deploy-backend-web:
     name: Deploy Backend Web
     needs: [changes, backend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -372,7 +397,7 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
@@ -396,7 +421,13 @@ jobs:
             }
 
             docker_with_space_recovery() {
-              deploy_log="$(mktemp)"
+              if ! deploy_log="$(mktemp 2>/dev/null)"; then
+                echo "Could not create deployment log in the default temp directory; falling back to /dev/shm." >&2
+                if ! deploy_log="$(mktemp /dev/shm/stovo-deploy.XXXXXX 2>/dev/null)"; then
+                  echo "Could not create deployment log in the default temp directory or /dev/shm." >&2
+                  return 1
+                fi
+              fi
               if "$@" >"$deploy_log" 2>&1; then
                 cat "$deploy_log"
                 rm -f "$deploy_log"
@@ -435,7 +466,7 @@ jobs:
             for _ in $(seq 1 30); do if sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
-            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+            for migration in $(find deploy/migrations/master -maxdepth 1 -name '*.sql' | sort); do
               echo "Applying master migration: $migration"
               cat "$migration" | sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
             done
@@ -447,6 +478,32 @@ jobs:
 
             # Reconcile the LiveKit SFU
             docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d livekit
+
+            registered_tenant_slugs="$(sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres \
+              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
+            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
+            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
+            root_upstream="$(bash deploy/resolve-root-upstream.sh "$(get_env BACKEND_UPSTREAMS '')" $tenant_slugs)"
+            if [ -n "$root_upstream" ]; then
+              ensure_env BACKEND_UPSTREAMS "$root_upstream"
+            fi
+
+            # Compare credentials without printing their values into Actions logs.
+            if sudo docker inspect stovo-orchestrator >/dev/null 2>&1; then
+              running_admin_user="$(sudo docker exec stovo-orchestrator printenv MASTER_ADMIN_USER)"
+              running_admin_password="$(sudo docker exec stovo-orchestrator printenv MASTER_ADMIN_PASSWORD)"
+              if [ "$running_admin_user" = "$(get_env MASTER_ADMIN_USER '')" ]; then
+                echo "Supervisor username matches .env."
+              else
+                echo "WARNING: Supervisor username differs from .env." >&2
+              fi
+              if [ "$running_admin_password" = "$(get_env MASTER_ADMIN_PASSWORD '')" ]; then
+                echo "Supervisor password matches .env."
+              else
+                echo "WARNING: Supervisor password differs from the literal .env value; check Compose interpolation or stale container configuration." >&2
+              fi
+              unset running_admin_user running_admin_password
+            fi
 
             # Build and deploy orchestrator, caddy gateway, and coturn
             docker_with_space_recovery sudo env DOCKER_BUILDKIT=1 docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build orchestrator caddy coturn
@@ -468,10 +525,6 @@ jobs:
             fi
 
             # Migrate every registered tenant and every live tenant backend
-            registered_tenant_slugs="$(sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres \
-              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
-            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
-            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
             if [ -n "$tenant_slugs" ]; then
                 echo "Applying migrations to registered and live tenant databases..."
                 for server_slug in $tenant_slugs; do
@@ -623,6 +676,25 @@ jobs:
                         fi
                     fi
                 done
+            fi
+
+            # The frontend can be healthy while every login request returns 502.
+            if [ -n "$root_upstream" ]; then
+              api_healthy=false
+              for _ in $(seq 1 30); do
+                if api_status="$(curl --fail --silent --show-error --max-time 10 --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/api/auth/setup-status")" &&
+                  printf '%s' "$api_status" | grep -Eq '"setupRequired"[[:space:]]*:[[:space:]]*(true|false)'; then
+                  api_healthy=true
+                  break
+                fi
+                sleep 2
+              done
+              if [ "$api_healthy" != true ]; then
+                echo "Root authentication API health check failed." >&2
+                sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml logs --tail=100 caddy
+                exit 1
+              fi
+              echo "Root authentication API health check passed."
             fi
 
             echo "Backend web deployment finished successfully!"

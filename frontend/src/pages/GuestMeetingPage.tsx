@@ -14,8 +14,12 @@ import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingInt
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
 import { CallParticipantStage, useScreenShareStageSize } from "../features/chats/calling/CallParticipantStage";
+import { getScreenStreamAspectRatio } from "../features/chats/calling/screenShareLayout";
+import { SharedCallStage } from "../features/chats/calling/SharedCallStage";
+import { CALL_CONTROLS_REVEAL_EVENT, SharedCallControlPanel } from "../features/chats/calling/SharedCallControlPanel";
+import { useCallUIPreferences } from "../features/chats/calling/callUIPreferences";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
-import { GuestMeetingAudioSettings } from "./GuestMeetingAudioSettings";
+import { CallSettingsDialog } from "../features/chats/calling/CallSettingsDialog";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
 import { GuestParticipantTile, LocalStreamVideo, RemoteVideo } from "./GuestMeetingMedia";
@@ -61,6 +65,7 @@ function regionalStovoSite() {
 }
 
 export default function GuestMeetingPage() {
+  const { preferences: callUIPreferences, patchPreferences } = useCallUIPreferences();
   const { token } = useParams();
   const { accessToken, currentUser } = useAuth();
   const [preview, setPreview] = useState<GuestMeetingPreview | null>(null);
@@ -94,11 +99,16 @@ export default function GuestMeetingPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
+  const [measuredScreenAspectRatio, setMeasuredScreenAspectRatio] = useState<number | null>(null);
   const [meterLevel, setMeterLevel] = useState(0);
   const [speakingIndicatorState, setSpeakingIndicatorState] = useState<CallSpeakingState>("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
   const localRef = useRef<HTMLVideoElement>(null);
-  const { stageRef: callStageRef, useBottomScreenShareRail, screenPresenterSize } = useScreenShareStageSize(state === "joined", remoteStreams.length + 1, isMobile, window.innerHeight);
+  const activeScreenShareStream = localScreenStream ?? remoteStreams.find((participant) => participant.screenStream)?.screenStream ?? null;
+  useEffect(() => { setMeasuredScreenAspectRatio(null); }, [activeScreenShareStream]);
+  const screenAspectRatio = measuredScreenAspectRatio ?? getScreenStreamAspectRatio(activeScreenShareStream);
+  const updateScreenAspectRatio = (width: number, height: number) => { if (width > 0 && height > 0) setMeasuredScreenAspectRatio(width / height); };
+  const { stageRef: callStageRef, useBottomScreenShareRail, screenPresenterSize } = useScreenShareStageSize(state === "joined", remoteStreams.length + 1, isMobile, window.innerHeight, screenAspectRatio);
   const roomRef = useRef<Room | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const sourceAudioStreamRef = useRef<MediaStream | null>(null);
@@ -523,6 +533,7 @@ export default function GuestMeetingPage() {
       if (patch.outputVolume !== undefined) setOutputVolume(patch.outputVolume);
       if (patch.outputDeviceId !== undefined) setSpeakerDeviceId(patch.outputDeviceId);
       if (patch.inputDeviceId !== undefined) await selectInputDevice("audio", patch.inputDeviceId);
+      if (patch.videoDeviceId !== undefined) await selectInputDevice("video", patch.videoDeviceId);
     } catch { setDeviceIssue("Could not apply the selected audio setting."); }
   }
 
@@ -649,13 +660,14 @@ export default function GuestMeetingPage() {
   function stayInEmptyRoom() { setEmptyRoomWarning(false); emptyRoomTimeoutRef.current?.stay(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
   const isSpeaking = isCallSpeakingActive(speakingIndicatorState);
-  const audioSettingsPopup = settingsOpen && <GuestMeetingAudioSettings
-    popupRef={audioPopupRef} isMobile={isMobile} localStream={localStreamRef.current}
-    settings={{ ...audioProcessing, inputGain, outputVolume, inputDeviceId: microphoneDeviceId, outputDeviceId: speakerDeviceId, micMuted: !microphoneEnabled, soundDisabled: !speakerEnabled }}
-    capabilities={{ canSelectInputDevice: Boolean(navigator.mediaDevices?.getUserMedia), canSelectOutputDevice: "setSinkId" in HTMLMediaElement.prototype,
+  const guestCallSettings: CallSettings = { ...audioProcessing, inputGain, outputVolume, inputDeviceId: microphoneDeviceId, outputDeviceId: speakerDeviceId, videoDeviceId: cameraDeviceId, micMuted: !microphoneEnabled, soundDisabled: !speakerEnabled, cameraEnabled, screenSharing: isScreenSharing, cameraFacingMode, speakerMode: speakerEnabled ? "large" : "small" };
+  const guestCallCapabilities = { canSelectInputDevice: Boolean(navigator.mediaDevices?.getUserMedia), canSelectOutputDevice: "setSinkId" in HTMLMediaElement.prototype,
       canUseNoiseSuppression: Boolean(navigator.mediaDevices?.getSupportedConstraints?.().noiseSuppression), canUseEchoCancellation: Boolean(navigator.mediaDevices?.getSupportedConstraints?.().echoCancellation), canUseAutoGainControl: Boolean(navigator.mediaDevices?.getSupportedConstraints?.().autoGainControl),
-      canUseVoiceEnhancement: Boolean(audioProcessorRef.current), canUseCamera: true, canShareScreen: Boolean(navigator.mediaDevices?.getDisplayMedia) }}
-    devices={devices} warning={deviceIssue} onPatch={(patch) => void patchAudioSettings(patch)}
+      canUseVoiceEnhancement: Boolean(audioProcessorRef.current), canUseCamera: Boolean(navigator.mediaDevices?.getUserMedia), canShareScreen: Boolean(navigator.mediaDevices?.getDisplayMedia) };
+  const guestCallDevices = devices.map((device) => ({ deviceId: device.deviceId, kind: device.kind as "audioinput" | "audiooutput" | "videoinput", label: device.label }));
+  const audioSettingsPopup = settingsOpen && <CallSettingsDialog
+    initialTab="general" preferences={callUIPreferences} settings={guestCallSettings} capabilities={guestCallCapabilities} devices={guestCallDevices} warning={deviceIssue}
+    onPatch={(patch) => void patchAudioSettings(patch)} onPreferencePatch={patchPreferences} localStream={localStreamRef.current} isMobile={isMobile}
     onClose={() => { setSettingsOpen(false); settingsButtonRef.current?.focus(); }}
   />;
 
@@ -673,7 +685,7 @@ export default function GuestMeetingPage() {
     ];
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
-      <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
+      <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`} onPointerDown={() => { if (isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }} onPointerMove={() => { if (!isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }}>
         {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">Still waiting for someone?</h2><p>You’re the only person in this meeting. You’ll be disconnected in one minute unless you choose to stay.</p><div><button type="button" className="secondary-button" onClick={() => void leave()} >Leave meeting</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>Stay in meeting</button></div></section></div>}
         <LiveCaptionsOverlay
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
@@ -684,23 +696,24 @@ export default function GuestMeetingPage() {
         <header className="guest-call-header">
           <div><strong>{preview?.title || "Guest meeting"}</strong><span>{participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
         </header>
-        <CallParticipantStage ref={callStageRef} className="shared-call-stage voice-room-stage">
+        <SharedCallStage ref={callStageRef} cameraFit={callUIPreferences.cameraFit} isMobile={isMobile} isSharing={hasScreenShare} className="voice-room-stage">
           {hasScreenShare ? <div className={`guest-call-spotlight${useBottomScreenShareRail ? " guest-call-spotlight--bottom" : ""}`} aria-label="Shared screen and cameras">
             <div className="guest-call-screen-stage">
-              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={screenPresenterSize ?? undefined} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" onVideoMetadata={updateScreenAspectRatio} /></GuestParticipantTile>}
             </div>
             <aside className="guest-call-camera-rail" aria-label="Participant cameras">
               {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : participant.speaking ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>
-                {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className={`voice-participant-video-feed${cameraFacingMode === "user" ? " is-mirrored" : ""}`} /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
+                {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className={`voice-participant-video-feed${audioProcessing.mirrorLocalVideo && cameraFacingMode === "user" ? " is-mirrored" : ""}`} /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
               </GuestParticipantTile>)}
             </aside>
           </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
-            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeaking} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className={`voice-participant-video-feed${cameraFacingMode === "user" ? " is-mirrored" : ""}`} />}</GuestParticipantTile>
+            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeaking} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className={`voice-participant-video-feed${audioProcessing.mirrorLocalVideo && cameraFacingMode === "user" ? " is-mirrored" : ""}`} />}</GuestParticipantTile>
             {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={remoteMutedUserIds.includes(remote.id)} speaking={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id)} avatar={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
           </div>}
-        </CallParticipantStage>
+        </SharedCallStage>
         {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
         <div className="voice-room-bottom-bar">
+          <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
           <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Meeting controls">
             <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
             <CallDeviceControl controlClassName={!isMobile ? "voice-dock-btn" : ""} label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
@@ -771,6 +784,7 @@ export default function GuestMeetingPage() {
             </div>
             <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={() => void leave()} label="Leave meeting" title="Leave meeting" />
           </div>
+          </SharedCallControlPanel>
         </div>
       </section>
     </main>;

@@ -111,6 +111,21 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("labels an imported message with its source author and provider", () => {
+    const message = createMockMessage({
+      importAttribution: {
+        sourceProvider: "telegram",
+        sourceMessageId: "source-message-1",
+        sourceAuthorId: "telegram-user-1",
+        sourceAuthorName: "Mira"
+      }
+    });
+
+    const container = renderBubble(message);
+    expect(container.querySelector(".message-import-attribution")?.textContent).toContain("Original author: Mira");
+    expect(container.querySelector(".message-import-attribution")?.textContent).toContain("Imported from Telegram");
+  });
+
   it("renders a guest meeting card without a redundant label", () => {
     const message = createMockMessage({
       content: 'guest-meeting-card:{"title":"Some meetup","timing":"Starts when the host opens the meeting.","entry":"Anyone with this link can join.","url":"https://example.com/meet"}'
