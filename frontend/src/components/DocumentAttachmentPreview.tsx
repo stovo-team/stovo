@@ -1,4 +1,4 @@
-import { ArrowRight, Download, ExternalLink, LoaderCircle, X } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, LoaderCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -22,6 +22,7 @@ import {
 } from "./pdfViewerZoom";
 import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
 import { useMarkdownCanvasConversion } from "./useMarkdownCanvasConversion";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 function normalizeDocumentMarkdown(source: string): string {
   return source
@@ -516,7 +517,7 @@ export function DocumentViewerModal({
   const activeSheet = table?.sheets[table.activeSheet];
 
   return createPortal(
-    <div className="document-viewer-backdrop" role="presentation" onClick={onClose}>
+    <PopupBackdrop className="document-viewer-backdrop" onClick={onClose}>
       <div
         className={`document-viewer-modal document-viewer-modal--${kind}`}
         role="dialog"
@@ -549,9 +550,7 @@ export function DocumentViewerModal({
             <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
               Save
             </button>
-            <button type="button" className="document-viewer-close" aria-label="Close" onClick={onClose}>
-              <X size={18} aria-hidden="true" />
-            </button>
+            <PopupCloseButton className="document-viewer-close" ariaLabel="Close document preview" onClick={onClose} />
           </div>
         </header>
 
@@ -632,7 +631,7 @@ export function DocumentViewerModal({
           )}
         </div>
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body,
   );
 }

@@ -13,7 +13,6 @@ import {
   ListOrdered,
   ListTodo,
   Maximize2,
-  Minimize2,
   Paperclip,
   Quote,
   Send,
@@ -21,13 +20,14 @@ import {
   Strikethrough,
   Trash2,
   Underline,
-  X
+  X,
 } from "lucide-react";
 
 import { MessageMarkdown } from "../messageMarkdown";
 import { formatComposerSelection, type FormattingKind } from "../composerFormatting";
 import { ImageEditorModal } from "./ImageEditorModal";
 import { PendingAttachmentCard } from "../features/chats/composer/PendingAttachmentCard";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 
 export function MessageEnlargeModal({
@@ -235,7 +235,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
   };
 
   return createPortal(
-    <div className="message-enlarge-backdrop" role="presentation" onClick={onClose}>
+    <PopupBackdrop className="message-enlarge-backdrop" onClick={onClose}>
       <div
         className="message-enlarge-modal message-enlarge-modal--fullscreen"
         role="dialog"
@@ -450,15 +450,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
           )}
 
           <div className="message-enlarge-actions">
-            <button
-              type="button"
-              className="message-enlarge-circle-btn"
-              aria-label="Shrink composer to standard view"
-              title="Shrink composer"
-              onClick={onClose}
-            >
-              <Minimize2 size={16} aria-hidden="true" />
-            </button>
+            <PopupCloseButton className="message-enlarge-circle-btn" ariaLabel="Close composer" onClick={onClose} />
           </div>
         </header>
 
@@ -639,7 +631,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
           />
         )}
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body
   );
 }
