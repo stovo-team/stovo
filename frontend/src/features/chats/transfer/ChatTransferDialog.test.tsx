@@ -11,7 +11,8 @@ const {
   encryptMessageContent,
   ensureLocalEncryptionIdentity,
   serializeChatArchive,
-  downloadFileBlob
+  downloadFileBlob,
+  currentLanguage
 } = vi.hoisted(() => ({
   parseChatFile: vi.fn(),
   getChatExportSource: vi.fn(),
@@ -21,7 +22,8 @@ const {
   encryptMessageContent: vi.fn(),
   ensureLocalEncryptionIdentity: vi.fn(),
   serializeChatArchive: vi.fn(),
-  downloadFileBlob: vi.fn()
+  downloadFileBlob: vi.fn(),
+  currentLanguage: { value: "en" as "en" | "ru" }
 }));
 
 vi.mock("./adapters", () => ({
@@ -36,6 +38,7 @@ vi.mock("../../../api/chatTransfer", () => ({ getChatExportSource, commitChatImp
 vi.mock("../../../api/family", () => ({ getFamily }));
 vi.mock("../../../api/messageCrypto", () => ({ decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity }));
 vi.mock("../../../api/files", () => ({ downloadFileBlob }));
+vi.mock("../../../i18n/LanguageContext", () => ({ useResolvedLanguage: () => currentLanguage.value }));
 
 import type { Chat } from "../../../api/chats";
 import type { ChatArchive } from "./archive";
@@ -63,6 +66,7 @@ const chat = {
 } as unknown as Chat;
 
 beforeEach(() => {
+  currentLanguage.value = "en";
   parseChatFile.mockReset().mockResolvedValue(archive);
   getChatExportSource.mockReset();
   getFamily.mockReset().mockResolvedValue({ defaultMessageEncryptionProtocol: "end_to_end" });
@@ -103,6 +107,28 @@ async function chooseFile(container: HTMLElement) {
 }
 
 describe("ChatTransferDialog", () => {
+  it("uses the localized file picker action and shows the selected file name", async () => {
+    currentLanguage.value = "ru";
+    const { container } = mount("import");
+
+    expect(container.querySelector(".chat-transfer-file-trigger")?.textContent).toBe("Выбрать файл");
+    expect(container.querySelector(".chat-transfer-file-name")?.textContent).toBe("Файл не выбран");
+
+    await chooseFile(container);
+
+    expect(container.querySelector(".chat-transfer-file-name")?.textContent).toBe("telegram.json");
+  });
+
+  it("renders the export profile inside the custom dropdown control", async () => {
+    const { container } = mount("export");
+    getChatExportSource.mockResolvedValue({ chatId: "selected-chat", chat, messages: [] });
+    const review = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Review export"));
+    await act(async () => review?.click());
+
+    expect(container.querySelector(".chat-transfer-profile-control select")).not.toBeNull();
+    expect(container.querySelector(".chat-transfer-profile-chevron")).not.toBeNull();
+  });
+
   it("mounts above chat stacking contexts and closes without an extra cancel action", async () => {
     const { container, onClose } = mount("import");
     const backdrop = container.querySelector(".modal-backdrop.chat-transfer-backdrop");

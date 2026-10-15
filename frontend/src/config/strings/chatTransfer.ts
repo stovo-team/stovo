@@ -7,6 +7,9 @@ export type ChatTransferStrings = {
   importHelp: string;
   exportHelp: string;
   chooseFile: string;
+  chooseFileButton: string;
+  noFileChosen: string;
+  filesSelected: (count: number) => string;
   reviewExport: string;
   downloadExport: string;
   importAsNewChat: string;
@@ -41,6 +44,9 @@ const english: ChatTransferStrings = {
   importHelp: "Choose a provider export for one chat. The file is parsed on this device.",
   exportHelp: "Choose a format for this chat. Provider archives may omit unsupported fields.",
   chooseFile: "Choose chat export file",
+  chooseFileButton: "Choose file",
+  noFileChosen: "No file chosen",
+  filesSelected: (count) => `${count} files selected`,
   reviewExport: "Review export",
   downloadExport: "Download export",
   importAsNewChat: "Import as new chat",
@@ -75,6 +81,9 @@ const russian: ChatTransferStrings = {
   importHelp: "Выберите файл экспорта одного чата. Файл обрабатывается на этом устройстве.",
   exportHelp: "Выберите формат для этого чата. Форматы провайдеров могут не содержать часть данных.",
   chooseFile: "Выбрать файл экспорта чата",
+  chooseFileButton: "Выбрать файл",
+  noFileChosen: "Файл не выбран",
+  filesSelected: (count) => `Выбрано файлов: ${count}`,
   reviewExport: "Просмотреть экспорт",
   downloadExport: "Скачать экспорт",
   importAsNewChat: "Импортировать как новый чат",
