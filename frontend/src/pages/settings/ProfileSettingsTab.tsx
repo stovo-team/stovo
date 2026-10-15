@@ -118,7 +118,7 @@ export function ProfileSettingsTab(props: Props) {
         <p className="muted-copy">{strings.security.androidQrDescription}</p>
         <button type="button" className="save-button primary-button" onClick={() => void generateAndroidQR()} disabled={!accessToken || androidQRBusy || isSaving}>{androidQRBusy ? strings.security.androidQrCreating : androidQR ? strings.security.androidQrRegenerate : strings.security.androidQrCreate}</button>
         {androidQR && <div aria-live="polite">
-          <img src={androidQR.image} alt={strings.security.androidQrAlt} width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
+          <img className="android-qr-code" src={androidQR.image} alt={strings.security.androidQrAlt} width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
           <p className="muted-copy">{strings.security.expires} <time dateTime={androidQR.expiresAt}>{new Date(androidQR.expiresAt).toLocaleString(language)}</time></p>
         </div>}
         {androidQRError && <p role="alert" className="muted-copy">{androidQRError}</p>}

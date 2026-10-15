@@ -3542,6 +3542,10 @@ h2 {
   width: 100%;
 }
 
+.android-qr-code {
+  border-radius: 20px;
+}
+
 .qr-login-panel p {
   margin: 0;
 }
