@@ -38,6 +38,15 @@ describe("shared popup controls", () => {
     expect(container.textContent).toContain("Address is required");
   });
 
+  it("keeps an accessible label available without adding a visible label row", () => {
+    act(() => root.render(<PopupField label="Search chats" labelHidden aria-label="Search chats" />));
+
+    const input = container.querySelector<HTMLInputElement>("input");
+    const label = container.querySelector<HTMLLabelElement>("label");
+    expect(label?.htmlFor).toBe(input?.id);
+    expect(label?.classList.contains("visually-hidden")).toBe(true);
+  });
+
   it("renders the semantic button variants and preserves disabled state", () => {
     act(() => root.render(
       <>

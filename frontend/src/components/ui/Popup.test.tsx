@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PopupDialog } from "./Popup";
+import PopupCloseButton from "./PopupCloseButton";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -41,6 +42,12 @@ describe("PopupDialog", () => {
   it("supports alertdialog semantics for urgent confirmations", () => {
     act(() => root.render(<PopupDialog ariaLabel="Delete message?" dialogRole="alertdialog">Confirm</PopupDialog>));
     expect(container.querySelector('[role="alertdialog"]')?.getAttribute("aria-modal")).toBe("true");
+  });
+
+  it("forwards a ref to the shared close control for dialog focus management", () => {
+    const ref = { current: null as HTMLButtonElement | null };
+    act(() => root.render(<PopupCloseButton ref={ref} ariaLabel="Close statistics" onClick={() => undefined} />));
+    expect(ref.current).toBe(container.querySelector("button.popup-close"));
   });
 
   it("calls onClose when the backdrop is clicked if enabled", () => {

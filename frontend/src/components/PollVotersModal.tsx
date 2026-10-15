@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
-import { X, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import type { Poll, PollVoterSummary } from "../api/polls";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
+import { PopupDialog } from "./ui/Popup";
 
 export interface PollVotersModalProps {
   accessToken?: string | null;
@@ -16,22 +17,12 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
   if (!open) return null;
 
   const content = (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
-      <div
-        className="modal-dialog poll-voters-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Poll Voters"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <PopupDialog className="poll-voters-modal" ariaLabel="Poll Voters" onClose={onClose} closeOnBackdrop size="md">
         <div className="modal-header">
           <div className="modal-title">
             <Users size={20} style={{ marginRight: 8 }} />
             <span>Poll Results & Voters</span>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close">
-            <X size={20} />
-          </button>
         </div>
 
         <div className="modal-body poll-voters-body">
@@ -78,8 +69,7 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </PopupDialog>
   );
 
   return typeof document !== "undefined" ? createPortal(content, document.body) : content;

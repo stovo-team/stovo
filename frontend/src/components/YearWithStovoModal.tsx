@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, MessageSquare, Sparkles, Trophy, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, MessageSquare, Sparkles, Trophy } from "lucide-react";
 
 import { YearWithStovo } from "../api/stats";
+import { PopupDialog } from "./ui/Popup";
+import { PopupButton } from "./ui/PopupButton";
 
 interface Props {
   data: YearWithStovo | null;
@@ -20,16 +22,14 @@ export default function YearWithStovoModal({ data, isLoading = false, error, onC
   ] : [];
   const lastSlide = slides.length - 1;
 
-  return <div className="wrapped-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="wrapped-modal" role="dialog" aria-modal="true" aria-labelledby="wrapped-title">
-      <header className="wrapped-header"><span><Sparkles size={17} /> Year with Stovo {data?.year ?? new Date().getFullYear()}</span><button type="button" onClick={onClose} aria-label="Close Year with Stovo"><X size={20} /></button></header>
+  return <PopupDialog className="wrapped-modal" ariaLabelledBy="wrapped-title" onClose={onClose} closeOnBackdrop backdropClassName="wrapped-overlay" size="md">
+      <header className="wrapped-header"><span><Sparkles size={17} /> Year with Stovo {data?.year ?? new Date().getFullYear()}</span></header>
       <div className="wrapped-body" aria-busy={isLoading}>
         {isLoading && <p className="wrapped-state">Preparing your year in review…</p>}
         {!isLoading && error && <p className="wrapped-state is-error">{error}</p>}
-        {!isLoading && !error && data && <><div className="wrapped-slide" id="wrapped-title">{slides[slide]}</div><footer className="wrapped-footer"><div className="wrapped-dots">{slides.map((_, index) => <button key={index} type="button" className={index === slide ? "is-active" : undefined} onClick={() => setSlide(index)} aria-label={`Show highlight ${index + 1}`} />)}</div><div><button type="button" className="wrapped-nav" onClick={() => setSlide((current) => Math.max(0, current - 1))} disabled={slide === 0} aria-label="Previous highlight"><ChevronLeft size={18} /></button><button type="button" className="wrapped-next" onClick={() => setSlide((current) => current === lastSlide ? 0 : current + 1)}>{slide === lastSlide ? "Replay" : "Next"}<ChevronRight size={16} /></button></div></footer></>}
+        {!isLoading && !error && data && <><div className="wrapped-slide" id="wrapped-title">{slides[slide]}</div><footer className="wrapped-footer"><div className="wrapped-dots">{slides.map((_, index) => <button key={index} type="button" className={index === slide ? "is-active" : undefined} onClick={() => setSlide(index)} aria-label={`Show highlight ${index + 1}`} />)}</div><div><PopupButton variant="secondary" className="wrapped-nav" onClick={() => setSlide((current) => Math.max(0, current - 1))} disabled={slide === 0} aria-label="Previous highlight" startIcon={<ChevronLeft size={18} />} /><PopupButton variant="primary" className="wrapped-next" onClick={() => setSlide((current) => current === lastSlide ? 0 : current + 1)} endIcon={<ChevronRight size={16} />}>{slide === lastSlide ? "Replay" : "Next"}</PopupButton></div></footer></>}
       </div>
-    </section>
-  </div>;
+  </PopupDialog>;
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

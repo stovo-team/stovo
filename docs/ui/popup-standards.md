@@ -62,6 +62,8 @@ Compose the dialog shell and explicitly preserve that flow's existing dismissal 
 </PopupDialog>
 ```
 
+For compact search rows that already have an accessible name, keep the label associated but visually hidden with `labelHidden`.
+
 Use the same action height for confirmation and deletion:
 
 ```tsx

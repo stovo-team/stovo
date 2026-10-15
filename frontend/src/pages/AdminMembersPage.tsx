@@ -4,6 +4,9 @@ import { User, UserRole } from "../api/auth";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { banMemberIP, changeMemberRole, getMemberAdminDetails, getServerRoles, MemberAdminDetails, removeMember, ServerRole, unbanMemberIP } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
+import { PopupSelect } from "../components/ui/PopupSelect";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
@@ -54,8 +57,8 @@ export default function AdminMembersPage() {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [pendingIPAction, setPendingIPAction] = useState<"ban" | "unban" | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const detailsDialogRef = useRef<HTMLElement | null>(null);
-  const confirmDialogRef = useRef<HTMLElement | null>(null);
+  const detailsDialogRef = useRef<HTMLDivElement | null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement | null>(null);
   const detailsReturnFocusRef = useRef<HTMLElement | null>(null);
   const confirmReturnFocusRef = useRef<HTMLElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -282,6 +285,11 @@ export default function AdminMembersPage() {
               {visibleMembers.map((member) => {
                 const manageable = currentUser ? canManage(currentUser, member) : false;
                 const roleOptions = roles;
+                const selectedRoleValue = member.roleId ?? member.role;
+                const popupRoleOptions = [
+                  ...(roleOptions.some((role) => role.id === selectedRoleValue) ? [] : [{ value: selectedRoleValue, label: member.role }]),
+                  ...roleOptions.map((role) => ({ value: role.id, label: role.name }))
+                ];
 
                 return (
                   <article key={member.id} className="admin-member-row admin-member-row--manage">
@@ -293,19 +301,13 @@ export default function AdminMembersPage() {
                       </small>
                     </span>
                     <div className="admin-member-actions">
-                      <select
+                      <PopupSelect
                         value={member.roleId ?? member.role}
                         disabled={!manageable || isSaving}
-                        onChange={(event) => void handleRoleChange(member, event.target.value as UserRole)}
-                        aria-label={`Role for ${member.displayName}`}
-                      >
-                        {member.role === "owner" && <option value="owner">Owner</option>}
-                        {roleOptions.map((role) => (
-                          <option key={role.id} value={role.id}>
-                            {role.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(value) => void handleRoleChange(member, value as UserRole)}
+                        ariaLabel={`Role for ${member.displayName}`}
+                        options={popupRoleOptions}
+                      />
                       <button
                         type="button"
                         className="danger-button admin-member-remove"
@@ -349,8 +351,8 @@ export default function AdminMembersPage() {
           </section>
         )}
         {selectedMember && (
-          <div className="admin-member-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelectedMember(null); setPendingIPAction(null); } }}>
-            <section ref={detailsDialogRef} className="admin-member-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-member-dialog-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event)}>
+          <PopupDialog className="admin-member-dialog-popup" ariaLabelledBy="admin-member-dialog-title" onClose={() => { setSelectedMember(null); setPendingIPAction(null); }} closeOnBackdrop size="md">
+            <div ref={detailsDialogRef} className="admin-member-dialog" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event)}>
               <h2 id="admin-member-dialog-title">{selectedMember.displayName}: activity and safety</h2>
               {isLoadingDetails && <p className="muted-text">Loading…</p>}
               {memberDetailsError && <p className="error-text" role="alert">{memberDetailsError}</p>}
@@ -363,24 +365,24 @@ export default function AdminMembersPage() {
                   <div><dt>IP block</dt><dd>{memberDetails.candidateIpBanned ? "Blocked" : "Not blocked"}</dd></div>
                 </dl>
               )}
-              {memberDetails && !isLoadingDetails && memberDetails.bannedIp && <button type="button" className="secondary-button" disabled={isSaving} onClick={() => requestIPAction("unban")}>Lift IP block</button>}
-              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIp && !memberDetails.candidateIpBanned && <button type="button" className="danger-button" disabled={isSaving} onClick={() => requestIPAction("ban")}>Block this IP</button>}
+              {memberDetails && !isLoadingDetails && memberDetails.bannedIp && <PopupButton variant="secondary" disabled={isSaving} onClick={() => requestIPAction("unban")}>Lift IP block</PopupButton>}
+              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIp && !memberDetails.candidateIpBanned && <PopupButton variant="danger" disabled={isSaving} onClick={() => requestIPAction("ban")}>Block this IP</PopupButton>}
               {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIpBanned && <p className="muted-text">This IP is already blocked for this family.</p>}
               {memberDetails && !isLoadingDetails && !memberDetails.candidateIp && !memberDetails.bannedIp && <p className="muted-text">No valid sign-in IP is available for this member.</p>}
-              <button type="button" className="secondary-button" onClick={() => { setSelectedMember(null); setPendingIPAction(null); }}>Close</button>
-            </section>
-          </div>
+              <PopupButton variant="secondary" onClick={() => { setSelectedMember(null); setPendingIPAction(null); }}>Close</PopupButton>
+            </div>
+          </PopupDialog>
         )}
         {pendingIPAction && selectedMember && memberDetails && (pendingIPAction === "ban" ? memberDetails.candidateIp : memberDetails.bannedIp) && (
-          <div className="admin-member-dialog-backdrop">
-            <section ref={confirmDialogRef} className="admin-member-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-ip-confirm-title" aria-describedby="admin-ip-confirm-description" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event, true)}>
+          <PopupDialog className="admin-member-dialog-popup" dialogRole="alertdialog" ariaLabelledBy="admin-ip-confirm-title" ariaDescribedBy="admin-ip-confirm-description" onClose={() => setPendingIPAction(null)} size="md">
+            <div ref={confirmDialogRef} className="admin-member-dialog" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event, true)}>
               <h2 id="admin-ip-confirm-title">{pendingIPAction === "ban" ? "Block this IP address?" : "Lift this IP block?"}</h2>
               <p id="admin-ip-confirm-description">{pendingIPAction === "ban" ? "Sign-ins from this exact IP address will be blocked for all accounts in this family until you lift the block." : "Accounts in this family will be able to sign in from this IP address again."}</p>
               <p className="admin-member-confirm-ip"><strong>{pendingIPAction === "ban" ? memberDetails.candidateIp : memberDetails.bannedIp}</strong></p>
-              <button type="button" className={`admin-member-confirm-primary ${pendingIPAction === "ban" ? "danger-button" : "primary-button"}`} disabled={isSaving} onClick={() => void confirmMemberIPAction()}>{isSaving ? "Saving…" : pendingIPAction === "ban" ? "Confirm block" : "Confirm lift"}</button>
-              <button type="button" className="secondary-button" disabled={isSaving} onClick={() => setPendingIPAction(null)}>Cancel</button>
-            </section>
-          </div>
+              <PopupButton type="button" className="admin-member-confirm-primary" variant={pendingIPAction === "ban" ? "danger" : "primary"} disabled={isSaving} onClick={() => void confirmMemberIPAction()}>{isSaving ? "Saving…" : pendingIPAction === "ban" ? "Confirm block" : "Confirm lift"}</PopupButton>
+              <PopupButton type="button" variant="secondary" disabled={isSaving} onClick={() => setPendingIPAction(null)}>Cancel</PopupButton>
+            </div>
+          </PopupDialog>
         )}
       </section>
     </main>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { MoreVertical, Settings2, UserPlus, X, RefreshCw, ExternalLink, KeyRound, Trash2 } from "lucide-react";
+import { MoreVertical, Settings2, UserPlus, RefreshCw, ExternalLink, KeyRound, Trash2 } from "lucide-react";
 import {
   createInviteLink,
   createServer,
@@ -15,6 +15,9 @@ import {
   ServerRecord,
 } from "../api/masterAdmin";
 import { useStrings } from "../i18n/LanguageContext";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
+import { PopupField } from "../components/ui/PopupField";
 import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
@@ -65,15 +68,6 @@ export default function MultiAdminPage() {
       loadServers();
     }
   }, [token]);
-
-  useEffect(() => {
-    if (!editingServer) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !savingSettings) setEditingServer(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [editingServer, savingSettings]);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -421,12 +415,10 @@ export default function MultiAdminPage() {
 
       {/* Server Settings Modal */}
       {editingServer && (
-        <div style={styles.modalOverlay} className="modalOverlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
-          <div style={styles.modalCard} className="modalCard" role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
-            <button type="button" style={styles.modalCloseButton} className="modalCloseButton" aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><X size={23} strokeWidth={1.8} aria-hidden="true" /></button>
+        <PopupDialog className="multi-admin-dialog" ariaLabelledBy="space-settings-title" onClose={savingSettings ? undefined : () => setEditingServer(null)} closeOnBackdrop={!savingSettings} closeOnEscape={false} size="md">
             <div style={styles.badgePill} className="badgePill">{copy.spaceSettings}</div>
-            <h3 id="space-settings-title" style={styles.modalTitle} className="modalTitle">{editingServer.name}</h3>
-            <p style={styles.modalSubtitle} className="modalSubtitle">{copy.manageSpace}</p>
+            <h2 id="space-settings-title">{editingServer.name}</h2>
+            <p>{copy.manageSpace}</p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
               <div className="supervisor-settings-tabs" role="tablist" aria-label="Space settings">
@@ -434,7 +426,7 @@ export default function MultiAdminPage() {
               </div>
 
               <div className="supervisor-settings-tab-panel" role="tabpanel">
-                {settingsTab === "general" && <label style={styles.label}>{copy.spaceName}<input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.inputPill} required /></label>}
+                {settingsTab === "general" && <PopupField label={copy.spaceName} type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />}
                 {settingsTab === "ai" && <section aria-label={strings.admin.serverSettings.aiFunctions}>
                   <p className="supervisor-settings-help">{copy.aiHelp}</p>
                   {([
@@ -460,33 +452,22 @@ export default function MultiAdminPage() {
               </div>
 
               <div style={styles.modalActions} className="modalActions">
-                <button
-                  type="button"
-                  onClick={() => setEditingServer(null)}
-                  style={styles.secondaryPillButton}
-                  disabled={savingSettings}
-                >
+                <PopupButton type="button" variant="secondary" onClick={() => setEditingServer(null)} disabled={savingSettings}>
                   {copy.cancel}
-                </button>
-                <button
-                  type="submit"
-                  style={styles.primaryPillButton}
-                  disabled={savingSettings}
-                >
+                </PopupButton>
+                <PopupButton type="submit" variant="primary" disabled={savingSettings}>
                   {savingSettings ? copy.saving : copy.save}
-                </button>
+                </PopupButton>
               </div>
             </form>
-          </div>
-        </div>
+        </PopupDialog>
       )}
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div style={styles.modalOverlay} className="modalOverlay">
-          <div style={styles.modalCard} className="modalCard">
-            <h3 style={styles.modalTitle} className="modalTitle">{copy.createSpaceTitle}</h3>
-            <p style={styles.modalSubtitle}>
+        <PopupDialog className="multi-admin-dialog" ariaLabelledBy="create-space-title" onClose={() => { setCreateResult(null); setIsCreateOpen(false); }} size="md">
+            <h2 id="create-space-title">{copy.createSpaceTitle}</h2>
+            <p>
               Spins up a dedicated space environment with isolated backend, database, and storage.
             </p>
 
@@ -507,81 +488,73 @@ export default function MultiAdminPage() {
                     href={createResult.clusterUrl}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ ...styles.primaryPillButton, textDecoration: "none", textAlign: "center" }}
+                    className="popup-button popup-button--primary"
                   >
                     Open Space Login
                   </a>
-                  <button
+                  <PopupButton
+                    type="button"
+                    variant="secondary"
                     onClick={() => {
                       navigator.clipboard.writeText(createResult.inviteUrl);
                       showToast("Invite link copied to clipboard!");
                     }}
-                    style={styles.secondaryPillButton}
                   >
                     Copy Invite Link
-                  </button>
-                  <button
+                  </PopupButton>
+                  <PopupButton
+                    type="button"
+                    variant="secondary"
                     onClick={() => {
                       setCreateResult(null);
                       setIsCreateOpen(false);
                     }}
-                    style={{ ...styles.secondaryPillButton, marginTop: 8 }}
                   >
                     Close
-                  </button>
+                  </PopupButton>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleCreate} style={styles.form}>
-                <label style={styles.label}>
-                  {copy.spaceName}
-                  <input
+                <PopupField
+                    label={copy.spaceName}
                     type="text"
                     placeholder="e.g. Awesome Corp"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    style={styles.inputPill}
                     autoFocus
                     required
                   />
-                </label>
-                <label style={styles.label}>
-                  {copy.adminNickname}
-                  <input
+                <PopupField
+                    label={copy.adminNickname}
                     type="text"
                     value={adminUser}
                     onChange={(e) => setAdminUser(e.target.value)}
-                    style={styles.inputPill}
                     required
                   />
-                </label>
-                <label style={styles.label}>
-                  {copy.adminPassword}
-                  <input
+                <PopupField
+                    label={copy.adminPassword}
                     type="password"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    style={styles.inputPill}
                     required
                   />
-                </label>
 
                 <div style={styles.modalActions}>
-                  <button
+                  <PopupButton
                     type="button"
+                    variant="secondary"
                     onClick={() => setIsCreateOpen(false)}
-                    style={styles.secondaryPillButton}
                   >
                     Cancel
-                  </button>
-                  <button type="submit" style={styles.primaryPillButton}>
+                  </PopupButton>
+                  <PopupButton type="submit" variant="primary">
                     Provision Server
-                  </button>
+                  </PopupButton>
                 </div>
               </form>
             )}
-          </div>
-        </div>
+        </PopupDialog>
       )}
     </div>
   );
@@ -903,57 +876,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 60,
     color: "#9ca3af",
     fontSize: 15,
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
-    backdropFilter: "blur(14px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    zIndex: 1000,
-  },
-  modalCard: {
-    position: "relative",
-    width: "100%",
-    maxWidth: 440,
-    backgroundColor: "#1c1c1e",
-    border: "1px solid rgba(255, 255, 255, 0.12)",
-    borderRadius: 32,
-    padding: 36,
-    boxShadow: "0 30px 70px rgba(0, 0, 0, 0.9)",
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 800,
-    margin: "0 0 8px 0",
-    color: "#ffffff",
-  },
-  modalCloseButton: {
-    position: "absolute",
-    top: 18,
-    right: 18,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,.12)",
-    background: "#2c2c2e",
-    color: "#d1d5db",
-    cursor: "pointer",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#9ca3af",
-    marginBottom: 24,
-    lineHeight: 1.5,
   },
   modalActions: {
     display: "flex",

@@ -3,12 +3,13 @@ import "./Popup.css";
 
 export interface PopupFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  labelHidden?: boolean;
   helperText?: string;
   error?: string;
 }
 
 export const PopupField = forwardRef<HTMLInputElement, PopupFieldProps>(function PopupField(
-  { label, helperText, error, id, className = "", "aria-describedby": describedBy, ...inputProps },
+  { label, labelHidden = false, helperText, error, id, className = "", "aria-describedby": describedBy, ...inputProps },
   ref,
 ) {
   const generatedId = useId();
@@ -19,7 +20,7 @@ export const PopupField = forwardRef<HTMLInputElement, PopupFieldProps>(function
 
   return (
     <div className="popup-field">
-      <label className="popup-field__label" htmlFor={inputId}>{label}</label>
+      <label className={`popup-field__label${labelHidden ? " visually-hidden" : ""}`} htmlFor={inputId}>{label}</label>
       <input
         {...inputProps}
         ref={ref}

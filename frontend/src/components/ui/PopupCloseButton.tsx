@@ -1,13 +1,17 @@
 import { X } from "lucide-react";
-import type { ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 export interface PopupCloseButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label"> {
   ariaLabel: string;
 }
 
-export default function PopupCloseButton({ ariaLabel, className = "", type = "button", ...props }: PopupCloseButtonProps) {
+const PopupCloseButton = forwardRef<HTMLButtonElement, PopupCloseButtonProps>(function PopupCloseButton(
+  { ariaLabel, className = "", type = "button", ...props },
+  ref
+) {
   return (
     <button
+      ref={ref}
       {...props}
       type={type}
       aria-label={ariaLabel}
@@ -16,4 +20,6 @@ export default function PopupCloseButton({ ariaLabel, className = "", type = "bu
       <X aria-hidden="true" size={18} strokeWidth={1.8} />
     </button>
   );
-}
+});
+
+export default PopupCloseButton;

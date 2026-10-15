@@ -94,10 +94,10 @@ describe("supervisor space management", () => {
     expect(mocks.updateTenantAiSettings).toHaveBeenCalledWith("test-token", "alpha", expect.objectContaining({ translationEnabled: false }));
   });
 
-  it("closes the settings modal from the large close control", async () => {
+  it("closes the settings modal from the shared close control", async () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Настройки: Alpha"]')?.click(); });
-    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Close settings"]')?.click(); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Close dialog"]')?.click(); });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });

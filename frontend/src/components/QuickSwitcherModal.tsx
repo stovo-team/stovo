@@ -18,7 +18,6 @@ import {
   MessageCircle,
   Moon,
   PlusCircle,
-  Search,
   Settings,
   ShieldCheck,
   Sun,
@@ -41,6 +40,8 @@ import { getMembers } from "../api/family";
 import type { User } from "../api/auth";
 import { displayChatName } from "../features/chats/shared/chatPresentation";
 import { SettingsAvatar } from "../pages/settings/SettingsAvatar";
+import { PopupDialog } from "./ui/Popup";
+import { PopupField } from "./ui/PopupField";
 
 export interface QuickSwitcherItem {
   id: string;
@@ -364,38 +365,20 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
       return;
     }
 
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
   };
 
   if (!open) return null;
 
   return (
-    <div
-      className="messenger-modal-backdrop quick-switcher-backdrop"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <section
-        className="messenger-modal quick-switcher-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={strings.shortcuts.actions.quick_switcher}
-        onKeyDown={handleKeyDown}
-      >
+    <PopupDialog className="quick-switcher-modal" ariaLabel={strings.shortcuts.actions.quick_switcher} onClose={onClose} closeOnBackdrop closeOnEscape size="md" backdropClassName="quick-switcher-backdrop">
+      <div className="quick-switcher-content-shell" onKeyDown={handleKeyDown}>
         <div className="quick-switcher-search-row">
           <div className="quick-switcher-search-bar">
-            <Search className="quick-switcher-search-icon" aria-hidden="true" size={20} />
-            <input
+            <PopupField
+              label={strings.quickSwitcher.placeholder}
+              labelHidden
               ref={inputRef}
               type="text"
-              className="quick-switcher-input"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -421,15 +404,6 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
               </button>
             )}
           </div>
-          <button
-            type="button"
-            className="quick-switcher-close-button"
-            aria-label={strings.quickSwitcher.hintClose}
-            title={strings.quickSwitcher.hintClose}
-            onClick={onClose}
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <div className="quick-switcher-content">
@@ -509,7 +483,7 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
             <span>{strings.quickSwitcher.hintFilterPrefixes}</span>
           </div>
         </footer>
-      </section>
-    </div>
+      </div>
+    </PopupDialog>
   );
 }
