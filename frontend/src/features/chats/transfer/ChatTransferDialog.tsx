@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ChevronDown } from "lucide-react";
 
 import type { Chat, Message } from "../../../api/chats";
 import type { ChatImportPreparedContent, ChatExportSource } from "../../../api/chatTransfer";
@@ -13,6 +14,7 @@ import { validateArchive, type ChatArchive, type ChatArchiveAttachment, type Cha
 import { importedSourceKind, importedSourceReactions } from "./attribution";
 import { CHAT_EXPORT_PROFILES, parseChatFile, serializeChatArchive } from "./adapters";
 import { ChatTransferAdapterError, type ExportProfile } from "./adapters/types";
+import { ChatTransferFilePicker } from "./ChatTransferFilePicker";
 
 type TransferMode = "import" | "export";
 
@@ -32,7 +34,6 @@ export function ChatTransferDialog({
   onImported?: (chat: Chat) => void;
 }) {
   const copy = getChatTransferStrings(useResolvedLanguage());
-  const fileInput = useRef<HTMLInputElement | null>(null);
   const importIdempotencyKey = useRef<string | null>(null);
   const [archive, setArchive] = useState<ChatArchive | null>(null);
   const [exportSource, setExportSource] = useState<ChatExportSource | null>(null);
@@ -74,7 +75,6 @@ export function ChatTransferDialog({
       setError(caught instanceof ChatTransferAdapterError && caught.code === "multiple_conversations" ? copy.multipleChatsUnsupported : copy.error);
     } finally {
       setBusy(false);
-      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
@@ -204,18 +204,7 @@ export function ChatTransferDialog({
         <div className="chat-transfer-body">
           <p>{mode === "import" ? copy.importHelp : copy.exportHelp}</p>
           {mode === "import" && !importComplete && (
-            <>
-              <label className="chat-transfer-file-label">
-                <span>{copy.chooseFile}</span>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  multiple
-                  accept=".json,.zip,.txt,.csv,application/json,application/zip,text/plain,text/csv"
-                  onChange={(event) => void handleFiles(event.currentTarget.files)}
-                />
-              </label>
-            </>
+            <ChatTransferFilePicker copy={copy} busy={busy} onFilesSelected={handleFiles} />
           )}
           {mode === "export" && !exportSource && (
             <button className="chat-transfer-primary-action" type="button" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</button>
@@ -223,13 +212,16 @@ export function ChatTransferDialog({
           {mode === "export" && exportSource && (
             <label className="chat-transfer-profile">
               <span>{copy.selectProvider}</span>
-              <select value={selectedProfileId} onChange={(event) => setSelectedProfileId(event.currentTarget.value)} disabled={busy}>
-                {CHAT_EXPORT_PROFILES.map((profile) => (
-                  <option key={`${profile.providerId}:${profile.profileId}`} value={profile.profileId}>
-                    {profile.providerId} — {profile.formatVersion}
-                  </option>
-                ))}
-              </select>
+              <span className="chat-transfer-profile-control">
+                <select value={selectedProfileId} onChange={(event) => setSelectedProfileId(event.currentTarget.value)} disabled={busy}>
+                  {CHAT_EXPORT_PROFILES.map((profile) => (
+                    <option key={`${profile.providerId}:${profile.profileId}`} value={profile.profileId}>
+                      {profile.providerId} — {profile.formatVersion}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="chat-transfer-profile-chevron" aria-hidden="true" size={18} />
+              </span>
             </label>
           )}
           {busy && <p role="status">{mode === "import" ? copy.importing : copy.exporting}</p>}
