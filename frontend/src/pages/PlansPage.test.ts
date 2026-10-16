@@ -116,8 +116,8 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain('className={`plans-calendar plans-calendar--${days.length}`}');
     expect(source).toContain("renderTimedCalendar(view === \"threeDays\" ? threeDayRange : weekDays)");
     expect(source).toContain("threeDayRange");
-    expect(source).toContain("formatDateRange(threeDayRange[0], threeDayRange[2])");
-    expect(source).toContain("formatDateRange(weekDays[0], weekDays[6])");
+    expect(source).toContain("formatDateRange(threeDayRange[0], threeDayRange[2], dateLocale)");
+    expect(source).toContain("formatDateRange(weekDays[0], weekDays[6], dateLocale)");
     expect(source).toContain("getCalendarEventStyle(plan)");
     expect(source).toContain("CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS");
     expect(source).toContain('className="plan-rsvp-response"');
