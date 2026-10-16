@@ -38,17 +38,31 @@ test("camera stays inside its landscape tile and clicking self does nothing", as
 });
 test("settings tabs receive clicks above live video and stay left aligned", async ({ page }) => {
   await page.goto(`${fixture}?camera`);
+  await page.locator(".call-popup-video-area").hover();
   await page.getByRole("button", { name: "Audio settings", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Call settings" });
   const height = (await dialog.boundingBox())!.height;
   for (const name of ["Audio", "Camera", "General"]) {
     const tab = dialog.getByRole("tab", { name, exact: true });
     await tab.click();
+    await expect(dialog).toBeVisible();
     await expect(tab).toHaveAttribute("aria-selected", "true");
     expect((await dialog.boundingBox())!.height).toBe(height);
     expect(await tab.evaluate((element) => getComputedStyle(element).justifyContent)).toBe("flex-start");
   }
-  await expect(dialog.getByRole("checkbox", { name: "Hide call controls automatically" })).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Hide call controls automatically" })).toBeChecked();
+});
+test("selecting a microphone in call settings keeps the settings dialog open", async ({ page }) => {
+  await page.goto(`${fixture}?camera&devices`);
+  await page.locator(".call-popup-video-area").hover();
+  await page.getByRole("button", { name: "Audio settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Call settings" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: "Audio", exact: true }).click();
+  await dialog.getByRole("button", { name: "Select Microphone" }).click();
+  await page.getByRole("option", { name: "Desk microphone" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Select Microphone" })).toContainText("Desk microphone");
 });
 test("compact voice sharing places participants above screen, expansion fills the stage", async ({ page }) => {
   await page.goto(`${fixture}?kind=voice&sharing`);
