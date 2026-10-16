@@ -40,9 +40,12 @@ describe("StorageCollections localization", () => {
     await act(async () => {
       host.querySelector<HTMLButtonElement>(".storage-collection-new")?.click();
     });
+    await act(async () => {
+      document.body.querySelector<HTMLButtonElement>(".popup-select__trigger")?.click();
+    });
 
     expect(host.textContent).toContain("Новая папка или альбом");
     expect(host.textContent).toContain("Создать");
-    expect(host.querySelector("option[value='album']")?.textContent).toBe("Фотоальбом");
+    expect(document.body.querySelector("[role='option'][data-value='album']")?.textContent).toContain("Фотоальбом");
   });
 });

@@ -6,6 +6,8 @@ import { uploadFile } from "../../api/files";
 import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
 import { AppearanceMessageControls, AppearanceThemeControls } from "./AppearanceControls";
 import { BackButton } from "../../components/BackButton";
+import { PopupDialog } from "../../components/ui/Popup";
+import { PopupButton } from "../../components/ui/PopupButton";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part.at(0)?.toUpperCase()).join("");
@@ -135,23 +137,13 @@ export function AppearanceEditor({
       </div>
 
       {resetConfirmOpen && (
-        <div
-          className="dialog-backdrop"
-          role="presentation"
-          onClick={() => setResetConfirmOpen(false)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setResetConfirmOpen(false);
-            }
-          }}
+        <PopupDialog
+          ariaLabelledBy="appearance-reset-title"
+          onClose={() => setResetConfirmOpen(false)}
+          closeOnBackdrop
+          closeOnEscape
+          showCloseButton={false}
         >
-          <section
-            className="messenger-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="appearance-reset-title"
-            onClick={(event) => event.stopPropagation()}
-          >
             <div className="modal-header">
               <h2 id="appearance-reset-title">{strings.appearance.resetAllSettings}</h2>
             </div>
@@ -159,15 +151,14 @@ export function AppearanceEditor({
               {strings.appearance.resetNote}
             </p>
             <div className="segmented-control">
-              <button type="button" onClick={() => setResetConfirmOpen(false)}>
+              <PopupButton variant="secondary" onClick={() => setResetConfirmOpen(false)}>
                 {strings.appearance.keepMyTheme}
-              </button>
-              <button type="button" onClick={handleResetConfirm}>
+              </PopupButton>
+              <PopupButton variant="danger" onClick={handleResetConfirm}>
                 {strings.appearance.reset}
-              </button>
+              </PopupButton>
             </div>
-          </section>
-        </div>
+        </PopupDialog>
       )}
     </>
   );

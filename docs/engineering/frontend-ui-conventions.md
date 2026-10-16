@@ -18,6 +18,8 @@ Use the existing translation catalogs, components, and style tokens when changin
 
 Search for an existing component before creating another one. Shared UI should keep one implementation and expose variants or props when the behavior is genuinely shared. Use `rg` to search component names and styles; do not copy a component into a feature folder just to make a local adjustment.
 
+For popup surfaces, always reuse the primitives documented in [Popup UI standards](../ui/popup-standards.md). Their typography must use the shared font family and type-scale tokens below so dialogs, buttons, inputs, and dropdowns keep the approved font work when the global design system changes.
+
 ## Style tokens
 
 `frontend/src/design-system/tokens.css` is imported by `frontend/src/main.tsx` and owns the shared scales:

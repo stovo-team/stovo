@@ -1,4 +1,5 @@
 import { CallDevice } from "../../../realtime/CallController";
+import { PopupBackdrop } from "../../../components/ui/Popup";
 import { useStrings } from "../../../i18n/LanguageContext";
 
 export function CallSpeakerSheet({
@@ -19,12 +20,11 @@ export function CallSpeakerSheet({
   const hasEnumerable = outputDevices.length > 0;
 
   return (
-    <div
+    <PopupBackdrop
       className="call-speaker-sheet-backdrop"
-      role="presentation"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={onClose}
     >
-      <div className="call-speaker-sheet" role="dialog" aria-label={copy.audioOutput}>
+      <div className="call-speaker-sheet" role="dialog" aria-label={copy.audioOutput} onClick={(e) => e.stopPropagation()}>
         <div className="call-speaker-sheet-title">{copy.audioOutput}</div>
 
         {!hasEnumerable && (
@@ -78,6 +78,6 @@ export function CallSpeakerSheet({
           </button>
         ))}
       </div>
-    </div>
+    </PopupBackdrop>
   );
 }

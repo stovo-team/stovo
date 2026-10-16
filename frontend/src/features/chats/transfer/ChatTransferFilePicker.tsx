@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 
 import type { ChatTransferStrings } from "../../../config/strings/chatTransfer";
+import { PopupButton } from "../../../components/ui/PopupButton";
 
 export function ChatTransferFilePicker({
   copy,
@@ -35,15 +36,15 @@ export function ChatTransferFilePicker({
     <div className="chat-transfer-file-label">
       <span id="chat-transfer-file-label">{copy.chooseFile}</span>
       <div className="chat-transfer-file-picker">
-        <button
-          type="button"
+        <PopupButton
+          variant="primary"
           className="chat-transfer-file-trigger"
           onClick={() => fileInput.current?.click()}
           disabled={busy}
           aria-describedby="chat-transfer-file-name"
         >
           {copy.chooseFileButton}
-        </button>
+        </PopupButton>
         <span id="chat-transfer-file-name" className="chat-transfer-file-name" aria-live="polite">
           {selectedFileName ?? copy.noFileChosen}
         </span>

@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, CircleSlash, FileText, FolderMinus, FolderPlus, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
+import { Archive, ChevronDown, CircleSlash, FileText, FolderMinus, FolderPlus, MessageCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -12,6 +12,7 @@ import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolder
 import { displayChatName } from "../shared/chatPresentation";
 import type { ChatContextMenuState } from "./ChatContextMenu";
 import { ChatListContextMenu } from "./ChatListContextMenu";
+import { PopupDialog } from "../../../components/ui/Popup";
 import {
   DefaultChatSectionNames,
   loadAllDefaultFolders,
@@ -824,13 +825,11 @@ export function ChatList({
         />
       )}
       {isQuickAccessSettingsOpen && createPortal(
-        <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
-          <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="modal-card-header"><h2 id="quick-access-settings-title">{strings.chats.quickAccess.settings}</h2><button type="button" className="quick-access-close" aria-label={strings.chats.quickAccess.close} onClick={() => setIsQuickAccessSettingsOpen(false)}><X size={18} /></button></div>
-            <div className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span><strong>{strings.chats.quickAccess.archive}</strong><small>{strings.chats.quickAccess.archiveHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled }); }}><span /></button></div>
-            <div className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span><strong>{strings.chats.quickAccess.drafts}</strong><small>{strings.chats.quickAccess.draftsHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled }); }}><span /></button></div>
-          </section>
-        </div>
+        <PopupDialog className="quick-access-settings" ariaLabelledBy="quick-access-settings-title" onClose={() => setIsQuickAccessSettingsOpen(false)} closeLabel={strings.chats.quickAccess.close}>
+          <div className="modal-card-header"><h2 id="quick-access-settings-title">{strings.chats.quickAccess.settings}</h2></div>
+          <div className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span><strong>{strings.chats.quickAccess.archive}</strong><small>{strings.chats.quickAccess.archiveHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled }); }}><span /></button></div>
+          <div className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span><strong>{strings.chats.quickAccess.drafts}</strong><small>{strings.chats.quickAccess.draftsHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled }); }}><span /></button></div>
+        </PopupDialog>
       , document.body)}
       <ChatListContextMenu menu={contextMenu} folders={folders} onClose={() => setContextMenu(null)} onOpenChat={(c) => { onSelectChat(c); onOpenChat(c); }} onToggleMute={handleToggleMute} onToggleFavorite={handleToggleFavorite} onRemoveFromFolder={handleRemoveChatFromFolder} onMoveToFolder={handleDropChatToFolder} onMarkAsRead={handleMarkAsRead} accessToken={accessToken} currentUserId={currentUserId} onImported={() => { void refreshChats(); }} />
     </div>
