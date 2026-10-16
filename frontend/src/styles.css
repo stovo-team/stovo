@@ -15471,9 +15471,9 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
 }
 
 .meeting-intel-toggle-btn {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
   padding: 0;
   border-radius: var(--radius-circle);
   font-size: var(--font-size-caption);
@@ -15485,7 +15485,7 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 28px;
+  flex: 0 0 24px;
   transition: all 0.15s ease;
 }
 
@@ -31048,7 +31048,7 @@ button.checklist-add-item-btn:hover,
 }
 .meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
-  box-sizing: border-box; width: 28px; min-width: 28px; height: 28px; min-height: 28px; flex: 0 0 28px;
+  box-sizing: border-box; width: 24px; min-width: 24px; height: 24px; min-height: 24px; flex: 0 0 24px;
   padding: 0; border-radius: var(--radius-circle); font: inherit;
 }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
@@ -32151,6 +32151,86 @@ button.minimized-call-button--end:active:not(:disabled) {
   background: transparent !important;
   border: 1px solid var(--color-palette-f6a93a8e2ede) !important;
   color: var(--text-primary, var(--color-palette-f2074b6cef37)) !important;
+}
+
+/* Keep Storage and Plans source lists collapsible on desktop. */
+.storage-source-collapse,
+.plans-sidebar-collapse {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-circle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 36px;
+  height: 36px;
+  justify-items: center;
+  padding: 0;
+  width: 36px;
+}
+.storage-source-collapse { align-self: flex-end; margin: 0 2px 12px; }
+.plans-sidebar { position: relative; }
+.plans-sidebar-collapse { align-self: flex-end; margin: 0 4px 8px 0; }
+.storage-source-collapse:focus-visible,
+.plans-sidebar-collapse:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.storage-page .storage-layout.storage-layout--source-collapsed,
+.storage-page:has(.storage-tile.selected) .storage-layout.storage-layout--source-collapsed {
+  grid-template-columns: 52px minmax(0, 1fr) minmax(0, 340px);
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar > :not(.storage-source-collapse) {
+  display: none;
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar {
+  align-items: center;
+  overflow: visible;
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-collapse { align-self: center; margin: 4px 0; }
+.plans-layout { grid-template-columns: 300px minmax(0, 1fr); }
+.plans-layout--sidebar-collapsed { grid-template-columns: 44px minmax(0, 1fr); }
+.plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
+.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; }
+.plans-layout--sidebar-collapsed .plans-sidebar-collapse { align-self: flex-start; margin: 4px 0; }
+.plans-layout .plans-header { min-height: 48px; }
+.plans-header .plans-header-tabs { display: none; }
+.plans-layout--sidebar-collapsed .plans-header { flex-wrap: wrap; }
+.plans-layout--sidebar-collapsed .plans-header .plans-header-tabs {
+  display: flex;
+  flex: 0 0 100%;
+  gap: 8px;
+  margin: 0 0 8px;
+  overflow-x: auto;
+}
+.plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
+.plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
+.shared-call-controls .call-ctrl-btn:focus-visible,
+.shared-call-controls .voice-dock-btn:focus-visible,
+.shared-call-controls .mobile-active-ctrl-btn:focus-visible,
+.shared-call-controls .guest-device-control > button:focus-visible,
+.shared-call-controls .guest-device-menu-trigger:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.shared-call-controls .call-ctrl-btn:focus:not(:focus-visible),
+.shared-call-controls .voice-dock-btn:focus:not(:focus-visible),
+.shared-call-controls .mobile-active-ctrl-btn:focus:not(:focus-visible),
+.shared-call-controls .guest-device-control > button:focus:not(:focus-visible),
+.shared-call-controls .guest-device-menu-trigger:focus:not(:focus-visible),
+.shared-call-controls .call-ctrl-btn:active,
+.shared-call-controls .voice-dock-btn:active,
+.shared-call-controls .mobile-active-ctrl-btn:active,
+.shared-call-controls .guest-device-control > button:active,
+.shared-call-controls .guest-device-menu-trigger:active {
+  box-shadow: none;
+  outline: none;
+}
+
+@media (max-width: 960px) {
+  .storage-page .storage-layout.storage-layout--source-collapsed { display: block; }
+  .storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar { display: block; height: 36px; padding: 0; }
+  .plans-layout { grid-template-columns: minmax(0, 1fr); }
+  .plans-layout--sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
 }
 
 .popup-backdrop.wrapped-overlay { background: var(--popup-backdrop-color); backdrop-filter: none; display: grid; place-items: center; z-index: 1000; }

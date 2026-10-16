@@ -4,6 +4,8 @@ import {
   Download,
   Archive,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileAudio,
   FileSpreadsheet,
   FileText,
@@ -277,6 +279,7 @@ export default function FilesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
+  const [isSourceSidebarCollapsed, setIsSourceSidebarCollapsed] = useState(false);
   const [collectionPicker, setCollectionPicker] = useState<StorageCollectionPickerRequest | null>(null);
   const [collectionPickedIds, setCollectionPickedIds] = useState<string[]>([]);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -557,8 +560,17 @@ export default function FilesPage() {
   return (
     <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
       <AppNav />
-      <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
+      <section className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`} aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
+          <button
+            type="button"
+            className="storage-source-collapse"
+            aria-label={isSourceSidebarCollapsed ? strings.auditUi.expandStorageSources : strings.auditUi.collapseStorageSources}
+            aria-expanded={!isSourceSidebarCollapsed}
+            onClick={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {isSourceSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
             <button
               type="button"

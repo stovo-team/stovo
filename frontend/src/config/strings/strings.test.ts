@@ -51,6 +51,10 @@ describe("i18n strings and language resolution", () => {
 
     expect(en.nav.chats).toBe("Chats");
     expect(ru.nav.chats).toBe("Чаты");
+    expect(en.auditUi.joinMeetingAction).toBe("Join");
+    expect(ru.auditUi.joinMeetingAction).toBe("Присоединиться");
+    expect(en.auditUi.plansAction).toBe("In Plans");
+    expect(ru.auditUi.plansAction).toBe("В планы");
     expect(en.nav.storage).toBe("Files");
     expect(ru.nav.storage).toBe("Файлы");
 

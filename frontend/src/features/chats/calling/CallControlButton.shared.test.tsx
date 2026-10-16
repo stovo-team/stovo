@@ -144,4 +144,11 @@ describe("shared call control button", () => {
     const rules = Array.from(css.matchAll(/\.guest-call-controls \.guest-device-control\s*\{([^}]*)\}/g), (match) => match[1]);
     expect(rules.some((rule) => /border:\s*1px solid var\(--border-default/.test(rule))).toBe(true);
   });
+
+  it("removes the mouse activation halo while retaining a visible keyboard focus ring", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus-visible")).toBe(true);
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus:not(:focus-visible)")).toBe(true);
+    expect(css).toMatch(/\.shared-call-controls \.call-ctrl-btn:focus-visible,?[^}]*\{[^}]*outline:\s*2px solid var\(--focus-ring\)/s);
+  });
 });
