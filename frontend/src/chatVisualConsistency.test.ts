@@ -24,15 +24,15 @@ describe("chat visual consistency", () => {
 
   it("removes trailing horizontal padding from the last emoji column", () => {
     expect(styles).toContain("--epr-horizontal-padding: 4px;");
-    expect(styles).toContain(".emoji-picker .epr-category-content {\n  margin-left: 4px;\n  margin-right: 0;");
+    expect(styles).toContain(".emoji-picker .epr-emoji-category-content {\n  margin-left: 4px;\n  margin-right: 0;");
   });
 
   it("uses the larger chat details button radius", () => {
     const actionRule = styles.match(/\.chat-info-action \{([\s\S]*?)\n\}/)?.[1] ?? "";
     const mobileActionRule = styles.match(/\.chat-info-screen \.chat-info-action \{([\s\S]*?)\n  \}/)?.[1] ?? "";
 
-    expect(actionRule).toContain("border-radius: var(--radius-card);");
-    expect(mobileActionRule).toContain("border-radius: var(--radius-card);");
+    expect(actionRule).toContain("border-radius: var(--radius-surface);");
+    expect(mobileActionRule).toContain("border-radius: var(--radius-surface);");
   });
 
   it("uses the shared initials formatter for settings profile avatars", () => {
