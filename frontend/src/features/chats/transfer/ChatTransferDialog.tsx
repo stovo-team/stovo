@@ -15,6 +15,7 @@ import { validateArchive, type ChatArchive, type ChatArchiveAttachment, type Cha
 import { importedSourceKind, importedSourceReactions } from "./attribution";
 import { CHAT_EXPORT_PROFILES, parseChatFile, serializeChatArchive } from "./adapters";
 import { ChatTransferAdapterError, type ExportProfile } from "./adapters/types";
+import { ChatTransferFilePicker } from "./ChatTransferFilePicker";
 
 type TransferMode = "import" | "export";
 
@@ -34,7 +35,6 @@ export function ChatTransferDialog({
   onImported?: (chat: Chat) => void;
 }) {
   const copy = getChatTransferStrings(useResolvedLanguage());
-  const fileInput = useRef<HTMLInputElement | null>(null);
   const importIdempotencyKey = useRef<string | null>(null);
   const [archive, setArchive] = useState<ChatArchive | null>(null);
   const [exportSource, setExportSource] = useState<ChatExportSource | null>(null);
@@ -76,7 +76,6 @@ export function ChatTransferDialog({
       setError(caught instanceof ChatTransferAdapterError && caught.code === "multiple_conversations" ? copy.multipleChatsUnsupported : copy.error);
     } finally {
       setBusy(false);
-      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
@@ -202,18 +201,7 @@ export function ChatTransferDialog({
         <div className="chat-transfer-body">
           <p>{mode === "import" ? copy.importHelp : copy.exportHelp}</p>
           {mode === "import" && !importComplete && (
-            <>
-              <label className="chat-transfer-file-label">
-                <span>{copy.chooseFile}</span>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  multiple
-                  accept=".json,.zip,.txt,.csv,application/json,application/zip,text/plain,text/csv"
-                  onChange={(event) => void handleFiles(event.currentTarget.files)}
-                />
-              </label>
-            </>
+            <ChatTransferFilePicker copy={copy} busy={busy} onFilesSelected={handleFiles} />
           )}
           {mode === "export" && !exportSource && (
             <PopupButton variant="primary" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</PopupButton>

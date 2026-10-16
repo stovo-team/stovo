@@ -57,6 +57,17 @@ describe("ChatContextMenu chat transfer actions", () => {
     expect(items).toContain("Export chat");
   });
 
+  it("uses a down-arrow tray icon for import and the matching up-arrow icon for export", () => {
+    const { container } = renderMenu();
+    const importButton = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => item.textContent?.includes("Import chat from file"));
+    const exportButton = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => item.textContent?.includes("Export chat"));
+
+    expect(importButton?.querySelector("svg")?.classList.contains("lucide-download")).toBe(true);
+    expect(exportButton?.querySelector("svg")?.classList.contains("lucide-upload")).toBe(true);
+  });
+
   it("passes the selected chat to both actions and does not select a different target chat", () => {
     const onImportChat = vi.fn();
     const onExportChat = vi.fn();

@@ -97,7 +97,41 @@ docker compose --project-directory . -f deploy/compose/production-bluegreen.yml 
 
 Store the dump outside the host and test restoring it to a disposable database. Back up MinIO using an S3 client or a quiesced volume-level snapshot; include all configured buckets, especially the files and calls buckets. Also preserve the encryption key, secrets, and deployment configuration in a secure secrets backup separate from the data backup.
 
-For a restore, stop writes by stopping the application first, restore PostgreSQL and objects, then start the stack and verify health and representative file/message reads. Do not restore a database without its matching object data or encryption key. Follow provider-specific restore procedures for managed services.
+### Intelligence Source v2 backup tracking and restore safety
+
+The DB-only `intelligence-source-ops` executable records backup horizons and complete-inventory checkpoints. It connects directly to PostgreSQL and does not start Redis or application workers. Run it as a one-shot container with `--no-deps`; the backend image must contain the revision with this executable. For the external PostgreSQL overlay, add `-f deploy/compose/external-overlay.yml` to the `docker compose` command below.
+
+Register each backup before starting its dump. Keep the exact UTC creation timestamp with the backup record; restorability cannot exceed 30 days.
+
+```sh
+compose() {
+  docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env "$@"
+}
+
+backup_id="backup-$(date -u '+%Y%m%dT%H%M%SZ')"
+backup_created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+restorable_until="$(date -u -d '+30 days' '+%Y-%m-%dT%H:%M:%SZ')"
+
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  backup register --backup-id "$backup_id" --created-at "$backup_created_at" \
+  --restorable-until "$restorable_until"
+
+compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup_id.dump"
+# Back up matching object data and check every currently restorable backup.
+
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  inventory verify --verified-at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+```
+
+Mark the inventory verified only after the database and object backup succeeded and you checked the complete list of currently restorable backups. If a dump fails after registration, leave the conservative horizon in place; it can delay tombstone pruning but cannot shorten retention. The existing retention worker prunes expired backup records after a current complete inventory is verified.
+
+The CLI does not expose `restore begin` or `restore complete`. The restore gate and tombstone ledger are stored in the same Messenger database as source content. A full database rollback can restore both to an older state, so same-database tombstone rows and watermarks cannot prove that every post-backup invalidation was replayed. The application restore coordinator intentionally keeps source routes unavailable until an independent proof path is integrated.
+
+For a database restore, keep both `INTELLIGENCE_SOURCE_ENABLED` and `INTELLIGENCE_OIDC_ENABLED` false and stop source traffic. Stop the serving backend color, set a fresh unpredictable `INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH` outside the database backup, then restore PostgreSQL and matching object data. Do not restore the old epoch from the backup. Keep both process gates off after restore; the epoch mismatch keeps v2 source routes unavailable.
+
+Restore support requires either a current tombstone journal from independent off-host state with completeness proven against the selected backup, or a tested reset/reindex of every affected Intelligence scope from an authoritative current source. Neither path is implemented here. Do not treat backend health or restored same-database watermarks as restore proof, and do not enable the source gates until an independent path has been implemented and tested with disposable backups.
+
+For other application restores, stop writes by stopping the application first, restore PostgreSQL and objects, then start the stack and verify health and representative file/message reads. Do not restore a database without its matching object data or encryption key. Follow provider-specific restore procedures for managed services.
 
 ## Upgrades and schema migrations
 

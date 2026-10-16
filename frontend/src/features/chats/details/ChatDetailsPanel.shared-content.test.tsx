@@ -11,9 +11,9 @@ import { ChatDetailsPanel, SharedContentThumb } from "./ChatDetailsPanel";
 
 vi.mock("../../../hooks/useFilePreviewUrl", () => ({ default: vi.fn() }));
 vi.mock("../../../auth/AuthContext", () => ({
-  useAuth: () => ({ authRequest: vi.fn().mockResolvedValue({ active_plugins: [] }) })
+  useAuth: () => ({ authRequest: vi.fn(() => new Promise(() => {})) })
 }));
-vi.mock("../../../i18n/LanguageContext", () => ({ useStrings: () => strings }));
+vi.mock("../../../i18n/LanguageContext", () => ({ useStrings: () => strings, useResolvedLanguage: () => "en" }));
 vi.mock("../sidebar/RealAvatar", () => ({ RealAvatar: () => null }));
 vi.mock("../../../components/BackButton", () => ({ BackButton: () => <button type="button">Back</button> }));
 vi.mock("../../../components/ChatStatsDrawer", () => ({ default: () => null }));
@@ -131,6 +131,32 @@ describe("Chat details shared content", () => {
     act(() => roots.splice(0).forEach((root) => root.unmount()));
     document.body.replaceChildren();
     vi.restoreAllMocks();
+  });
+
+  it("offers import and export actions from chat settings and opens the selected dialog", () => {
+    const container = renderPanel("files", []);
+    const options = container.querySelector<HTMLButtonElement>('button[aria-label="Chat options"]');
+    act(() => options?.click());
+    const settings = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => item.textContent?.includes("Chat settings"));
+    expect(settings).toBeDefined();
+    act(() => settings?.click());
+    expect(container.querySelector("#chat-settings-title")).not.toBeNull();
+
+    const importButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((item) => item.textContent?.includes("Import chat from file"));
+    const exportButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((item) => item.textContent?.includes("Export chat"));
+    expect(importButton).toBeDefined();
+    expect(exportButton).toBeDefined();
+    expect(importButton?.querySelector("svg")?.classList.contains("lucide-download")).toBe(true);
+    expect(exportButton?.querySelector("svg")?.classList.contains("lucide-upload")).toBe(true);
+
+    act(() => importButton?.click());
+    expect(document.body.querySelector(".chat-transfer-dialog h2")?.textContent).toBe("Import chat from file");
+    act(() => document.body.querySelector<HTMLButtonElement>('.chat-transfer-dialog button[aria-label="Close"]')?.click());
+    act(() => exportButton?.click());
+    expect(document.body.querySelector(".chat-transfer-dialog h2")?.textContent).toBe("Export chat");
   });
 
   it("renders a loaded video preview and falls back to its video icon after a media error", () => {
