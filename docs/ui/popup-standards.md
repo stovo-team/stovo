@@ -15,10 +15,10 @@ Use the shared popup primitives for dialogs, modal sheets, popup forms, and cust
 | All action buttons | Exactly 44px high with a pill radius, including destructive actions. |
 | Text input | `PopupField`, 46px high with a pill radius, theme surface and shared focus ring. |
 | Dropdown | `PopupSelect`, 46px pill trigger, one trailing 16px Lucide chevron, 18px menu, rounded rows, no pointer triangle or decorative separators. |
-| Typography | Inter/system stack; title 20px/26px semibold, body 14px/21px, label 13px/18px medium, helper 12px/17px. |
+| Typography | Use `--font-family-ui` from `tokens.css`; use `--font-family-mono` only for code. Titles use `--font-size-heading-small` with `--font-weight-semibold`; body and controls use `--font-size-small`; buttons use `--font-size-button`; helper text uses `--font-size-caption`. Use the shared line-height tokens. |
 | Popup grouping | Use spacing and alignment. Do not add decorative horizontal rules between popup header, body, footer, or groups. |
 
-The shared CSS uses existing theme variables for surfaces, borders, text, accents, danger, and focus. Keep those token references when adding popup content; do not hardcode theme palettes in a caller.
+The shared CSS uses existing theme variables for surfaces, borders, text, accents, danger, and focus. Popup typography also uses the shared font family, size, weight, and line-height tokens from `frontend/src/design-system/tokens.css`. Keep those token references when adding popup content; do not hardcode theme palettes or font styles in a caller. Always extend or reuse the existing popup primitives instead of introducing parallel components.
 
 ## Imports and examples
 

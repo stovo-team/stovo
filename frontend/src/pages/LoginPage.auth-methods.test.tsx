@@ -85,6 +85,15 @@ describe("LoginPage authentication methods", () => {
     expect(container.textContent).toContain("QR code");
   });
 
+  it("renders authentication labels in Russian when the device language is Russian", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(container.textContent).toContain("Никнейм");
+    expect(container.textContent).toContain("Войти с помощью ключа доступа");
+    expect(container.textContent).not.toContain("Sign in with Passkey");
+    Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+  });
+
   it("shows QR sign-in without login fields and offers passkey or password", async () => {
     await renderPage();
 

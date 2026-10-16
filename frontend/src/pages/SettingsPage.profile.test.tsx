@@ -37,7 +37,10 @@ vi.mock("../appearance/AppearanceContext", async () => {
 });
 vi.mock("../i18n/LanguageContext", async () => {
   const { strings } = await import("../config/strings/english");
-  return { useLanguage: () => ({ language: "en", setLanguage: vi.fn(), systemLanguage: "en", resolvedLanguage: "en", strings }) };
+  return {
+    useLanguage: () => ({ language: "en", setLanguage: vi.fn(), systemLanguage: "en", resolvedLanguage: "en", strings }),
+    useResolvedLanguage: () => "en",
+  };
 });
 
 import SettingsPage from "./SettingsPage";

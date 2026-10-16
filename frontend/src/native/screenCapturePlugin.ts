@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 
 export type ScreenFrameEvent = {
   data: string; // base64 JPEG
@@ -75,7 +76,7 @@ export async function createNativeScreenCaptureStream(): Promise<MediaStream> {
   }
 
   // Draw initial black frame
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = DESIGN_COLOR_VALUES.native.screenCaptureBackground;
   ctx.fillRect(0, 0, width, height);
 
   let isCapturing = true;

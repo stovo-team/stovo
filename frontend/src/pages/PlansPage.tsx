@@ -332,7 +332,7 @@ export default function PlansPage() {
       setDialogError(null);
       await load();
     } catch (err) {
-      setDialogError(err instanceof ApiError ? err.message : "Could not create plan");
+      setDialogError(err instanceof ApiError ? err.message : strings.plans.createFailed);
     }
   }
 
@@ -354,7 +354,7 @@ export default function PlansPage() {
       const updated = await rsvpPlan(accessToken, plan.id, targetStatus);
       setPlans((prevPlans) => prevPlans.map((current) => current.id === updated.id ? normalizePlanDateRange(updated) : current));
     } catch {
-      setError("Could not update RSVP");
+      setError(strings.plans.rsvpFailed);
       await loadSilent();
     }
   }
@@ -504,7 +504,7 @@ export default function PlansPage() {
                     key={plan.id}
                     style={getCalendarEventStyle(plan)}
                     onClick={(event) => openPlanDetails(plan, event.currentTarget)}
-                    title={`${plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)} — ${getPlanTitle(plan)}`}
+                    title={strings.plans.eventTitle(plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt), getPlanTitle(plan))}
                   >
                     <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
                     <span>{getPlanTitle(plan)}</span>
@@ -564,15 +564,15 @@ export default function PlansPage() {
 
         <section className={`plans-content plans-content--${view}`}>
           <header className="plans-header">
-            <button aria-label="Previous" onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? -30 : view === "week" ? -7 : view === "threeDays" ? -3 : -1))}>
+            <button aria-label={strings.plans.previous} onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? -30 : view === "week" ? -7 : view === "threeDays" ? -3 : -1))}>
               <ChevronLeft />
             </button>
             <h2>{headerTitle}</h2>
-            <button aria-label="Next" onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : view === "week" ? 7 : view === "threeDays" ? 3 : 1))}>
+            <button aria-label={strings.plans.next} onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : view === "week" ? 7 : view === "threeDays" ? 3 : 1))}>
               <ChevronRight />
             </button>
           </header>
-          <nav className="plans-mobile-tabs" aria-label="Plan view">
+          <nav className="plans-mobile-tabs" aria-label={strings.plans.view}>
             <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
             <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}>{strings.plans.threeDays}</button>
             <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{strings.plans.thisWeek}</button>
@@ -597,7 +597,7 @@ export default function PlansPage() {
               ) : view === "week" || view === "threeDays" ? (
                 renderTimedCalendar(view === "threeDays" ? threeDayRange : weekDays)
               ) : (
-                <div className="plans-timeline" role="region" aria-label="Today schedule timeline">
+                <div className="plans-timeline" role="region" aria-label={strings.plans.todayTimeline}>
                   {visiblePlans.filter((plan) => plan.allDay).length > 0 && (
                     <div className="plans-timeline-slot plans-timeline-slot--allday">
                       <div className="plans-timeline-time">
@@ -685,7 +685,7 @@ export default function PlansPage() {
                   }}
                 />
             </div>
-            <div className="time-preset-chips" aria-label="Duration presets">
+            <div className="time-preset-chips" aria-label={strings.plans.durationPresets}>
               <PopupButton variant="secondary" onClick={() => applyDurationMinutes(30)}>30m</PopupButton>
               <PopupButton variant="secondary" onClick={() => applyDurationMinutes(60)}>1h</PopupButton>
               <PopupButton variant="secondary" onClick={() => applyDurationMinutes(120)}>2h</PopupButton>

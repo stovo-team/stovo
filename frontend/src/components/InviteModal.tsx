@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { createInvite, inviteUrlForServer } from "../api/family";
 import { ApiError, getApiUrl } from "../api/client";
 import { shareContent } from "../native/nativeSharePlugin";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { useStrings } from "../i18n/LanguageContext";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
@@ -82,7 +83,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         const dataUrl = await QRCode.toDataURL(currentServerInviteUrl, {
           margin: 2,
           width: 240,
-          color: { dark: "#111827", light: "#ffffff" }
+          color: DESIGN_COLOR_VALUES.inviteQr
         });
         if (cancelled) return;
         setQrDataUrl(dataUrl);
@@ -111,7 +112,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedLink(true);
       window.setTimeout(() => setCopiedLink(false), 1600);
     } catch {
-      setError("Could not copy invite link");
+      setError(strings.sharedUi.copyInviteLinkFailed);
     }
   }
 
@@ -142,7 +143,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedQr(true);
       window.setTimeout(() => setCopiedQr(false), 1600);
     } catch {
-      setError("Could not copy QR code");
+      setError(strings.sharedUi.copyQrFailed);
     }
   }
 

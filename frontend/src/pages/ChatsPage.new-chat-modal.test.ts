@@ -21,7 +21,7 @@ describe("new message dialog on web", () => {
 
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
     expect(newChatDialog).toContain("<PopupCloseButton");
-    expect(newChatDialog).toContain('ariaLabel="Close new message"');
+    expect(newChatDialog).toContain("ariaLabel={strings.chats.newChat.close}");
     expect(newChatDialog).toContain("onClick={onClose}");
     expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
@@ -30,6 +30,8 @@ describe("new message dialog on web", () => {
     expect(newChatDialog).toContain("<PopupField");
     const popupCss = readFileSync("src/components/ui/Popup.css", "utf8");
     expect(popupCss).toContain("border-radius: 999px;");
+    expect(styles).toContain(".new-chat-screen .new-chat-compose-title-field input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"range\"]),");
+    expect(styles).toContain("border-radius: var(--radius-panel);");
   });
 
   it("supports 1-person chat creation with creator listed and solo hint", () => {

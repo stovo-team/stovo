@@ -14,6 +14,7 @@ import type { ChatOverviewController } from "./sidebar/types";
 import type { Chat } from "../../api/chats";
 import { GuestMeetingLinkControl } from "./calling/GuestMeetingLinkControl";
 import { GuestMeetingSelect } from "./calling/GuestMeetingSelect";
+import { useStrings } from "../../i18n/LanguageContext";
 
 import type { PendingLocalAttachment } from "./shared/types";
 
@@ -76,6 +77,7 @@ export function ChatOverlays({
   onAddAttachments,
   onSendMessage
 }: ChatOverlaysProps) {
+  const copy = useStrings().sharedUi;
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const meetingChats = chats.filter((chat) => chat.type === "family" || chat.type === "group" || chat.type === "direct");
   const [meetingChatId, setMeetingChatId] = useState("");
@@ -154,21 +156,22 @@ export function ChatOverlays({
       {isMeetingPlannerOpen && createPortal(
         <PopupDialog
           className="guest-meeting-planner"
-          ariaLabel="Plan guest meeting"
+          ariaLabel={copy.planGuestMeeting}
           onClose={() => setIsMeetingPlannerOpen(false)}
+          closeLabel={copy.close}
           size="md"
         >
           <div className="guest-meeting-planner-header">
-            <h2>Create meeting link</h2>
+            <h2>{copy.createMeetingLink}</h2>
           </div>
           <div className="guest-meeting-planner-body">
             <label className="guest-link-field">
-              <span>Meeting chat</span>
+              <span>{copy.meetingChat}</span>
               <GuestMeetingSelect
-                ariaLabel="Meeting chat"
+                ariaLabel={copy.meetingChat}
                 value={meetingChatId}
                 onChange={setMeetingChatId}
-                options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))}
+                options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? copy.untitledChat }))}
                 newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""}
                 onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined}
               />
@@ -188,7 +191,7 @@ export function ChatOverlays({
                 calendarEnd={meetingCalendarRange.end}
               />
             ) : (
-              <p className="muted-copy">Select a chat above.</p>
+              <p className="muted-copy">{copy.selectChatAbove}</p>
             )}
           </div>
         </PopupDialog>,

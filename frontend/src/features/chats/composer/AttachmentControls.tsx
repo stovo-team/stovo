@@ -3,8 +3,10 @@ import { Paperclip } from "lucide-react";
 
 import AttachmentPickerSheet from "../../../components/AttachmentPickerSheet";
 import { useComposerAttachmentContext } from "./ComposerAttachmentContext";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function AttachmentControls() {
+  const copy = useStrings().attachments.attachFiles;
   const attachmentButtonRef = useRef<HTMLButtonElement | null>(null);
   const {
     disabled,
@@ -39,8 +41,8 @@ export function AttachmentControls() {
         ref={attachmentButtonRef}
         type="button"
         className="file-picker"
-        aria-label="Attach files"
-        title="Attach files"
+        aria-label={copy}
+        title={copy}
         disabled={disabled}
         onClick={onAttachButtonClick}
       >

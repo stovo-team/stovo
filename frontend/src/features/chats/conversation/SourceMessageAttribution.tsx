@@ -10,7 +10,7 @@ export function SourceMessageAttribution({ attribution }: { attribution: Message
       ? "WhatsApp"
       : attribution.sourceProvider.charAt(0).toUpperCase() + attribution.sourceProvider.slice(1);
   return (
-    <div className="message-import-attribution" aria-label={`${copy.originalAuthor(attribution.sourceAuthorName)} · ${copy.importedFrom(provider)}`}>
+    <div className="message-import-attribution" aria-label={copy.attributionLabel(attribution.sourceAuthorName, provider)}>
       <strong>{copy.originalAuthor(attribution.sourceAuthorName)}</strong>
       <span>{copy.importedFrom(provider)}</span>
     </div>

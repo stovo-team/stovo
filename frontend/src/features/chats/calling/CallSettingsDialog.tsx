@@ -4,14 +4,9 @@ import type { CallUIPreferences } from "./callUIPreferences";
 import { PopupBackdrop, PopupCloseButton } from "../../../components/ui/Popup";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallVideoSettingsPopup } from "./CallVideoSettingsPopup";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type CallSettingsTab = "general" | "audio" | "camera";
-const tabs: Array<{ id: CallSettingsTab; label: string }> = [
-  { id: "general", label: "General" },
-  { id: "audio", label: "Audio" },
-  { id: "camera", label: "Camera" },
-];
-
 export function CallSettingsDialog({
   initialTab,
   preferences,
@@ -37,6 +32,12 @@ export function CallSettingsDialog({
   localStream?: MediaStream | null;
   isMobile: boolean;
 }) {
+  const copy = useStrings().auditUi;
+  const tabs: Array<{ id: CallSettingsTab; label: string }> = [
+    { id: "general", label: copy.general },
+    { id: "audio", label: copy.audio },
+    { id: "camera", label: copy.camera },
+  ];
   const [tab, setTab] = useState<CallSettingsTab>(initialTab);
   const popupRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -83,25 +84,25 @@ export function CallSettingsDialog({
         className="call-settings-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label="Call settings"
+        aria-label={copy.callSettings}
         onKeyDown={handleDialogKeyDown}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="call-settings-dialog-header">
-          <strong>Settings</strong>
-          <PopupCloseButton className="call-audio-popup-close" ariaLabel="Close" autoFocus onClick={closeDialog} />
+          <strong>{copy.settings}</strong>
+          <PopupCloseButton className="call-audio-popup-close" ariaLabel={copy.close} autoFocus onClick={closeDialog} />
         </header>
         <div className="call-settings-dialog-layout">
-          <div className="call-settings-tabs" role="tablist" aria-label="Call settings">
+          <div className="call-settings-tabs" role="tablist" aria-label={copy.callSettings}>
             {tabs.map((item) => <button key={item.id} id={`call-settings-tab-${item.id}`} type="button" role="tab" aria-selected={tab === item.id} aria-controls={`call-settings-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={handleTabKeyDown}>{item.label}</button>)}
           </div>
           <div className="call-settings-panel-wrap" id={`call-settings-panel-${tab}`} role="tabpanel" aria-labelledby={`call-settings-tab-${tab}`}>
             {tab === "general" && <div className="call-settings-general">
-              <h3>General</h3>
+              <h3>{copy.general}</h3>
               <div className="call-audio-toggle-row">
-                <span className="call-audio-toggle-info"><span className="call-audio-toggle-name">Hide call controls automatically</span><span className="call-audio-toggle-desc">Reveal controls when you move the pointer or focus the panel.</span></span>
+                <span className="call-audio-toggle-info"><span className="call-audio-toggle-name">{copy.autoHideControls}</span><span className="call-audio-toggle-desc">{copy.revealControlsHelp}</span></span>
                 <label className="call-audio-toggle-switch">
-                  <input type="checkbox" aria-label="Hide call controls automatically" checked={preferences.autoHideControls} onChange={(event) => onPreferencePatch({ autoHideControls: event.target.checked })} />
+                  <input type="checkbox" aria-label={copy.autoHideControls} checked={preferences.autoHideControls} onChange={(event) => onPreferencePatch({ autoHideControls: event.target.checked })} />
                   <span className="call-audio-toggle-slider" />
                 </label>
               </div>
@@ -109,10 +110,10 @@ export function CallSettingsDialog({
             {tab === "audio" && <CallAudioSettingsPopup embedded popupRef={popupRef} isMobile={isMobile} settings={settings} capabilities={capabilities} devices={devices} warning={warning} onPatch={onPatch} onClose={closeDialog} localStream={localStream} />}
             {tab === "camera" && <>
               <CallVideoSettingsPopup embedded settings={settings} capabilities={capabilities} devices={devices} isMobile={isMobile} onPatch={onPatch} onClose={closeDialog} />
-              <section className="call-settings-camera-fit" aria-label="Camera tile framing">
-                <h3>Camera framing</h3>
-                <label><input type="radio" name="camera-fit" value="fit" checked={preferences.cameraFit === "fit"} onChange={() => onPreferencePatch({ cameraFit: "fit" })} /> Fit entire image</label>
-                <label><input type="radio" name="camera-fit" value="cover" checked={preferences.cameraFit === "cover"} onChange={() => onPreferencePatch({ cameraFit: "cover" })} /> Fill tile (crop)</label>
+              <section className="call-settings-camera-fit" aria-label={copy.cameraTileFraming}>
+                <h3>{copy.cameraFraming}</h3>
+                <label><input type="radio" name="camera-fit" value="fit" checked={preferences.cameraFit === "fit"} onChange={() => onPreferencePatch({ cameraFit: "fit" })} /> {copy.fitImage}</label>
+                <label><input type="radio" name="camera-fit" value="cover" checked={preferences.cameraFit === "cover"} onChange={() => onPreferencePatch({ cameraFit: "cover" })} /> {copy.fillCrop}</label>
               </section>
             </>}
           </div>

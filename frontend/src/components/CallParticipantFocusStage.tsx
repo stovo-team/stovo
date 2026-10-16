@@ -1,10 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { RemoteMedia } from "../realtime/call/types";
+import { useStrings } from "../i18n/LanguageContext";
 
-const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "#000" };
-const avatarStyle: CSSProperties = { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: "1.25rem" };
-const labelStyle: CSSProperties = { position: "absolute", left: 8, bottom: 8, padding: "2px 8px", borderRadius: 4, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 12, zIndex: 3 };
+const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "contain", display: "block", background: "var(--color-palette-7b2817bf9b80)" };
+const avatarStyle: CSSProperties = { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-palette-f1147865f078)", fontSize: "var(--font-size-heading-small)" };
+const labelStyle: CSSProperties = { position: "absolute", left: 8, bottom: 8, padding: "2px 8px", borderRadius: "var(--radius-small)", background: "var(--color-palette-e16ece2e238b)", color: "var(--color-palette-f2074b6cef37)", fontSize: "var(--font-size-caption)", zIndex: 3 };
 
 function initial(label: string) {
   return label.trim().charAt(0).toUpperCase() || "?";
@@ -37,6 +38,7 @@ export function CallParticipantFocusStage({
   onClose: () => void;
   showCloseControl: boolean;
 }) {
+  const copy = useStrings().sharedUi;
   const isLocal = participantId === localUserLabel;
   const focusedRemote = remoteMedia.find((media) => media.userId === participantId);
   const stream = isLocal ? localStream : focusedRemote?.stream ?? null;
@@ -61,7 +63,7 @@ export function CallParticipantFocusStage({
         <span className="call-grid__label" style={labelStyle}>{participantId}</span>
         <span className="call-grid__participant-status" role="status">{(isLocal ? localMuted : Boolean(focusedRemote?.isMuted)) ? "Muted" : "Connected"}</span>
       </div>
-      <div className="call-grid__focus-participants" aria-label="Other participants">
+      <div className="call-grid__focus-participants" aria-label={copy.otherParticipants}>
         {others.map((person) => (
           <button type="button" className="call-grid__focus-participant" style={{ aspectRatio: "16 / 9" }} data-focus-participant={person.id} key={person.id} onClick={() => onSelect(person.id)}>
             {person.hasVideo && person.stream ? <video className="call-grid__video" style={videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, person.stream)} /> : <span className="call-grid__avatar" style={avatarStyle}>{initial(person.id)}</span>}
@@ -69,7 +71,7 @@ export function CallParticipantFocusStage({
           </button>
         ))}
       </div>
-      {showCloseControl && <button type="button" className="call-grid__focus-close" aria-label="Close participant focus" onClick={onClose}><ArrowLeft size={18} aria-hidden="true" /></button>}
+      {showCloseControl && <button type="button" className="call-grid__focus-close" aria-label={copy.closeParticipantFocus} onClick={onClose}><ArrowLeft size={18} aria-hidden="true" /></button>}
     </div>
   );
 }

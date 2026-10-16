@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Stovo',
   webDir: 'dist',
   server: {
-    androidScheme: 'capacitor'
+    androidScheme: 'https'
   }
 };
 

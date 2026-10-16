@@ -6,7 +6,7 @@ import { commitChatImport, getChatExportSource } from "../../../api/chatTransfer
 import { getFamily } from "../../../api/family";
 import { downloadFileBlob } from "../../../api/files";
 import { decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity } from "../../../api/messageCrypto";
-import { useResolvedLanguage } from "../../../i18n/LanguageContext";
+import { useResolvedLanguage, useStrings } from "../../../i18n/LanguageContext";
 import { getChatTransferStrings, type ChatTransferStrings } from "../../../config/strings/chatTransfer";
 import { PopupDialog } from "../../../components/ui/Popup";
 import { PopupButton } from "../../../components/ui/PopupButton";
@@ -35,6 +35,7 @@ export function ChatTransferDialog({
   onImported?: (chat: Chat) => void;
 }) {
   const copy = getChatTransferStrings(useResolvedLanguage());
+  const uiCopy = useStrings().auditUi;
   const importIdempotencyKey = useRef<string | null>(null);
   const [archive, setArchive] = useState<ChatArchive | null>(null);
   const [exportSource, setExportSource] = useState<ChatExportSource | null>(null);

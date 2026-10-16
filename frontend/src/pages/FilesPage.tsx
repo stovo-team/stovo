@@ -55,7 +55,7 @@ import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFac
 import { StorageCollections, type StorageCollectionPickerRequest } from "../components/StorageCollections";
 import { StorageCanvases } from "../components/StorageCanvases";
 import { StorageChecklists } from "../components/StorageChecklists";
-import { useStrings } from "../i18n/LanguageContext";
+import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 import {
   loadCachedFileList,
   loadCachedStorageItemsFromLocalStorage,
@@ -110,28 +110,28 @@ function fileTypeLabel(file: FamilyFile) {
   return extension.length <= 5 ? extension : "FILE";
 }
 
-function groupLabel(value: string) {
-  return new Date(value).toLocaleDateString([], { month: "long", year: "numeric" });
+function groupLabel(value: string, locale: string) {
+  return new Date(value).toLocaleDateString(locale, { month: "long", year: "numeric" });
 }
 
-function chatFolderLabel(file: FamilyFile) {
+function chatFolderLabel(file: FamilyFile, strings: ReturnType<typeof useStrings>) {
   if (file.chatTitle) {
     return file.chatTitle;
   }
-  if (file.chatType === "archive") return "Message Archive";
+  if (file.chatType === "archive") return strings.chats.types.messageArchive;
   if (file.chatType === "family") {
-    return "General Family Chat";
+    return strings.chats.types.generalFamilyChat;
   }
   if (file.chatType === "group") {
-    return "Group chat";
+    return strings.chats.types.groupChat;
   }
   if (file.chatType === "channel") {
-    return "Channel";
+    return strings.chats.types.channel;
   }
   if (file.chatType === "direct") {
-    return "Direct chat";
+    return strings.chats.types.directChat;
   }
-  return "Family workspace";
+  return strings.chats.types.familyChat;
 }
 
 function accessLabel(file: FamilyFile, sharedStorageLabel: string) {
@@ -184,7 +184,8 @@ function StorageTile({
   selectionLocked = false,
   suppressPreview = false,
   onSelect,
-  onOpenImage
+  onOpenImage,
+  favoriteLabel
 }: {
   accessToken: string | null;
   file: FamilyFile;
@@ -193,6 +194,7 @@ function StorageTile({
   suppressPreview?: boolean;
   onSelect: () => void;
   onOpenImage: (file: FamilyFile, previewUrl: string) => void;
+  favoriteLabel: string;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
@@ -228,7 +230,7 @@ function StorageTile({
       }}
     >
       {file.isFavorite && (
-        <small className="storage-favorite-badge" aria-label="Favorite">
+        <small className="storage-favorite-badge" aria-label={favoriteLabel}>
           <Heart aria-hidden="true" size={13} />
         </small>
       )}
@@ -464,7 +466,7 @@ export default function FilesPage() {
       }
       return (
         !query ||
-        `${file.originalName} ${file.mimeType} ${chatFolderLabel(file)}`.toLowerCase().includes(query)
+        `${file.originalName} ${file.mimeType} ${chatFolderLabel(file, strings)}`.toLowerCase().includes(query)
       );
     });
   }, [files, filter, search, sourceChatId]);
@@ -480,7 +482,7 @@ export default function FilesPage() {
       Array<{ id: string; label: string; access: string; items: FamilyFile[] }>
     >((groups, file) => {
       const id = file.chatId ?? "workspace";
-      const label = chatFolderLabel(file);
+      const label = chatFolderLabel(file, strings);
       const existing = groups.find((group) => group.id === id);
       if (existing) {
         existing.items.push(file);
@@ -489,7 +491,8 @@ export default function FilesPage() {
       }
       return groups;
     }, []);
-  }, [filteredFiles, strings.files.familyStorage]);
+  }, [filteredFiles, strings]);
+  const resolvedLanguage = useResolvedLanguage();
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -688,8 +691,8 @@ export default function FilesPage() {
             {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
             {filter !== "canvases" && filter !== "checklists" && (![".canvas", "*.canvas", "type:canvas", "ext:canvas", ".checklist", "*.checklist", "type:checklist", "ext:checklist"].includes(search.trim().toLowerCase()) || collectionPickerFiles.length > 0) && <>
             <div className="storage-files-heading">
-              <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : "Files"}</h2>{collectionPicker && <p className="storage-picker-hint">Select files from Storage. Files already in this folder are locked.</p>}</div>
-              {!collectionPicker && <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}><Upload size={15} /></button>}
+              <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : strings.files.title}</h2>{collectionPicker && <p className="storage-picker-hint">{strings.files.pickerDescription}</p>}</div>
+              {!collectionPicker && <button type="button" className="storage-files-upload" title={strings.files.uploadFiles} aria-label={strings.files.uploadFiles} disabled={isUploading} onClick={() => uploadInputRef.current?.click()}><Upload size={15} /></button>}
               <input ref={uploadInputRef} className="visually-hidden" type="file" multiple onChange={handleUpload} />
             </div>
             {isLoading ? (
@@ -709,6 +712,7 @@ export default function FilesPage() {
                   <StorageTile
                     accessToken={accessToken}
                     file={file}
+                    favoriteLabel={strings.files.favorite}
                     isSelected={collectionPicker ? collectionPicker.lockedFileIds.includes(file.id) || collectionPickedIds.includes(file.id) : selectedFile?.id === file.id}
                     selectionLocked={Boolean(collectionPicker?.lockedFileIds.includes(file.id))}
                     suppressPreview={Boolean(collectionPicker)}
@@ -725,19 +729,19 @@ export default function FilesPage() {
           </div>
         </div>
 
-        {collectionPicker && <div className="storage-selection-bar" role="region" aria-label="Folder file selection"><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : "Select files to add"}</span><div><button type="button" onClick={() => { const picker = collectionPicker; setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }}>Cancel</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { const picker = collectionPicker; const pickedIds = collectionPickedIds; void picker.onConfirm(pickedIds).then(() => { setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }); }}>Add selected</button></div></div>}
+        {collectionPicker && <div className="storage-selection-bar" role="region" aria-label={strings.files.folderFileSelection}><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : strings.files.selectFilesToAdd}</span><div><button type="button" onClick={() => { const picker = collectionPicker; setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }}>{strings.files.cancelSelection}</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { const picker = collectionPicker; const pickedIds = collectionPickedIds; void picker.onConfirm(pickedIds).then(() => { setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }); }}>{strings.files.addSelected}</button></div></div>}
 
         {mobileDetailsOpen && (
           <button
             type="button"
             className="storage-details-backdrop"
-            aria-label="Close file details"
+            aria-label={strings.files.closeDetails}
             onClick={closeMobileDetails}
           />
         )}
         <aside
           className="storage-details-panel"
-          aria-label="File details"
+          aria-label={strings.files.details}
           aria-labelledby={mobileDetailsOpen ? "storage-file-details-title" : undefined}
           aria-modal={mobileDetailsOpen ? false : undefined}
           role={mobileDetailsOpen ? "dialog" : undefined}
@@ -750,7 +754,7 @@ export default function FilesPage() {
                   ref={storageDetailsCloseRef}
                   type="button"
                   className="mobile-back-button"
-                  aria-label="Close file details"
+                  aria-label={strings.files.closeDetails}
                   onClick={closeMobileDetails}
                 >
                   <X aria-hidden="true" size={20} />
@@ -781,8 +785,8 @@ export default function FilesPage() {
                   {selectedFilePreviewUrl && (
                     <button
                       type="button"
-                      aria-label={`Open ${selectedFile.originalName} full screen`}
-                      title="Full screen"
+                      aria-label={strings.files.openFullScreen(selectedFile.originalName)}
+                      title={strings.files.fullScreen}
                       onClick={() =>
                         setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl })
                       }
@@ -843,17 +847,17 @@ export default function FilesPage() {
               </div>
               <dl className="file-detail-list">
                 <div>
-                  <dt>Size</dt>
+                  <dt>{strings.files.size}</dt>
                   <dd>{formatFileSize(selectedFile.sizeBytes)}</dd>
                 </div>
                 <div>
-                  <dt>Saved</dt>
-                  <dd>{groupLabel(selectedFile.createdAt)}</dd>
+                  <dt>{strings.files.saved}</dt>
+                  <dd>{groupLabel(selectedFile.createdAt, resolvedLanguage)}</dd>
                 </div>
                 <div>
-                  <dt>Source</dt>
+                  <dt>{strings.files.source}</dt>
                   <dd>
-                    {chatFolderLabel(selectedFile)} / {accessLabel(selectedFile, strings.files.familyStorage)}
+                    {chatFolderLabel(selectedFile, strings)} / {accessLabel(selectedFile, strings.files.familyStorage)}
                   </dd>
                 </div>
               </dl>

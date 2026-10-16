@@ -9,8 +9,11 @@ import { ApiError, getClusterPrefix, storeApiUrlFromInviteLink } from "../api/cl
 import { getInviteApiUrl } from "../appLinks";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
+import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 
 export default function InvitePage() {
+  const strings = useStrings();
+  const language = useResolvedLanguage();
   const { token } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,7 +56,7 @@ export default function InvitePage() {
     previewInvite(token)
       .then(setPreview)
       .catch((err) =>
-        setError(err instanceof ApiError ? String(err.message) : "Invite is unavailable")
+        setError(err instanceof ApiError ? String(err.message) : strings.invite.unavailable)
       );
   }, [token, location.search]);
 
@@ -73,7 +76,7 @@ export default function InvitePage() {
       return;
     }
     if (!authMethod) {
-      setError("Choose a sign-in method");
+      setError(strings.invite.chooseSignInMethod);
       return;
     }
     setIsSubmitting(true);
@@ -94,7 +97,7 @@ export default function InvitePage() {
       navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
       if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setError(err instanceof ApiError ? String(err.message) : err instanceof Error ? err.message : "Invite acceptance failed");
+        setError(err instanceof ApiError ? String(err.message) : err instanceof Error ? err.message : strings.invite.acceptFailed);
       }
     } finally {
       setIsSubmitting(false);
@@ -104,22 +107,22 @@ export default function InvitePage() {
   return (
     <main className="app-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Invitation</p>
+        <p className="eyebrow">{strings.invite.invitation}</p>
         <StovoLogo className="app-brand-logo" title="Stovo" />
         <h1>{preview ? preview.familyName : "Stovo"}</h1>
         {preview && (
           <div className="summary-band compact">
             <div>
-              <span className="summary-label">Role</span>
+              <span className="summary-label">{strings.invite.role}</span>
               <strong>{preview.role}</strong>
             </div>
             <div>
-              <span className="summary-label">Uses left</span>
+              <span className="summary-label">{strings.invite.usesLeft}</span>
               <strong>{preview.usesRemaining}</strong>
             </div>
             <div>
-              <span className="summary-label">Expires</span>
-              <span>{new Date(preview.expiresAt).toLocaleString()}</span>
+              <span className="summary-label">{strings.invite.expires}</span>
+              <span>{new Date(preview.expiresAt).toLocaleString(language)}</span>
             </div>
           </div>
         )}
@@ -139,17 +142,17 @@ export default function InvitePage() {
               }}
             >
               <Smartphone aria-hidden="true" size={18} />
-              Open in Stovo App
+              {strings.invite.openInApp}
             </button>
-            <div className="auth-divider" style={{ margin: "0.75rem 0", textAlign: "center", opacity: 0.7, fontSize: "0.85rem" }}>
-              <span>or continue in browser</span>
+            <div className="auth-divider" style={{ margin: "0.75rem 0", textAlign: "center", opacity: 0.7, fontSize: "var(--font-size-small)" }}>
+              <span>{strings.invite.orContinueInBrowser}</span>
             </div>
           </div>
         )}
 
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            Nickname
+            {strings.invite.nickname}
             <input
               required
               minLength={3}
@@ -159,13 +162,13 @@ export default function InvitePage() {
             />
           </label>
           <fieldset className="invite-auth-methods">
-            <legend>Choose how you will sign in</legend>
-            <button type="button" aria-pressed={authMethod === "password"} onClick={() => setAuthMethod("password")}>Create a password</button>
-            <button type="button" aria-pressed={authMethod === "passkey"} disabled={!isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => setAuthMethod("passkey")}>Create a passkey</button>
-            {(!isSecureContext || typeof window.PublicKeyCredential === "undefined") && <p className="muted-copy">Passkeys require a secure connection (HTTPS) and a supported browser.</p>}
+            <legend>{strings.invite.chooseSignIn}</legend>
+            <button type="button" aria-pressed={authMethod === "password"} onClick={() => setAuthMethod("password")}>{strings.invite.createPassword}</button>
+            <button type="button" aria-pressed={authMethod === "passkey"} disabled={!isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => setAuthMethod("passkey")}>{strings.invite.createPasskey}</button>
+            {(!isSecureContext || typeof window.PublicKeyCredential === "undefined") && <p className="muted-copy">{strings.invite.passkeyHelp}</p>}
           </fieldset>
           {authMethod === "password" && <label>
-            Password
+            {strings.invite.password}
             <input
               required
               minLength={8}
@@ -175,10 +178,10 @@ export default function InvitePage() {
               onChange={(event) => setForm({ ...form, password: event.target.value })}
             />
           </label>}
-          {authMethod === "passkey" && <p data-auth-method="passkey-registration" className="muted-copy">A passkey will be created with your device's screen lock or authenticator.</p>}
+          {authMethod === "passkey" && <p data-auth-method="passkey-registration" className="muted-copy">{strings.invite.passkeyCreatedWithDevice}</p>}
           {error && <p className="error-text">{error}</p>}
           <button type="submit" disabled={isSubmitting || !authMethod}>
-            {isSubmitting ? "Joining" : "Join family"}
+            {isSubmitting ? strings.invite.joining : strings.invite.joinFamily}
           </button>
         </form>
       </section>

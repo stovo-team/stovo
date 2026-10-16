@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { PopupSelect } from "../../../components/ui/PopupSelect";
+import { useStrings } from "../../../i18n/LanguageContext";
+import { getAppStrings, getSystemLanguage } from "../../../config/strings";
 
 export type GuestMeetingSelectOption = { value: string; label: string };
 
@@ -23,6 +25,8 @@ export function GuestMeetingSelect({
   newChatTitle?: string;
   onNewChatTitleChange?: (title: string) => void;
 }) {
+  const appStrings = useStrings();
+  const copy = appStrings.sharedUi ?? getAppStrings(getSystemLanguage()).sharedUi;
   const trimmedNewChatTitle = newChatTitle.trim();
   const newChatOption = trimmedNewChatTitle ? { value: "new", label: `New chat: ${trimmedNewChatTitle}` } : null;
   const visibleOptions = useMemo(
@@ -34,19 +38,21 @@ export function GuestMeetingSelect({
     <span className={`guest-link-select${className ? ` ${className}` : ""}`}>
       <PopupSelect
         ariaLabel={ariaLabel}
+        triggerAriaLabel={copy.selectedOptionLabel(ariaLabel, visibleOptions.find((option) => option.value === value)?.label ?? copy.noSelection)}
         triggerClassName="guest-link-select-trigger"
         options={visibleOptions}
         value={value}
         onChange={onChange}
         disabled={disabled}
+        placeholder={copy.noSelection}
         menuFooter={
           onNewChatTitleChange ? (
             <span className="guest-link-select-create">
-              <span className="guest-link-select-create-label">Or in a new chat</span>
+              <span className="guest-link-select-create-label">{copy.orInNewChat}</span>
               <input
-                aria-label="New meeting chat name"
+                aria-label={copy.newMeetingChatName}
                 maxLength={255}
-                placeholder="e.g. Design review"
+                placeholder={copy.designReviewPlaceholder}
                 value={newChatTitle}
                 onChange={(event) => {
                   onNewChatTitleChange(event.target.value);

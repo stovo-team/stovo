@@ -146,7 +146,7 @@ export default function MultiAdminPage() {
       });
       setNewName("");
       loadServers();
-      showToast(`Space "${res.name}" provisioned cleanly!`);
+      showToast(copy.settingsSaved(res.name));
     } catch (err: any) {
       alert(err.message || "Failed to create space");
     }
@@ -237,7 +237,7 @@ export default function MultiAdminPage() {
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
           <div style={styles.badgePill}>{copy.supervisor}</div>
-          <h1 style={styles.title}>Stovo Supervisor</h1>
+          <h1 style={styles.title}>{copy.title}</h1>
           <p style={styles.subtitle}>{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
@@ -307,13 +307,13 @@ export default function MultiAdminPage() {
           </div>
           <div style={styles.statCard} className="statCard">
             <div style={styles.statLabel} className="statLabel">{copy.systemStatus}</div>
-            <div style={{ ...styles.statValue, color: "#34d399" }} className="statValue">{copy.operational}</div>
+            <div style={{ ...styles.statValue, color: "var(--color-palette-0f176030df85)" }} className="statValue">{copy.operational}</div>
           </div>
           <div style={styles.statCard} className="statCard">
             <div style={styles.statLabel} className="statLabel">{copy.advancedMonitoring}</div>
             <div style={styles.monitoringStatus} className="monitoringStatus">
               <span style={styles.monitoringDisabledButton}>{copy.monitoringDisabled}</span>
-              <span className="premium-feature-badge">Premium</span>
+              <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>
             </div>
           </div>
         </div>
@@ -337,7 +337,7 @@ export default function MultiAdminPage() {
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              {copy.noSpaces} <strong style={{ color: "#60a5fa" }}>{copy.createSpace}</strong>
+              {copy.noSpaces} <strong style={{ color: "var(--color-palette-8940f2c623d0)" }}>{copy.createSpace}</strong>
             </div>
           ) : (
             <div style={styles.tableWrapper} className="tableWrapper">
@@ -356,14 +356,14 @@ export default function MultiAdminPage() {
                   {servers.map((s: ServerRecord) => (
                     <tr key={s.id} style={styles.tr} className="supervisor-space-row">
                       <td style={styles.td} className="td">#{s.id}</td>
-                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }} className="td">{s.name}</td>
+                      <td style={{ ...styles.td, fontWeight: "var(--font-weight-bold)", color: "var(--color-palette-f2074b6cef37)" }} className="td">{s.name}</td>
                       <td style={styles.td} className="td">
                         <a
                           href={`/s/${s.slug}`}
                           target="_blank"
                           rel="noreferrer"
                           style={styles.linkPill}
-                          title={`Open ${s.name} space in new tab`}
+                          title={copy.openSpace(s.name)}
                         >
                           /s/{s.slug}
                           <ExternalLink size={13} aria-hidden="true" style={{ marginLeft: 6 }} />
@@ -379,24 +379,24 @@ export default function MultiAdminPage() {
                         <div style={styles.actionGroup} className="actionGroup">
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`${copy.settings}: ${s.name}`}
+                            title={copy.settingsFor(s.name)}
                             style={styles.iconActionButton}
                             className="iconActionButton"
-                            aria-label={`${copy.settings}: ${s.name}`}
+                            aria-label={copy.settingsFor(s.name)}
                           >
                             <Settings2 size={19} aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
-                            title={`${copy.invite}: ${s.name}`}
+                            title={copy.inviteFor(s.name)}
                             style={styles.iconActionButton}
                             className="iconActionButton"
-                            aria-label={`${copy.invite}: ${s.name}`}
+                            aria-label={copy.inviteFor(s.name)}
                           >
                             <UserPlus size={19} aria-hidden="true" />
                           </button>
                           <div className="space-actions-menu-wrap">
-                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={`${copy.moreActions}: ${s.name}`} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
+                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={copy.actionsFor(s.name)} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
                             {openMenu === s.slug && <div className="space-actions-menu" role="menu">
                               <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); void handleCopyGhostToken(s.slug); }}><KeyRound size={16} />{copy.ghostToken}</button>
                               <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenu(null); void handleDelete(s.slug); }}><Trash2 size={16} />{copy.delete}</button>
@@ -421,7 +421,7 @@ export default function MultiAdminPage() {
             <p>{copy.manageSpace}</p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
-              <div className="supervisor-settings-tabs" role="tablist" aria-label="Space settings">
+              <div className="supervisor-settings-tabs" role="tablist" aria-label={copy.spaceSettings}>
                 {([['general', copy.generalTab], ['ai', strings.admin.serverSettings.aiFunctions], ['chats', strings.admin.rbac.supervisorChatTypes], ['premium', strings.admin.encryption.premium]] as const).map(([id, label]) => <button type="button" role="tab" aria-selected={settingsTab === id} className={settingsTab === id ? "active" : ""} key={id} onClick={() => setSettingsTab(id)}>{label}</button>)}
               </div>
 
@@ -468,20 +468,20 @@ export default function MultiAdminPage() {
         <PopupDialog className="multi-admin-dialog" ariaLabelledBy="create-space-title" onClose={() => { setCreateResult(null); setIsCreateOpen(false); }} size="md">
             <h2 id="create-space-title">{copy.createSpaceTitle}</h2>
             <p>
-              Spins up a dedicated space environment with isolated backend, database, and storage.
+              {copy.createDescription}
             </p>
 
             {createResult ? (
               <div style={styles.resultBox}>
-                <div style={{ fontWeight: 700, color: "#34d399", marginBottom: 8, fontSize: 15 }}>
-                  Space Provisioned
+                <div style={{ fontWeight: "var(--font-weight-bold)", color: "var(--color-palette-0f176030df85)", marginBottom: 8, fontSize: "var(--font-size-small)" }}>
+                  {copy.provisioned}
                 </div>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
-                  Admin account created. You can log in directly or share the invite link:
+                <p style={{ fontSize: "var(--font-size-caption)", color: "var(--color-palette-177804c22590)", marginBottom: 12 }}>
+                  {copy.adminCreated}
                 </p>
-                <div style={{ backgroundColor: "#1c1c1e", padding: 14, borderRadius: 16, marginBottom: 14, fontSize: 13 }}>
-                  <div><strong>Username:</strong> {createResult.adminUser}</div>
-                  <div><strong>Password:</strong> {createResult.adminPassword}</div>
+                <div style={{ backgroundColor: "var(--color-palette-95b1a9665923)", padding: 14, borderRadius: "var(--radius-surface)", marginBottom: 14, fontSize: "var(--font-size-caption)" }}>
+                  <div><strong>{copy.username}:</strong> {createResult.adminUser}</div>
+                  <div><strong>{copy.password}:</strong> {createResult.adminPassword}</div>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
                   <a
@@ -490,17 +490,17 @@ export default function MultiAdminPage() {
                     rel="noreferrer"
                     className="popup-button popup-button--primary"
                   >
-                    Open Space Login
+                    {copy.openLogin}
                   </a>
                   <PopupButton
                     type="button"
                     variant="secondary"
                     onClick={() => {
                       navigator.clipboard.writeText(createResult.inviteUrl);
-                      showToast("Invite link copied to clipboard!");
+                      showToast(copy.copyInviteLink);
                     }}
                   >
-                    Copy Invite Link
+                    {copy.copyInviteLink}
                   </PopupButton>
                   <PopupButton
                     type="button"
@@ -510,7 +510,7 @@ export default function MultiAdminPage() {
                       setIsCreateOpen(false);
                     }}
                   >
-                    Close
+                    {copy.close}
                   </PopupButton>
                 </div>
               </div>
@@ -519,7 +519,7 @@ export default function MultiAdminPage() {
                 <PopupField
                     label={copy.spaceName}
                     type="text"
-                    placeholder="e.g. Awesome Corp"
+                    placeholder={copy.namePlaceholder}
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     autoFocus
@@ -546,10 +546,10 @@ export default function MultiAdminPage() {
                     variant="secondary"
                     onClick={() => setIsCreateOpen(false)}
                   >
-                    Cancel
+                    {copy.cancel}
                   </PopupButton>
                   <PopupButton type="submit" variant="primary">
-                    Provision Server
+                    {copy.provisionServer}
                   </PopupButton>
                 </div>
               </form>
@@ -563,8 +563,8 @@ export default function MultiAdminPage() {
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#000000",
-    color: "#f3f4f6",
+    backgroundColor: "var(--color-palette-7b2817bf9b80)",
+    color: "var(--color-palette-8c857e7d938d)",
     fontFamily: "Inter, system-ui, -apple-system, sans-serif",
   },
   loginContainer: {
@@ -572,40 +572,40 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "100vh",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "var(--color-palette-7b2817bf9b80)",
     padding: 20,
   },
   loginCard: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "#1c1c1e",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 28,
+    backgroundColor: "var(--color-palette-95b1a9665923)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    borderRadius: "var(--radius-panel)",
     padding: 36,
-    boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8)",
+    boxShadow: "0 25px 60px var(--color-palette-2101efd095aa)",
   },
   badgePill: {
     display: "inline-block",
     padding: "6px 14px",
-    borderRadius: 999,
-    backgroundColor: "rgba(96, 165, 250, 0.12)",
-    color: "#60a5fa",
-    fontSize: 11,
-    fontWeight: 700,
+    borderRadius: "var(--radius-pill)",
+    backgroundColor: "var(--color-palette-6ec89f6c7b63)",
+    color: "var(--color-palette-8940f2c623d0)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
     marginBottom: 16,
-    border: "1px solid rgba(96, 165, 250, 0.25)",
+    border: "1px solid var(--color-palette-f2803fa10e99)",
   },
   title: {
-    fontSize: 28,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: "0 0 6px 0",
     letterSpacing: "-0.5px",
-    color: "#ffffff",
+    color: "var(--color-palette-f2074b6cef37)",
   },
   subtitle: {
-    fontSize: 14,
-    color: "#9ca3af",
+    fontSize: "var(--font-size-small)",
+    color: "var(--color-palette-177804c22590)",
     marginBottom: 28,
     lineHeight: 1.5,
   },
@@ -618,40 +618,40 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#d1d5db",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
+    color: "var(--color-palette-9643a6d44ff3)",
   },
   inputPill: {
     padding: "12px 20px",
-    backgroundColor: "#2c2c2e",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
-    color: "#ffffff",
-    fontSize: 14,
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    border: "1px solid var(--color-palette-d635c939daff)",
+    borderRadius: "var(--radius-pill)",
+    color: "var(--color-palette-f2074b6cef37)",
+    fontSize: "var(--font-size-small)",
     outline: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   primaryPillButton: {
     padding: "12px 24px",
-    backgroundColor: "#c66b24",
-    color: "#ffffff",
+    backgroundColor: "var(--color-palette-9eaa7706f04a)",
+    color: "var(--color-palette-f2074b6cef37)",
     border: "none",
-    borderRadius: 999,
-    fontWeight: 700,
-    fontSize: 14,
+    borderRadius: "var(--radius-pill)",
+    fontWeight: "var(--font-weight-bold)",
+    fontSize: "var(--font-size-small)",
     cursor: "pointer",
     boxShadow: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   secondaryPillButton: {
     padding: "12px 24px",
-    backgroundColor: "#2c2c2e",
-    color: "#e5e7eb",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
-    fontWeight: 600,
-    fontSize: 14,
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    color: "var(--color-palette-bfd4f8ffcad7)",
+    border: "1px solid var(--color-palette-d635c939daff)",
+    borderRadius: "var(--radius-pill)",
+    fontWeight: "var(--font-weight-semibold)",
+    fontSize: "var(--font-size-small)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -661,20 +661,20 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     width: 40,
     height: 40,
-    backgroundColor: "#2c2c2e",
-    color: "#e5e7eb",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: 999,
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    color: "var(--color-palette-bfd4f8ffcad7)",
+    border: "1px solid var(--color-palette-d635c939daff)",
+    borderRadius: "var(--radius-pill)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   errorBox: {
     padding: 14,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    border: "1px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: 16,
-    color: "#f87171",
-    fontSize: 13,
+    backgroundColor: "var(--color-palette-a6f391cd38f2)",
+    border: "1px solid var(--color-palette-774f5df9b3a3)",
+    borderRadius: "var(--radius-surface)",
+    color: "var(--color-palette-1a75dc9e3972)",
+    fontSize: "var(--font-size-caption)",
     marginBottom: 16,
     lineHeight: 1.4,
   },
@@ -683,8 +683,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 28px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-    backgroundColor: "#050505",
+    borderBottom: "1px solid var(--color-palette-c34f5a2a4d80)",
+    backgroundColor: "var(--color-palette-c2081841e010)",
   },
   headerTitleGroup: {
     display: "flex",
@@ -692,10 +692,10 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 4,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: 0,
-    color: "#ffffff",
+    color: "var(--color-palette-f2074b6cef37)",
     letterSpacing: "-0.5px",
   },
   headerActions: {
@@ -714,23 +714,23 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 36,
   },
   statCard: {
-    backgroundColor: "#1c1c1e",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 24,
+    backgroundColor: "var(--color-palette-95b1a9665923)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    borderRadius: "var(--radius-panel)",
     padding: 24,
-    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+    boxShadow: "0 10px 30px var(--color-palette-4c85ca9b7179)",
     transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease",
   },
   statLabel: {
-    fontSize: 13,
-    fontWeight: 500,
-    color: "#9ca3af",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-medium)",
+    color: "var(--color-palette-177804c22590)",
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 26,
-    fontWeight: 800,
-    color: "#ffffff",
+    fontSize: "var(--font-size-heading)",
+    fontWeight: "var(--font-weight-extrabold)",
+    color: "var(--color-palette-f2074b6cef37)",
   },
   monitoringStatus: {
     display: "flex",
@@ -740,20 +740,20 @@ const styles: Record<string, React.CSSProperties> = {
   },
   monitoringDisabledButton: {
     padding: "6px 10px",
-    border: "1px solid rgba(255,255,255,.12)",
-    borderRadius: 10,
-    background: "rgba(255,255,255,.05)",
-    color: "#9ca3af",
-    fontSize: 13,
-    fontWeight: 650,
+    border: "1px solid var(--color-palette-b749cc259197)",
+    borderRadius: "var(--radius-control)",
+    background: "var(--color-palette-0c501f182ba9)",
+    color: "var(--color-palette-177804c22590)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "default",
   },
   panelCard: {
-    backgroundColor: "#1c1c1e",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 28,
+    backgroundColor: "var(--color-palette-95b1a9665923)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    borderRadius: "var(--radius-panel)",
     padding: 32,
-    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
+    boxShadow: "0 20px 40px var(--color-palette-f71fbab13810)",
   },
   sectionHeader: {
     display: "flex",
@@ -762,10 +762,10 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 800,
+    fontSize: "var(--font-size-heading-small)",
+    fontWeight: "var(--font-weight-extrabold)",
     margin: 0,
-    color: "#ffffff",
+    color: "var(--color-palette-f2074b6cef37)",
   },
   tableWrapper: {
     overflowX: "auto",
@@ -778,44 +778,44 @@ const styles: Record<string, React.CSSProperties> = {
   },
   th: {
     padding: "12px 20px",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#6b7280",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
+    color: "var(--color-palette-66341b70b395)",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
   tr: {
-    backgroundColor: "#2c2c2e",
-    borderRadius: 20,
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    borderRadius: "var(--radius-bubble)",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   td: {
     padding: "18px 20px",
-    fontSize: 14,
-    color: "#d1d5db",
+    fontSize: "var(--font-size-small)",
+    color: "var(--color-palette-9643a6d44ff3)",
   },
   linkPill: {
     display: "inline-flex",
     alignItems: "center",
-    backgroundColor: "rgba(96, 165, 250, 0.12)",
-    color: "#93c5fd",
-    border: "1px solid rgba(96, 165, 250, 0.25)",
+    backgroundColor: "var(--color-palette-6ec89f6c7b63)",
+    color: "var(--color-palette-928ee44540c3)",
+    border: "1px solid var(--color-palette-f2803fa10e99)",
     padding: "6px 16px",
-    borderRadius: 999,
+    borderRadius: "var(--radius-pill)",
     fontFamily: "monospace",
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     textDecoration: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   statusPill: {
     padding: "6px 14px",
-    borderRadius: 999,
-    backgroundColor: "rgba(52, 211, 153, 0.15)",
-    color: "#34d399",
-    border: "1px solid rgba(52, 211, 153, 0.3)",
-    fontSize: 12,
-    fontWeight: 700,
+    borderRadius: "var(--radius-pill)",
+    backgroundColor: "var(--color-palette-387e06a05f07)",
+    color: "var(--color-palette-0f176030df85)",
+    border: "1px solid var(--color-palette-2c142d5bd5f5)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
   },
   actionGroup: {
@@ -830,31 +830,31 @@ const styles: Record<string, React.CSSProperties> = {
     width: 40,
     height: 40,
     padding: 0,
-    border: "1px solid #45464a",
-    borderRadius: "50%",
-    backgroundColor: "#252629",
-    color: "#d5d9e0",
+    border: "1px solid var(--color-palette-7efb07d2be54)",
+    borderRadius: "var(--radius-circle)",
+    backgroundColor: "var(--color-palette-e6505b2c1235)",
+    color: "var(--color-palette-5fb433fc7bea)",
     cursor: "pointer",
   },
   invitePillButton: {
     padding: "8px 18px",
-    backgroundColor: "rgba(52, 211, 153, 0.15)",
-    color: "#34d399",
-    border: "1px solid rgba(52, 211, 153, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    backgroundColor: "var(--color-palette-387e06a05f07)",
+    color: "var(--color-palette-0f176030df85)",
+    border: "1px solid var(--color-palette-2c142d5bd5f5)",
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   ghostPillButton: {
     padding: "8px 18px",
-    backgroundColor: "rgba(129, 140, 248, 0.15)",
-    color: "#a5b4fc",
-    border: "1px solid rgba(129, 140, 248, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    backgroundColor: "var(--color-palette-ec16b30f59c0)",
+    color: "var(--color-palette-7fc7d174cccb)",
+    border: "1px solid var(--color-palette-fe07ce2b0bb3)",
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -864,18 +864,18 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     width: 44,
     height: 44,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    color: "#fca5a5",
-    border: "1px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: 999,
+    backgroundColor: "var(--color-palette-a6f391cd38f2)",
+    color: "var(--color-palette-42705fa9a635)",
+    border: "1px solid var(--color-palette-774f5df9b3a3)",
+    borderRadius: "var(--radius-pill)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   emptyState: {
     textAlign: "center",
     padding: 60,
-    color: "#9ca3af",
-    fontSize: 15,
+    color: "var(--color-palette-177804c22590)",
+    fontSize: "var(--font-size-small)",
   },
   modalActions: {
     display: "flex",
@@ -884,10 +884,10 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 24,
   },
   resultBox: {
-    backgroundColor: "#2c2c2e",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
     padding: 20,
-    borderRadius: 24,
+    borderRadius: "var(--radius-panel)",
   },
   settingsPillButton: {
     display: "inline-flex",
@@ -895,12 +895,12 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     gap: 8,
     padding: "8px 18px",
-    backgroundColor: "rgba(96, 165, 250, 0.15)",
-    color: "#60a5fa",
-    border: "1px solid rgba(96, 165, 250, 0.3)",
-    borderRadius: 999,
-    fontSize: 13,
-    fontWeight: 700,
+    backgroundColor: "var(--color-palette-92e401afc383)",
+    color: "var(--color-palette-8940f2c623d0)",
+    border: "1px solid var(--color-palette-b6e559087702)",
+    borderRadius: "var(--radius-pill)",
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
@@ -910,31 +910,31 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   tabBadgeActive: {
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-bold)",
     padding: "3px 8px",
-    borderRadius: 999,
-    backgroundColor: "rgba(52, 211, 153, 0.15)",
-    color: "#34d399",
-    border: "1px solid rgba(52, 211, 153, 0.3)",
+    borderRadius: "var(--radius-pill)",
+    backgroundColor: "var(--color-palette-387e06a05f07)",
+    color: "var(--color-palette-0f176030df85)",
+    border: "1px solid var(--color-palette-2c142d5bd5f5)",
   },
   tabBadgeInactive: {
-    fontSize: 11,
-    fontWeight: 600,
+    fontSize: "var(--font-size-caption)",
+    fontWeight: "var(--font-weight-semibold)",
     padding: "3px 8px",
-    borderRadius: 999,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-    color: "#6b7280",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "var(--radius-pill)",
+    backgroundColor: "var(--color-palette-0c501f182ba9)",
+    color: "var(--color-palette-66341b70b395)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
     textDecoration: "line-through",
   },
   tabsConfigCard: {
     display: "flex",
     flexDirection: "column",
     gap: 10,
-    backgroundColor: "#2c2c2e",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
-    borderRadius: 20,
+    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    borderRadius: "var(--radius-bubble)",
     padding: 14,
   },
   tabToggleRow: {
@@ -945,33 +945,33 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "6px 4px",
   },
   tabToggleTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#ffffff",
+    fontSize: "var(--font-size-small)",
+    fontWeight: "var(--font-weight-bold)",
+    color: "var(--color-palette-f2074b6cef37)",
   },
   tabToggleDesc: {
-    fontSize: 12,
-    color: "#9ca3af",
+    fontSize: "var(--font-size-caption)",
+    color: "var(--color-palette-177804c22590)",
     marginTop: 2,
   },
   checkbox: {
     width: 20,
     height: 20,
-    accentColor: "#3b82f6",
+    accentColor: "var(--color-palette-b51de63d0eac)",
     cursor: "pointer",
   },
   toast: {
     position: "fixed",
     bottom: 32,
     right: 32,
-    backgroundColor: "#1c1c1e",
-    color: "#ffffff",
-    border: "1px solid rgba(96, 165, 250, 0.4)",
+    backgroundColor: "var(--color-palette-95b1a9665923)",
+    color: "var(--color-palette-f2074b6cef37)",
+    border: "1px solid var(--color-palette-670e494f8dfd)",
     padding: "14px 24px",
-    borderRadius: 999,
-    boxShadow: "0 15px 30px rgba(0, 0, 0, 0.8)",
+    borderRadius: "var(--radius-pill)",
+    boxShadow: "0 15px 30px var(--color-palette-2101efd095aa)",
     zIndex: 1100,
-    fontWeight: 600,
-    fontSize: 14,
+    fontWeight: "var(--font-weight-semibold)",
+    fontSize: "var(--font-size-small)",
   },
 };

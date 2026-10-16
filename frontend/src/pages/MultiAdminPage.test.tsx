@@ -71,8 +71,8 @@ describe("supervisor space management", () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     expect(container.textContent).toContain("Ваши Space");
     expect(container.querySelector('[aria-label="Настройки: Alpha"]')?.textContent).toBe("");
-    expect(container.querySelector('[aria-label="Пригласить: Alpha"]')?.textContent).toBe("");
-    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Дополнительные действия: Alpha"]')?.click(); });
+    expect(container.querySelector('[aria-label="Пригласить в Alpha"]')?.textContent).toBe("");
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Другие действия: Alpha"]')?.click(); });
     expect(container.querySelector('[role="menu"]')?.textContent).toContain("Ghost Token");
     expect(container.querySelector('[role="menu"]')?.textContent).toContain("Удалить");
   });

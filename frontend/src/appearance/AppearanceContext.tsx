@@ -8,6 +8,7 @@ import {
   useMemo,
   useState
 } from "react";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { applyAppearanceToDocument } from "./appearanceDom";
 
 export type ThemeMode = "system" | "light" | "dark" | "amoled";
@@ -87,7 +88,7 @@ export const DENSITY_OPTIONS: Array<{ label: string; value: DensityChoice }> = [
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   themeMode: "system",
   accent: "amber",
-  customAccent: "#d97706",
+  customAccent: DESIGN_COLOR_VALUES.appearance.defaultAccent,
   density: "comfortable",
   wallpaper: "dots",
   customWallpaperFileId: null,
@@ -95,7 +96,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   bubbleRadius: 18,
   messageFont: "system",
   messageScale: 1,
-  avatarColor: "#0ea5e9",
+  avatarColor: DESIGN_COLOR_VALUES.appearance.avatar,
   videoAutoplay: true,
   autoDownloadMedia: true,
   autoDownloadLimitMB: 10,

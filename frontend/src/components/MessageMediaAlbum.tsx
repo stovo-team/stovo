@@ -4,6 +4,7 @@ import type { FamilyFile } from "../api/files";
 import { audioPlaybackSession } from "../audioPlaybackSession";
 import { mediaAlbumLayoutCount } from "../messageMediaAlbum";
 import { VideoPlayer } from "./VideoPlayer";
+import { useStrings } from "../i18n/LanguageContext";
 
 export {
   isMediaAttachment,
@@ -30,6 +31,7 @@ export default function MessageMediaAlbum({
   videoAutoplay = true,
   renderImage
 }: MessageMediaAlbumProps) {
+  const copy = useStrings().auditUi;
   const count = files.length;
   if (count === 0) {
     return null;
@@ -43,7 +45,7 @@ export default function MessageMediaAlbum({
       data-count={layoutCount}
       data-items={count}
       role="group"
-      aria-label={`${count} media attachments`}
+      aria-label={copy.mediaAttachmentCount(count)}
     >
       {files.map((file) => {
         const isVideo = file.mimeType.startsWith("video/");

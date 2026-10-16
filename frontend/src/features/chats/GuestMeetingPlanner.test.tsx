@@ -13,7 +13,7 @@ describe("guest meeting planner chat targets", () => {
     const fieldRule = styles.match(/\.guest-link-field input\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(popupRule).toMatch(/background\s*:/);
     expect(popupRule).toContain("--surface-raised");
-    expect(fieldRule).toMatch(/border-radius\s*:\s*(?:[2-9]\d|\d{3,})px/);
+    expect(fieldRule).toMatch(/border-radius\s*:\s*var\(--radius-(?:bubble|panel|pill)\)/);
   });
 
   let container: HTMLDivElement;

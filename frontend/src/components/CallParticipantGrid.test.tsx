@@ -282,8 +282,8 @@ describe("shared call participant presentation", () => {
 
   it("adds the speaking halo around avatars and an outline around speaking tiles", () => {
     const css = readFileSync("src/styles.css", "utf8");
-    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+#22c55e/);
-    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0\s+0\s+0\s+2px\s+rgba\(34,\s*197,\s*94,\s*\.82\)/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+var\(--color-palette-8b8f7c3d4541\)/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toContain("box-shadow: 0 0 0 2px var(--color-palette-449c31647178)");
     expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).not.toMatch(/(?:4px|7px)/);
 
     const container = renderGrid({

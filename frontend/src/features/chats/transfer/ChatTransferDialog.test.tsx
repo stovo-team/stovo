@@ -38,7 +38,10 @@ vi.mock("../../../api/chatTransfer", () => ({ getChatExportSource, commitChatImp
 vi.mock("../../../api/family", () => ({ getFamily }));
 vi.mock("../../../api/messageCrypto", () => ({ decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity }));
 vi.mock("../../../api/files", () => ({ downloadFileBlob }));
-vi.mock("../../../i18n/LanguageContext", () => ({ useResolvedLanguage: () => currentLanguage.value }));
+vi.mock("../../../i18n/LanguageContext", () => ({
+  useResolvedLanguage: () => currentLanguage.value,
+  useStrings: () => ({ auditUi: { close: "Close" } })
+}));
 
 import type { Chat } from "../../../api/chats";
 import type { ChatArchive } from "./archive";

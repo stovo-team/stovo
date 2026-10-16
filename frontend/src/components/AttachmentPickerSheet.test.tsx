@@ -7,6 +7,15 @@ const mediaPickerSource = readFileSync("src/components/attachment-picker/useMedi
 const mediaGridSource = readFileSync("src/components/attachment-picker/MediaGalleryGrid.tsx", "utf8");
 
 describe("AttachmentPickerSheet Android gallery", () => {
+  it("uses the translated attachment category catalog instead of hard-coded labels", () => {
+    expect(attachmentSheetSource).toContain("strings.attachments.photoOrVideo");
+    expect(attachmentSheetSource).toContain("strings.attachments.document");
+    expect(attachmentSheetSource).toContain("strings.attachments.music");
+    expect(attachmentSheetSource).toContain("strings.attachments.poll");
+    expect(attachmentSheetSource).toContain("strings.attachments.checklist");
+    expect(attachmentSheetSource).toContain("strings.attachments.canvas");
+  });
+
   it("keeps isolated Gallery, File, Audio, and Poll tabs", () => {
     expect(attachmentSheetSource).toContain('setActiveTab("gallery")');
     expect(attachmentSheetSource).toContain('activeTab === "gallery"');
@@ -26,7 +35,7 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toContain("EmojiPicker");
     expect(attachmentSheetSource).toContain("MessageEnlargeButton");
     expect(attachmentSheetSource).toContain("attachment-picker-message-send");
-    expect(attachmentSheetSource).toContain('placeholder="Message"');
+    expect(attachmentSheetSource).toContain("placeholder={strings.attachments.message}");
     expect(attachmentSheetSource).toContain("handleSendSelected");
   });
 
@@ -87,8 +96,8 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("falls back to Android's picker when the in-app media query is empty or fails", () => {
-    expect(mediaGridSource).toContain("No photos or videos found in the in-app gallery.");
-    expect(mediaGridSource).toContain("Unable to load the in-app gallery.");
+    expect(mediaGridSource).toContain("copy.emptyGallery");
+    expect(mediaGridSource).toContain("copy.galleryError");
     expect(attachmentSheetSource).toContain("onChooseGallery={() => { onPick(\"gallery\"); closeSheet(); }}");
   });
 
@@ -116,7 +125,7 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(rule).toContain("flex: 0 0 36px;");
     expect(rule).toContain("min-width: 36px;");
     expect(rule).toContain("min-height: 36px;");
-    expect(rule).toContain("border-radius: 999px;");
+    expect(rule).toContain("border-radius: var(--radius-pill);");
   });
 
   it("supports sliding up from top to open full screen, sliding down to restore default state, and sliding down more to close", () => {

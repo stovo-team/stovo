@@ -265,7 +265,7 @@ export function VoiceChannelStage({
   const mockScreenShareOwner = mockScreenShareOwnerId ? { userId: mockScreenShareOwnerId, displayName: resolveMemberInfo(mockScreenShareOwnerId).rawDisplayName } : null;
 
   return (
-    <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
+    <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label={strings.sharedUi.voiceChannelRoom}>
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
@@ -489,7 +489,7 @@ export function VoiceChannelStage({
           </div>
         ) : (
           <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
-          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label={strings.sharedUi.voiceChannelControls}>
             <CallDeviceControls settings={callAudioSettings} devices={callAudioDevices} capabilities={callAudioCapabilities} controlClassName="voice-dock-btn" labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }} toggleLabels={{ microphone: callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone"), camera: callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera") }} deviceStrings={voiceStrings} onPatch={(patch) => void applyCallAudioPatch(patch)} onToggleCamera={handleToggleVideo} />
 
             {/* Screen sharing and secondary call actions live in the mobile More menu. */}
@@ -504,14 +504,14 @@ export function VoiceChannelStage({
                   isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
                 }`}
                 onClick={() => setIsIntelligenceOpen((open) => !open)}
-                title="Stovo Intelligence (Notes, Recording, Captions)"
-                aria-label="Stovo Intelligence"
+                title={strings.sharedUi.intelligenceA11y}
+                aria-label={strings.auditUi.intelligence}
                 aria-haspopup="true"
                 aria-expanded={isIntelligenceOpen}
               >
                 <IconIntelligence size={20} />
                 {(recording.isRecordingActive || transcriptState === "recording") && (
-                  <span className="voice-dock-badge-dot" title="Intelligence Active" />
+                  <span className="voice-dock-badge-dot" title={strings.sharedUi.intelligenceActive} />
                 )}
               </button>
 

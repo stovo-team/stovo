@@ -1,6 +1,7 @@
 import { Image, Video, X } from "lucide-react";
 
 import type { PendingLocalAttachment } from "../shared/types";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function PendingAttachmentCard({
   pending,
@@ -12,6 +13,7 @@ export function PendingAttachmentCard({
   onEdit?: () => void;
 }) {
   const { file, previewUrl } = pending;
+  const copy = useStrings().chats.composer;
   const isImage = file.type.startsWith("image/");
   const isVideo = file.type.startsWith("video/");
   const showThumb = isImage || isVideo;
@@ -46,7 +48,7 @@ export function PendingAttachmentCard({
         <button
           type="button"
           className="pending-attachment-remove"
-          aria-label={`Remove ${file.name}`}
+          aria-label={copy.removeAttachment(file.name)}
           onClick={handleRemove}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
@@ -70,7 +72,7 @@ export function PendingAttachmentCard({
       <button
         type="button"
         className="pending-attachment-remove"
-        aria-label={`Remove ${file.name}`}
+        aria-label={copy.removeAttachment(file.name)}
         onClick={handleRemove}
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}

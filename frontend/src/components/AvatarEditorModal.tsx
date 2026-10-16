@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
-import { strings } from "../config/strings";
+import { useStrings } from "../i18n/LanguageContext";
 import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 interface AvatarEditorModalProps {
@@ -22,6 +22,7 @@ export function AvatarEditorModal({
   onSave,
   onClose
 }: AvatarEditorModalProps) {
+  const strings = useStrings();
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
 
@@ -248,7 +249,7 @@ export function AvatarEditorModal({
             <div className="avatar-editor-image-layer">
               <img
                 src={previewUrl}
-                alt="Profile Preview"
+                alt={strings.sharedUi.profilePreview}
                 className="avatar-editor-preview-img"
                 draggable={false}
                 style={{

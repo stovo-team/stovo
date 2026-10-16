@@ -5,6 +5,7 @@ import {
 } from "../../../realtime/CallController";
 import { PopupBackdrop, PopupCloseButton } from "../../../components/ui/Popup";
 import { PopupSelect } from "../../../components/ui/PopupSelect";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function CallVideoSettingsPopup({
   settings,
@@ -23,6 +24,7 @@ export function CallVideoSettingsPopup({
   onClose: () => void;
   embedded?: boolean;
 }) {
+  const copy = useStrings().callAudio;
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
 
   const content = (
@@ -30,42 +32,42 @@ export function CallVideoSettingsPopup({
       className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
       role={embedded ? "region" : "dialog"}
       aria-modal={embedded ? undefined : true}
-      aria-label={embedded ? "Camera settings" : "Video settings"}
+      aria-label={embedded ? copy.cameraSettings : copy.videoSettings}
       onClick={!embedded ? (e) => e.stopPropagation() : undefined}
     >
       {!embedded && (
         <div className="call-audio-popup-header">
-          <span>Video settings</span>
-          <PopupCloseButton className="call-audio-popup-close" ariaLabel="Close" autoFocus onClick={onClose} />
+          <span>{copy.videoSettings}</span>
+          <PopupCloseButton className="call-audio-popup-close" ariaLabel={copy.close} autoFocus onClick={onClose} />
         </div>
       )}
       <div className="call-audio-popup-body">
         {!isMobile && (
           <section className="call-audio-popup-section">
-            <div className="call-audio-section-label">Camera device</div>
+            <div className="call-audio-section-label">{copy.cameraDevice}</div>
             <div className="call-audio-device-row">
-              <span>Camera</span>
+              <span>{copy.camera}</span>
               <PopupSelect
-                ariaLabel="Camera"
+                ariaLabel={copy.camera}
                 className="call-audio-device-select"
                 value={settings.videoDeviceId}
                 disabled={!capabilities.canUseCamera || videoDevices.length === 0}
                 onChange={(videoDeviceId) => onPatch({ videoDeviceId })}
                 options={[
-                  { value: "", label: "System default" },
+                  { value: "", label: copy.systemDefault },
                   ...videoDevices.map((d) => ({ value: d.deviceId, label: d.label })),
                 ]}
               />
             </div>
           </section>
         )}
-        <section className="call-audio-popup-section">
-          <div className="call-audio-section-label">Display</div>
+        <section className="call-audio-popup-section" aria-label={copy.display}>
+          <div className="call-audio-section-label">{copy.display}</div>
           <div className="call-audio-toggle-group">
             <div className="call-audio-toggle-row">
               <div className="call-audio-toggle-info">
-                <span className="call-audio-toggle-name">Mirror my video</span>
-                <span className="call-audio-toggle-desc">Flip the local preview horizontally (front camera)</span>
+                <span className="call-audio-toggle-name">{copy.mirrorVideo}</span>
+                <span className="call-audio-toggle-desc">{copy.mirrorVideoHelp}</span>
               </div>
               <label className="call-audio-toggle-switch">
                 <input

@@ -97,6 +97,7 @@ async function renderPage() {
 beforeEach(() => {
   auth.accessToken = null;
   auth.currentUser = null;
+  Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
   vi.stubGlobal("MediaStream", FakeMediaStream);
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
@@ -120,12 +121,30 @@ afterEach(async () => {
   root = null;
   host = null;
   Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+  Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
   localStorage.removeItem("stovo.call-ui-preferences");
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
 describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
+  it("renders pre-join actions in Russian for a Russian device locale", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(host?.textContent).toContain("Ваше имя");
+    expect(host?.querySelector<HTMLInputElement>('input[placeholder="Введите имя"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Присоединиться к встрече");
+    expect(host?.textContent).not.toContain("Join meeting");
+  });
+  it("renders pre-join actions in Russian for a Russian device locale", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(host?.textContent).toContain("Ваше имя");
+    expect(host?.querySelector<HTMLInputElement>('input[placeholder="Введите имя"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Присоединиться к встрече");
+    expect(host?.textContent).not.toContain("Join meeting");
+  });
+
   it("keeps the joining screen as an unboxed black loading state with the Stovo link at the bottom", async () => {
     api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joining", state: "admitted" });
     api.getGuestMeetingToken.mockReturnValueOnce(new Promise<{ url: string; token: string; roomName: string }>(() => undefined));
@@ -152,7 +171,7 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
     const css = readFileSync("src/styles.css", "utf8");
     const connectingPageRule = css.match(/\.guest-meeting-page--connecting\s*\{([^}]*)\}/)?.[1] ?? "";
     const connectingLinkRule = css.match(/\.guest-meeting-page--connecting \.guest-stovo-marketing\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(connectingPageRule).toMatch(/background:\s*#000/);
+    expect(connectingPageRule).toContain("background: var(--color-palette-7b2817bf9b80)");
     expect(connectingLinkRule).toMatch(/position:\s*fixed/);
     expect(connectingLinkRule).toMatch(/bottom:/);
   });
@@ -426,8 +445,8 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
 
     const css = readFileSync("src/styles.css", "utf8");
     const rule = css.match(/\.guest-call-controls \.guest-device-control > button\s*\{([^}]*)\}/s)?.[1] ?? "";
-    expect(rule).toMatch(/border-radius:\s*999px\s+0\s+0\s+999px/);
-    expect(rule).not.toMatch(/border-radius:\s*50%/);
+    expect(rule).toMatch(/border-radius:\s*var\(--radius-pill\)\s+0\s+0\s+var\(--radius-pill\)/);
+    expect(rule).not.toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
 
 });

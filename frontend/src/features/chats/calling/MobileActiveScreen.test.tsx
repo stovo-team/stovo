@@ -95,7 +95,7 @@ describe("MobileActiveScreen", () => {
     expect(controlsRule).toMatch(/flex-wrap:\s*nowrap/);
     expect(buttonRule).toMatch(/width:\s*40px/);
     expect(buttonRule).toMatch(/height:\s*40px/);
-    expect(buttonRule).toMatch(/border-radius:\s*50%/);
+    expect(buttonRule).toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
 
   it("keeps screen sharing in the standard More toggle without a separate Stop banner button", () => {

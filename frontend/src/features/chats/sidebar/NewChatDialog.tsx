@@ -85,7 +85,7 @@ export function NewChatDialog({
         <header className="new-chat-screen-header">
           <BackButton className="new-chat-screen-back" ariaLabel="Back" onClick={() => onScreenChange("pick")} />
           <h2 id="new-chat-compose-title">{titleLabel}</h2>
-          <PopupCloseButton ariaLabel="Close new chat" onClick={onClose} />
+          <PopupCloseButton ariaLabel={strings.chats.newChat.close} onClick={onClose} />
         </header>
         <form
           id={composeFormId}
@@ -118,7 +118,7 @@ export function NewChatDialog({
               <li key={currentUser.id}>
                 <div
                   className="new-chat-contact-row selected is-creator"
-                  aria-label={`${currentUser.displayName} (${strings.chats.newChat.you ?? "You"})`}
+                  aria-label={strings.chats.newChat.creatorAriaLabel(currentUser.displayName, strings.chats.newChat.you)}
                 >
                   <RealAvatar
                     accessToken={accessToken}
@@ -186,7 +186,7 @@ export function NewChatDialog({
       <header className="new-chat-screen-header">
         <h2 id="new-chat-title">{strings.chats.newChat.title}</h2>
         <span className="new-chat-screen-spacer" aria-hidden={true} />
-        <PopupCloseButton ariaLabel="Close new message" onClick={onClose} />
+         <PopupCloseButton ariaLabel={strings.chats.newChat.close} onClick={onClose} />
       </header>
       <PopupField label={strings.chats.searchPlaceholder} type="search" autoFocus placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
       <div className="new-chat-actions">
@@ -228,14 +228,14 @@ export function NewChatDialog({
         </button>}
         {onPlanGuestMeeting && <button type="button" className="new-chat-action-row" onClick={onPlanGuestMeeting}>
           <span className="new-chat-action-icon" aria-hidden={true}><span className="ms-icon ms-icon--22 ms-icon--filled">calendar_add_on</span></span>
-          <span className="new-chat-action-copy"><strong>Plan guest meeting</strong><small>Create a shareable link for external guests</small></span>
+          <span className="new-chat-action-copy"><strong>{strings.chats.newChat.planGuestMeeting}</strong><small>{strings.chats.newChat.guestMeetingDescription}</small></span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>chevron_right</span>
         </button>}
       </div>
       <p className="new-chat-section-label">{strings.chats.details.members}</p>
       <ul className="new-chat-contact-list">
         {members.length === 0 ? (
-          <li className="new-chat-empty">No contacts match your search.</li>
+          <li className="new-chat-empty">{strings.chats.newChat.noContactsMatch}</li>
         ) : (
           members.map((member) => (
             <li key={member.id}>

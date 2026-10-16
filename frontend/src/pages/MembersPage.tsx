@@ -14,6 +14,7 @@ import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { shareContent } from "../native/nativeSharePlugin";
 import AppNav from "./AppNav";
+import { useStrings } from "../i18n/LanguageContext";
 
 const ROLE_OPTIONS: UserRole[] = ["admin", "member", "child"];
 
@@ -60,6 +61,8 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
 }
 
 export default function MembersPage() {
+  const strings = useStrings();
+  const copy = strings.admin.members;
   const { accessToken, currentUser, authRequest } = useAuth();
   const profileId = currentUser?.id ?? null;
   const [family, setFamily] = useState<Family | null>(
@@ -265,16 +268,16 @@ export default function MembersPage() {
         <header className="section-header">
           <div>
             <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-            <h1>Contacts</h1>
+          <h1>{copy.contacts}</h1>
           </div>
           <div className="menu-anchor" ref={contactMenuRef}>
             <button
               type="button"
               className="icon-button subtle"
-              aria-label="Contact actions"
+              aria-label={copy.contactActions}
               aria-expanded={isContactMenuOpen}
               aria-haspopup="menu"
-              title="Contact actions"
+              title={copy.contactActions}
               onClick={() => setIsContactMenuOpen((value) => !value)}
             >
               <MoreVertical aria-hidden="true" size={20} />
@@ -283,11 +286,11 @@ export default function MembersPage() {
               <div className="action-menu" role="menu">
                 <button type="button" role="menuitem" onClick={focusInviteForm}>
                   <UserPlus aria-hidden="true" size={16} />
-                  Add contact
+                  {copy.addContact}
                 </button>
                 <button type="button" role="menuitem" onClick={() => void copyInviteLink()}>
                   <Link2 aria-hidden="true" size={16} />
-                  Copy invite
+                  {copy.copyInvite}
                 </button>
                 <button
                   type="button"
@@ -298,7 +301,7 @@ export default function MembersPage() {
                   }}
                 >
                   <RefreshCw aria-hidden="true" size={16} />
-                  Refresh
+                  {copy.refresh}
                 </button>
               </div>
             )}
@@ -307,15 +310,15 @@ export default function MembersPage() {
 
         <div className="summary-band">
           <div>
-            <span className="summary-label">Signed in</span>
+            <span className="summary-label">{copy.signedIn}</span>
             <strong>{currentUser?.displayName}</strong>
           </div>
           <div>
-            <span className="summary-label">Role</span>
+            <span className="summary-label">{copy.role}</span>
             <strong>{currentUser?.role}</strong>
           </div>
           <div>
-            <span className="summary-label">Members</span>
+            <span className="summary-label">{copy.title}</span>
             <strong>{members.length}</strong>
           </div>
         </div>
@@ -326,7 +329,7 @@ export default function MembersPage() {
         <label className="search-field contacts-search">
           <Search aria-hidden="true" size={18} />
           <input
-            placeholder="Search contacts"
+            placeholder={copy.searchContacts}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -335,22 +338,22 @@ export default function MembersPage() {
         <div className="quick-action-row">
           <button type="button" onClick={focusInviteForm}>
             <UserPlus aria-hidden="true" size={18} />
-            Add contact
+            {copy.addContact}
           </button>
           <button type="button" onClick={() => void createInviteLink()}>
             <Link2 aria-hidden="true" size={18} />
-            Invite link
+            {copy.inviteLink}
           </button>
           <button type="button" onClick={() => void shareInviteLink()}>
             <QrCode aria-hidden="true" size={18} />
-            Share invite
+            {copy.shareInvite}
           </button>
         </div>
 
         {allowedInviteRoles.length > 0 && (
           <form className="toolbar-form" ref={inviteFormRef} onSubmit={handleInviteSubmit}>
             <label>
-              Invite role
+              {copy.inviteRole}
               <select
                 value={inviteForm.role}
                 onChange={(event) =>
@@ -365,7 +368,7 @@ export default function MembersPage() {
               </select>
             </label>
             <label>
-              Hours
+              {copy.hours}
               <input
                 min={1}
                 max={720}
@@ -377,7 +380,7 @@ export default function MembersPage() {
               />
             </label>
             <label>
-              Uses
+              {copy.uses}
               <input
                 min={1}
                 max={100}
@@ -388,7 +391,7 @@ export default function MembersPage() {
                 }
               />
             </label>
-            <button type="submit">Create invite</button>
+            <button type="submit">{copy.createInvite}</button>
           </form>
         )}
 
@@ -396,7 +399,7 @@ export default function MembersPage() {
           <div className="invite-result">
             <code>{inviteUrl}</code>
             <button type="button" onClick={() => void copyInviteLink()}>
-              Copy
+              {copy.copy}
             </button>
           </div>
         )}
@@ -405,8 +408,8 @@ export default function MembersPage() {
           {filteredMembers.length === 0 && !isLoading && (
             <div className="empty-state compact-empty">
               <UserPlus aria-hidden="true" size={30} />
-              <strong>No contacts found</strong>
-              <p>Invite family members or adjust the search.</p>
+              <strong>{copy.noContacts}</strong>
+              <p>{copy.inviteFamilyOrSearch}</p>
             </div>
           )}
           {filteredMembers.map((member) => {
@@ -437,7 +440,7 @@ export default function MembersPage() {
                     ))}
                   </select>
                   <button type="button" disabled={!manageable} onClick={() => void handleRemove(member)}>
-                    Remove
+                    {copy.remove}
                   </button>
                 </div>
               </article>

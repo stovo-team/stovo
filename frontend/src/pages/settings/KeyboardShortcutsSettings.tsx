@@ -40,6 +40,7 @@ export interface KeyboardShortcutsSettingsProps {
 }
 export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShortcutsSettingsProps = {}) {
   const strings = useStrings();
+  const copy = strings.auditUi;
   const [bindings, setBindings] = useState<ShortcutBindings>(() => loadShortcutBindings());
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null);
   const [conflict, setConflict] = useState<{
@@ -249,14 +250,14 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
             className="shortcuts-search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search shortcuts…"
-            aria-label="Search shortcuts"
+            placeholder={copy.searchShortcuts}
+            aria-label={copy.searchShortcuts}
           />
           {searchQuery && (
             <button
               type="button"
               className="shortcuts-search-clear"
-              aria-label="Clear search"
+              aria-label={copy.clearSearch}
               onClick={() => setSearchQuery("")}
             >
               <X size={14} aria-hidden="true" />
@@ -271,7 +272,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
           <div className="shortcuts-conflict-body">
             <strong>{strings.shortcuts.browserConflictWarning}</strong>
             <p>
-              Combination <kbd>{browserConflict.combo}</kbd> is reserved by your browser for &ldquo;{browserConflict.browserFeature}&rdquo;. Please choose a different shortcut.
+              {copy.browserReserves(browserConflict.combo, browserConflict.browserFeature)}
             </p>
           </div>
           <div className="shortcuts-conflict-actions">
@@ -295,8 +296,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
           <div className="shortcuts-conflict-body">
             <strong>{strings.shortcuts.conflictWarning}</strong>
             <p>
-              Combination <kbd>{conflict.combo}</kbd> is currently assigned to{" "}
-              <strong>{strings.shortcuts.actions[conflict.conflictingActionId]}</strong>.
+              {copy.assignedTo(conflict.combo, strings.shortcuts.actions[conflict.conflictingActionId])}.
             </p>
           </div>
           <div className="shortcuts-conflict-actions">
@@ -323,7 +323,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
 
       {visibleGroups.length === 0 && searchQuery && (
         <div className="shortcuts-empty-state">
-          <p className="muted-copy">No shortcuts match &ldquo;{searchQuery}&rdquo;</p>
+          <p className="muted-copy">{copy.noShortcutMatches(searchQuery)}</p>
         </div>
       )}
 
@@ -381,7 +381,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
                         <button
                           type="button"
                           className="shortcut-badge-button"
-                          aria-label={`Change shortcut for ${actionLabel}`}
+                          aria-label={copy.changeShortcutFor(actionLabel)}
                           onClick={() => {
                             setConflict(null);
                             setBrowserConflict(null);
@@ -403,7 +403,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
                         <button
                           type="button"
                           className="shortcut-reset-button"
-                          aria-label={`${strings.shortcuts.resetAction}: ${actionLabel}`}
+                          aria-label={copy.resetShortcutFor(actionLabel)}
                           title={strings.shortcuts.resetAction}
                           onClick={() => handleResetOne(def.id)}
                         >
