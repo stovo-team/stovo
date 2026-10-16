@@ -1,5 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupField } from "../../../components/ui/PopupField";
 import { useStrings } from "../../../i18n/LanguageContext";
 
 type DefaultChatSectionDialogProps = {
@@ -21,18 +24,24 @@ export function DefaultChatSectionDialog({ initialName, onClose, onSave }: Defau
   }
 
   return createPortal(
-    <div className="modal-backdrop chat-folder-backdrop" role="presentation" onMouseDown={onClose}>
-      <form className="chat-folder-dialog" role="dialog" aria-modal="true" aria-labelledby="default-chat-section-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
+    <PopupDialog
+      className="chat-folder-layout"
+      ariaLabelledBy="default-chat-section-title"
+      onClose={onClose}
+      closeOnBackdrop
+      closeOnEscape={false}
+      size="md"
+    >
+      <form className="chat-folder-form" onSubmit={submit}>
         <div className="modal-header">
           <h2 id="default-chat-section-title">{copy.settings}</h2>
-          <button type="button" className="chat-folder-close" aria-label={copy.close} onClick={onClose}><span className="ms-icon ms-icon--20" aria-hidden="true">close</span></button>
         </div>
         <div className="chat-folder-body">
-          <label className="chat-folder-field">{copy.folderName}<input autoFocus value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+          <PopupField label={copy.folderName} autoFocus value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
         </div>
-        <div className="chat-folder-actions"><span><button className="primary-button" disabled={!name.trim()}>{copy.save}</button><button type="button" className="secondary-button" onClick={onClose}>{copy.cancel}</button></span></div>
+        <div className="chat-folder-actions"><span><PopupButton type="submit" variant="primary" disabled={!name.trim()}>{copy.save}</PopupButton><PopupButton type="button" variant="secondary" onClick={onClose}>{copy.cancel}</PopupButton></span></div>
       </form>
-    </div>,
+    </PopupDialog>,
     document.body
   );
 }

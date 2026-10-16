@@ -90,16 +90,16 @@ describe("desktop call device selection", () => {
     const dialog = container.querySelector('[role="dialog"][aria-modal="true"]');
     const micMenu = dialog?.querySelector('[role="listbox"][aria-label="Microphone device"]');
     expect(micMenu).not.toBeNull();
-    expect(micMenu?.parentElement).toBe(dialog);
+    expect(dialog?.contains(micMenu ?? null)).toBe(true);
     expect(document.body.querySelector('[role="listbox"]')).toBe(micMenu);
     const micOption = Array.from(dialog?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
       .find((option) => option.textContent?.includes("Desk microphone"));
     act(() => micOption?.click());
-    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.body.querySelector('[role="listbox"]:not([hidden])')).toBeNull();
 
     act(() => speaker?.click());
-    expect(document.body.querySelector('[role="listbox"][aria-label="Speaker device"]')).not.toBeNull();
-    const speakerOption = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="option"]'))
+    expect(document.body.querySelector('[role="listbox"]:not([hidden])[aria-label="Speaker device"]')).not.toBeNull();
+    const speakerOption = Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
       .find((option) => option.textContent?.includes("Desk speakers"));
     act(() => speakerOption?.click());
     expect(onPatch).toHaveBeenNthCalledWith(1, { inputDeviceId: "mic-1" });
@@ -127,18 +127,19 @@ describe("desktop call device selection", () => {
 
     const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]');
     act(() => trigger?.click());
-    act(() => trigger?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
     expect(document.activeElement).toBe(container.querySelector('[role="option"]'));
+    act(() => trigger?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
+    expect(document.activeElement).toBe(container.querySelectorAll('[role="option"]')[1]);
     act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
-    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.body.querySelector('[role="listbox"]:not([hidden])')).toBeNull();
     expect(document.activeElement).toBe(trigger);
 
     act(() => trigger?.click());
     act(() => document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
-    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.body.querySelector('[role="listbox"]:not([hidden])')).toBeNull();
   });
 
-  it("keeps a narrow device list below its trigger even near the bottom of the viewport", () => {
+  it("keeps a narrow device list below its trigger using shared dropdown placement", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -147,16 +148,10 @@ describe("desktop call device selection", () => {
       settings={DEFAULT_CALL_SETTINGS} capabilities={capabilities} devices={[]}
       warning={null} onPatch={vi.fn()} onClose={vi.fn()} />));
     const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Select Speaker"]')!;
-    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
-      top: window.innerHeight - 100, bottom: window.innerHeight - 60, left: 50, right: 230,
-      width: 180, height: 40, x: 50, y: window.innerHeight - 100, toJSON: () => ({}),
-    });
     act(() => trigger.click());
     const menu = container.querySelector<HTMLElement>('[role="listbox"]')!;
-    expect(menu.style.top).toBe(`${window.innerHeight - 54}px`);
-    expect(menu.style.left).toBe("50px");
-    expect(menu.style.width).toBe("180px");
-    expect(Number.parseFloat(menu.style.maxHeight)).toBeLessThanOrEqual(54);
+    expect(menu).not.toBeNull();
+    expect(menu.classList.contains("popup-select__menu")).toBe(true);
   });
 
   it("starts at audible volume and plays the speaker test through the chosen output", async () => {

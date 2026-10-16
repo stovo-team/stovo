@@ -176,7 +176,7 @@ describe("chat details controls", () => {
 
     // Quiet hours
     expect(chatDetailsPanel).toContain("chat-info-quiet-hours-inputs");
-    expect(chatDetailsPanel).toContain("chat-info-time-input");
+    expect(chatDetailsPanel).toContain("PopupField");
 
     // Notification scope & sender picker
     expect(chatDetailsPanel).toContain('name="chatNotificationScope"');

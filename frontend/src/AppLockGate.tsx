@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { LockKeyhole } from "lucide-react";
+import { PopupButton } from "./components/ui/PopupButton";
 
 import {
   authenticateAppLock,
@@ -93,14 +94,14 @@ export default function AppLockGate() {
         <h1>{strings.title}</h1>
         <p>{strings.unlockHelp}</p>
         {error && <p className="error-text">{error}</p>}
-        <button
+        <PopupButton
           type="button"
-          className="primary-button"
+          variant="primary"
           disabled={isAuthenticating}
           onClick={() => void unlock(strings.unlockReason)}
         >
           {isAuthenticating ? strings.waiting : strings.unlock}
-        </button>
+        </PopupButton>
       </div>
     </div>
   );

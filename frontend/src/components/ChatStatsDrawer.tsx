@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ChatStats } from "../api/stats";
-import { BarChart3, Clock3, Image, MessageCircle, Users, X, Zap } from "lucide-react";
+import { BarChart3, Clock3, Image, MessageCircle, Users, Zap } from "lucide-react";
 import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
+import { PopupDialog, PopupCloseButton } from "./ui/Popup";
 
 interface Props {
   stats: ChatStats | null;
@@ -25,16 +26,12 @@ export default function ChatStatsDrawer({ stats, chatTitle, isLoading = false, e
 
   useEffect(() => {
     closeButtonRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+  }, []);
 
-  return createPortal(<div className="chat-stats-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="chat-stats-drawer" role="dialog" aria-modal="true" aria-labelledby="chat-stats-title" tabIndex={-1}>
+  return createPortal(<PopupDialog className="chat-stats-drawer" ariaLabelledBy="chat-stats-title" onClose={onClose} closeOnBackdrop closeOnEscape backdropClassName="chat-stats-overlay" size="xl" showCloseButton={false}>
       <header className="chat-stats-header">
         <div><span className="chat-stats-eyebrow"><BarChart3 size={15} /> {copy.title}</span><h2 id="chat-stats-title">{chatTitle || copy.chat}</h2></div>
-        <button ref={closeButtonRef} type="button" className="chat-stats-close" onClick={onClose} aria-label={copy.close}><X size={20} /></button>
+        <PopupCloseButton ref={closeButtonRef} onClick={onClose} ariaLabel={copy.close} />
       </header>
 
       <div className="chat-stats-body" aria-busy={isLoading}>
@@ -67,8 +64,7 @@ export default function ChatStatsDrawer({ stats, chatTitle, isLoading = false, e
           </section>
         </>}
       </div>
-    </section>
-  </div>, document.body);
+  </PopupDialog>, document.body);
 }
 
 function Metric({ icon, label, value, tone = "purple" }: { icon: React.ReactNode; label: string; value: string; tone?: "purple" | "pink" | "blue" }) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { X } from "lucide-react";
 import type { CallCapabilities, CallDevice, CallSettings } from "../../../realtime/CallController";
 import type { CallUIPreferences } from "./callUIPreferences";
+import { PopupBackdrop, PopupCloseButton } from "../../../components/ui/Popup";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallVideoSettingsPopup } from "./CallVideoSettingsPopup";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -78,11 +78,19 @@ export function CallSettingsDialog({
   };
 
   return (
-    <div className="call-audio-popup-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}>
-      <section ref={dialogRef} className="call-settings-dialog" role="dialog" aria-modal="true" aria-label={copy.callSettings} onKeyDown={handleDialogKeyDown}>
+    <PopupBackdrop className="call-audio-popup-backdrop" onClick={closeDialog}>
+      <section
+        ref={dialogRef}
+        className="call-settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={copy.callSettings}
+        onKeyDown={handleDialogKeyDown}
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className="call-settings-dialog-header">
           <strong>{copy.settings}</strong>
-          <button type="button" className="call-audio-popup-close" aria-label={copy.close} autoFocus onClick={closeDialog}><X size={14} aria-hidden="true" /></button>
+          <PopupCloseButton className="call-audio-popup-close" ariaLabel={copy.close} autoFocus onClick={closeDialog} />
         </header>
         <div className="call-settings-dialog-layout">
           <div className="call-settings-tabs" role="tablist" aria-label={copy.callSettings}>
@@ -111,6 +119,6 @@ export function CallSettingsDialog({
           </div>
         </div>
       </section>
-    </div>
+    </PopupBackdrop>
   );
 }

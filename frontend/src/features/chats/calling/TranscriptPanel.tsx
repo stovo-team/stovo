@@ -4,7 +4,8 @@
  * Appears as an overlay panel on the call UI. Only shown when
  * `isTranscriptPanelOpen` is true from useTranscription.
  */
-import { X, FileText, CheckSquare, HelpCircle, Lightbulb, Download } from "lucide-react";
+import { FileText, CheckSquare, HelpCircle, Lightbulb, Download } from "lucide-react";
+import { PopupCloseButton } from "../../../components/ui/Popup";
 import type { TranscriptData, TranscriptSegment } from "./useTranscription";
 import { useStrings } from "../../../i18n/LanguageContext";
 
@@ -84,15 +85,12 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
               <Download size={15} aria-hidden />
             </button>
           )}
-          <button
-            type="button"
+          <PopupCloseButton
             className="transcript-panel__icon-btn"
             title={copy.closeTranscript}
-            aria-label={copy.closeTranscriptPanel}
+            ariaLabel={copy.closeTranscriptPanel}
             onClick={onClose}
-          >
-            <X size={15} aria-hidden />
-          </button>
+          />
         </div>
       </div>
 

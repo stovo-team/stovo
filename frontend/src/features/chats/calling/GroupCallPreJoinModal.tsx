@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
 import { useStrings } from "../../../i18n/LanguageContext";
 
 export type GroupCallPreJoinModalProps = {
@@ -81,94 +83,82 @@ export function GroupCallPreJoinModal({
   };
 
   return (
-    <div className="group-call-prejoin-backdrop" role="dialog" aria-modal="true">
-      <div className="group-call-prejoin-card">
-        <div className="group-call-prejoin-header">
-          <h2 className="group-call-prejoin-title">{copy.joinGroupCallQuestion}</h2>
-          {chatTitle && <p className="group-call-prejoin-subtitle">{chatTitle}</p>}
-        </div>
+    <PopupDialog
+      className="group-call-prejoin-card"
+      ariaLabelledBy="group-call-prejoin-title"
+      onClose={onClose}
+      size="md"
+    >
+      <div className="group-call-prejoin-header">
+        <h2 id="group-call-prejoin-title" className="group-call-prejoin-title">{copy.joinGroupCallQuestion}</h2>
+        {chatTitle && <p className="group-call-prejoin-subtitle">{chatTitle}</p>}
+      </div>
 
-        {/* Media Preview Box */}
-        <div className="group-call-prejoin-preview">
-          {cameraEnabled ? (
-            <video
-              ref={videoRef}
-              className="group-call-prejoin-video"
-              muted
-              playsInline
-              autoPlay
-            />
-          ) : (
-            <div className="group-call-prejoin-avatar-placeholder">
-              <span className="ms-icon ms-icon--48" aria-hidden="true">
-                {callType === "video" ? "videocam_off" : "mic"}
-              </span>
-              <p>{micMuted ? copy.microphoneMuted : copy.readyForAudio}</p>
-            </div>
-          )}
-        </div>
+      {/* Media Preview Box */}
+      <div className="group-call-prejoin-preview">
+        {cameraEnabled ? (
+          <video
+            ref={videoRef}
+            className="group-call-prejoin-video"
+            muted
+            playsInline
+            autoPlay
+          />
+        ) : (
+          <div className="group-call-prejoin-avatar-placeholder">
+            <span className="ms-icon ms-icon--48" aria-hidden="true">
+              {callType === "video" ? "videocam_off" : "mic"}
+            </span>
+            <p>{micMuted ? copy.microphoneMuted : copy.readyForAudio}</p>
+          </div>
+        )}
+      </div>
+      {/* Media Controls Toolbar */}
+      <div className="group-call-prejoin-controls">
+        <button
+          type="button"
+          className={`group-call-prejoin-btn${micMuted ? " is-off" : ""}`}
+          onClick={() => setMicMuted(!micMuted)}
+          aria-label={micMuted ? copy.unmuteMicrophone : copy.muteMicrophone}
+        >
+          <span className="ms-icon" aria-hidden="true">
+            {micMuted ? "mic_off" : "mic"}
+          </span>
+          <span>{micMuted ? copy.muted : copy.micOn}</span>
+        </button>
 
-        {/* Media Controls Toolbar */}
-        <div className="group-call-prejoin-controls">
+        {callType === "video" && (
           <button
             type="button"
-            className={`group-call-prejoin-btn${micMuted ? " is-off" : ""}`}
-            onClick={() => setMicMuted(!micMuted)}
-            aria-label={micMuted ? copy.unmuteMicrophone : copy.muteMicrophone}
+            className={`group-call-prejoin-btn${!cameraEnabled ? " is-off" : ""}`}
+            onClick={() => setCameraEnabled(!cameraEnabled)}
+            aria-label={cameraEnabled ? copy.turnOffCamera : copy.turnOnCamera}
           >
             <span className="ms-icon" aria-hidden="true">
-              {micMuted ? "mic_off" : "mic"}
+              {cameraEnabled ? "videocam" : "videocam_off"}
             </span>
-            <span>{micMuted ? copy.muted : copy.micOn}</span>
+            <span>{cameraEnabled ? copy.cameraOn : copy.cameraOff}</span>
           </button>
-
-          {callType === "video" && (
-            <button
-              type="button"
-              className={`group-call-prejoin-btn${!cameraEnabled ? " is-off" : ""}`}
-              onClick={() => setCameraEnabled(!cameraEnabled)}
-              aria-label={cameraEnabled ? copy.turnOffCamera : copy.turnOnCamera}
-            >
-              <span className="ms-icon" aria-hidden="true">
-                {cameraEnabled ? "videocam" : "videocam_off"}
-              </span>
-              <span>{cameraEnabled ? copy.cameraOn : copy.cameraOff}</span>
-            </button>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="group-call-prejoin-actions">
-          <button
-            type="button"
-            className="group-call-prejoin-cancel-btn"
-            onClick={onClose}
-          >
-            {copy.cancel}
-          </button>
-          <button
-            type="button"
-            className="group-call-prejoin-confirm-btn"
-            onClick={handleConfirmJoin}
-          >
-            <svg
-              className="group-call-join-svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-            <span>{copy.joinCall}</span>
-          </button>
-        </div>
+        )}
       </div>
-    </div>
+
+      {/* Action Buttons */}
+      <div className="group-call-prejoin-actions">
+        <PopupButton
+          variant="secondary"
+          className="group-call-prejoin-cancel-btn"
+          onClick={onClose}
+        >
+          {copy.cancel}
+        </PopupButton>
+        <PopupButton
+          variant="primary"
+          className="group-call-prejoin-confirm-btn"
+          onClick={handleConfirmJoin}
+        >
+          {copy.joinCall}
+        </PopupButton>
+      </div>
+    </PopupDialog>
   );
 }

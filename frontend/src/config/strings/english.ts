@@ -1589,7 +1589,7 @@ export const strings = {
       ipBlock: "IP block",
       liftIpBlock: "Lift IP block",
       blockIp: "Block this IP",
-      ipAlreadyBlocked: "This IP is already blocked for this family.",
+      ipAlreadyBlocked: "This IP is already blocked for this family.", confirmBlock: "Confirm block", confirmLift: "Confirm lift", saving: "Saving…",
       noSigninIp: "No valid sign-in IP is available for this member.",
       close: "Close",
       cancel: "Cancel",

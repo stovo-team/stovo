@@ -10,6 +10,9 @@ import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import AppNav from "./AppNav";
 import { useLanguage, useStrings } from "../i18n/LanguageContext";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
+import { PopupField } from "../components/ui/PopupField";
 import { formatSlotTime, TODAY_TIME_SLOT_HOURS, TODAY_TIME_SLOTS } from "./plansTimeline";
 
 type View = "today" | "threeDays" | "week" | "month";
@@ -659,42 +662,17 @@ export default function PlansPage() {
         </section>
       </section>
       {dialogOpen && (
-        <div
-          className="modal-backdrop plans-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setDialogOpen(false);
-              setDialogError(null);
-            }
-          }}
-        >
+        <PopupDialog className="plans-dialog" ariaLabelledBy="new-plan-title" onClose={() => { setDialogOpen(false); setDialogError(null); }} closeOnBackdrop backdropClassName="plans-dialog-backdrop" size="md">
           <form
-            className="messenger-modal modal-form plans-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="new-plan-title"
+            className="modal-form"
             onSubmit={submit}
-            onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <h2 id="new-plan-title">{strings.plans.newPlan}</h2>
-              <button
-                type="button"
-                className="icon-button subtle icon-button--plain"
-                aria-label={strings.plans.close}
-                onClick={() => {
-                  setDialogOpen(false);
-                  setDialogError(null);
-                }}
-              >
-                <X aria-hidden="true" size={20} />
-              </button>
             </div>
             {dialogError && <p className="error-text modal-error-text" role="alert">{dialogError}</p>}
-            <label>
-              {strings.plans.planTitle}
-              <input
+            <PopupField
+                label={strings.plans.planTitle}
                 autoFocus
                 required
                 value={draft.title}
@@ -703,11 +681,9 @@ export default function PlansPage() {
                   if (dialogError) setDialogError(null);
                 }}
               />
-            </label>
             <div className="plans-dialog-times">
-              <label>
-                {strings.plans.starts}
-                <input
+              <PopupField
+                  label={strings.plans.starts}
                   required
                   type="datetime-local"
                   value={draft.startsAt}
@@ -716,10 +692,8 @@ export default function PlansPage() {
                     if (dialogError) setDialogError(null);
                   }}
                 />
-              </label>
-              <label>
-                {strings.plans.ends}
-                <input
+              <PopupField
+                  label={strings.plans.ends}
                   required
                   type="datetime-local"
                   min={draft.startsAt}
@@ -729,28 +703,25 @@ export default function PlansPage() {
                     if (dialogError) setDialogError(null);
                   }}
                 />
-              </label>
             </div>
             <div className="time-preset-chips" aria-label={strings.plans.durationPresets}>
-              <button type="button" onClick={() => applyDurationMinutes(30)}>30m</button>
-              <button type="button" onClick={() => applyDurationMinutes(60)}>1h</button>
-              <button type="button" onClick={() => applyDurationMinutes(120)}>2h</button>
-              <button
-                type="button"
-                className={draft.allDay ? "active" : ""}
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(30)}>30m</PopupButton>
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(60)}>1h</PopupButton>
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(120)}>2h</PopupButton>
+              <PopupButton
+                variant="secondary"
+                aria-pressed={draft.allDay}
                 onClick={() => setDraft((current) => ({ ...current, allDay: !current.allDay }))}
               >
                 {strings.plans.allDay}
-              </button>
+              </PopupButton>
             </div>
-            <label>
-              {strings.plans.location}
-              <input
+            <PopupField
+                label={strings.plans.location}
                 value={draft.location ?? ""}
                 onChange={(e) => setDraft({ ...draft, location: e.target.value })}
                 placeholder={strings.plans.locationOptional}
               />
-            </label>
             <label>
               {strings.plans.descriptionOrLink}
               <textarea
@@ -760,11 +731,11 @@ export default function PlansPage() {
                 placeholder={strings.plans.descriptionPlaceholder}
               />
             </label>
-            <button type="submit" className="primary-button">
+            <PopupButton type="submit" variant="primary">
               {strings.plans.createPlan}
-            </button>
+            </PopupButton>
           </form>
-        </div>
+        </PopupDialog>
       )}
       {detailsPlan && planDetails && createPortal(
         <section

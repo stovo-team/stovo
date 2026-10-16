@@ -1618,7 +1618,7 @@ export const strings = {
       ipBlock: "Блокировка IP",
       liftIpBlock: "Снять блокировку IP",
       blockIp: "Заблокировать этот IP",
-      ipAlreadyBlocked: "Этот IP уже заблокирован в этом семейном пространстве.",
+      ipAlreadyBlocked: "Этот IP уже заблокирован в этом семейном пространстве.", confirmBlock: "Подтвердить блокировку", confirmLift: "Подтвердить снятие блокировки", saving: "Сохранение…",
       noSigninIp: "Для этого участника нет IP-адреса успешного входа.",
       close: "Закрыть",
       cancel: "Отмена",

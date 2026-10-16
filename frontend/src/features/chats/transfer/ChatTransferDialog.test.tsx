@@ -122,24 +122,26 @@ describe("ChatTransferDialog", () => {
     expect(container.querySelector(".chat-transfer-file-name")?.textContent).toBe("telegram.json");
   });
 
-  it("renders the export profile inside the custom dropdown control", async () => {
+  it("renders the export profile inside the shared dropdown control", async () => {
     const { container } = mount("export");
     getChatExportSource.mockResolvedValue({ chatId: "selected-chat", chat, messages: [] });
     const review = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Review export"));
     await act(async () => review?.click());
 
-    expect(container.querySelector(".chat-transfer-profile-control select")).not.toBeNull();
-    expect(container.querySelector(".chat-transfer-profile-chevron")).not.toBeNull();
+    expect(container.querySelector(".popup-select__trigger")?.textContent).toContain("stovo");
+    expect(container.querySelector(".popup-select__chevron")).not.toBeNull();
   });
 
-  it("mounts above chat stacking contexts and closes without an extra cancel action", async () => {
+  it("uses the shared popup shell and closes from its standard close and cancel buttons", async () => {
     const { container, onClose } = mount("import");
-    const backdrop = container.querySelector(".modal-backdrop.chat-transfer-backdrop");
+    const backdrop = container.querySelector(".popup-backdrop");
 
-    expect(backdrop?.parentElement).toBe(document.body);
-    expect(Array.from(container.querySelectorAll("button")).some((button) => button.textContent?.includes("Cancel"))).toBe(false);
+    expect(backdrop).not.toBeNull();
+    expect(container.querySelector(".popup-dialog.chat-transfer-dialog")).not.toBeNull();
+    expect(container.querySelector(".popup-close")).not.toBeNull();
+    expect(container.querySelector(".chat-transfer-actions .popup-button--secondary")).not.toBeNull();
 
-    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    const close = container.querySelector<HTMLButtonElement>(".popup-close");
     await act(async () => close?.click());
     expect(onClose).toHaveBeenCalled();
   });
@@ -154,7 +156,7 @@ describe("ChatTransferDialog", () => {
     expect(container.textContent).toContain("Mira");
     expect(container.textContent).toContain("Rich formatting was flattened");
 
-    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    const close = container.querySelector<HTMLButtonElement>(".popup-close");
     await act(async () => close?.click());
     expect(commitChatImport).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();

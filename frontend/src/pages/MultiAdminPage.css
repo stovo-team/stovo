@@ -29,6 +29,10 @@
 .supervisor-admin-page .modalSubtitle { font-size: var(--font-size-small) !important; margin: 0 0 15px !important; }
 .supervisor-admin-page .modalCloseButton { width: 40px; height: 40px; top: 18px; right: 18px; display: grid; place-items: center; }
 .supervisor-admin-page .modalCloseButton svg { width: 23px; height: 23px; }
+.supervisor-admin-page .multi-admin-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.supervisor-admin-page .multi-admin-dialog h2 { margin: 0 44px 8px 0; }
+.supervisor-admin-page .multi-admin-dialog p { margin: 0 0 12px; color: var(--text-secondary); }
+.supervisor-admin-page .multi-admin-dialog .supervisor-setting-row { border-bottom: 0; }
 .supervisor-admin-page .badgePill { margin-bottom: 10px !important; }
 .supervisor-admin-page .form { gap: 14px !important; }
 .supervisor-admin-page .label { font-size: var(--font-size-caption) !important; gap: 6px !important; }
@@ -63,7 +67,5 @@
   .supervisor-admin-page .statCard { padding: 13px 15px; }
   .supervisor-admin-page .header { flex-direction: column; }
   .supervisor-admin-page .headerActions { width: 100%; justify-content: flex-start; }
-  .supervisor-admin-page .modalCard { padding: 18px 16px 16px !important; border-radius: var(--radius-bubble) !important; }
-  .supervisor-admin-page .modalCloseButton { top: 14px; right: 14px; }
   .supervisor-admin-page .modalActions { justify-content: flex-end; }
 }
