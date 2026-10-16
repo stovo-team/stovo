@@ -1,5 +1,6 @@
 import { RefObject, useLayoutEffect, useState } from "react";
 import { SlidersHorizontal, Video } from "lucide-react";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function CallSettingsContextMenu({
   anchorRef,
@@ -12,6 +13,7 @@ export function CallSettingsContextMenu({
   onOpenAudioSettings: () => void;
   onOpenVideoSettings: () => void;
 }) {
+  const copy = useStrings().callAudio;
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -42,7 +44,7 @@ export function CallSettingsContextMenu({
         onClick={onOpenAudioSettings}
       >
         <SlidersHorizontal aria-hidden="true" size={14} />
-        Audio settings
+        {copy.settings}
       </button>
       <button
         type="button"
@@ -51,7 +53,7 @@ export function CallSettingsContextMenu({
         onClick={onOpenVideoSettings}
       >
         <Video aria-hidden="true" size={14} />
-        Video settings
+        {copy.videoSettings}
       </button>
     </div>
   );

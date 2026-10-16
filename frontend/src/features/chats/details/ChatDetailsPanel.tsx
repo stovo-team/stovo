@@ -46,6 +46,7 @@ export function SharedContentThumb({
   onFocusMessage: () => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
 }) {
+  const strings = useStrings();
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
@@ -59,8 +60,8 @@ export function SharedContentThumb({
       <button
         type="button"
         className={`media-thumb${isVideo && previewUrl && !videoPreviewFailed ? " is-video" : ""}`}
-        title={`Open the message containing ${file.originalName}`}
-        aria-label={`Open the message containing ${file.originalName}`}
+        title={strings.chats.details.openMessageContainingFile(file.originalName)}
+        aria-label={strings.chats.details.openMessageContainingFile(file.originalName)}
         onClick={onFocusMessage}
       >
         {isVideo && previewUrl && !videoPreviewFailed ? (
@@ -81,7 +82,7 @@ export function SharedContentThumb({
     <button
       type="button"
       className="media-thumb is-image"
-      aria-label={`Open ${file.originalName} full view`}
+      aria-label={strings.chats.details.openFileFullView(file.originalName)}
       title={file.originalName}
       disabled={!previewUrl}
       onClick={() => {
@@ -829,7 +830,7 @@ export function ChatDetailsPanel({
                 )}
                 {chat.mediaVisibilityPendingApproval && (
                   <p className="chat-info-island-note">
-                    Approval {chat.mediaVisibilityApprovalCount}/{chat.mediaVisibilityApprovalRequired}
+                    {strings.chats.details.approvalCount(chat.mediaVisibilityApprovalCount, chat.mediaVisibilityApprovalRequired)}
                   </p>
                 )}
               </div>
@@ -935,8 +936,8 @@ export function ChatDetailsPanel({
                           min="1"
                           max="86400"
                           className="chat-info-delay-custom-input"
-                          aria-label="Custom delay seconds"
-                          placeholder="Seconds"
+                          aria-label={strings.chats.details.customDelayAria}
+                          placeholder={strings.chats.details.seconds}
                           value={customDelayDraft}
                           onChange={handleCustomDelayChange}
                         />
@@ -982,8 +983,8 @@ export function ChatDetailsPanel({
           <button
             type="button"
             className="chat-info-topbar-action"
-            aria-label="Chat options"
-            title="Chat options"
+            aria-label={strings.chats.details.chatOptions}
+            title={strings.chats.details.chatOptions}
             aria-expanded={isChatMenuOpen}
             onClick={() => setIsChatMenuOpen((open) => !open)}
           >
@@ -993,7 +994,7 @@ export function ChatDetailsPanel({
             <div className="chat-info-overflow-menu" role="menu">
               {statsPluginEnabled && (
                 <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); void handleOpenStats(); }}>
-                  <BarChart2 aria-hidden="true" size={18} /> Chat statistics
+                  <BarChart2 aria-hidden="true" size={18} /> {strings.chats.details.chatStatistics}
                 </button>
               )}
               <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); setActiveControl("settings"); }}>
@@ -1170,7 +1171,7 @@ export function ChatDetailsPanel({
           </div>
         )}
 
-        <section className="chat-info-actions" aria-label="Chat actions">
+        <section className="chat-info-actions" aria-label={strings.chats.details.chatActions}>
           <button type="button" className="chat-info-action" onClick={onFocusComposer}>
             <MessageSquare className="chat-info-action-icon" aria-hidden="true" size={24} strokeWidth={1.7} />
             <span>{strings.chats.details.message}</span>
@@ -1240,7 +1241,7 @@ export function ChatDetailsPanel({
         })()}
 
         <div className="chat-info-section chat-info-section--media">
-          <div className="chat-info-tabs" role="tablist" aria-label="Shared content">
+          <div className="chat-info-tabs" role="tablist" aria-label={strings.chats.details.sharedContent}>
             {sharedContentTabs.map((tab) => (
               <button
                 key={tab}

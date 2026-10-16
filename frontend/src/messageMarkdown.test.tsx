@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getAppStrings } from "./config/strings";
 // @ts-ignore Vitest supplies Node built-ins while the browser app omits Node typings.
 import { readFileSync } from "node:fs";
 
@@ -12,6 +13,8 @@ import {
   renderStovoMarkdownNodes,
   type StovoMarkdownNode
 } from "./messageMarkdown";
+
+vi.mock("./i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru") }));
 
 // @ts-ignore Vitest runs from the frontend project root.
 const messageStyles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
@@ -432,7 +435,7 @@ describe("MessageMarkdown", () => {
       const spoiler = container.querySelector("button");
 
       expect(spoiler).not.toBeNull();
-      expect(spoiler?.getAttribute("aria-label")).toBe("Reveal spoiler");
+      expect(spoiler?.getAttribute("aria-label")).toBe("Показать скрытый текст");
       expect(spoiler?.getAttribute("aria-expanded")).toBe("false");
       expect(spoiler?.classList.contains("is-revealed")).toBe(false);
 
@@ -552,6 +555,7 @@ describe("MessageMarkdown", () => {
     expect(sourceText(parseStovoMarkdown(canonical))).toBe("reply bold italic opaque-id-7f3a");
     expect(container.querySelector("strong")?.textContent).toBe("bold");
     expect(container.querySelector("em")?.textContent).toBe("italic");
+    expect(spoiler?.getAttribute("aria-label")).toBe("Показать скрытый текст");
     expect(spoiler?.getAttribute("aria-expanded")).toBe("false");
     expect(spoiler?.classList.contains("is-revealed")).toBe(false);
 

@@ -35,7 +35,7 @@ export function VoiceLiveCallBanner({
 
   return (
     <div className="voice-live-call-banner" role="status">
-      <span className="voice-live-call-avatars" aria-label={`${ids.length} active call members`}>
+      <span className="voice-live-call-avatars" aria-label={strings.meetings.guest.activeCallMembers(ids.length)}>
         {ids.slice(0, 5).map((userId) => {
           const user = members.find((member) => member.id === userId);
           return (
@@ -44,7 +44,7 @@ export function VoiceLiveCallBanner({
               accessToken={accessToken}
               className="avatar voice-live-call-avatar"
               file={user?.profilePhoto}
-              label={user?.displayName ?? "Member"}
+              label={user?.displayName ?? strings.chats.sidebar.member}
             />
           );
         })}

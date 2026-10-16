@@ -8,7 +8,7 @@ import { commitChatImport, getChatExportSource } from "../../../api/chatTransfer
 import { getFamily } from "../../../api/family";
 import { downloadFileBlob } from "../../../api/files";
 import { decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity } from "../../../api/messageCrypto";
-import { useResolvedLanguage } from "../../../i18n/LanguageContext";
+import { useResolvedLanguage, useStrings } from "../../../i18n/LanguageContext";
 import { getChatTransferStrings, type ChatTransferStrings } from "../../../config/strings/chatTransfer";
 import { validateArchive, type ChatArchive, type ChatArchiveAttachment, type ChatArchiveMessage } from "./archive";
 import { importedSourceKind, importedSourceReactions } from "./attribution";
@@ -34,6 +34,7 @@ export function ChatTransferDialog({
   onImported?: (chat: Chat) => void;
 }) {
   const copy = getChatTransferStrings(useResolvedLanguage());
+  const uiCopy = useStrings().auditUi;
   const importIdempotencyKey = useRef<string | null>(null);
   const [archive, setArchive] = useState<ChatArchive | null>(null);
   const [exportSource, setExportSource] = useState<ChatExportSource | null>(null);
@@ -199,7 +200,7 @@ export function ChatTransferDialog({
       <section className="messenger-modal chat-transfer-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-transfer-title">
         <div className="modal-card-header">
           <h2 id="chat-transfer-title">{importComplete ? copy.imported : title}</h2>
-          <button type="button" className="quick-access-close" aria-label="Close" disabled={busy} onClick={onClose}>×</button>
+          <button type="button" className="quick-access-close" aria-label={uiCopy.close} disabled={busy} onClick={onClose}>×</button>
         </div>
         <div className="chat-transfer-body">
           <p>{mode === "import" ? copy.importHelp : copy.exportHelp}</p>

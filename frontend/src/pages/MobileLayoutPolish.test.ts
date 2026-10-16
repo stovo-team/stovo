@@ -12,7 +12,7 @@ describe("mobile settings and admin layout", () => {
     expect(styles).toContain(".settings-page .section-title-row .mobile-back-button");
     expect(styles).toContain(".settings-page .appearance-editor-header .mobile-back-button");
     expect(styles).toContain(".stats-page .stats-header .mobile-back-button");
-    expect(styles).toMatch(/\.settings-page \.section-title-row h2[\s\S]*?\.stats-page \.stats-header h1[^\{]*\{[^}]*font-size:\s*1\.2rem/);
+    expect(styles).toMatch(/\.settings-page \.section-title-row h2[\s\S]*?\.stats-page \.stats-header h1[^\{]*\{[^}]*font-size:\s*var\(--font-size-body-large\)/);
   });
 
   it("keeps mobile section navigation fixed and prevents viewport width overflow", () => {

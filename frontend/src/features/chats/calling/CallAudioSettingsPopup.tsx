@@ -7,6 +7,7 @@ import {
 } from "../../../realtime/CallController";
 import { CallDeviceSelect } from "./CallDeviceSelect";
 import { useCallAudioTests } from "./useCallAudioTests";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 function AudioToggleRow({
   name,
@@ -70,6 +71,7 @@ export function CallAudioSettingsPopup({
   embedded?: boolean;
 }) {
   const audioTest = useCallAudioTests(localStream, settings);
+  const copy = useStrings().callAudio;
   return (
     <div
       className={embedded ? "call-settings-embedded-content" : "call-audio-popup-backdrop"}
@@ -81,11 +83,11 @@ export function CallAudioSettingsPopup({
         className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
         role={embedded ? "region" : "dialog"}
         aria-modal={embedded ? undefined : true}
-        aria-label="Audio settings"
+        aria-label={copy.settings}
       >
       {!embedded && <div className="call-audio-popup-header">
-        <span>Audio settings</span>
-        <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
+        <span>{copy.settings}</span>
+        <button type="button" className="call-audio-popup-close" aria-label={copy.close} autoFocus onClick={onClose}>
           <X aria-hidden="true" size={14} />
         </button>
       </div>}
@@ -93,14 +95,14 @@ export function CallAudioSettingsPopup({
       <div className="call-audio-popup-body">
         {warning && <p className="call-audio-popup-warning">{warning}</p>}
 
-        <section className="call-audio-popup-section" aria-label="Microphone settings">
-          <div className="call-audio-section-label">Microphone settings</div>
+        <section className="call-audio-popup-section" aria-label={copy.microphoneSettings}>
+          <div className="call-audio-section-label">{copy.microphoneSettings}</div>
           <div className="call-audio-device-row">
-            <span>Microphone</span>
+            <span>{copy.microphone}</span>
             <CallDeviceSelect
               variant="settings"
               portalContainerRef={popupRef}
-              label="Microphone"
+              label={copy.microphone}
               deviceKind="audioinput"
               selectedDeviceId={settings.inputDeviceId}
               devices={devices}
@@ -110,7 +112,7 @@ export function CallAudioSettingsPopup({
           </div>
           <div className="call-audio-slider-row">
             <div className="call-audio-slider-head">
-              <span>Input gain (mic boost)</span>
+                <span>{copy.inputGain}</span>
               <span className="call-audio-slider-value">{Math.round(settings.inputGain)}%</span>
             </div>
             <input
@@ -120,26 +122,26 @@ export function CallAudioSettingsPopup({
               step={1}
               value={settings.inputGain}
               disabled={!capabilities.canUseVoiceEnhancement}
-              aria-label="Input gain"
+              aria-label={copy.inputGainAria}
               onChange={(e) => onPatch({ inputGain: Number(e.target.value) })}
             />
           </div>
           <div className="call-audio-mic-test">
-            <span>Microphone test</span>
-            {audioTest.available ? <div className="guest-mic-meter" role="meter" aria-label="Microphone level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={audioTest.level}><i style={{ width: `${audioTest.level}%` }} /></div> : <small>{settings.micMuted ? "Microphone muted" : "Microphone unavailable"}</small>}
+            <span>{copy.micTest}</span>
+            {audioTest.available ? <div className="guest-mic-meter" role="meter" aria-label={copy.micLevel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={audioTest.level}><i style={{ width: `${audioTest.level}%` }} /></div> : <small>{settings.micMuted ? copy.micMuted : copy.micUnavailable}</small>}
           </div>
         </section>
 
-        <section className="call-audio-popup-section" aria-label="Dynamic settings">
-          <div className="call-audio-section-label">Dynamic settings</div>
+        <section className="call-audio-popup-section" aria-label={copy.dynamicSettings}>
+          <div className="call-audio-section-label">{copy.dynamicSettings}</div>
           <div className="call-audio-toggle-group">
             <div className="call-audio-slider-row">
               <div className="call-audio-slider-head">
-                <span>Speaking sensitivity</span>
+                <span>{copy.speakingSensitivity}</span>
                 <span className="call-audio-slider-value">{Math.round(settings.speakingSensitivity)}</span>
               </div>
               <input
-                aria-label="Speaking sensitivity"
+                aria-label={copy.speakingSensitivity}
                 type="range"
                 min={2}
                 max={24}
@@ -149,29 +151,29 @@ export function CallAudioSettingsPopup({
               />
             </div>
             <AudioToggleRow
-              name="Noise suppression"
-              description="Filters background noise via browser"
+              name={copy.noiseSuppression}
+              description={copy.noiseSuppressionHelp}
               checked={settings.noiseSuppression}
               disabled={!capabilities.canUseNoiseSuppression}
               onChange={(v) => onPatch({ noiseSuppression: v })}
             />
             <AudioToggleRow
-              name="Echo cancellation"
-              description="Prevents mic from picking up speakers"
+              name={copy.echoCancellation}
+              description={copy.echoCancellationHelp}
               checked={settings.echoCancellation}
               disabled={!capabilities.canUseEchoCancellation}
               onChange={(v) => onPatch({ echoCancellation: v })}
             />
             <AudioToggleRow
-              name="Auto gain control"
-              description="Normalises mic level automatically"
+              name={copy.autoGain}
+              description={copy.autoGainHelp}
               checked={settings.autoGainControl}
               disabled={!capabilities.canUseAutoGainControl}
               onChange={(v) => onPatch({ autoGainControl: v })}
             />
             <AudioToggleRow
-              name="Voice enhancement"
-              description="Highpass filter + dynamics compressor"
+              name={copy.voiceEnhancement}
+              description={copy.voiceEnhancementHelp}
               checked={settings.voiceEnhancement}
               disabled={!capabilities.canUseVoiceEnhancement}
               onChange={(v) => onPatch({ voiceEnhancement: v })}
@@ -180,7 +182,7 @@ export function CallAudioSettingsPopup({
               <div className="call-audio-sub-sliders">
                 <div className="call-audio-slider-row">
                   <div className="call-audio-slider-head">
-                    <span>Compressor threshold</span>
+                  <span>{copy.compressorThreshold}</span>
                     <span className="call-audio-slider-value">{Math.round(settings.voiceEnhancementThreshold)} dB</span>
                   </div>
                   <input
@@ -194,8 +196,8 @@ export function CallAudioSettingsPopup({
                 </div>
                 <div className="call-audio-slider-row">
                   <div className="call-audio-slider-head">
-                    <span>Highpass cutoff</span>
-                    <span className="call-audio-slider-value">{Math.round(settings.voiceEnhancementHighpass)} Hz</span>
+                  <span>{copy.highpassCutoff}</span>
+                    <span className="call-audio-slider-value">{Math.round(settings.voiceEnhancementHighpass)} {copy.hertz}</span>
                   </div>
                   <input
                     type="range"
@@ -211,14 +213,14 @@ export function CallAudioSettingsPopup({
           </div>
         </section>
 
-        <section className="call-audio-popup-section" aria-label="Speaker settings">
-          <div className="call-audio-section-label">Speaker</div>
+        <section className="call-audio-popup-section" aria-label={copy.speakerSettings}>
+          <div className="call-audio-section-label">{copy.speaker}</div>
           <div className="call-audio-device-row">
-            <span>Output device</span>
+            <span>{copy.outputDevice}</span>
             <CallDeviceSelect
               variant="settings"
               portalContainerRef={popupRef}
-              label="Speaker"
+              label={copy.speaker}
               deviceKind="audiooutput"
               selectedDeviceId={settings.outputDeviceId}
               devices={devices}
@@ -226,15 +228,15 @@ export function CallAudioSettingsPopup({
               onDeviceChange={(outputDeviceId) => onPatch({ outputDeviceId })}
             />
           </div>
-          {!capabilities.canSelectOutputDevice && <p className="call-audio-popup-note">This browser uses the system default output only.</p>}
+          {!capabilities.canSelectOutputDevice && <p className="call-audio-popup-note">{copy.systemOutputNote}</p>}
           <div className="call-audio-slider-row">
-            <div className="call-audio-slider-head"><span>Output volume</span><span className="call-audio-slider-value">{Math.round(settings.outputVolume)}%</span></div>
-            <input aria-label="Output volume" type="range" min={0} max={100} step={1} value={settings.outputVolume} onChange={(e) => onPatch({ outputVolume: Number(e.target.value) })} />
+            <div className="call-audio-slider-head"><span>{copy.outputVolume}</span><span className="call-audio-slider-value">{Math.round(settings.outputVolume)}%</span></div>
+            <input aria-label={copy.outputVolume} type="range" min={0} max={100} step={1} value={settings.outputVolume} onChange={(e) => onPatch({ outputVolume: Number(e.target.value) })} />
           </div>
-          <button className="call-audio-test-sound" type="button" aria-label="Test sound" disabled={settings.soundDisabled || settings.outputVolume <= 0} onClick={() => void audioTest.testSound()}><Volume2 aria-hidden="true" size={16} /> Test sound</button>
+          <button className="call-audio-test-sound" type="button" aria-label={copy.testSound} disabled={settings.soundDisabled || settings.outputVolume <= 0} onClick={() => void audioTest.testSound()}><Volume2 aria-hidden="true" size={16} /> {copy.testSound}</button>
           {audioTest.warning && <p className="call-audio-popup-warning" role="status">{audioTest.warning}</p>}
           {isMobile && (
-              <div className="call-audio-speaker-row" role="group" aria-label="Speaker mode">
+              <div className="call-audio-speaker-row" role="group" aria-label={copy.speakerMode}>
                 <button
                   type="button"
                   className={`call-audio-speaker-btn${settings.speakerMode === "small" ? " active" : ""}`}
@@ -242,7 +244,7 @@ export function CallAudioSettingsPopup({
                   onClick={() => onPatch({ speakerMode: "small" })}
                 >
                   <Smartphone aria-hidden="true" size={15} />
-                  Earpiece
+                  {copy.earpiece}
                 </button>
                 <button
                   type="button"
@@ -251,7 +253,7 @@ export function CallAudioSettingsPopup({
                   onClick={() => onPatch({ speakerMode: "large" })}
                 >
                   <Volume2 aria-hidden="true" size={15} />
-                  Loudspeaker
+                  {copy.loudspeaker}
                 </button>
               </div>
           )}

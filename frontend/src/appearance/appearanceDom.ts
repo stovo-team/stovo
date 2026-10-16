@@ -1,4 +1,5 @@
 import type { AppearanceSettings, ResolvedThemeMode } from "./AppearanceContext";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 
 export function applyAppearanceToDocument(
   appearance: AppearanceSettings,
@@ -31,7 +32,7 @@ function applyCustomAccent(root: HTMLElement, accent: string) {
   root.style.setProperty("--accent-ring-light", `${accent}40`);
   root.style.setProperty("--accent-primary-dark", accent);
   root.style.setProperty("--accent-primary-hover-dark", accent);
-  root.style.setProperty("--accent-soft-dark", `color-mix(in srgb, ${accent} 24%, #0f172a)`);
+    root.style.setProperty("--accent-soft-dark", `color-mix(in srgb, ${accent} 24%, ${DESIGN_COLOR_VALUES.appearance.darkBlendBackground})`);
   root.style.setProperty("--accent-border-soft-dark", accent);
   root.style.setProperty("--focus-ring-dark", `${accent}66`);
   root.style.setProperty("--accent-ring-dark", `${accent}55`);

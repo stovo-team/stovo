@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { getAppStrings } from "../../config/strings";
 
 const panel = readFileSync(resolve(process.cwd(), "src/features/chats/QuickAccessPanel.tsx"), "utf8");
 const callFeature = readFileSync(resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"), "utf8");
@@ -47,7 +48,8 @@ describe("message archive grouped view", () => {
 
   it("lists archive-origin groups rather than unrelated recently active chats", () => {
     expect(panel).toContain("getMessageArchiveGroups(accessToken)");
-    expect(panel).toContain("My Notes");
+    expect(panel).toContain("{copy.myNotes}");
+    expect(getAppStrings("ru").chats.quickAccess.myNotes).toBe("Мои заметки");
     expect(panel).not.toContain("chat.lastMessageContent");
     expect(panel).toContain('onOpenGroup("notes")');
     expect(panel).toContain('<button type="button" className="chat-list-item"');
@@ -62,7 +64,7 @@ describe("message archive grouped view", () => {
   });
 
   it("renders mobile back buttons and enables detail view when drafts & scheduled is active", () => {
-    expect(panel).toContain('onBack && <BackButton className="mobile-back-button" ariaLabel="Back to chats" onClick={onBack} />');
+    expect(panel).toContain('onBack && <BackButton className="mobile-back-button" ariaLabel={backLabel} onClick={onBack} />');
     expect(page).toContain("const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);");
     expect(page).toContain('hasActiveChat ? "has-active-chat" : "chat-list-view"');
   });
@@ -71,7 +73,7 @@ describe("message archive grouped view", () => {
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(styles).toContain("background: color-mix(in oklab, var(--island-surface) 94%, transparent);");
     expect(styles).toContain(".quick-access-panel-tabs button.active");
-    expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*#ffffff;/);
+    expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--color-palette-f2074b6cef37\);/);
     expect(styles).not.toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--accent-primary\);/);
   });
 

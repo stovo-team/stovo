@@ -132,7 +132,7 @@ export function NewChatDialog({
               <li key={currentUser.id}>
                 <div
                   className="new-chat-contact-row selected is-creator"
-                  aria-label={`${currentUser.displayName} (${strings.chats.newChat.you ?? "You"})`}
+                  aria-label={strings.chats.newChat.creatorAriaLabel(currentUser.displayName, strings.chats.newChat.you)}
                 >
                   <RealAvatar
                     accessToken={accessToken}
@@ -198,7 +198,7 @@ export function NewChatDialog({
   return (
     <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
       <header className="new-chat-screen-header">
-        <button type="button" className="new-chat-screen-close" aria-label="Close new message" onClick={onClose}>
+        <button type="button" className="new-chat-screen-close" aria-label={strings.chats.newChat.close} onClick={onClose}>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
@@ -256,14 +256,14 @@ export function NewChatDialog({
         </button>}
         {onPlanGuestMeeting && <button type="button" className="new-chat-action-row" onClick={onPlanGuestMeeting}>
           <span className="new-chat-action-icon" aria-hidden={true}><span className="ms-icon ms-icon--22 ms-icon--filled">calendar_add_on</span></span>
-          <span className="new-chat-action-copy"><strong>Plan guest meeting</strong><small>Create a shareable link for external guests</small></span>
+          <span className="new-chat-action-copy"><strong>{strings.chats.newChat.planGuestMeeting}</strong><small>{strings.chats.newChat.guestMeetingDescription}</small></span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>chevron_right</span>
         </button>}
       </div>
       <p className="new-chat-section-label">{strings.chats.details.members}</p>
       <ul className="new-chat-contact-list">
         {members.length === 0 ? (
-          <li className="new-chat-empty">No contacts match your search.</li>
+          <li className="new-chat-empty">{strings.chats.newChat.noContactsMatch}</li>
         ) : (
           members.map((member) => (
             <li key={member.id}>

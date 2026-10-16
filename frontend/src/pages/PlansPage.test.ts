@@ -158,7 +158,7 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("goingMembers.slice(0, expanded ? goingMembers.length : 3)");
     expect(source).toContain('className="plan-attendee-more"');
     expect(source).not.toContain("plan-attendance-count");
-    expect(styles).toContain(".plan-attendee-more { align-items: center; background: #64748b");
+    expect(styles).toContain(".plan-attendee-more { align-items: center; background: var(--color-palette-6b3d6d843dfe)");
     expect(styles).toContain(".plan-rsvp button.active, .plan-details-rsvp button.active");
     expect(styles).toContain("box-shadow: none;");
   });

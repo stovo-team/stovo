@@ -20,14 +20,14 @@ describe("new message dialog on web", () => {
 
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
     expect(newChatDialog).toContain('className="new-chat-screen-close"');
-    expect(newChatDialog).toContain('aria-label="Close new message"');
+    expect(newChatDialog).toContain("aria-label={strings.chats.newChat.close}");
     expect(newChatDialog).toContain("onClick={onClose}");
     expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
 
   it("rounds any new chat name input box to 22px matching the normal chat list item", () => {
     expect(styles).toContain(".new-chat-screen .new-chat-compose-title-field input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"range\"]),");
-    expect(styles).toContain("border-radius: 22px;");
+    expect(styles).toContain("border-radius: var(--radius-panel);");
   });
 
   it("supports 1-person chat creation with creator listed and solo hint", () => {

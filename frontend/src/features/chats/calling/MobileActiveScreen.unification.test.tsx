@@ -116,11 +116,11 @@ describe("mobile call UI unification", () => {
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel")).toMatch(/width:\s*max-content/);
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
-    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*50%/);
+    expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/border-radius:\s*var\(--radius-circle\)/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
     expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/font:\s*inherit/);
-    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*50%/);
-    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-name")).toMatch(/font-size:\s*\.875rem/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn")).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+    expect(styleRules(styles, ".meeting-intel-popover--inline-menu .meeting-intel-name")).toMatch(/font-size:\s*var\(--font-size-small\)/);
   });
 
   it("keeps the mobile participant toggle anchored to the presentation edge", () => {
@@ -648,8 +648,8 @@ describe("mobile call UI unification", () => {
   it("keeps the mobile camera PiP rectangular, with Flip available only while camera video is shown", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const pipRule = styleRules(css, ".mobile-active-pip");
-    expect(pipRule).toMatch(/border-radius:\s*(?:8|9)px/);
-    expect(pipRule).not.toMatch(/border-radius:\s*50%/);
+    expect(pipRule).toMatch(/border-radius:\s*var\(--radius-control\)/);
+    expect(pipRule).not.toMatch(/border-radius:\s*var\(--radius-circle\)/);
 
     const cameraOff = renderScreen(baseProps);
     expect(cameraOff.querySelector(".mobile-active-pip")).toBeNull();

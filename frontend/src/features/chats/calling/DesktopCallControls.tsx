@@ -33,6 +33,7 @@ import { enableCallCamera } from "./callCamera";
 import { SharedCallStage } from "./SharedCallStage";
 import { CALL_CONTROLS_REVEAL_EVENT, SharedCallControlPanel } from "./SharedCallControlPanel";
 import { useCallUIPreferences } from "./callUIPreferences";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -46,6 +47,7 @@ export function DesktopCallControls({
 }: {
   mockScreenShareOwner?: { userId: string; displayName: string } | null;
 } = {}) {
+  const copy = useStrings().auditUi;
   const { session, members, currentUser, isMobileViewport, chats, onOpenChat } = useCallFeatureContext();
   const { preferences: callUIPreferences } = useCallUIPreferences();
   const {
@@ -204,7 +206,7 @@ export function DesktopCallControls({
           </>
         <div className="call-popup-header-actions">
           {isParticipantFocused && !isCallMinimized && (
-            <button type="button" className="icon-button subtle call-participant-focus-back" aria-label="Back to participants" onClick={() => closeParticipantFocusRef.current()}><ArrowLeft aria-hidden="true" size={16} /></button>
+            <button type="button" className="icon-button subtle call-participant-focus-back" aria-label={copy.backParticipants} onClick={() => closeParticipantFocusRef.current()}><ArrowLeft aria-hidden="true" size={16} /></button>
           )}
           {callPhase !== "incoming" && !isCallMinimized && (isGroupCall || isParticipantFocused || session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
             <button
@@ -222,7 +224,7 @@ export function DesktopCallControls({
           )}
         </div>
         {callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
-          <button type="button" className={`call-ctrl-btn call-ctrl-btn--invite call-popup-header-invite${isCallInviteOpen ? " is-active" : ""}`} aria-label="Invite people" title="Invite people" onClick={() => setIsCallInviteOpen((value) => !value)}>
+          <button type="button" className={`call-ctrl-btn call-ctrl-btn--invite call-popup-header-invite${isCallInviteOpen ? " is-active" : ""}`} aria-label={copy.invitePeople} title={copy.invitePeople} onClick={() => setIsCallInviteOpen((value) => !value)}>
             <UserPlus size={20} aria-hidden="true" />
           </button>
         )}
@@ -285,13 +287,13 @@ export function DesktopCallControls({
 
       {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
-        <div className="call-invite-modal" role="dialog" aria-label="Invite to call">
+        <div className="call-invite-modal" role="dialog" aria-label={copy.inviteCall}>
           <div className="call-invite-modal-header">
-            <h3>Add members to call</h3>
+            <h3>{copy.addMembersToCall}</h3>
             <button
               type="button"
               className="icon-button subtle"
-              aria-label="Close invite modal"
+              aria-label={copy.closeInvite}
               onClick={() => setIsCallInviteOpen(false)}
             >
               ✕
@@ -324,22 +326,20 @@ export function DesktopCallControls({
               disabled={callInviteSelection.length === 0}
               onClick={() => void sendCallInvites()}
             >
-              Invite ({callInviteSelection.length})
+              {copy.inviteCount(callInviteSelection.length)}
             </button>
             <button
               type="button"
               className="action-button subtle"
               onClick={() => setIsCallInviteOpen(false)}
-            >
-              Cancel
-            </button>
+            >{copy.cancel}</button>
           </div>
         </div>
       )}
 
       {/* ── Peer name (incoming) ── */}
       {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
-        <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
+        <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} {copy.isCallingYou}</p>
       )}
 
       <CallParticipantStage
@@ -359,16 +359,16 @@ export function DesktopCallControls({
                 <button
                   type="button"
                   className="call-ctrl-btn accept-btn"
-                  aria-label="Accept call"
+                  aria-label={copy.acceptCall}
                   onClick={() => void acceptIncomingCall()}
                 >
                   <Phone aria-hidden="true" size={22} />
                 </button>
-                <span>Accept</span>
+                <span>{copy.accept}</span>
               </div>
               <div className="call-ctrl-wrap">
                 <CallControlButton action="end-call" state="idle" className="call-ctrl-btn end-btn" label="Decline call" iconSize={22} onClick={declineIncomingCall} />
-                <span>Decline</span>
+                <span>{copy.decline}</span>
               </div>
             </>
           )}
@@ -408,7 +408,7 @@ export function DesktopCallControls({
                   ref={callSettingsButtonRef}
                   type="button"
                   className={`call-ctrl-btn${isCallSettingsMenuOpen || isCallAudioPopupOpen ? " is-active" : ""}`}
-                  aria-label="Audio settings"
+                  aria-label={copy.audioSettings}
                   aria-haspopup="dialog"
                   aria-expanded={isCallSettingsMenuOpen || isCallAudioPopupOpen}
                   onClick={() => {
@@ -424,7 +424,7 @@ export function DesktopCallControls({
                 >
                   <Settings aria-hidden="true" size={20} />
                 </button>
-                <span>Settings</span>
+                <span>{copy.settings}</span>
               </div>
 
               {callPhase === "in-call" && (
@@ -449,7 +449,7 @@ export function DesktopCallControls({
                           })
                         }
                       />
-                      <span>Flip</span>
+                      <span>{copy.flip}</span>
                     </div>
                   )}
                 </>
@@ -463,13 +463,13 @@ export function DesktopCallControls({
                   className={`call-ctrl-btn call-ctrl-btn--intel${
                     isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
                   }`}
-                  aria-label="Stovo Intelligence"
-                  title="Stovo Intelligence (Notes, Recording, Captions)"
+                  aria-label={copy.intelligence}
+                  title={copy.intelligenceDetails}
                   onClick={() => setIsIntelligenceOpen((open) => !open)}
                 >
                   <IconIntelligence size={20} />
                 </button>
-                <span>Intelligence</span>
+                <span>{copy.intelligence}</span>
 
                 <MeetingIntelligencePopover
                   isOpen={isIntelligenceOpen}
@@ -495,7 +495,7 @@ export function DesktopCallControls({
               </div>
               <div className="call-ctrl-wrap">
                 <CallControlButton action="end-call" state="idle" className="call-ctrl-btn end-btn" label="End call" onClick={() => void endActiveCall()} />
-                <span>End</span>
+                <span>{copy.end}</span>
               </div>
               {/* Transcript side panel */}
               {isTranscriptPanelOpen && (

@@ -9,6 +9,7 @@ import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { formatMemberJoined, formatMemberLastSeen } from "./memberStats";
 import { trapDialogTab } from "./adminMemberDialog";
+import { useStrings } from "../i18n/LanguageContext";
 
 const MEMBERS_PAGE_SIZE = 20;
 
@@ -38,6 +39,8 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
 }
 
 export default function AdminMembersPage() {
+  const strings = useStrings();
+  const copy = strings.admin.members;
   const { accessToken, authRequest, currentUser } = useAuth();
   const [members, setMembers] = useState<User[]>([]);
 	const [roles, setRoles] = useState<ServerRole[]>([]);
@@ -249,11 +252,11 @@ export default function AdminMembersPage() {
         <div className="admin-detail-header">
           <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" />
           <div>
-            <h1>Members</h1>
+            <h1>{copy.title}</h1>
           </div>
         </div>
 
-        {!canViewAdmin && <p className="error-text">Admin access required.</p>}
+        {!canViewAdmin && <p className="error-text">{strings.admin.plugins.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="success-text">{notice}</p>}
 
@@ -266,19 +269,19 @@ export default function AdminMembersPage() {
               <input
                 value={memberSearch}
                 onChange={(event) => setMemberSearch(event.target.value)}
-                placeholder="Search members"
+                placeholder={copy.searchMembers}
               />
             </label>
 
             {!isLoading && (
               <p className="admin-member-list-summary" aria-live="polite">
-                members {visibleMembers.length} out of {filteredMembers.length}
+                {copy.countOf(visibleMembers.length, filteredMembers.length)}
               </p>
             )}
 
             <div className="admin-member-list" aria-busy={isLoading}>
               {isLoading && <p className="muted-text">Loading…</p>}
-              {!isLoading && filteredMembers.length === 0 && <p className="muted-text">No members found.</p>}
+              {!isLoading && filteredMembers.length === 0 && <p className="muted-text">{copy.noMembersFound}</p>}
               {visibleMembers.map((member) => {
                 const manageable = currentUser ? canManage(currentUser, member) : false;
                 const roleOptions = roles;
@@ -297,9 +300,9 @@ export default function AdminMembersPage() {
                         value={member.roleId ?? member.role}
                         disabled={!manageable || isSaving}
                         onChange={(event) => void handleRoleChange(member, event.target.value as UserRole)}
-                        aria-label={`Role for ${member.displayName}`}
+                        aria-label={copy.roleFor(member.displayName)}
                       >
-                        {member.role === "owner" && <option value="owner">Owner</option>}
+                        {member.role === "owner" && <option value="owner">{copy.roleOwner}</option>}
                         {roleOptions.map((role) => (
                           <option key={role.id} value={role.id}>
                             {role.name}
@@ -311,7 +314,7 @@ export default function AdminMembersPage() {
                         className="danger-button admin-member-remove"
                         disabled={!manageable || isSaving}
                         onClick={() => void handleRemove(member)}
-                        aria-label={`Remove ${member.displayName}`}
+                        aria-label={copy.removeNamedMember(member.displayName)}
                       >
                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                           <path
@@ -327,15 +330,15 @@ export default function AdminMembersPage() {
                             className="admin-member-context-trigger"
                             aria-haspopup="menu"
                             aria-expanded={openMenuId === member.id}
-                            aria-label={`More actions for ${member.displayName}`}
+                            aria-label={copy.moreActionsFor(member.displayName)}
                             disabled={isSaving}
                             onClick={() => setOpenMenuId((current) => current === member.id ? null : member.id)}
                           >
                             ⋯
                           </button>
                           {openMenuId === member.id && (
-                            <div className="admin-member-context-menu" role="menu" aria-label={`Actions for ${member.displayName}`}>
-                              <button type="button" role="menuitem" onClick={() => void openMemberDetails(member)}>Activity and safety</button>
+                            <div className="admin-member-context-menu" role="menu" aria-label={copy.actionsFor(member.displayName)}>
+                              <button type="button" role="menuitem" onClick={() => void openMemberDetails(member)}>{copy.activitySafety}</button>
                             </div>
                           )}
                         </div>
@@ -351,23 +354,23 @@ export default function AdminMembersPage() {
         {selectedMember && (
           <div className="admin-member-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelectedMember(null); setPendingIPAction(null); } }}>
             <section ref={detailsDialogRef} className="admin-member-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-member-dialog-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event)}>
-              <h2 id="admin-member-dialog-title">{selectedMember.displayName}: activity and safety</h2>
+              <h2 id="admin-member-dialog-title">{selectedMember.displayName}: {copy.activitySafety}</h2>
               {isLoadingDetails && <p className="muted-text">Loading…</p>}
               {memberDetailsError && <p className="error-text" role="alert">{memberDetailsError}</p>}
               {memberDetails && (
                 <dl className="admin-member-details">
-                  <div><dt>Account</dt><dd>{memberDetails.isActive ? "Enabled" : "Disabled"}</dd></div>
-                  <div><dt>Presence</dt><dd>{memberDetails.isOnline ? "Online now" : "Offline"}</dd></div>
-                  <div><dt>Joined</dt><dd>{formatMemberJoined(memberDetails.joinedAt)}</dd></div>
-                  <div><dt>Last seen</dt><dd>{formatMemberLastSeen(memberDetails.lastSeenAt)}</dd></div>
-                  <div><dt>IP block</dt><dd>{memberDetails.candidateIpBanned ? "Blocked" : "Not blocked"}</dd></div>
+                  <div><dt>{copy.account}</dt><dd>{memberDetails.isActive ? copy.enabled : copy.disabled}</dd></div>
+                  <div><dt>{copy.presence}</dt><dd>{memberDetails.isOnline ? copy.onlineNow : copy.offline}</dd></div>
+                  <div><dt>{copy.joined}</dt><dd>{formatMemberJoined(memberDetails.joinedAt)}</dd></div>
+                  <div><dt>{copy.lastSeen}</dt><dd>{formatMemberLastSeen(memberDetails.lastSeenAt)}</dd></div>
+                  <div><dt>{copy.ipBlock}</dt><dd>{memberDetails.candidateIpBanned ? copy.blocked : copy.notBlocked}</dd></div>
                 </dl>
               )}
-              {memberDetails && !isLoadingDetails && memberDetails.bannedIp && <button type="button" className="secondary-button" disabled={isSaving} onClick={() => requestIPAction("unban")}>Lift IP block</button>}
-              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIp && !memberDetails.candidateIpBanned && <button type="button" className="danger-button" disabled={isSaving} onClick={() => requestIPAction("ban")}>Block this IP</button>}
-              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIpBanned && <p className="muted-text">This IP is already blocked for this family.</p>}
-              {memberDetails && !isLoadingDetails && !memberDetails.candidateIp && !memberDetails.bannedIp && <p className="muted-text">No valid sign-in IP is available for this member.</p>}
-              <button type="button" className="secondary-button" onClick={() => { setSelectedMember(null); setPendingIPAction(null); }}>Close</button>
+              {memberDetails && !isLoadingDetails && memberDetails.bannedIp && <button type="button" className="secondary-button" disabled={isSaving} onClick={() => requestIPAction("unban")}>{copy.liftIpBlock}</button>}
+              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIp && !memberDetails.candidateIpBanned && <button type="button" className="danger-button" disabled={isSaving} onClick={() => requestIPAction("ban")}>{copy.blockIp}</button>}
+              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIpBanned && <p className="muted-text">{copy.ipAlreadyBlocked}</p>}
+              {memberDetails && !isLoadingDetails && !memberDetails.candidateIp && !memberDetails.bannedIp && <p className="muted-text">{copy.noSigninIp}</p>}
+              <button type="button" className="secondary-button" onClick={() => { setSelectedMember(null); setPendingIPAction(null); }}>{copy.close}</button>
             </section>
           </div>
         )}
@@ -378,7 +381,7 @@ export default function AdminMembersPage() {
               <p id="admin-ip-confirm-description">{pendingIPAction === "ban" ? "Sign-ins from this exact IP address will be blocked for all accounts in this family until you lift the block." : "Accounts in this family will be able to sign in from this IP address again."}</p>
               <p className="admin-member-confirm-ip"><strong>{pendingIPAction === "ban" ? memberDetails.candidateIp : memberDetails.bannedIp}</strong></p>
               <button type="button" className={`admin-member-confirm-primary ${pendingIPAction === "ban" ? "danger-button" : "primary-button"}`} disabled={isSaving} onClick={() => void confirmMemberIPAction()}>{isSaving ? "Saving…" : pendingIPAction === "ban" ? "Confirm block" : "Confirm lift"}</button>
-              <button type="button" className="secondary-button" disabled={isSaving} onClick={() => setPendingIPAction(null)}>Cancel</button>
+              <button type="button" className="secondary-button" disabled={isSaving} onClick={() => setPendingIPAction(null)}>{copy.cancel}</button>
             </section>
           </div>
         )}

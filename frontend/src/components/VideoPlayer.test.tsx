@@ -477,9 +477,9 @@ describe("VideoPlayer", () => {
     expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px))");
     expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px))");
     expect(messageDocumentCard).toContain("max-width: 100%");
-    expect((messageVideoCorners.match(/border-radius:\s*16px\s*;/g) ?? []).length).toBe(4);
-    expect(expandedVideo).toContain("border-radius: 16px");
-    expect(fullscreenVideo).toContain("border-radius: 16px");
+    expect((messageVideoCorners.match(/border-radius:\s*var\(--radius-surface\)\s*;/g) ?? []).length).toBe(4);
+    expect(expandedVideo).toContain("border-radius: var(--radius-surface)");
+    expect(fullscreenVideo).toContain("border-radius: var(--radius-surface)");
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {

@@ -242,9 +242,9 @@ describe("DesktopCallControls visibility", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const inviteButton = lastCssRule(css, ".call-invite-modal-actions .action-button.primary");
     const cancelButton = lastCssRule(css, ".call-invite-modal-actions .action-button.subtle");
-    expect(inviteButton).toMatch(/border-radius:\s*999px/);
+    expect(inviteButton).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(inviteButton).toMatch(/background(?:-color)?:\s*var\(--accent-primary/);
-    expect(cancelButton).toMatch(/border-radius:\s*999px/);
+    expect(cancelButton).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(cancelButton).toMatch(/border:\s*1px solid/);
   });
 

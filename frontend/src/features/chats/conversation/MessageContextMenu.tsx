@@ -106,7 +106,7 @@ export function MessageContextMenu({
     >
       <div
         className={`message-context-reactions${reactionsExpanded ? " message-context-reactions--expanded" : ""}`}
-        aria-label="React to message"
+        aria-label={strings.sharedUi.reactToMessage}
       >
         <div className="message-context-reactions-grid">
           {MESSAGE_REACTION_CHOICES.map((emoji) => (

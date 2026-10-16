@@ -5,8 +5,10 @@ import { ApiError } from "../api/client";
 import { fetchSetupStatus } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function SetupPage() {
+  const strings = useStrings();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("token");
@@ -44,7 +46,7 @@ export default function SetupPage() {
       await setup({ ...form, inviteToken: inviteToken || undefined });
       navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Setup failed");
+      setError(err instanceof ApiError ? String(err.message) : strings.setup.failed);
     } finally {
       setIsSubmitting(false);
     }
@@ -53,12 +55,12 @@ export default function SetupPage() {
   return (
     <main className="app-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Initial setup</p>
+        <p className="eyebrow">{strings.setup.initialSetup}</p>
         <StovoLogo className="app-brand-logo" title="Stovo" />
         <h1>Stovo</h1>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            Nickname
+            {strings.auth.nickname}
             <input
               required
               minLength={3}
@@ -68,7 +70,7 @@ export default function SetupPage() {
             />
           </label>
           <label>
-            Password
+            {strings.auth.password}
             <input
               required
               minLength={8}
@@ -80,14 +82,14 @@ export default function SetupPage() {
           </label>
           {error && <p className="error-text">{error}</p>}
           <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating" : "Create owner account"}
+            {isSubmitting ? strings.setup.creating : strings.setup.createOwnerAccount}
           </button>
         </form>
         <p className="secondary-link">
-          Already set up? <Link to={`${prefix}/login`}>Log in</Link>
+          {strings.setup.alreadySetUp} <Link to={`${prefix}/login`}>{strings.setup.logIn}</Link>
         </p>
         <p className="secondary-link">
-          <Link to="/server-setup">Change space address</Link>
+          <Link to="/server-setup">{strings.setup.changeServerAddress}</Link>
         </p>
       </section>
     </main>

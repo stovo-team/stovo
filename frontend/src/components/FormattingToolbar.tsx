@@ -23,6 +23,7 @@ import {
   IconUnderline
 } from "./icons";
 import { BackButton } from "./BackButton";
+import { useStrings } from "../i18n/LanguageContext";
 
 export type FormattingToolbarProps = {
   selection: TextSelection | null;
@@ -96,24 +97,24 @@ export function getFormattingToolbarPlacement(
   };
 }
 
-const formattingActions = [
-  { kind: "spoiler", label: "Spoiler", description: "Hidden until tapped", Icon: IconSpoiler },
-  { kind: "bold", label: "Bold", description: "Strong emphasis", Icon: IconBold },
-  { kind: "italic", label: "Italic", description: "Emphasis", Icon: IconItalic },
-  { kind: "code", label: "Mono", description: "Inline code", Icon: Code2 },
-  { kind: "strikethrough", label: "Strike", description: "Strikethrough", Icon: IconStrikethrough },
-  { kind: "underline", label: "Underline", description: "Underline text", Icon: IconUnderline },
-  { kind: "quote", label: "Quote", description: "Quoted reply style", Icon: Quote }
-] as const satisfies ReadonlyArray<{
-  kind: FormattingKind;
-  label: string;
-  description: string;
-  Icon: React.ComponentType<{ size?: number }>;
-}>;
-
 export function FormattingToolbar(
   { selection, anchor, onFormat, onCut, onCopy, onPaste }: FormattingToolbarProps
 ): React.ReactNode {
+  const copy = useStrings().auditUi;
+  const formattingActions = [
+    { kind: "spoiler", label: copy.spoiler, description: copy.hiddenUntilTapped, Icon: IconSpoiler },
+    { kind: "bold", label: copy.bold, description: copy.strongEmphasis, Icon: IconBold },
+    { kind: "italic", label: copy.italic, description: copy.emphasis, Icon: IconItalic },
+    { kind: "code", label: copy.mono, description: copy.inlineCode, Icon: Code2 },
+    { kind: "strikethrough", label: copy.strike, description: copy.strikethrough, Icon: IconStrikethrough },
+    { kind: "underline", label: copy.underline, description: copy.underlineText, Icon: IconUnderline },
+    { kind: "quote", label: copy.quote, description: copy.quotedReplyStyle, Icon: Quote }
+  ] as const satisfies ReadonlyArray<{
+    kind: FormattingKind;
+    label: string;
+    description: string;
+    Icon: React.ComponentType<{ size?: number }>;
+  }>;
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<ToolbarAnchor | null>(null);
   const [formatOpen, setFormatOpen] = useState(false);
@@ -160,7 +161,7 @@ export function FormattingToolbar(
       ref={toolbarRef}
       className={`formatting-toolbar${formatOpen ? " is-format-open" : ""}`}
       role="toolbar"
-      aria-label="Text selection"
+      aria-label={copy.textSelection}
       style={{
         position: "fixed",
         left: placement?.left ?? 0,
@@ -183,63 +184,63 @@ export function FormattingToolbar(
           <button
             type="button"
             className="formatting-toolbar-action"
-            aria-label="Cut"
-            title="Cut"
+            aria-label={copy.cut}
+            title={copy.cut}
             onClick={(event) => {
               event.stopPropagation();
               onCut?.();
             }}
           >
             <Scissors size={15} aria-hidden="true" />
-            <span className="formatting-toolbar-action-label">Cut</span>
+            <span className="formatting-toolbar-action-label">{copy.cut}</span>
           </button>
           <button
             type="button"
             className="formatting-toolbar-action"
-            aria-label="Copy"
-            title="Copy"
+            aria-label={copy.copy}
+            title={copy.copy}
             onClick={(event) => {
               event.stopPropagation();
               onCopy?.();
             }}
           >
             <Copy size={15} aria-hidden="true" />
-            <span className="formatting-toolbar-action-label">Copy</span>
+            <span className="formatting-toolbar-action-label">{copy.copy}</span>
           </button>
           <button
             type="button"
             className="formatting-toolbar-action"
-            aria-label="Paste"
-            title="Paste"
+            aria-label={copy.paste}
+            title={copy.paste}
             onClick={(event) => {
               event.stopPropagation();
               onPaste?.();
             }}
           >
             <ClipboardPaste size={15} aria-hidden="true" />
-            <span className="formatting-toolbar-action-label">Paste</span>
+            <span className="formatting-toolbar-action-label">{copy.paste}</span>
           </button>
           <button
             type="button"
             className="formatting-toolbar-action"
-            aria-label="Quote"
-            title="Quote — Quoted reply style"
+            aria-label={copy.quote}
+            title={copy.quoteStyle}
             onClick={(event) => {
               event.stopPropagation();
               onFormat("quote");
             }}
           >
             <Quote size={15} aria-hidden="true" />
-            <span className="formatting-toolbar-action-label">Quote</span>
+            <span className="formatting-toolbar-action-label">{copy.quote}</span>
           </button>
           <span className="formatting-toolbar-divider" aria-hidden="true" />
           <button
             type="button"
             className="formatting-toolbar-action formatting-toolbar-more"
-            aria-label="Formatting"
+            aria-label={copy.formatting}
             aria-expanded={false}
             aria-haspopup="menu"
-            title="Formatting"
+            title={copy.formatting}
             onClick={(event) => {
               event.stopPropagation();
               setFormatOpen(true);
@@ -249,11 +250,11 @@ export function FormattingToolbar(
           </button>
         </>
       ) : (
-        <div className="formatting-toolbar-submenu" role="menu" aria-label="Formatting options">
+        <div className="formatting-toolbar-submenu" role="menu" aria-label={copy.formattingOptions}>
           <BackButton
             className="formatting-toolbar-back"
-            ariaLabel="Back"
-            title="Back"
+            ariaLabel={copy.back}
+            title={copy.back}
             onClick={(event) => {
               event.stopPropagation();
               setFormatOpen(false);
@@ -267,7 +268,7 @@ export function FormattingToolbar(
               role="menuitem"
               className="formatting-toolbar-action"
               aria-label={label}
-              title={`${label} — ${description}`}
+              title={copy.by(label, description)}
               onClick={(event) => {
                 event.stopPropagation();
                 onFormat(kind);

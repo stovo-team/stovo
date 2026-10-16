@@ -9,6 +9,7 @@ import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import { chatAvatarFallbackKind, chatAvatarFile } from "../features/chats/shared/chatPresentation";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { useStrings } from "../i18n/LanguageContext";
 
 const ranges = ["7d", "30d", "1y", "all"] as const;
 type Range = (typeof ranges)[number];
@@ -19,6 +20,7 @@ function formatSeconds(seconds: number) {
 }
 
 export default function AdminStatsPage() {
+  const copy = useStrings().statistics;
   const { authRequest, currentUser, accessToken } = useAuth();
   const prefix = getClusterPrefix();
   // Start with the complete history. A new dashboard should not look empty just
@@ -68,53 +70,53 @@ export default function AdminStatsPage() {
   const hasActivity = messagesByHour.some((count) => count > 0);
   const peakHour = useMemo(() => Math.max(...messagesByHour, 1), [messagesByHour]);
   const awardCards = awards ? [
-    { label: "Night owl", icon: "🦉", winner: awards.night_owl },
-    { label: "Early bird", icon: "🌅", winner: awards.early_bird },
-    { label: "Quickest reply", icon: "⚡", winner: awards.lightning_responder },
-    { label: "Icebreaker", icon: "👑", winner: awards.icebreaker_monarch },
-    { label: "Novel writer", icon: "✍️", winner: awards.novel_writer },
-    { label: "One-word wonder", icon: "💬", winner: awards.one_word_wonder },
-    { label: "Reaction magnet", icon: "✨", winner: awards.reaction_magnet }
+    { label: copy.nightOwl, icon: "🦉", winner: awards.night_owl },
+    { label: copy.earlyBird, icon: "🌅", winner: awards.early_bird },
+    { label: copy.quickestReply, icon: "⚡", winner: awards.lightning_responder },
+    { label: copy.icebreaker, icon: "👑", winner: awards.icebreaker_monarch },
+    { label: copy.novelWriter, icon: "✍️", winner: awards.novel_writer },
+    { label: copy.oneWordWonder, icon: "💬", winner: awards.one_word_wonder },
+    { label: copy.reactionMagnet, icon: "✨", winner: awards.reaction_magnet }
   ] : [];
 
   return <main className="app-shell app-frame admin-page admin-detail-page stats-page">
     <AppNav />
     <section className="page-surface admin-surface stats-surface">
       <header className="stats-header">
-        <BackButton to={`${prefix}/app/settings`} className="stats-back mobile-back-button" ariaLabel="Back to Settings" />
-        <div><h1>Statistics dashboard</h1></div>
+        <BackButton to={`${prefix}/app/settings`} className="stats-back mobile-back-button" ariaLabel={copy.backSettings} />
+        <div><h1>{copy.dashboard}</h1></div>
       </header>
 
-      <div className="stats-toolbar" aria-label="Statistics range"><span>Showing</span><div role="group" className="stats-range-control">
-        {ranges.map((range) => <button key={range} type="button" className={range === timeRange ? "is-active" : undefined} onClick={() => setTimeRange(range)}>{range === "all" ? "All time" : range.toUpperCase()}</button>)}
+      <div className="stats-toolbar" aria-label={copy.range}><span>{copy.showing}</span><div role="group" className="stats-range-control">
+        {ranges.map((range) => <button key={range} type="button" className={range === timeRange ? "is-active" : undefined} onClick={() => setTimeRange(range)}>{range === "all" ? copy.allTime : range.toUpperCase()}</button>)}
       </div></div>
-      {loading && <div className="stats-state">Loading statistics…</div>}
-      {error && !loading && <div className="stats-state is-error">{error}. Try refreshing the page.</div>}
+      {loading && <div className="stats-state">{copy.loading}</div>}
+      {error && !loading && <div className="stats-state is-error">{error}. {copy.refreshHint}</div>}
 
       {!loading && !error && overview && <>
-        <section className="stats-summary-grid" aria-label="Key statistics">
-          <article className="stats-summary-card"><span className="stats-summary-icon"><MessageSquare size={17} /></span><span>Total messages</span><strong>{overview.total_messages.toLocaleString()}</strong><small>{overview.total_media.toLocaleString()} shared files and media</small></article>
-          <article className="stats-summary-card"><span className="stats-summary-icon is-warm"><Clock3 size={17} /></span><span>Typical reply</span><strong>{formatSeconds(overview.avg_response_time_seconds)}</strong><small>{overview.fast_response_percent}% within one minute</small></article>
-          <article className="stats-summary-card"><span className="stats-summary-icon is-pink"><Zap size={17} /></span><span>Conversations started</span><strong>{overview.total_conversations_started.toLocaleString()}</strong><small>after four hours of quiet</small></article>
-          <article className="stats-summary-card"><span className="stats-summary-icon is-violet"><Activity size={17} /></span><span>Average session</span><strong>{Math.round(overview.avg_session_duration_minutes)}m</strong><small>continuous conversation time</small></article>
+        <section className="stats-summary-grid" aria-label={copy.keyStats}>
+          <article className="stats-summary-card"><span className="stats-summary-icon"><MessageSquare size={17} /></span><span>{copy.totalMessages}</span><strong>{overview.total_messages.toLocaleString()}</strong><small>{overview.total_media.toLocaleString()} {copy.sharedMedia}</small></article>
+          <article className="stats-summary-card"><span className="stats-summary-icon is-warm"><Clock3 size={17} /></span><span>{copy.typicalReply}</span><strong>{formatSeconds(overview.avg_response_time_seconds)}</strong><small>{overview.fast_response_percent}{copy.withinMinute}</small></article>
+          <article className="stats-summary-card"><span className="stats-summary-icon is-pink"><Zap size={17} /></span><span>{copy.conversationsStarted}</span><strong>{overview.total_conversations_started.toLocaleString()}</strong><small>{copy.quietHours}</small></article>
+          <article className="stats-summary-card"><span className="stats-summary-icon is-violet"><Activity size={17} /></span><span>{copy.averageSession}</span><strong>{Math.round(overview.avg_session_duration_minutes)}m</strong><small>{copy.continuousTime}</small></article>
         </section>
         <section className="stats-content-grid">
-          <article className="stats-card stats-card--activity"><div className="stats-card-heading"><div><span>When people talk</span><h2>Activity across the day</h2></div><small>Local server time</small></div>{hasActivity ? <><div className="stats-chart" aria-label="Messages by hour">
-            {messagesByHour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{hour.toString().padStart(2, "0")}:00 · {count} messages</span>{count > 0 && <i style={{ height: `${Math.max((count / peakHour) * 100, 6)}%` }} />}</div>)}
-          </div><div className="stats-chart-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div></> : <p className="stats-chart-empty">No messages were recorded in this time range.</p>}</article>
-          <article className="stats-card stats-card--replies"><div className="stats-card-heading"><div><span>Responsiveness</span><h2>Reply rhythm</h2></div></div><div className="stats-reply-list">
-            {[["Under a minute", responseTimeBuckets.under_1_min, "is-fast"], ["1–5 minutes", responseTimeBuckets.from_1_to_5_min, "is-regular"], ["5–30 minutes", responseTimeBuckets.from_5_to_30_min, "is-casual"], ["Over 30 minutes", responseTimeBuckets.over_30_min, "is-slow"]].map(([label, count, tone]) => <div className="stats-reply-row" key={String(label)}><i className={String(tone)} /><span>{label}</span><strong>{Number(count).toLocaleString()}</strong></div>)}
+          <article className="stats-card stats-card--activity"><div className="stats-card-heading"><div><span>{copy.whenPeopleTalk}</span><h2>{copy.activityDay}</h2></div><small>{copy.serverTime}</small></div>{hasActivity ? <><div className="stats-chart" aria-label={copy.messagesByHour}>
+            {messagesByHour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{copy.hourTooltip(hour.toString().padStart(2, "0"), count)}</span>{count > 0 && <i style={{ height: `${Math.max((count / peakHour) * 100, 6)}%` }} />}</div>)}
+          </div><div className="stats-chart-axis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div></> : <p className="stats-chart-empty">{copy.noMessages}</p>}</article>
+          <article className="stats-card stats-card--replies"><div className="stats-card-heading"><div><span>{copy.responsiveness}</span><h2>{copy.replyRhythm}</h2></div></div><div className="stats-reply-list">
+            {[[copy.underMinute, responseTimeBuckets.under_1_min, "is-fast"], [copy.oneToFive, responseTimeBuckets.from_1_to_5_min, "is-regular"], [copy.fiveToThirty, responseTimeBuckets.from_5_to_30_min, "is-casual"], [copy.overThirty, responseTimeBuckets.over_30_min, "is-slow"]].map(([label, count, tone]) => <div className="stats-reply-row" key={String(label)}><i className={String(tone)} /><span>{label}</span><strong>{Number(count).toLocaleString()}</strong></div>)}
           </div></article>
-          <article className="stats-card"><div className="stats-card-heading"><div><span>Conversation starters</span><h2>They keep the chat moving</h2></div><Users size={18} /></div><div className="stats-leader-list">
-            {conversationStarters.length ? conversationStarters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{member.starts_count} starts</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">A leader will appear as conversations begin.</p>}
+          <article className="stats-card"><div className="stats-card-heading"><div><span>{copy.conversationStarters}</span><h2>{copy.movingChat}</h2></div><Users size={18} /></div><div className="stats-leader-list">
+            {conversationStarters.length ? conversationStarters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{copy.starts(member.starts_count)}</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">{copy.leaderEmpty}</p>}
           </div></article>
-          <article className="stats-card"><div className="stats-card-heading"><div><span>Most active spaces</span><h2>Where the conversation lives</h2></div><BarChart3 size={18} /></div><div className="stats-chat-list">
-            {activeChats.length ? activeChats.map((chat) => { const fullChat = chatsById.get(chat.chat_id); return <div className="stats-chat" key={chat.chat_id}>{fullChat ? <RealAvatar accessToken={accessToken} className="avatar stats-chat-avatar" fallbackKind={chatAvatarFallbackKind(fullChat)} file={chatAvatarFile(fullChat, currentUser?.id)} label={chat.title} /> : <span className="stats-chat-avatar stats-chat-avatar--fallback">{chat.type.slice(0, 1)}</span>}<strong>{chat.title}</strong><small>{chat.message_count.toLocaleString()} msgs</small></div>; }) : <p className="stats-empty">No chat activity in this period.</p>}
+          <article className="stats-card"><div className="stats-card-heading"><div><span>{copy.activeSpaces}</span><h2>{copy.conversationLives}</h2></div><BarChart3 size={18} /></div><div className="stats-chat-list">
+            {activeChats.length ? activeChats.map((chat) => { const fullChat = chatsById.get(chat.chat_id); return <div className="stats-chat" key={chat.chat_id}>{fullChat ? <RealAvatar accessToken={accessToken} className="avatar stats-chat-avatar" fallbackKind={chatAvatarFallbackKind(fullChat)} file={chatAvatarFile(fullChat, currentUser?.id)} label={chat.title} /> : <span className="stats-chat-avatar stats-chat-avatar--fallback">{chat.type.slice(0, 1)}</span>}<strong>{chat.title}</strong><small>{copy.messagesShort(chat.message_count)}</small></div>; }) : <p className="stats-empty">{copy.noChatActivity}</p>}
           </div></article>
         </section>
-        {awards && <section className="stats-awards"><div className="stats-awards-heading"><div><span>Good company</span><h2>Community highlights</h2></div><Trophy size={20} /></div><div className="stats-award-grid">
-          {awardCards.map(({ label, icon, winner }) => <article className="stats-award" key={label}><span>{icon}</span><div><small>{label}</small><strong>{winner.display_name || "Not decided yet"}</strong><p>{winner.value || winner.description}</p></div></article>)}
-        </div><div className="stats-duo"><span>🤝</span><div><small>Dynamic duo</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : "Still waiting for a legendary duo"}</strong></div><p>{topEmojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || "Keep reacting to reveal the server favourites."}</p></div></section>}
+        {awards && <section className="stats-awards"><div className="stats-awards-heading"><div><span>{copy.goodCompany}</span><h2>{copy.communityHighlights}</h2></div><Trophy size={20} /></div><div className="stats-award-grid">
+          {awardCards.map(({ label, icon, winner }) => <article className="stats-award" key={label}><span>{icon}</span><div><small>{label}</small><strong>{winner.display_name || copy.notDecided}</strong><p>{winner.value || winner.description}</p></div></article>)}
+        </div><div className="stats-duo"><span>🤝</span><div><small>{copy.dynamicDuo}</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : copy.waitingDuo}</strong></div><p>{topEmojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || copy.revealFavorites}</p></div></section>}
       </>}
     </section>
   </main>;

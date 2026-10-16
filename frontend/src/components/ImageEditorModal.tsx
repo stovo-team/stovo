@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2, X } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
+import { useStrings } from "../i18n/LanguageContext";
 
 interface Stroke {
   color: string;
@@ -23,23 +25,14 @@ interface ImageEditorModalProps {
   onClose: () => void;
 }
 
-const COLOR_PRESETS = [
-  "#ffffff",
-  "#ef4444",
-  "#f59e0b",
-  "#10b981",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-  "#000000"
-];
-const PEN_SIZES = [
-  { label: "Fine", width: 2 },
-  { label: "Medium", width: 4 },
-  { label: "Bold", width: 8 }
-];
-
+const COLOR_PRESETS = DESIGN_COLOR_VALUES.imageEditor.presetColors;
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
+  const copy = useStrings().imageEditor;
+  const penSizes = [
+    { label: copy.fine, width: 2 },
+    { label: copy.medium, width: 4 },
+    { label: copy.bold, width: 8 }
+  ];
   const editorFeatures = PHOTO_EDITOR_FEATURES.media;
   const [activeTab, setActiveTab] = useState<"adjust" | "crop" | "draw" | null>(null);
 
@@ -53,7 +46,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   const [selectedRatio, setSelectedRatio] = useState<string>("free");
 
   // Drawing
-  const [drawColor, setDrawColor] = useState<string>("#ef4444");
+  const [drawColor, setDrawColor] = useState<string>(DESIGN_COLOR_VALUES.imageEditor.defaultStroke);
   const [drawWidth, setDrawWidth] = useState<number>(4);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
@@ -268,29 +261,29 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   }, [brightness, contrast, crop, gamma, imgElement, onSave, pending.file, strokes]);
 
   return createPortal(
-    <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label="Edit image">
+    <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label={copy.editImage}>
       <div className="image-editor-modal">
         {/* Header */}
         <header className="image-editor-header">
           <div className="image-editor-title">
             <span className="ms-icon" aria-hidden="true">edit</span>
-            <h3>Edit Image</h3>
+            <h3>{copy.title}</h3>
           </div>
           <div className="image-editor-header-actions">
             <button
               type="button"
               className="image-editor-btn-secondary"
               onClick={handleReset}
-              title="Reset all edits"
+              title={copy.resetAll}
             >
               <RotateCcw size={16} />
-              <span>Reset</span>
+              <span>{copy.reset}</span>
             </button>
             <button
               type="button"
               className="image-editor-close-btn"
               onClick={onClose}
-              aria-label="Close image editor"
+              aria-label={copy.close}
             >
               <X size={20} />
             </button>
@@ -303,7 +296,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             <div className="image-editor-preview-wrapper">
               <img
                 src={pending.previewUrl}
-                alt="Preview"
+                alt={copy.preview}
                 className="image-editor-base-img"
                 style={{
                   filter: buildPhotoFilter({ brightness, contrast, gamma }),
@@ -343,7 +336,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               )}
             </div>
           ) : (
-            <div className="image-editor-empty">No image preview available</div>
+            <div className="image-editor-empty">{copy.noPreview}</div>
           )}
         </div>
 
@@ -352,7 +345,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <button
             type="button"
             className={`image-editor-tab${activeTab === "adjust" ? " is-active" : ""}`}
-            aria-label="Adjust image"
+            aria-label={copy.adjust}
             onClick={() => setActiveTab((tab) => tab === "adjust" ? null : "adjust")}
           >
             <Sliders size={18} />
@@ -360,7 +353,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <button
             type="button"
             className={`image-editor-tab${activeTab === "crop" ? " is-active" : ""}`}
-            aria-label="Crop image"
+            aria-label={copy.crop}
             onClick={() => setActiveTab((tab) => tab === "crop" ? null : "crop")}
           >
             <CropIcon size={18} />
@@ -368,7 +361,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           {editorFeatures.drawing && <button
             type="button"
             className={`image-editor-tab${activeTab === "draw" ? " is-active" : ""}`}
-            aria-label="Draw on image"
+            aria-label={copy.draw}
             onClick={() => setActiveTab((tab) => tab === "draw" ? null : "draw")}
           >
             <Pencil size={18} />
@@ -381,7 +374,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             <div className="image-editor-controls-grid">
               <div className="image-editor-control-item">
                 <div className="control-label">
-                  <span>Brightness</span>
+                  <span>{copy.brightness}</span>
                   <strong>{brightness}%</strong>
                 </div>
                 <input
@@ -395,7 +388,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
               <div className="image-editor-control-item">
                 <div className="control-label">
-                  <span>Contrast</span>
+                  <span>{copy.contrast}</span>
                   <strong>{contrast}%</strong>
                 </div>
                 <input
@@ -409,7 +402,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
               <div className="image-editor-control-item">
                 <div className="control-label">
-                  <span>Gamma</span>
+                  <span>{copy.gamma}</span>
                   <strong>{gamma.toFixed(2)}</strong>
                 </div>
                 <input
@@ -427,7 +420,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           {activeTab === "crop" && (
             <div className="image-editor-crop-controls">
               <div className="crop-ratios">
-                <span className="control-section-label">Aspect Ratio:</span>
+                <span className="control-section-label">{copy.aspectRatio}</span>
                 {["free", "1:1", "4:3", "16:9"].map((r) => (
                   <button
                     key={r}
@@ -443,7 +436,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               <div className="crop-sliders">
                 <div className="image-editor-control-item">
                   <div className="control-label">
-                    <span>X Offset</span>
+                    <span>{copy.xOffset}</span>
                     <strong>{Math.round(crop.x)}%</strong>
                   </div>
                   <input
@@ -457,7 +450,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
                 <div className="image-editor-control-item">
                   <div className="control-label">
-                    <span>Y Offset</span>
+                    <span>{copy.yOffset}</span>
                     <strong>{Math.round(crop.y)}%</strong>
                   </div>
                   <input
@@ -471,7 +464,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
                 <div className="image-editor-control-item">
                   <div className="control-label">
-                    <span>Width</span>
+                    <span>{copy.width}</span>
                     <strong>{Math.round(crop.width)}%</strong>
                   </div>
                   <input
@@ -485,7 +478,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
                 <div className="image-editor-control-item">
                   <div className="control-label">
-                    <span>Height</span>
+                    <span>{copy.height}</span>
                     <strong>{Math.round(crop.height)}%</strong>
                   </div>
                   <input
@@ -503,7 +496,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           {editorFeatures.drawing && activeTab === "draw" && (
             <div className="image-editor-draw-controls">
               <div className="draw-colors">
-                <span className="control-section-label">Color:</span>
+                <span className="control-section-label">{copy.color}</span>
                 <div className="color-palette">
                   {COLOR_PRESETS.map((hex) => (
                     <button
@@ -512,16 +505,16 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                       className={`color-swatch${drawColor === hex ? " is-active" : ""}`}
                       style={{ backgroundColor: hex }}
                       onClick={() => setDrawColor(hex)}
-                      aria-label={`Select color ${hex}`}
+                      aria-label={copy.selectColor(hex)}
                     />
                   ))}
                 </div>
               </div>
 
               <div className="draw-settings">
-                <div className="draw-pen-selector" role="group" aria-label="Pen size">
-                  <span className="control-section-label">Pen:</span>
-                  {PEN_SIZES.map((pen) => (
+                <div className="draw-pen-selector" role="group" aria-label={copy.penSize}>
+                  <span className="control-section-label">{copy.pen}</span>
+                  {penSizes.map((pen) => (
                     <button
                       key={pen.label}
                       type="button"
@@ -536,7 +529,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                 </div>
                 <div className="image-editor-control-item">
                   <div className="control-label">
-                    <span>Brush Size</span>
+                    <span>{copy.brushSize}</span>
                     <strong>{drawWidth}px</strong>
                   </div>
                   <input
@@ -555,7 +548,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                   onClick={() => setStrokes((prev) => prev.slice(0, -1))}
                 >
                   <Undo2 size={16} />
-                  <span>Undo Stroke</span>
+                  <span>{copy.undoStroke}</span>
                 </button>
               </div>
             </div>
@@ -565,7 +558,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
         {/* Footer Actions */}
         <footer className="image-editor-footer">
           <button type="button" className="image-editor-btn-cancel" onClick={onClose}>
-            Cancel
+            {copy.cancel}
           </button>
           <button
             type="button"
@@ -574,7 +567,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             onClick={() => void handleSave()}
           >
             <Check size={18} />
-            <span>{isProcessing ? "Saving..." : "Done & Apply"}</span>
+            <span>{isProcessing ? copy.saving : copy.done}</span>
           </button>
         </footer>
       </div>

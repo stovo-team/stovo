@@ -1,0 +1,1001 @@
+/* Shared UI foundations. Add new values here and reference them from components. */
+:root {
+  /* Canonical color values for existing feature styles. Prefer semantic color roles for new UI. */
+  --font-family-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --font-size-micro: 0.625rem;
+  --font-size-caption: 0.75rem;
+  --font-size-small: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-body-large: 1.125rem;
+  --font-size-heading-small: 1.25rem;
+  --font-size-heading: 1.5rem;
+  --font-size-display-small: 2rem;
+  --font-size-display: 2.5rem;
+  --font-size-button: var(--font-size-small);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+
+  --line-height-tight: 1.2;
+  --line-height-heading: 1.35;
+  --line-height-body: 1.5;
+  --line-height-relaxed: 1.65;
+
+  --radius-small: 4px;
+  --radius-control: 8px;
+  --radius-input: 18px;
+  --radius-card: 8px;
+  --radius-surface: 16px;
+  --radius-circle: 50%;
+  --radius-bubble: 18px;
+  --radius-panel: 24px;
+  --radius-pill: 9999px;
+
+  --color-text-primary: var(--text-primary, var(--color-palette-dd15e6f7d489));
+  --color-text-secondary: var(--text-secondary, var(--color-palette-66341b70b395));
+  --color-text-muted: var(--text-muted, var(--color-palette-177804c22590));
+  --color-background-page: var(--background-page, var(--color-palette-877b0d02ab3e));
+  --color-background-panel: var(--background-panel, var(--color-palette-f2074b6cef37));
+  --color-surface: var(--surface-card, var(--color-palette-f2074b6cef37));
+  --color-border: var(--border-default, var(--color-palette-bfd4f8ffcad7));
+  --color-accent: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  --color-focus: var(--focus-ring, var(--accent-primary, var(--color-palette-a5384157bc1a)));
+  --color-danger: var(--danger, var(--color-palette-c36d4cdccdc9));
+  --color-success: var(--success, var(--color-palette-8b8f7c3d4541));
+  --color-warning: var(--warning, var(--color-palette-251a7b8506a7));
+  --color-premium-text: var(--color-palette-b9669148c06a);
+  --color-premium-surface: var(--color-palette-41bd8392b498);
+  --color-palette-0002249bf757: #0a0a0a; /* #0a0a0a */
+  --color-palette-000ecd161639: rgba(140, 169, 211, .18); /* rgba(140,169,211,0.18) */
+  --color-palette-005818a1af0c: rgba(148, 163, 184, 0.28); /* rgba(148,163,184,0.28) */
+  --color-palette-005ad5fe49a3: #171a20; /* #171a20 */
+  --color-palette-00af1480fdb0: rgba(154, 181, 218, .16); /* rgba(154,181,218,0.16) */
+  --color-palette-00b95989a9a6: #3d4654; /* #3d4654 */
+  --color-palette-01003b50e745: rgba(99, 102, 241, .14); /* rgba(99,102,241,0.14) */
+  --color-palette-021bdfabe6c7: #b7a7ff; /* #b7a7ff */
+  --color-palette-029db29525ca: rgba(220, 38, 38, 0); /* rgba(220,38,38,0) */
+  --color-palette-02aa355cd990: #be123c; /* #be123c */
+  --color-palette-031f717f801f: rgba(225, 29, 72, 0.16); /* rgba(225,29,72,0.16) */
+  --color-palette-036c917f322e: #ffbdc8; /* #ffbdc8 */
+  --color-palette-03b91d26b5ab: #67e8f9; /* #67e8f9 */
+  --color-palette-0406b2d6b372: #007aff; /* #007aff */
+  --color-palette-04ddb3ddfaae: #193b61; /* #193b61 */
+  --color-palette-04f6724af13c: rgba(133, 77, 14, .36); /* rgba(133,77,14,0.36) */
+  --color-palette-051aad13a52e: rgba(239, 68, 68, 0.14); /* rgba(239,68,68,0.14) */
+  --color-palette-0610f652e4bd: #1c1c22; /* #1c1c22 */
+  --color-palette-0695333e5710: #e53e3e; /* #e53e3e */
+  --color-palette-06e0717f8e27: #2a2a33; /* #2a2a33 */
+  --color-palette-06f95ac48318: rgba(42, 171, 238, 0.12); /* rgba(42,171,238,0.12) */
+  --color-palette-07480731fabf: #191923; /* #191923 */
+  --color-palette-084e319cfa96: rgba(148, 163, 184, 0.2); /* rgba(148,163,184,0.2) */
+  --color-palette-0893ed5c5654: rgba(217, 119, 6, 0.3); /* rgba(217,119,6,0.3) */
+  --color-palette-08a370ad2aab: rgba(2, 6, 23, 0.9); /* rgba(2,6,23,0.9) */
+  --color-palette-091ade031732: rgba(251, 113, 133, 0.34); /* rgba(251,113,133,0.34) */
+  --color-palette-094812fca966: rgba(15, 23, 42, 0.1); /* rgba(15,23,42,0.1) */
+  --color-palette-09790858f7bd: rgba(74, 147, 255, .16); /* rgba(74,147,255,0.16) */
+  --color-palette-09ed3334d65d: rgba(80, 160, 255, 0.7); /* rgba(80,160,255,0.7) */
+  --color-palette-0a98689eb555: rgba(30, 90, 220, 0.35); /* rgba(30,90,220,0.35) */
+  --color-palette-0ab18cbd50f0: #3c4043; /* #3c4043 */
+  --color-palette-0ac1c6c9a136: #44576b; /* #44576b */
+  --color-palette-0acff6aace2e: #0c0c0e; /* #0c0c0e */
+  --color-palette-0ad7ddd51778: #168ac0; /* #168ac0 */
+  --color-palette-0ae2710c26e7: #ffffff12; /* #ffffff12 */
+  --color-palette-0aed99d9130d: #b7c4d7; /* #b7c4d7 */
+  --color-palette-0ba5a1d5f3b0: rgba(34, 197, 94, 0.3); /* rgba(34,197,94,0.3) */
+  --color-palette-0bcd1015425a: rgba(0, 0, 0, 0.2); /* rgba(0,0,0,0.2) */
+  --color-palette-0bd214592327: rgba(251, 113, 133, 0.22); /* rgba(251,113,133,0.22) */
+  --color-palette-0be59ddfd7b4: #8c96aa; /* #8c96aa */
+  --color-palette-0bf61dd701cd: rgba(0, 0, 0, .28); /* rgba(0,0,0,0.28) */
+  --color-palette-0c1aa7e00e59: #24242c; /* #24242c */
+  --color-palette-0c501f182ba9: rgba(255,255,255,.05); /* rgba(255,255,255,0.05) */
+  --color-palette-0d1ed7ec97e6: #08090b; /* #08090b */
+  --color-palette-0d2916e37d17: rgba(21, 148, 111, 0.3); /* rgba(21,148,111,0.3) */
+  --color-palette-0d39cde93c6d: rgba(34, 197, 94, 0.14); /* rgba(34,197,94,0.14) */
+  --color-palette-0d5bdc247344: #161b22; /* #161b22 */
+  --color-palette-0d5e7531921b: #141724; /* #141724 */
+  --color-palette-0d7d3a69f979: rgba(0, 0, 0, .66); /* rgba(0,0,0,0.66) */
+  --color-palette-0da75c40e531: rgba(240, 138, 36, 0.22); /* rgba(240,138,36,0.22) */
+  --color-palette-0dec32e52a27: rgba(246, 247, 249, 0.86); /* rgba(246,247,249,0.86) */
+  --color-palette-0e5497f80a53: rgba(0, 0, 0, 0.58); /* rgba(0,0,0,0.58) */
+  --color-palette-0e684e516035: #0f172a; /* #0f172a */
+  --color-palette-0f0262202ddd: #292929; /* #292929 */
+  --color-palette-0f114e49edbb: #17130c; /* #17130c */
+  --color-palette-0f153bff29ca: rgba(15, 23, 42, 0.52); /* rgba(15,23,42,0.52) */
+  --color-palette-0f176030df85: #34d399; /* #34d399 */
+  --color-palette-0f8bbfc0790b: rgba(34, 197, 94, 0.35); /* rgba(34,197,94,0.35) */
+  --color-palette-0fa40b792ade: rgba(0, 0, 0, 0.72); /* rgba(0,0,0,0.72) */
+  --color-palette-0fe10b549808: #5d4d93; /* #5d4d93 */
+  --color-palette-1026c1d4e3e2: #abb5ca; /* #abb5ca */
+  --color-palette-102f70285a99: #21144a; /* #21144a */
+  --color-palette-109a5bc93425: #102a5a; /* #102a5a */
+  --color-palette-10a646c2eda9: rgba(210, 190, 255, .2); /* rgba(210,190,255,0.2) */
+  --color-palette-10b0271d08f5: #1b202b; /* #1b202b */
+  --color-palette-10e9ddf239c2: #13ea84; /* #13ea84 */
+  --color-palette-1144b6e614c7: #75e3af; /* #75e3af */
+  --color-palette-114e83772262: rgba(8, 26, 44, .78); /* rgba(8,26,44,0.78) */
+  --color-palette-115722330230: #c7d1df; /* #c7d1df */
+  --color-palette-115e018f6107: #10b981; /* #10b981 */
+  --color-palette-11d9e35d5c6f: rgba(240, 138, 36, 0.18); /* rgba(240,138,36,0.18) */
+  --color-palette-1248f9ab2f1c: rgba(255, 255, 255, 0.8); /* rgba(255,255,255,0.8) */
+  --color-palette-126c94cdf552: #f4f3ff; /* #f4f3ff */
+  --color-palette-1272824d5953: #ffb6bf; /* #ffb6bf */
+  --color-palette-1275593ea057: #8e8e93; /* #8e8e93 */
+  --color-palette-136bb9605697: #59636e; /* #59636e */
+  --color-palette-137f5115d0c5: #f19ca8; /* #f19ca8 */
+  --color-palette-13969980f507: #a78bfa; /* #a78bfa */
+  --color-palette-13b406d84d60: #b45309; /* #b45309 */
+  --color-palette-145d5dcee38c: #111117; /* #111117 */
+  --color-palette-1539eb3e947a: #14181e; /* #14181e */
+  --color-palette-15aad04ebb8c: #6274ee; /* #6274ee */
+  --color-palette-15f45bc65233: #f4f6fb; /* #f4f6fb */
+  --color-palette-1661f4af04d2: #f08a24; /* #f08a24 */
+  --color-palette-16bf6f3e4d13: #2f9e73; /* #2f9e73 */
+  --color-palette-175f28ccdb1f: #11151a; /* #11151a */
+  --color-palette-177804c22590: #9ca3af; /* #9ca3af */
+  --color-palette-17c27e9f2079: rgba(255, 255, 255, 0.44); /* rgba(255,255,255,0.44) */
+  --color-palette-17dc069544e7: #5b21b6; /* #5b21b6 */
+  --color-palette-18278779a1db: #74d7a7; /* #74d7a7 */
+  --color-palette-187ea511a8d3: #eef4f8; /* #eef4f8 */
+  --color-palette-189a10aa4447: #d97726; /* #d97726 */
+  --color-palette-18c22cba214d: #e8ebf2; /* #e8ebf2 */
+  --color-palette-18fbb326fe15: #12101b; /* #12101b */
+  --color-palette-190bdc64d2dc: rgba(0, 0, 0, 0); /* rgba(0,0,0,0) */
+  --color-palette-199030ddc7c3: #ddd; /* #dddddd */
+  --color-palette-19c8cd6ac63b: #4a535c; /* #4a535c */
+  --color-palette-19d6ae3cacaa: #232b37; /* #232b37 */
+  --color-palette-1a2c7cbc775a: #eef1f5; /* #eef1f5 */
+  --color-palette-1a2fd22ec28c: rgba(255, 255, 255, 0.16); /* rgba(255,255,255,0.16) */
+  --color-palette-1a75dc9e3972: #f87171; /* #f87171 */
+  --color-palette-1ab97cd4a89f: #202b36; /* #202b36 */
+  --color-palette-1ac78c1c454a: #efb75d; /* #efb75d */
+  --color-palette-1b3adf9e170e: #959ca9; /* #959ca9 */
+  --color-palette-1b4c211748ef: rgba(167, 139, 250, 0.34); /* rgba(167,139,250,0.34) */
+  --color-palette-1b55c5ac5a5c: rgba(2, 4, 10, 0.96); /* rgba(2,4,10,0.96) */
+  --color-palette-1b686cf980de: #20242a; /* #20242a */
+  --color-palette-1ba7a3e2489d: rgba(0, 0, 0, 0.7); /* rgba(0,0,0,0.7) */
+  --color-palette-1bc9e2941de6: #1e2733; /* #1e2733 */
+  --color-palette-1be9d53261e7: rgba(237, 242, 247, 0.94); /* rgba(237,242,247,0.94) */
+  --color-palette-1c3ffa19f630: #f0f2f6; /* #f0f2f6 */
+  --color-palette-1c46f3b2b2aa: rgba(0, 0, 0, 0.18); /* rgba(0,0,0,0.18) */
+  --color-palette-1c4b33774e42: rgba(255, 255, 255, .64); /* rgba(255,255,255,0.64) */
+  --color-palette-1c9444dbc966: #7de0b6; /* #7de0b6 */
+  --color-palette-1cff50754b9a: #17191d; /* #17191d */
+  --color-palette-1d35b820cb2a: #0ea5e9; /* #0ea5e9 */
+  --color-palette-1d5686e1bfe9: rgba(10, 13, 18, .98); /* rgba(10,13,18,0.98) */
+  --color-palette-1d5d590c69f1: #1c202a; /* #1c202a */
+  --color-palette-1d859ed7ed92: rgba(168, 85, 247, 0.25); /* rgba(168,85,247,0.25) */
+  --color-palette-1dfd81ce6614: #52555d; /* #52555d */
+  --color-palette-1e71239a305c: #5d3a00; /* #5d3a00 */
+  --color-palette-1e989053067e: #ff7777; /* #ff7777 */
+  --color-palette-1ea44df93187: #121417; /* #121417 */
+  --color-palette-1ed3a828c838: #101116; /* #101116 */
+  --color-palette-1fed54857beb: #31285d; /* #31285d */
+  --color-palette-2038355072b7: #191921; /* #191921 */
+  --color-palette-20a085c65229: #282b31; /* #282b31 */
+  --color-palette-2101efd095aa: rgba(0, 0, 0, 0.8); /* rgba(0,0,0,0.8) */
+  --color-palette-216cc9849058: rgba(10, 15, 25, .9); /* rgba(10,15,25,0.9) */
+  --color-palette-2183d5087643: #59647a; /* #59647a */
+  --color-palette-218547220d32: #3a424c; /* #3a424c */
+  --color-palette-21bb7eed1d6c: #e8f3ff; /* #e8f3ff */
+  --color-palette-21e6a78aeab4: rgba(10, 15, 25, .92); /* rgba(10,15,25,0.92) */
+  --color-palette-22028368ab96: #fecaca; /* #fecaca */
+  --color-palette-226fd20d8553: #f2f4f7; /* #f2f4f7 */
+  --color-palette-22a3daecfd5e: #41434a; /* #41434a */
+  --color-palette-2303485e6431: rgba(22, 29, 38, .92); /* rgba(22,29,38,0.92) */
+  --color-palette-231a4959a5d3: #333943; /* #333943 */
+  --color-palette-23b6bdc2d2ee: rgba(4, 7, 11, .58); /* rgba(4,7,11,0.58) */
+  --color-palette-2461ce705758: #32323b; /* #32323b */
+  --color-palette-247d8911985b: #dbeeff; /* #dbeeff */
+  --color-palette-24ce5f4221cc: #858c9b; /* #858c9b */
+  --color-palette-24d5d455eab5: #b5c2d4; /* #b5c2d4 */
+  --color-palette-251a7b8506a7: #f59e0b; /* #f59e0b */
+  --color-palette-255c8f02e2b5: #9dbce0; /* #9dbce0 */
+  --color-palette-25d0ddc4522e: #a8adb9; /* #a8adb9 */
+  --color-palette-26eaf932d3bc: rgba(255, 255, 255, 0.65); /* rgba(255,255,255,0.65) */
+  --color-palette-27885164889f: #a9afbc; /* #a9afbc */
+  --color-palette-279245c0d6e0: rgba(0, 0, 0, 0.3); /* rgba(0,0,0,0.3) */
+  --color-palette-2792e651f573: #e7f1f7; /* #e7f1f7 */
+  --color-palette-27b49f424582: #394655; /* #394655 */
+  --color-palette-288ff9569263: #20242d; /* #20242d */
+  --color-palette-28975256a9d5: #3c2d18; /* #3c2d18 */
+  --color-palette-29235c7bc27f: rgba(217, 119, 6, 0.24); /* rgba(217,119,6,0.24) */
+  --color-palette-295a09e27c86: #202938; /* #202938 */
+  --color-palette-29bc0ff5cb76: #eadfff; /* #eadfff */
+  --color-palette-29d2b43c7e2e: rgba(18, 24, 38, 0.88); /* rgba(18,24,38,0.88) */
+  --color-palette-29f214e2f04b: rgba(148, 163, 184, 0.08); /* rgba(148,163,184,0.08) */
+  --color-palette-2a39b9d2317a: #0e131b; /* #0e131b */
+  --color-palette-2b2e775765cd: #304154; /* #304154 */
+  --color-palette-2b48031c5e3c: rgba(12, 14, 18, 0.88); /* rgba(12,14,18,0.88) */
+  --color-palette-2b5d0be87676: rgba(0, 0, 0, 0.62); /* rgba(0,0,0,0.62) */
+  --color-palette-2bac9ccc4d9e: #102346; /* #102346 */
+  --color-palette-2bd9b689c415: #fb7185; /* #fb7185 */
+  --color-palette-2bfbe8736095: rgba(255, 255, 255, 0.2); /* rgba(255,255,255,0.2) */
+  --color-palette-2c05ce0bd7d1: #b7a6ff; /* #b7a6ff */
+  --color-palette-2c142d5bd5f5: rgba(52, 211, 153, 0.3); /* rgba(52,211,153,0.3) */
+  --color-palette-2c14777e7e1a: #d8ecff; /* #d8ecff */
+  --color-palette-2c565f8f0651: #a7f3d0; /* #a7f3d0 */
+  --color-palette-2c7b28f4efcb: #d08a00; /* #d08a00 */
+  --color-palette-2c8dadf03d5e: rgba(255, 255, 255, 0.42); /* rgba(255,255,255,0.42) */
+  --color-palette-2c9ab7c37ce6: rgba(45, 212, 191, .18); /* rgba(45,212,191,0.18) */
+  --color-palette-2c9fd2a024fe: #2d2d36; /* #2d2d36 */
+  --color-palette-2cec6678d031: #30303a; /* #30303a */
+  --color-palette-2d0f6e821394: #d9fbff; /* #d9fbff */
+  --color-palette-2d3a27f1736a: #9eb0c8; /* #9eb0c8 */
+  --color-palette-2d4bdcc4efd2: #f3f4f7; /* #f3f4f7 */
+  --color-palette-2d796aaf8566: #c4b5fd; /* #c4b5fd */
+  --color-palette-2e4700886d89: #dfe3eb; /* #dfe3eb */
+  --color-palette-2e837490c207: rgba(28, 28, 30, 0.78); /* rgba(28,28,30,0.78) */
+  --color-palette-2ea830be133f: #1d2935; /* #1d2935 */
+  --color-palette-2f030878a9c8: #1d1710; /* #1d1710 */
+  --color-palette-2f2358b27e2f: rgba(255, 59, 48, 0.25); /* rgba(255,59,48,0.25) */
+  --color-palette-2f89846cd9c9: rgba(220, 38, 38, 0.2); /* rgba(220,38,38,0.2) */
+  --color-palette-30eb0ac6379f: #fff1b3; /* #fff1b3 */
+  --color-palette-319b949e7cbc: #302c3a; /* #302c3a */
+  --color-palette-333318a7e92e: rgba(0, 0, 0, 0.92); /* rgba(0,0,0,0.92) */
+  --color-palette-33459dba2d00: #3a4b5e; /* #3a4b5e */
+  --color-palette-337b58f5dab3: #c1c5cd; /* #c1c5cd */
+  --color-palette-338ae89af475: #384656; /* #384656 */
+  --color-palette-3398ce8a6140: #6366f1; /* #6366f1 */
+  --color-palette-33b95d4c2e2b: rgba(127, 127, 127, .3); /* rgba(127,127,127,0.3) */
+  --color-palette-33dfe6f9ef65: #7352bd; /* #7352bd */
+  --color-palette-33e71d6e0fb6: rgba(239, 68, 68, 0.5); /* rgba(239,68,68,0.5) */
+  --color-palette-3443087def16: rgba(128, 128, 128, 0.25); /* rgba(128,128,128,0.25) */
+  --color-palette-349e590cb782: #1a1821; /* #1a1821 */
+  --color-palette-350c7db217cd: #05070a; /* #05070a */
+  --color-palette-35a8aa6f429a: #20262e; /* #20262e */
+  --color-palette-35bd0b3c87df: #38393d; /* #38393d */
+  --color-palette-35eccb9c9da4: #131822; /* #131822 */
+  --color-palette-361026b3d271: #edf0f6; /* #edf0f6 */
+  --color-palette-36eaf03d7e77: rgba(56, 189, 248, .18); /* rgba(56,189,248,0.18) */
+  --color-palette-36f062b88525: #343b48; /* #343b48 */
+  --color-palette-3727ebd0595e: #ffd38b; /* #ffd38b */
+  --color-palette-3748776e48d5: rgba(255, 255, 255, 0.06); /* rgba(255,255,255,0.06) */
+  --color-palette-3766b407d4de: rgba(168, 85, 247, 0.35); /* rgba(168,85,247,0.35) */
+  --color-palette-3871da342003: #dc2626; /* #dc2626 */
+  --color-palette-387e06a05f07: rgba(52, 211, 153, 0.15); /* rgba(52,211,153,0.15) */
+  --color-palette-38e7555ea4b0: rgba(125, 211, 252, 0.45); /* rgba(125,211,252,0.45) */
+  --color-palette-39a1fd8c4592: #969da9; /* #969da9 */
+  --color-palette-3b313dfb66a5: #e2e8f0; /* #e2e8f0 */
+  --color-palette-3b32497a0038: rgba(210, 190, 255, .22); /* rgba(210,190,255,0.22) */
+  --color-palette-3b37423c41f4: rgba(0, 0, 0, 0.32); /* rgba(0,0,0,0.32) */
+  --color-palette-3b7fac3af8ed: #4d91d8; /* #4d91d8 */
+  --color-palette-3c16360ca5f4: #1d222d; /* #1d222d */
+  --color-palette-3c5c1ab6c5fd: #16a34a; /* #16a34a */
+  --color-palette-3ca9785d9500: #252b33; /* #252b33 */
+  --color-palette-3cbe305ad212: rgba(96, 165, 250, 0.24); /* rgba(96,165,250,0.24) */
+  --color-palette-3d825dcbe295: #3a3a44; /* #3a3a44 */
+  --color-palette-3d92bff672e9: rgba(255, 255, 255, 0.38); /* rgba(255,255,255,0.38) */
+  --color-palette-3dd5594323fb: rgba(51, 65, 85, 0.8); /* rgba(51,65,85,0.8) */
+  --color-palette-3dd8fae8cfde: #17171f; /* #17171f */
+  --color-palette-3eb876b5daa0: rgba(56, 189, 248, .14); /* rgba(56,189,248,0.14) */
+  --color-palette-3ed7764068c1: #1a52c4; /* #1a52c4 */
+  --color-palette-3f1c0a72c393: rgba(148, 163, 184, 0.55); /* rgba(148,163,184,0.55) */
+  --color-palette-3f2909676fa4: rgba(52, 199, 89, 0.6); /* rgba(52,199,89,0.6) */
+  --color-palette-3f96bb6723a3: #181c22; /* #181c22 */
+  --color-palette-3fac7d24da69: #101d31; /* #101d31 */
+  --color-palette-3fd4e05297db: #fde68a; /* #fde68a */
+  --color-palette-406aae76176c: rgba(251, 113, 133, 0.18); /* rgba(251,113,133,0.18) */
+  --color-palette-4083a2e3a50d: rgba(80, 150, 255, 0.22); /* rgba(80,150,255,0.22) */
+  --color-palette-412dbffa545e: rgba(52, 211, 153, 0.08); /* rgba(52,211,153,0.08) */
+  --color-palette-416de10162d2: #2a3543; /* #2a3543 */
+  --color-palette-419e0b5e7b1b: #77a9c5; /* #77a9c5 */
+  --color-palette-41bd8392b498: rgba(37, 99, 235, .24); /* rgba(37,99,235,0.24) */
+  --color-palette-41e03ce6bc84: rgba(139, 92, 246, 0.3); /* rgba(139,92,246,0.3) */
+  --color-palette-42705fa9a635: #fca5a5; /* #fca5a5 */
+  --color-palette-428215234d91: rgba(59, 130, 246, 0.2); /* rgba(59,130,246,0.2) */
+  --color-palette-42e7924c7b57: #2a313c; /* #2a313c */
+  --color-palette-434a101cacc8: rgba(80, 160, 255, 0.35); /* rgba(80,160,255,0.35) */
+  --color-palette-435252fdd56f: rgba(15, 23, 42, 0.45); /* rgba(15,23,42,0.45) */
+  --color-palette-436642184077: #573f1e; /* #573f1e */
+  --color-palette-4372f63a4270: rgba(255, 195, 98, .35); /* rgba(255,195,98,0.35) */
+  --color-palette-4397798152e9: #161820; /* #161820 */
+  --color-palette-43bc9d0f627d: rgba(96, 165, 250, 0.35); /* rgba(96,165,250,0.35) */
+  --color-palette-43f6882724a0: #08080f; /* #08080f */
+  --color-palette-442ea4f88a1f: #2c3540; /* #2c3540 */
+  --color-palette-447a523b736b: #6eaef0; /* #6eaef0 */
+  --color-palette-44954785d746: #2d2613; /* #2d2613 */
+  --color-palette-449c31647178: rgba(34, 197, 94, .82); /* rgba(34,197,94,0.82) */
+  --color-palette-44d11558cb5e: #d64be6; /* #d64be6 */
+  --color-palette-44ee5e683460: #3a4d62; /* #3a4d62 */
+  --color-palette-4542dca0dfae: #a855f7; /* #a855f7 */
+  --color-palette-45ebc33819f6: #e6e8ed; /* #e6e8ed */
+  --color-palette-45f0912910c9: #f3f5f9; /* #f3f5f9 */
+  --color-palette-460067623dd3: #9198a4; /* #9198a4 */
+  --color-palette-46461f86fde1: #f8fafc; /* #f8fafc */
+  --color-palette-464c348f95a9: #8fa4c1; /* #8fa4c1 */
+  --color-palette-46967cecf382: #c084fc; /* #c084fc */
+  --color-palette-4702b16c0557: #f1f5f9; /* #f1f5f9 */
+  --color-palette-47468f055309: rgba(129, 140, 248, 0.08); /* rgba(129,140,248,0.08) */
+  --color-palette-479a75c723fe: #252d37; /* #252d37 */
+  --color-palette-47ed8310ca0c: #2c2c2e; /* #2c2c2e */
+  --color-palette-48477d72cf7e: #a88cff; /* #a88cff */
+  --color-palette-4851b374b731: rgba(229, 231, 235, 0.82); /* rgba(229,231,235,0.82) */
+  --color-palette-485564ba90ed: #08080b; /* #08080b */
+  --color-palette-48eaff5e9bf2: rgba(15, 23, 42, 0.72); /* rgba(15,23,42,0.72) */
+  --color-palette-49419773a36a: #111317; /* #111317 */
+  --color-palette-49f24a45cfee: rgba(15, 23, 42, 0.82); /* rgba(15,23,42,0.82) */
+  --color-palette-49f95fabee9f: #7f8795; /* #7f8795 */
+  --color-palette-4a08e4d0db13: #d97706; /* #d97706 */
+  --color-palette-4a18f1b622d4: rgba(148, 163, 184, 0.25); /* rgba(148,163,184,0.25) */
+  --color-palette-4abb7e8c1277: rgba(255, 255, 255, 0.07); /* rgba(255,255,255,0.07) */
+  --color-palette-4b44b971b39e: #1a1d23; /* #1a1d23 */
+  --color-palette-4b5450530075: #fee2e2; /* #fee2e2 */
+  --color-palette-4b8d8bfba503: #101319; /* #101319 */
+  --color-palette-4b9a93f1500e: #172033; /* #172033 */
+  --color-palette-4bd83fc00f81: #f0fdff; /* #f0fdff */
+  --color-palette-4c4375c029ac: rgba(220, 38, 38, 0.15); /* rgba(220,38,38,0.15) */
+  --color-palette-4c7e918870d6: #7b8793; /* #7b8793 */
+  --color-palette-4c85ca9b7179: rgba(0, 0, 0, 0.5); /* rgba(0,0,0,0.5) */
+  --color-palette-4ce8179368dc: #e7e8eb; /* #e7e8eb */
+  --color-palette-4cea3afb98e3: white; /* rgb(255,255,255) */
+  --color-palette-4daf861ca303: #242a34; /* #242a34 */
+  --color-palette-4dc1f4405123: rgba(0, 0, 0, 0.54); /* rgba(0,0,0,0.54) */
+  --color-palette-4e3fd61175ce: #dce3f1; /* #dce3f1 */
+  --color-palette-4f2bb821d986: #141c2e; /* #141c2e */
+  --color-palette-4f6d03b41724: rgba(0, 0, 0, 0.1); /* rgba(0,0,0,0.1) */
+  --color-palette-502cef25e093: #f59bbd; /* #f59bbd */
+  --color-palette-5080e9d4b336: #f4f4f6; /* #f4f4f6 */
+  --color-palette-50870daaaf89: #ddd6fe; /* #ddd6fe */
+  --color-palette-5089217ef21a: rgba(255, 255, 255, 0.15); /* rgba(255,255,255,0.15) */
+  --color-palette-50977f820120: rgba(128, 128, 128, 0.15); /* rgba(128,128,128,0.15) */
+  --color-palette-50a7ca1873a4: #dbe5f3; /* #dbe5f3 */
+  --color-palette-5106142d0dc5: #fef3c7; /* #fef3c7 */
+  --color-palette-52401fb098e7: #090b0e; /* #090b0e */
+  --color-palette-52cca7c6db66: #86efac; /* #86efac */
+  --color-palette-5338a3860b78: rgba(0, 0, 0, 0.25); /* rgba(0,0,0,0.25) */
+  --color-palette-53f6716c5c7c: #ffe4e6; /* #ffe4e6 */
+  --color-palette-54879ef413e6: #9da0ae; /* #9da0ae */
+  --color-palette-548c3a79ac3d: #161616; /* #161616 */
+  --color-palette-55302efec624: #09090b; /* #09090b */
+  --color-palette-554de51a1e86: rgba(0, 0, 0, 0.45); /* rgba(0,0,0,0.45) */
+  --color-palette-55b794d7b355: #29384a; /* #29384a */
+  --color-palette-55cee6c1319b: #191723; /* #191723 */
+  --color-palette-55db6ccfe2fd: rgba(59, 130, 246, 0.15); /* rgba(59,130,246,0.15) */
+  --color-palette-55fd184503a8: #312026; /* #312026 */
+  --color-palette-5611d9915638: rgba(0, 0, 0, 0.56); /* rgba(0,0,0,0.56) */
+  --color-palette-564270883802: #344457; /* #344457 */
+  --color-palette-56931f71b5b5: #1d1322; /* #1d1322 */
+  --color-palette-5702e1e1a5cd: #4e91db; /* #4e91db */
+  --color-palette-5713a18e8ad6: #161922; /* #161922 */
+  --color-palette-5717f9758b6c: #0f1814; /* #0f1814 */
+  --color-palette-57b58a710e70: rgba(15, 23, 42, 0.42); /* rgba(15,23,42,0.42) */
+  --color-palette-57f69fbbc5a7: #09151f; /* #09151f */
+  --color-palette-57fcedacf660: #252836; /* #252836 */
+  --color-palette-58218d7102c6: rgba(255, 255, 255, 0.82); /* rgba(255,255,255,0.82) */
+  --color-palette-58bea7ac093e: #a8abb4; /* #a8abb4 */
+  --color-palette-58d4c9e831b2: #141820; /* #141820 */
+  --color-palette-58de29f72917: #202a42; /* #202a42 */
+  --color-palette-5949d107adb7: rgb(0 0 0 / 55%); /* rgb(0,0,0,55%) */
+  --color-palette-59b051b478d4: rgba(0, 0, 0, 0.15); /* rgba(0,0,0,0.15) */
+  --color-palette-59dbd125956e: #b91c1c; /* #b91c1c */
+  --color-palette-5a554cc4acc5: #11151c; /* #11151c */
+  --color-palette-5a8b169944fb: rgba(42, 171, 238, 0.2); /* rgba(42,171,238,0.2) */
+  --color-palette-5ad2bc35fe8b: #252530; /* #252530 */
+  --color-palette-5ae70acbb8bb: #54273d; /* #54273d */
+  --color-palette-5ae8a97e33cb: #11161d; /* #11161d */
+  --color-palette-5affac3c7685: #34A853; /* #34a853 */
+  --color-palette-5b6ebf9f2baf: #075985; /* #075985 */
+  --color-palette-5b9aedd6ba4b: #274258; /* #274258 */
+  --color-palette-5bcfd391cf0d: #14181d; /* #14181d */
+  --color-palette-5c1342314038: rgba(10, 15, 25, .72); /* rgba(10,15,25,0.72) */
+  --color-palette-5c235b0966d4: #8d9098; /* #8d9098 */
+  --color-palette-5c388d52bbd3: rgba(15, 17, 23, 0.88); /* rgba(15,17,23,0.88) */
+  --color-palette-5c893327f2a3: rgba(34, 197, 94, 0.06); /* rgba(34,197,94,0.06) */
+  --color-palette-5d16f95d140a: #d9d2ff; /* #d9d2ff */
+  --color-palette-5d497a11b53b: #13131a; /* #13131a */
+  --color-palette-5d877989759d: #34d39988; /* #34d39988 */
+  --color-palette-5de341e4d304: #858d9a; /* #858d9a */
+  --color-palette-5e09d6978269: rgba(239, 68, 68, 0.4); /* rgba(239,68,68,0.4) */
+  --color-palette-5eeb5cbfcc62: #2f3b48; /* #2f3b48 */
+  --color-palette-5ef51e9ff3cd: #293540; /* #293540 */
+  --color-palette-5f1cd4273551: #4ade80; /* #4ade80 */
+  --color-palette-5f744274a428: rgba(239, 68, 68, 0.2); /* rgba(239,68,68,0.2) */
+  --color-palette-5fb433fc7bea: #d5d9e0; /* #d5d9e0 */
+  --color-palette-5fb88fe7da65: #70798b; /* #70798b */
+  --color-palette-5fcb625f5a93: #123529; /* #123529 */
+  --color-palette-5fdafec494a1: #07090d; /* #07090d */
+  --color-palette-5fde56eac7df: rgba(0, 0, 0, .22); /* rgba(0,0,0,0.22) */
+  --color-palette-609c0e62a493: rgba(34, 197, 94, .22); /* rgba(34,197,94,0.22) */
+  --color-palette-60add28afe45: rgba(6, 28, 59, .22); /* rgba(6,28,59,0.22) */
+  --color-palette-610fc4234d2c: #fda4af; /* #fda4af */
+  --color-palette-6152fe6fcb98: #384759; /* #384759 */
+  --color-palette-616ae60acd7d: rgba(34, 197, 94, 0.76); /* rgba(34,197,94,0.76) */
+  --color-palette-6190a6c871e7: rgba(0, 0, 0, 0.4); /* rgba(0,0,0,0.4) */
+  --color-palette-6196a65a56a1: #b6d8ff; /* #b6d8ff */
+  --color-palette-61a5be105615: #333740; /* #333740 */
+  --color-palette-61fba29ad61e: rgba(196, 181, 253, 0.3); /* rgba(196,181,253,0.3) */
+  --color-palette-621e36260a8d: rgba(217, 119, 6, 0.12); /* rgba(217,119,6,0.12) */
+  --color-palette-62c29774b1ed: #e2e7f0; /* #e2e7f0 */
+  --color-palette-630629029da9: #5c6475; /* #5c6475 */
+  --color-palette-631cbca743d6: #e8eaed; /* #e8eaed */
+  --color-palette-635426603cf1: rgba(120, 153, 205, .14); /* rgba(120,153,205,0.14) */
+  --color-palette-638a4c750aa4: rgba(3, 7, 18, 0.5); /* rgba(3,7,18,0.5) */
+  --color-palette-63d0e2756ab6: #151b26; /* #151b26 */
+  --color-palette-63de94507ff5: #777f8d; /* #777f8d */
+  --color-palette-63fc91a9cf49: rgba(71, 85, 105, 0.78); /* rgba(71,85,105,0.78) */
+  --color-palette-64033be9a6ab: #dcfce7; /* #dcfce7 */
+  --color-palette-642c73af0bb5: rgba(125, 211, 252, 0.3); /* rgba(125,211,252,0.3) */
+  --color-palette-655ca22f24e4: #1f2937; /* #1f2937 */
+  --color-palette-65d8fcbf78aa: #f3f3f3; /* #f3f3f3 */
+  --color-palette-65d96365d0c7: #0f1318; /* #0f1318 */
+  --color-palette-65ffb779c27c: #1e2b3d; /* #1e2b3d */
+  --color-palette-66341b70b395: #6b7280; /* #6b7280 */
+  --color-palette-66352d26458b: #047857; /* #047857 */
+  --color-palette-663e079c572f: rgba(40, 41, 45, .92); /* rgba(40,41,45,0.92) */
+  --color-palette-670e494f8dfd: rgba(96, 165, 250, 0.4); /* rgba(96,165,250,0.4) */
+  --color-palette-678d5c0246a9: #405064; /* #405064 */
+  --color-palette-678dd3de2ca5: #3b536d; /* #3b536d */
+  --color-palette-67a0b028b34e: #352438; /* #352438 */
+  --color-palette-67aefac45455: #edf1fb; /* #edf1fb */
+  --color-palette-68ae9eb52173: rgba(56, 189, 248, .1); /* rgba(56,189,248,0.1) */
+  --color-palette-68b289357363: rgba(42, 171, 238, 0.14); /* rgba(42,171,238,0.14) */
+  --color-palette-68bafe36fb07: #143525; /* #143525 */
+  --color-palette-68cd6cc8cd4a: #6f42c1; /* #6f42c1 */
+  --color-palette-69142783e8a3: rgba(255, 255, 255, 0.04); /* rgba(255,255,255,0.04) */
+  --color-palette-692dd869c8a5: #282828; /* #282828 */
+  --color-palette-694fb810fefe: #68a9ff; /* #68a9ff */
+  --color-palette-69711893c789: rgba(148, 163, 184, 0.24); /* rgba(148,163,184,0.24) */
+  --color-palette-6a54b8074227: #f9fbfc; /* #f9fbfc */
+  --color-palette-6ac3dda04bda: #424a53; /* #424a53 */
+  --color-palette-6ae2b34ad737: #465166; /* #465166 */
+  --color-palette-6ae8459cea8c: rgba(15, 23, 42, 0.74); /* rgba(15,23,42,0.74) */
+  --color-palette-6b3d6d843dfe: #64748b; /* #64748b */
+  --color-palette-6ba38bf3ccb6: rgba(139, 92, 246, 0.12); /* rgba(139,92,246,0.12) */
+  --color-palette-6bc40ecb8c82: rgba(142,179,222,.22); /* rgba(142,179,222,0.22) */
+  --color-palette-6bf3308fbb34: #0e2a45; /* #0e2a45 */
+  --color-palette-6cd6fd042b82: rgba(5, 8, 12, .54); /* rgba(5,8,12,0.54) */
+  --color-palette-6ce08b279482: #05070c; /* #05070c */
+  --color-palette-6d79e8e67697: #737b8c; /* #737b8c */
+  --color-palette-6e01caeefa3f: rgba(239, 68, 68, 0.28); /* rgba(239,68,68,0.28) */
+  --color-palette-6e8b7ccbea29: #525659; /* #525659 */
+  --color-palette-6ec89f6c7b63: rgba(96, 165, 250, 0.12); /* rgba(96,165,250,0.12) */
+  --color-palette-6ef64218dc0a: rgba(239, 68, 68, 0.22); /* rgba(239,68,68,0.22) */
+  --color-palette-6f8c48b07961: rgba(0, 122, 255, 0.3); /* rgba(0,122,255,0.3) */
+  --color-palette-6fad40d0348b: rgb(255 255 255 / 8%); /* rgb(255,255,255,8%) */
+  --color-palette-6fe2857611b4: #15946f; /* #15946f */
+  --color-palette-6fe3385019f5: #a5c9dd; /* #a5c9dd */
+  --color-palette-700dc1e1c1b3: #121217; /* #121217 */
+  --color-palette-703ae7c81675: #292a2d; /* #292a2d */
+  --color-palette-705054d52eea: #2b2214; /* #2b2214 */
+  --color-palette-7147878e0874: rgba(10, 10, 15, 0.75); /* rgba(10,10,15,0.75) */
+  --color-palette-71b1e28a20b6: rgba(0, 0, 0, .38); /* rgba(0,0,0,0.38) */
+  --color-palette-7216afded623: #a38e64; /* #a38e64 */
+  --color-palette-723028760e4a: #4c1222; /* #4c1222 */
+  --color-palette-7234dba2e4ce: #1b1d21; /* #1b1d21 */
+  --color-palette-7331a735864c: rgba(167, 139, 250, 0.18); /* rgba(167,139,250,0.18) */
+  --color-palette-734c95a9cdc9: #a9d8ef; /* #a9d8ef */
+  --color-palette-7372faaa9586: #b8a7ff; /* #b8a7ff */
+  --color-palette-737921b81333: #d9dfeb; /* #d9dfeb */
+  --color-palette-73aab74038c5: rgba(59, 130, 246, 0.18); /* rgba(59,130,246,0.18) */
+  --color-palette-7420dc33f410: #cebfff; /* #cebfff */
+  --color-palette-7425a82693ba: #101010; /* #101010 */
+  --color-palette-742ce9ab5576: rgba(105, 230, 170, .32); /* rgba(105,230,170,0.32) */
+  --color-palette-7454a6d9fd5f: #89b8ff; /* #89b8ff */
+  --color-palette-7471fcb06bd7: #eaa0ad; /* #eaa0ad */
+  --color-palette-749c1b3a1f0c: rgba(15, 23, 42, 0.5); /* rgba(15,23,42,0.5) */
+  --color-palette-74c5bca9702f: #263b50; /* #263b50 */
+  --color-palette-74fdfc67436b: #191919; /* #191919 */
+  --color-palette-7509bbd215ca: rgba(9, 13, 22, 0.82); /* rgba(9,13,22,0.82) */
+  --color-palette-7535adff8b05: #18181d; /* #18181d */
+  --color-palette-753dc8ad09f2: #1c1c1c; /* #1c1c1c */
+  --color-palette-75bc1aa87a48: #e9ebf0; /* #e9ebf0 */
+  --color-palette-75ec0382a458: rgba(180, 137, 255, .17); /* rgba(180,137,255,0.17) */
+  --color-palette-75ed0d1fc610: #f5f7fb; /* #f5f7fb */
+  --color-palette-762ef00dc36d: #fffbeb; /* #fffbeb */
+  --color-palette-765c00aef995: rgba(42, 171, 238, 0.32); /* rgba(42,171,238,0.32) */
+  --color-palette-76e126eaa971: #34415f; /* #34415f */
+  --color-palette-76e2a0ff8e71: rgba(0, 0, 0, 0.88); /* rgba(0,0,0,0.88) */
+  --color-palette-76e5d98a1a8c: #000a; /* #000000aa */
+  --color-palette-774f5df9b3a3: rgba(239, 68, 68, 0.3); /* rgba(239,68,68,0.3) */
+  --color-palette-77962f15f4ab: #f2f3f5; /* #f2f3f5 */
+  --color-palette-77e1bbf01edf: #b8c8dd; /* #b8c8dd */
+  --color-palette-786e9cbcab2b: #52616f; /* #52616f */
+  --color-palette-78e4525a7d9a: #f1f3f4; /* #f1f3f4 */
+  --color-palette-794f8eba87e3: #1d334a; /* #1d334a */
+  --color-palette-79ef89499d70: #a5abb8; /* #a5abb8 */
+  --color-palette-79f8835a4739: #ff3b30; /* #ff3b30 */
+  --color-palette-7a3646415657: #d86973; /* #d86973 */
+  --color-palette-7a3d40084260: #dfe4ed; /* #dfe4ed */
+  --color-palette-7aee2b5cc120: rgba(34, 197, 94, .24); /* rgba(34,197,94,0.24) */
+  --color-palette-7b0ceffc9ca3: rgba(142, 179, 222, .2); /* rgba(142,179,222,0.2) */
+  --color-palette-7b2817bf9b80: #000; /* #000000 */
+  --color-palette-7b4f256e506d: #9b9b9b; /* #9b9b9b */
+  --color-palette-7b50466c7075: black; /* rgb(0,0,0) */
+  --color-palette-7be18e16198b: rgba(0, 0, 0, 0.35); /* rgba(0,0,0,0.35) */
+  --color-palette-7c35ec91be59: rgba(59, 130, 246, 0.12); /* rgba(59,130,246,0.12) */
+  --color-palette-7cc0d871d136: rgba(255, 255, 255, 0.58); /* rgba(255,255,255,0.58) */
+  --color-palette-7cca1c5cac36: #f472b6; /* #f472b6 */
+  --color-palette-7d1d1471da06: #34c759; /* #34c759 */
+  --color-palette-7d48c6d908dc: #3b3b45; /* #3b3b45 */
+  --color-palette-7d4ab1673032: rgba(52, 211, 153, 0.22); /* rgba(52,211,153,0.22) */
+  --color-palette-7d4ff8ff7b94: #15803d; /* #15803d */
+  --color-palette-7db6383a124b: rgba(225, 29, 72, 0.12); /* rgba(225,29,72,0.12) */
+  --color-palette-7df944bad1e2: #2b333e; /* #2b333e */
+  --color-palette-7e2ac9450b05: #1e3a5f; /* #1e3a5f */
+  --color-palette-7e73c8b2115c: rgba(255, 255, 255, 0.75); /* rgba(255,255,255,0.75) */
+  --color-palette-7e7729dc444a: rgba(34, 197, 94, 0.16); /* rgba(34,197,94,0.16) */
+  --color-palette-7e85680ba514: #9ef0c4; /* #9ef0c4 */
+  --color-palette-7e9040f7e3a7: #080808; /* #080808 */
+  --color-palette-7efb07d2be54: #45464a; /* #45464a */
+  --color-palette-7f1d8e0f3804: #252a33; /* #252a33 */
+  --color-palette-7f4f68b71990: #30285a; /* #30285a */
+  --color-palette-7fc7d174cccb: #a5b4fc; /* #a5b4fc */
+  --color-palette-7fd79c00875b: #0008; /* #00000088 */
+  --color-palette-803f99669ef8: rgba(20, 23, 29, 0.72); /* rgba(20,23,29,0.72) */
+  --color-palette-8067ba8cde41: #2b3038; /* #2b3038 */
+  --color-palette-80807aeb81e8: #242830; /* #242830 */
+  --color-palette-80aecc53093c: #26323e; /* #26323e */
+  --color-palette-80c7128ba110: #c6cad2; /* #c6cad2 */
+  --color-palette-80dcfeb3e3ca: #fecdd3; /* #fecdd3 */
+  --color-palette-8161b95c2c44: rgba(168, 85, 247, 0.22); /* rgba(168,85,247,0.22) */
+  --color-palette-819cc5a9bf1b: #10131a; /* #10131a */
+  --color-palette-81b9bf2a0c10: #3f3f46; /* #3f3f46 */
+  --color-palette-81e7d379580d: #0891b2; /* #0891b2 */
+  --color-palette-82841414ff57: #1c1f26; /* #1c1f26 */
+  --color-palette-82f23466ff67: #24242a; /* #24242a */
+  --color-palette-833631aa325e: #475569; /* #475569 */
+  --color-palette-838896e02fca: rgba(168, 85, 247, 0); /* rgba(168,85,247,0) */
+  --color-palette-839465209c5f: rgba(34, 197, 94, 0.05); /* rgba(34,197,94,0.05) */
+  --color-palette-839b5d762cde: #34383f; /* #34383f */
+  --color-palette-83bcbad891a3: #33333c; /* #33333c */
+  --color-palette-84044114a058: rgba(34, 197, 94, 0.1); /* rgba(34,197,94,0.1) */
+  --color-palette-8415eea8a68a: #0009; /* #00000099 */
+  --color-palette-84386af265e3: rgba(140, 169, 211, .1); /* rgba(140,169,211,0.1) */
+  --color-palette-843c5c8f2422: rgba(31, 41, 55, 0.82); /* rgba(31,41,55,0.82) */
+  --color-palette-84d201c082e4: rgba(255, 255, 255, .19); /* rgba(255,255,255,0.19) */
+  --color-palette-84ff0ef19f41: #3a2514; /* #3a2514 */
+  --color-palette-855eea4eda25: #b74652; /* #b74652 */
+  --color-palette-85972423b2ec: rgba(0, 0, 0, 0.78); /* rgba(0,0,0,0.78) */
+  --color-palette-859d5ae88fdb: #fffbed; /* #fffbed */
+  --color-palette-866cbe605354: #285482; /* #285482 */
+  --color-palette-86921ae42458: rgba(154, 181, 218, .14); /* rgba(154,181,218,0.14) */
+  --color-palette-86a5b58625fb: rgba(5, 8, 12, 0.82); /* rgba(5,8,12,0.82) */
+  --color-palette-86b0c0c05ce5: #292933; /* #292933 */
+  --color-palette-86def6ffcd19: rgba(0,0,0,.42); /* rgba(0,0,0,0.42) */
+  --color-palette-8748143aa545: #0d0f18; /* #0d0f18 */
+  --color-palette-877b0d02ab3e: #f6f7f9; /* #f6f7f9 */
+  --color-palette-87dd41b18c87: rgba(0, 0, 0, .26); /* rgba(0,0,0,0.26) */
+  --color-palette-8820ca375484: rgba(255, 255, 255, 0.03); /* rgba(255,255,255,0.03) */
+  --color-palette-8838f37cda32: #626d78; /* #626d78 */
+  --color-palette-88b426b74c01: rgba(220, 38, 38, .12); /* rgba(220,38,38,0.12) */
+  --color-palette-88cedbb93833: rgba(167, 139, 250, 0.22); /* rgba(167,139,250,0.22) */
+  --color-palette-8930429a79a5: #b9d8ff; /* #b9d8ff */
+  --color-palette-8940f2c623d0: #60a5fa; /* #60a5fa */
+  --color-palette-89fcee490a66: #705a31; /* #705a31 */
+  --color-palette-8a2c74035b50: #1a1a23; /* #1a1a23 */
+  --color-palette-8a3f782dcef2: #2e2248; /* #2e2248 */
+  --color-palette-8a461cdcbc41: rgba(255, 255, 255, 0.4); /* rgba(255,255,255,0.4) */
+  --color-palette-8a56dc4ec09f: #292931; /* #292931 */
+  --color-palette-8ac6b39580e3: rgba(5, 7, 12, 0.88); /* rgba(5,7,12,0.88) */
+  --color-palette-8b8f7c3d4541: #22c55e; /* #22c55e */
+  --color-palette-8be1248ab170: #381a1d; /* #381a1d */
+  --color-palette-8c38ad74038a: #282831; /* #282831 */
+  --color-palette-8c857e7d938d: #f3f4f6; /* #f3f4f6 */
+  --color-palette-8c98b8c58649: rgba(139, 92, 246, .23); /* rgba(139,92,246,0.23) */
+  --color-palette-8cd4345d714a: #e6e9f0; /* #e6e9f0 */
+  --color-palette-8d0232a708b6: rgba(239, 68, 68, 0.18); /* rgba(239,68,68,0.18) */
+  --color-palette-8d6f5252e02c: #181b22; /* #181b22 */
+  --color-palette-8dbad57f5f45: #4f6e8d; /* #4f6e8d */
+  --color-palette-8dd5355d7d68: #28445f; /* #28445f */
+  --color-palette-8dfc6786cbaa: #c8c8c8; /* #c8c8c8 */
+  --color-palette-8ea4ddcf163a: rgba(255, 255, 255, .26); /* rgba(255,255,255,0.26) */
+  --color-palette-8ea98e7582b5: rgba(15, 17, 23, 0.85); /* rgba(15,17,23,0.85) */
+  --color-palette-8f06f473340c: #2a3545; /* #2a3545 */
+  --color-palette-8f59e80b6a29: rgba(0, 0, 0, 0.16); /* rgba(0,0,0,0.16) */
+  --color-palette-8f980bceb42d: #f1a5ad; /* #f1a5ad */
+  --color-palette-8fc5b0474fd0: #242030; /* #242030 */
+  --color-palette-904c53fb1685: rgba(96, 165, 250, 0.18); /* rgba(96,165,250,0.18) */
+  --color-palette-90517c14c155: rgba(16, 185, 129, 0.08); /* rgba(16,185,129,0.08) */
+  --color-palette-9052cf64080d: rgba(15, 23, 42, 0.2); /* rgba(15,23,42,0.2) */
+  --color-palette-90b141cff8ed: #92400e; /* #92400e */
+  --color-palette-90e9d9e3db4b: rgba(168, 85, 247, 0.3); /* rgba(168,85,247,0.3) */
+  --color-palette-915b5ec268c5: #a0a4ac; /* #a0a4ac */
+  --color-palette-91614bb31a0d: rgba(25, 26, 30, .96); /* rgba(25,26,30,0.96) */
+  --color-palette-917caaad7c22: #aeb9c8; /* #aeb9c8 */
+  --color-palette-919ffb845289: #1d2737; /* #1d2737 */
+  --color-palette-91d88840c389: #182235; /* #182235 */
+  --color-palette-91f809fff5d0: #2d2d34; /* #2d2d34 */
+  --color-palette-92340259f532: #FBBC04; /* #fbbc04 */
+  --color-palette-928ee44540c3: #93c5fd; /* #93c5fd */
+  --color-palette-92b099d6093b: rgba(2, 6, 23, 0.82); /* rgba(2,6,23,0.82) */
+  --color-palette-92cef0afb6e7: #bbf7d0; /* #bbf7d0 */
+  --color-palette-92e401afc383: rgba(96, 165, 250, 0.15); /* rgba(96,165,250,0.15) */
+  --color-palette-930c6a0c90da: #050609; /* #050609 */
+  --color-palette-931a6ccaa8bc: rgba(59, 130, 246, 0.14); /* rgba(59,130,246,0.14) */
+  --color-palette-93908647eee7: #333; /* #333333 */
+  --color-palette-93bba44b9601: #17171b; /* #17171b */
+  --color-palette-93bdd100c753: #c5b8ff; /* #c5b8ff */
+  --color-palette-93d224c54cc7: rgba(148, 163, 184, 0.22); /* rgba(148,163,184,0.22) */
+  --color-palette-93ef761bd491: #e6f5fc; /* #e6f5fc */
+  --color-palette-9403f64b1bf8: #b8bdc7; /* #b8bdc7 */
+  --color-palette-94622d59b161: rgba(139, 92, 246, 0.24); /* rgba(139,92,246,0.24) */
+  --color-palette-94a0f2ff9892: rgba(168, 85, 247, 0.18); /* rgba(168,85,247,0.18) */
+  --color-palette-94b21e3005e3: #142820; /* #142820 */
+  --color-palette-9537528770ce: rgba(15, 23, 42, 0.08); /* rgba(15,23,42,0.08) */
+  --color-palette-953dbd1ddb06: #55d6a1; /* #55d6a1 */
+  --color-palette-9588d47ed92f: rgba(15, 23, 42, 0.18); /* rgba(15,23,42,0.18) */
+  --color-palette-95b1a9665923: #1c1c1e; /* #1c1c1e */
+  --color-palette-95f37eb1b45a: #ff5c5c; /* #ff5c5c */
+  --color-palette-9639b8bea79a: rgba(0, 0, 0, 0.65); /* rgba(0,0,0,0.65) */
+  --color-palette-9643a6d44ff3: #d1d5db; /* #d1d5db */
+  --color-palette-96ca56a4c169: rgba(59, 130, 246, 0.4); /* rgba(59,130,246,0.4) */
+  --color-palette-9738efeb9b8f: rgba(205, 181, 255, .35); /* rgba(205,181,255,0.35) */
+  --color-palette-97b1caaa7b50: #8b5cf6; /* #8b5cf6 */
+  --color-palette-97b2ee282e94: rgba(16, 18, 22, 0.92); /* rgba(16,18,22,0.92) */
+  --color-palette-97fa8c51b2ce: rgba(34, 197, 94, 0); /* rgba(34,197,94,0) */
+  --color-palette-989c5a7ee4c2: #d4b56a; /* #d4b56a */
+  --color-palette-989dcb284422: #7156d9; /* #7156d9 */
+  --color-palette-98c8bbe556ea: #1c202b; /* #1c202b */
+  --color-palette-99366cc2d839: rgba(255,255,255,.94); /* rgba(255,255,255,0.94) */
+  --color-palette-9a9e970c9a1a: #222e48; /* #222e48 */
+  --color-palette-9ac353c75915: rgba(56, 189, 248, 0.08); /* rgba(56,189,248,0.08) */
+  --color-palette-9ad96298b13a: rgba(34, 197, 94, 0.08); /* rgba(34,197,94,0.08) */
+  --color-palette-9b2320b278ba: #ec4899; /* #ec4899 */
+  --color-palette-9b67f553b186: #4679aa; /* #4679aa */
+  --color-palette-9c137c3985de: #91c5ff; /* #91c5ff */
+  --color-palette-9c9074b975ba: #4c5864; /* #4c5864 */
+  --color-palette-9cc55b664ed9: rgba(255, 255, 255, 0.45); /* rgba(255,255,255,0.45) */
+  --color-palette-9eaa7706f04a: #c66b24; /* #c66b24 */
+  --color-palette-9f034e1f1a77: #334155; /* #334155 */
+  --color-palette-9f1d4c69ee93: #233d64; /* #233d64 */
+  --color-palette-9fa6bad44179: #ede9fe; /* #ede9fe */
+  --color-palette-9fd3860e0ba9: rgba(255, 255, 255, 0.3); /* rgba(255,255,255,0.3) */
+  --color-palette-a017e08be06b: #2e2e38; /* #2e2e38 */
+  --color-palette-a082ae38274c: #141414; /* #141414 */
+  --color-palette-a09eb1d261ae: #1a142c; /* #1a142c */
+  --color-palette-a109e4a45d25: #65a30d; /* #65a30d */
+  --color-palette-a151419c1664: #3b4048; /* #3b4048 */
+  --color-palette-a1ac8c167076: rgba(255,255,255,.035); /* rgba(255,255,255,0.035) */
+  --color-palette-a1ba515aed87: #060a0e; /* #060a0e */
+  --color-palette-a1c0fe2d1b69: #2a2a2a; /* #2a2a2a */
+  --color-palette-a20f9de4c94a: #28313b; /* #28313b */
+  --color-palette-a2abf19c84ff: #8ab4f8; /* #8ab4f8 */
+  --color-palette-a2d42e94cda3: #fde047; /* #fde047 */
+  --color-palette-a322e3ec042e: rgba(13, 23, 38, .22); /* rgba(13,23,38,0.22) */
+  --color-palette-a3bbfc923f92: rgba(20, 22, 26, 0.95); /* rgba(20,22,26,0.95) */
+  --color-palette-a3d2bbd99ab5: #69aef7; /* #69aef7 */
+  --color-palette-a42748894dd7: #303743; /* #303743 */
+  --color-palette-a4455913a73d: rgba(255, 255, 255, 0.62); /* rgba(255,255,255,0.62) */
+  --color-palette-a4b56702b4b8: #91a7c8; /* #91a7c8 */
+  --color-palette-a514d2bd1c12: #202632; /* #202632 */
+  --color-palette-a5384157bc1a: #2aabee; /* #2aabee */
+  --color-palette-a57373cda82b: rgba(220, 204, 255, .18); /* rgba(220,204,255,0.18) */
+  --color-palette-a57f537ad81a: rgba(139, 92, 246, 0.16); /* rgba(139,92,246,0.16) */
+  --color-palette-a5c680c34877: #101827; /* #101827 */
+  --color-palette-a5d682afab47: #52677c; /* #52677c */
+  --color-palette-a6a041087fa4: #121218; /* #121218 */
+  --color-palette-a6e843478911: #3b4755; /* #3b4755 */
+  --color-palette-a6f391cd38f2: rgba(239, 68, 68, 0.15); /* rgba(239,68,68,0.15) */
+  --color-palette-a70919eca5a8: rgba(0, 0, 0, 0.08); /* rgba(0,0,0,0.08) */
+  --color-palette-a7287b9a0a80: rgba(8, 145, 178, .14); /* rgba(8,145,178,0.14) */
+  --color-palette-a72f9128f014: #fbbf2488; /* #fbbf2488 */
+  --color-palette-a75d4e483053: rgba(168, 85, 247, 0.4); /* rgba(168,85,247,0.4) */
+  --color-palette-a79b870e5df5: rgba(21, 148, 111, 0.12); /* rgba(21,148,111,0.12) */
+  --color-palette-a79dbe1e2d43: rgba(168, 85, 247, 0.15); /* rgba(168,85,247,0.15) */
+  --color-palette-a7a20eedbcb7: #edf2f7; /* #edf2f7 */
+  --color-palette-a82b3cba7aa1: rgba(24, 25, 28, .9); /* rgba(24,25,28,0.9) */
+  --color-palette-a83e7a4524d6: #c9d0da; /* #c9d0da */
+  --color-palette-a86da059edb2: #f0eff4; /* #f0eff4 */
+  --color-palette-a87fb9a9fa52: rgba(196, 181, 253, 0.45); /* rgba(196,181,253,0.45) */
+  --color-palette-a8bf8866def4: #343a45; /* #343a45 */
+  --color-palette-a8e1455bd856: rgba(0, 0, 0, .48); /* rgba(0,0,0,0.48) */
+  --color-palette-a91b6868e481: #2e2e39; /* #2e2e39 */
+  --color-palette-a95460aad32a: rgba(0, 0, 0, 0.36); /* rgba(0,0,0,0.36) */
+  --color-palette-a98a214d9dd7: #568cc7; /* #568cc7 */
+  --color-palette-a9f0c89f1f92: #bbb; /* #bbbbbb */
+  --color-palette-aa893226952b: #15171b; /* #15171b */
+  --color-palette-aacf6e2b68c8: rgba(255, 255, 255, 0.25); /* rgba(255,255,255,0.25) */
+  --color-palette-ab488a84422b: #3b3c40; /* #3b3c40 */
+  --color-palette-ab6e6d29e790: rgba(255, 255, 255, .17); /* rgba(255,255,255,0.17) */
+  --color-palette-abd297e3dbe0: #1a1e24; /* #1a1e24 */
+  --color-palette-ac140cc297f7: #d6eaff; /* #d6eaff */
+  --color-palette-ac2afc5a5089: rgba(16, 185, 129, 0.15); /* rgba(16,185,129,0.15) */
+  --color-palette-ad186d70bc44: rgba(0, 0, 0, 0.05); /* rgba(0,0,0,0.05) */
+  --color-palette-adf76e28fa53: rgba(24, 34, 53, 0.96); /* rgba(24,34,53,0.96) */
+  --color-palette-ae17f9563ae1: #4285F4; /* #4285f4 */
+  --color-palette-ae2392f3e3fd: #ff7078; /* #ff7078 */
+  --color-palette-ae6197559177: #91a4b8; /* #91a4b8 */
+  --color-palette-aeeb2a6b6ea7: #34475f; /* #34475f */
+  --color-palette-af60fa0f3241: rgba(148, 163, 184, 0.16); /* rgba(148,163,184,0.16) */
+  --color-palette-af977586f401: rgba(22, 22, 26, .78); /* rgba(22,22,26,0.78) */
+  --color-palette-b0130f9849d7: #18243b; /* #18243b */
+  --color-palette-b035e56d5fc6: #38bdf8; /* #38bdf8 */
+  --color-palette-b0f2f1e5364f: #2d3744; /* #2d3744 */
+  --color-palette-b0f7c756a704: #d8ceeb; /* #d8ceeb */
+  --color-palette-b14132ba5d1f: #afb3bd; /* #afb3bd */
+  --color-palette-b1925ae20953: #dbeafe; /* #dbeafe */
+  --color-palette-b205591bc0d6: #343943; /* #343943 */
+  --color-palette-b21596285cfd: rgba(142, 179, 222, .24); /* rgba(142,179,222,0.24) */
+  --color-palette-b23216fd6287: #d8c5ff; /* #d8c5ff */
+  --color-palette-b250768ec94f: #9e85ff; /* #9e85ff */
+  --color-palette-b25668afab52: rgba(225, 29, 72, 0.3); /* rgba(225,29,72,0.3) */
+  --color-palette-b25c21d6c99d: rgba(0, 0, 0, 0.04); /* rgba(0,0,0,0.04) */
+  --color-palette-b287e65b6395: rgba(255, 255, 255, 0.72); /* rgba(255,255,255,0.72) */
+  --color-palette-b2cbeef6e882: rgba(255, 255, 255, 0.84); /* rgba(255,255,255,0.84) */
+  --color-palette-b31fb3e4ae03: #1c1f24; /* #1c1f24 */
+  --color-palette-b326329c726c: #1a1a1a; /* #1a1a1a */
+  --color-palette-b371184ae0e3: rgba(104, 174, 252, .18); /* rgba(104,174,252,0.18) */
+  --color-palette-b37cc87c4761: #8a55f4; /* #8a55f4 */
+  --color-palette-b381cb72ac90: rgba(239, 68, 68, 0.35); /* rgba(239,68,68,0.35) */
+  --color-palette-b3fd66482950: #202124; /* #202124 */
+  --color-palette-b491005d89ad: rgba(0, 0, 0, 0.75); /* rgba(0,0,0,0.75) */
+  --color-palette-b50396b2fabb: #242c36; /* #242c36 */
+  --color-palette-b51de63d0eac: #3b82f6; /* #3b82f6 */
+  --color-palette-b5860f9df943: #191920; /* #191920 */
+  --color-palette-b5a6c19603b5: #8b93a0; /* #8b93a0 */
+  --color-palette-b5c29fa71d78: #355070; /* #355070 */
+  --color-palette-b5e2bc59ff0f: #94a3b8; /* #94a3b8 */
+  --color-palette-b646516228d5: #f8f9fc; /* #f8f9fc */
+  --color-palette-b6e559087702: rgba(96, 165, 250, 0.3); /* rgba(96,165,250,0.3) */
+  --color-palette-b6ef885e96f2: rgba(12, 13, 17, 0.78); /* rgba(12,13,17,0.78) */
+  --color-palette-b749cc259197: rgba(255,255,255,.12); /* rgba(255,255,255,0.12) */
+  --color-palette-b7e069984be8: rgba(142, 179, 222, .13); /* rgba(142,179,222,0.13) */
+  --color-palette-b82bdf7c90e4: #171b22; /* #171b22 */
+  --color-palette-b83a05c2ce1b: #ffd9dc; /* #ffd9dc */
+  --color-palette-b8a0803a54ce: rgba(255, 255, 255, 0.6); /* rgba(255,255,255,0.6) */
+  --color-palette-b8ece6ce67e0: rgba(96, 165, 250, 0.14); /* rgba(96,165,250,0.14) */
+  --color-palette-b92166deed41: rgba(255, 255, 255, 0.18); /* rgba(255,255,255,0.18) */
+  --color-palette-b93c380e90f2: #71b4ff; /* #71b4ff */
+  --color-palette-b94596ae0262: #435970; /* #435970 */
+  --color-palette-b957779962d7: rgba(255,255,255,.13); /* rgba(255,255,255,0.13) */
+  --color-palette-b9669148c06a: #bfdbfe; /* #bfdbfe */
+  --color-palette-b99bed8fd1a3: rgba(220, 38, 38, 0.3); /* rgba(220,38,38,0.3) */
+  --color-palette-b9ac8d90b9a6: #5a7088; /* #5a7088 */
+  --color-palette-b9e92bd0b37d: #151920; /* #151920 */
+  --color-palette-bade0f691df5: #0d2e59; /* #0d2e59 */
+  --color-palette-bb0383e70eac: #444444; /* #444444 */
+  --color-palette-bb0a4cf33b29: #5eead4; /* #5eead4 */
+  --color-palette-bb741ad5532f: #7c3aed; /* #7c3aed */
+  --color-palette-bbb7113e14c4: #0b57d0; /* #0b57d0 */
+  --color-palette-bc32a3790a35: rgba(255, 255, 255, 0.32); /* rgba(255,255,255,0.32) */
+  --color-palette-bc4f2b7623b8: #131324; /* #131324 */
+  --color-palette-bce8c03fc3be: rgba(15, 23, 42, 0.16); /* rgba(15,23,42,0.16) */
+  --color-palette-bd1743ccda6e: #9da4b2; /* #9da4b2 */
+  --color-palette-bd36f80001f6: rgba(24, 24, 27, .94); /* rgba(24,24,27,0.94) */
+  --color-palette-bd54f1bc25a4: #9eb3d9; /* #9eb3d9 */
+  --color-palette-be5cc131d721: #111; /* #111111 */
+  --color-palette-bea8539e6999: #38a169; /* #38a169 */
+  --color-palette-bef0e9e80112: #e0e7ff; /* #e0e7ff */
+  --color-palette-bfb8081fc7d4: #1a1a22; /* #1a1a22 */
+  --color-palette-bfd4f8ffcad7: #e5e7eb; /* #e5e7eb */
+  --color-palette-c028dfb56a79: rgba(59, 130, 246, 0.35); /* rgba(59,130,246,0.35) */
+  --color-palette-c02be1992166: #7159dc; /* #7159dc */
+  --color-palette-c06e52c47be6: rgba(20, 20, 25, 0.92); /* rgba(20,20,25,0.92) */
+  --color-palette-c0ed37419009: rgba(255, 255, 255, 0.36); /* rgba(255,255,255,0.36) */
+  --color-palette-c0f2b334ff14: #07131f; /* #07131f */
+  --color-palette-c13d49e465b0: #a9caff; /* #a9caff */
+  --color-palette-c1a61a055692: #302752; /* #302752 */
+  --color-palette-c1ab24e3752e: rgba(94, 221, 161, .14); /* rgba(94,221,161,0.14) */
+  --color-palette-c2081841e010: #050505; /* #050505 */
+  --color-palette-c22b230eb9d9: rgba(92, 133, 204, .12); /* rgba(92,133,204,0.12) */
+  --color-palette-c34f5a2a4d80: rgba(255, 255, 255, 0.08); /* rgba(255,255,255,0.08) */
+  --color-palette-c36d4cdccdc9: #ef4444; /* #ef4444 */
+  --color-palette-c3b60550fc67: #aebfd7; /* #aebfd7 */
+  --color-palette-c445b5099a88: rgba(203, 213, 225, 0.82); /* rgba(203,213,225,0.82) */
+  --color-palette-c48d882bc722: rgba(10, 15, 25, .86); /* rgba(10,15,25,0.86) */
+  --color-palette-c497133b513c: #183554; /* #183554 */
+  --color-palette-c4d49fe1b2f3: rgba(255, 255, 255, 0.52); /* rgba(255,255,255,0.52) */
+  --color-palette-c4f197bf3170: #1a1a20; /* #1a1a20 */
+  --color-palette-c54194bba26b: #5c9dff; /* #5c9dff */
+  --color-palette-c5c7a76d7255: rgba(255, 255, 255, 0.5); /* rgba(255,255,255,0.5) */
+  --color-palette-c5c97d3b3428: #3d7fe6; /* #3d7fe6 */
+  --color-palette-c5ea62721691: rgba(15, 23, 42, 0.64); /* rgba(15,23,42,0.64) */
+  --color-palette-c610328dbbd1: rgba(15, 23, 42, 0.56); /* rgba(15,23,42,0.56) */
+  --color-palette-c709a4bf4993: #0d0d0d; /* #0d0d0d */
+  --color-palette-c7a3f2477fe7: #ffb4b4; /* #ffb4b4 */
+  --color-palette-c7d424e71ccb: rgba(148, 163, 184, 0.12); /* rgba(148,163,184,0.12) */
+  --color-palette-c801d51c67db: rgba(255, 255, 255, 0.92); /* rgba(255,255,255,0.92) */
+  --color-palette-c81e1c112488: #aeb6c2; /* #aeb6c2 */
+  --color-palette-c82dff512e54: #9296a1; /* #9296a1 */
+  --color-palette-c869480b8519: #455466; /* #455466 */
+  --color-palette-ca9cba6dae7d: #65aaff; /* #65aaff */
+  --color-palette-cac77b0a32d7: #0c0e12; /* #0c0e12 */
+  --color-palette-cb1462d0d7f8: #2d3743; /* #2d3743 */
+  --color-palette-cb2995bdeeb5: #e11d48; /* #e11d48 */
+  --color-palette-cb5810e1b561: #3a4654; /* #3a4654 */
+  --color-palette-cbb2e4db5d4f: #343538; /* #343538 */
+  --color-palette-cbe5b5445bd9: #63a9ff; /* #63a9ff */
+  --color-palette-cc0822e25c32: #ff9c3c; /* #ff9c3c */
+  --color-palette-cc68d0a3a0c5: #a1a1aa; /* #a1a1aa */
+  --color-palette-cc70552683e6: #173b31; /* #173b31 */
+  --color-palette-cd2a3e669839: rgba(255, 255, 255, 0.02); /* rgba(255,255,255,0.02) */
+  --color-palette-cd5361c3b496: #53677d; /* #53677d */
+  --color-palette-cd7f1fae966d: #14171d; /* #14171d */
+  --color-palette-cdb3fc4d7cac: #6e8cff; /* #6e8cff */
+  --color-palette-cddf534fc780: rgba(34, 197, 94, .18); /* rgba(34,197,94,0.18) */
+  --color-palette-ce69a741ac8c: rgba(103, 232, 249, .7); /* rgba(103,232,249,0.7) */
+  --color-palette-cf08aed25ecb: rgba(15, 23, 42, 0.92); /* rgba(15,23,42,0.92) */
+  --color-palette-cf3639b8b3e5: #2a1d4a; /* #2a1d4a */
+  --color-palette-cf4d56cd24fa: #7dd3fc; /* #7dd3fc */
+  --color-palette-cf4fcb6ce01f: #dcebf3; /* #dcebf3 */
+  --color-palette-cf861395a88a: rgba(2, 6, 23, 0.35); /* rgba(2,6,23,0.35) */
+  --color-palette-cfe5d02c1663: rgba(59, 130, 246, 0.25); /* rgba(59,130,246,0.25) */
+  --color-palette-cff28a77146a: #2b3340; /* #2b3340 */
+  --color-palette-d017cd45ccaf: #4a2027; /* #4a2027 */
+  --color-palette-d138b393a87d: #22262c; /* #22262c */
+  --color-palette-d19923db40b7: rgba(20, 27, 37, .96); /* rgba(20,27,37,0.96) */
+  --color-palette-d2039b9513ec: rgba(99, 102, 241, 0.2); /* rgba(99,102,241,0.2) */
+  --color-palette-d2315d1019b7: #214a78; /* #214a78 */
+  --color-palette-d34a353dc8ed: rgba(251, 191, 36, .38); /* rgba(251,191,36,0.38) */
+  --color-palette-d381899f9daa: #171923; /* #171923 */
+  --color-palette-d3ffefd936de: rgba(148, 163, 184, 0.38); /* rgba(148,163,184,0.38) */
+  --color-palette-d42bc24bc7a0: rgba(255, 255, 255, 0.09); /* rgba(255,255,255,0.09) */
+  --color-palette-d47bbc23b804: #d946ef; /* #d946ef */
+  --color-palette-d510cb782d88: #e8eef7; /* #e8eef7 */
+  --color-palette-d52f4f4f306c: rgba(20, 21, 24, .98); /* rgba(20,21,24,0.98) */
+  --color-palette-d5326a99df24: #565b64; /* #565b64 */
+  --color-palette-d594d64cfd47: #160f2c; /* #160f2c */
+  --color-palette-d5d53cd7a124: #0b0d10; /* #0b0d10 */
+  --color-palette-d5fd8a151418: rgba(34, 197, 94, 0.28); /* rgba(34,197,94,0.28) */
+  --color-palette-d6289f6e2822: rgba(21, 148, 111, 0.24); /* rgba(21,148,111,0.24) */
+  --color-palette-d635c939daff: rgba(255, 255, 255, 0.1); /* rgba(255,255,255,0.1) */
+  --color-palette-d64c5845a5ce: #3a3d41; /* #3a3d41 */
+  --color-palette-d6868a1dabad: #67aefc; /* #67aefc */
+  --color-palette-d6a5747a4c58: #0f1117; /* #0f1117 */
+  --color-palette-d6b5087c45ee: #f4f5f7; /* #f4f5f7 */
+  --color-palette-d7a1813abaa2: #f1f2f5; /* #f1f2f5 */
+  --color-palette-d7ba43940eb9: #818cf8; /* #818cf8 */
+  --color-palette-d7c16d3d16dd: rgba(0, 0, 0, 0.24); /* rgba(0,0,0,0.24) */
+  --color-palette-d832b1d266c0: rgba(0, 0, 0, 0.82); /* rgba(0,0,0,0.82) */
+  --color-palette-d88cbf6be2ac: rgba(255, 255, 255, 0.22); /* rgba(255,255,255,0.22) */
+  --color-palette-d8b8dd66b8bc: #e6f2ff; /* #e6f2ff */
+  --color-palette-d958fc46830a: #4b5563; /* #4b5563 */
+  --color-palette-d9635c91f7b8: #12141a; /* #12141a */
+  --color-palette-d9684b19974b: rgba(99, 102, 241, 0.12); /* rgba(99,102,241,0.12) */
+  --color-palette-d9ab05434309: rgba(255, 187, 83, .15); /* rgba(255,187,83,0.15) */
+  --color-palette-da69ab0079d2: #EA4335; /* #ea4335 */
+  --color-palette-da72197d9f13: rgba(217, 119, 6, 0.16); /* rgba(217,119,6,0.16) */
+  --color-palette-dace4750bb21: #303136; /* #303136 */
+  --color-palette-daee30a9d932: #12151a; /* #12151a */
+  --color-palette-db051e710650: #343a40; /* #343a40 */
+  --color-palette-db0c497d2782: #123b70; /* #123b70 */
+  --color-palette-db46b26d5584: #12151b; /* #12151b */
+  --color-palette-db5e00501ad3: #cdbde8; /* #cdbde8 */
+  --color-palette-db73553695fa: rgba(103, 232, 249, .56); /* rgba(103,232,249,0.56) */
+  --color-palette-dba3222c27da: #202a35; /* #202a35 */
+  --color-palette-dbd729b0a3fb: #1e293b; /* #1e293b */
+  --color-palette-dc32b6b7897c: #252a32; /* #252a32 */
+  --color-palette-dc68f2e156de: rgba(255, 255, 255, 0.7); /* rgba(255,255,255,0.7) */
+  --color-palette-dd0e024de21c: #0f7659; /* #0f7659 */
+  --color-palette-dd12c1d758a3: rgba(42, 171, 238, 0.35); /* rgba(42,171,238,0.35) */
+  --color-palette-dd15e6f7d489: #111827; /* #111827 */
+  --color-palette-dd659b813082: #07111f; /* #07111f */
+  --color-palette-ddbc2d6f9aa7: #d7e5ff; /* #d7e5ff */
+  --color-palette-ddbe9a31eddf: rgba(21, 148, 111, 0.16); /* rgba(21,148,111,0.16) */
+  --color-palette-deb9630dd5a3: rgba(34, 197, 94, 0.7); /* rgba(34,197,94,0.7) */
+  --color-palette-dec667b732e9: rgba(20, 24, 30, .88); /* rgba(20,24,30,0.88) */
+  --color-palette-dee4c87854f1: rgba(225, 29, 72, 0.24); /* rgba(225,29,72,0.24) */
+  --color-palette-df20e9f28127: #493237; /* #493237 */
+  --color-palette-df84f03c4002: #181a1e; /* #181a1e */
+  --color-palette-e0674ca720c9: #35252a; /* #35252a */
+  --color-palette-e07724f5924c: #989faa; /* #989faa */
+  --color-palette-e0d084e83ad2: rgba(129, 140, 248, 0.45); /* rgba(129,140,248,0.45) */
+  --color-palette-e12e2d40585b: #e9edf3; /* #e9edf3 */
+  --color-palette-e14ae6e5ea08: rgba(48, 50, 56, 0.94); /* rgba(48,50,56,0.94) */
+  --color-palette-e161afe86fb2: #262c36; /* #262c36 */
+  --color-palette-e16ece2e238b: rgba(0,0,0,0.55); /* rgba(0,0,0,0.55) */
+  --color-palette-e21c21ccc267: #166534; /* #166534 */
+  --color-palette-e23d088e26fe: #76a8ff; /* #76a8ff */
+  --color-palette-e2442d83b3a8: #cbd5e1; /* #cbd5e1 */
+  --color-palette-e2534e1dadb3: rgba(99, 102, 241, 0.35); /* rgba(99,102,241,0.35) */
+  --color-palette-e286db4eb8b2: #d9dde3; /* #d9dde3 */
+  --color-palette-e28f768a5340: #5d4b8f; /* #5d4b8f */
+  --color-palette-e29177125f23: rgba(220, 38, 38, 0.4); /* rgba(220,38,38,0.4) */
+  --color-palette-e2c14cd6188a: #252b35; /* #252b35 */
+  --color-palette-e2e7fd8240e1: rgba(255, 80, 70, 0.9); /* rgba(255,80,70,0.9) */
+  --color-palette-e353e99353d3: rgba(239, 68, 68, 0.25); /* rgba(239,68,68,0.25) */
+  --color-palette-e36caa45db11: rgba(240, 138, 36, 0.34); /* rgba(240,138,36,0.34) */
+  --color-palette-e40de0521eb1: rgba(34, 197, 94, 0.45); /* rgba(34,197,94,0.45) */
+  --color-palette-e474c801bb04: #0b1120; /* #0b1120 */
+  --color-palette-e475985b1039: #9dacbf; /* #9dacbf */
+  --color-palette-e48472a7636f: #31161b; /* #31161b */
+  --color-palette-e4a86398ec00: #999; /* #999999 */
+  --color-palette-e4df79329d6f: rgba(11, 14, 19, .92); /* rgba(11,14,19,0.92) */
+  --color-palette-e4fd90a26093: rgba(0, 0, 0, 0.14); /* rgba(0,0,0,0.14) */
+  --color-palette-e5c75a2ba351: rgba(124, 58, 237, 0.08); /* rgba(124,58,237,0.08) */
+  --color-palette-e6366bab8f3f: rgba(2, 6, 23, 0.28); /* rgba(2,6,23,0.28) */
+  --color-palette-e6505b2c1235: #252629; /* #252629 */
+  --color-palette-e6a0706c4b78: rgba(52, 211, 153, 0.18); /* rgba(52,211,153,0.18) */
+  --color-palette-e6ea9d079931: #38506a; /* #38506a */
+  --color-palette-e71a5e90b56a: #d0d0d0; /* #d0d0d0 */
+  --color-palette-e758364ae5fc: #e0f2fe; /* #e0f2fe */
+  --color-palette-e7b00c296b8c: #2563eb; /* #2563eb */
+  --color-palette-e7ca9c09789b: #ce7cf3; /* #ce7cf3 */
+  --color-palette-e7cb6111713b: rgba(236, 72, 153, 0.15); /* rgba(236,72,153,0.15) */
+  --color-palette-e82dbbf7e1ef: rgba(52, 211, 153, 0.34); /* rgba(52,211,153,0.34) */
+  --color-palette-e84c9c36bb12: rgba(255, 255, 255, .24); /* rgba(255,255,255,0.24) */
+  --color-palette-e93a99255bf5: rgba(255, 255, 255, 0.55); /* rgba(255,255,255,0.55) */
+  --color-palette-e981be103ef9: #292934; /* #292934 */
+  --color-palette-e989adc479c1: rgba(255, 255, 255, 0.76); /* rgba(255,255,255,0.76) */
+  --color-palette-e9ab07065e4e: #ca2727; /* #ca2727 */
+  --color-palette-e9b5ab1abaf0: #12151d; /* #12151d */
+  --color-palette-e9bd47d54c5d: #111116; /* #111116 */
+  --color-palette-e9f11444a585: #29313b; /* #29313b */
+  --color-palette-ea0200f0d126: #ddcdff; /* #ddcdff */
+  --color-palette-ea1e459fee10: rgba(255, 255, 255, 0.9); /* rgba(255,255,255,0.9) */
+  --color-palette-ea2002f08cbc: #343442; /* #343442 */
+  --color-palette-ea7a71d6bc14: rgba(4, 3, 12, .76); /* rgba(4,3,12,0.76) */
+  --color-palette-eabbb4eda5b3: rgba(255, 255, 255, 0.14); /* rgba(255,255,255,0.14) */
+  --color-palette-eaf3818628f3: #343a44; /* #343a44 */
+  --color-palette-eafa2ab918ec: rgba(255, 255, 255, 0.35); /* rgba(255,255,255,0.35) */
+  --color-palette-eb478ec35f9b: #344356; /* #344356 */
+  --color-palette-eb9b26aa7c52: rgba(239, 68, 68, 0.12); /* rgba(239,68,68,0.12) */
+  --color-palette-eba14c9ca936: rgba(42, 171, 238, 0.16); /* rgba(42,171,238,0.16) */
+  --color-palette-ebe4f99c4351: #1a222d; /* #1a222d */
+  --color-palette-ec16b30f59c0: rgba(129, 140, 248, 0.15); /* rgba(129,140,248,0.15) */
+  --color-palette-ec8f9ad7eab9: rgba(255, 255, 255, 0.85); /* rgba(255,255,255,0.85) */
+  --color-palette-ece64d1458ab: #878c99; /* #878c99 */
+  --color-palette-ee5e4710a58f: rgba(15, 23, 42, 0.22); /* rgba(15,23,42,0.22) */
+  --color-palette-eef2f1621b6f: rgba(0, 0, 0, .34); /* rgba(0,0,0,0.34) */
+  --color-palette-eefb1ebe6dc2: rgba(48, 57, 68, .96); /* rgba(48,57,68,0.96) */
+  --color-palette-ef567e29707b: rgba(0, 0, 0, 0.9); /* rgba(0,0,0,0.9) */
+  --color-palette-ef815a370901: #1f3a5d; /* #1f3a5d */
+  --color-palette-f0233d8068ca: #272730; /* #272730 */
+  --color-palette-f09966a7e58d: rgba(18, 18, 22, 0.75); /* rgba(18,18,22,0.75) */
+  --color-palette-f0abccb8b122: rgba(59, 130, 246, 0.5); /* rgba(59,130,246,0.5) */
+  --color-palette-f0c303938acb: #9aa3b2; /* #9aa3b2 */
+  --color-palette-f1147865f078: #ccc; /* #cccccc */
+  --color-palette-f1e60705ebb3: #777d87; /* #777d87 */
+  --color-palette-f2074b6cef37: #fff; /* #ffffff */
+  --color-palette-f23dbc60903d: #414247; /* #414247 */
+  --color-palette-f2803fa10e99: rgba(96, 165, 250, 0.25); /* rgba(96,165,250,0.25) */
+  --color-palette-f2cb8a4d3be4: #42303a; /* #42303a */
+  --color-palette-f35c6bb3e021: #ffc45d; /* #ffc45d */
+  --color-palette-f360563697e8: #2a2e33; /* #2a2e33 */
+  --color-palette-f3908bb59e61: rgba(168, 85, 247, 0.2); /* rgba(168,85,247,0.2) */
+  --color-palette-f3cebd0d4d46: #1c3044; /* #1c3044 */
+  --color-palette-f402a0901513: rgba(0, 0, 0, 0.85); /* rgba(0,0,0,0.85) */
+  --color-palette-f4127feea237: #a8b0bb; /* #a8b0bb */
+  --color-palette-f4162bc4e46c: #79bbff; /* #79bbff */
+  --color-palette-f4d519fbd522: #a8d0ff; /* #a8d0ff */
+  --color-palette-f4ec30df7361: #9dcbff; /* #9dcbff */
+  --color-palette-f50b8c80899a: #28313d; /* #28313d */
+  --color-palette-f53074ef7f6d: #1d2733; /* #1d2733 */
+  --color-palette-f53fb04952bd: #30343b; /* #30343b */
+  --color-palette-f54d50e8b98b: #293b4f; /* #293b4f */
+  --color-palette-f5bcb1bbc8b8: #d9e7ef; /* #d9e7ef */
+  --color-palette-f6227429dd85: #dbeaff; /* #dbeaff */
+  --color-palette-f66fa9c170cd: #84cc16; /* #84cc16 */
+  --color-palette-f6a93a8e2ede: rgba(255, 255, 255, 0.28); /* rgba(255,255,255,0.28) */
+  --color-palette-f71fbab13810: rgba(0, 0, 0, 0.6); /* rgba(0,0,0,0.6) */
+  --color-palette-f81dba7624f5: #0a0c0f; /* #0a0c0f */
+  --color-palette-f8e175950dc1: #fbbf24; /* #fbbf24 */
+  --color-palette-f8f1d83d0831: rgba(245, 158, 11, 0.15); /* rgba(245,158,11,0.15) */
+  --color-palette-f913db160a4f: #030305; /* #030305 */
+  --color-palette-fa19882cc038: #f3f6fb; /* #f3f6fb */
+  --color-palette-fa48ddcd46aa: #0d9488; /* #0d9488 */
+  --color-palette-fb065089886e: #91bbff; /* #91bbff */
+  --color-palette-fc558bc58396: rgba(68, 70, 76, .96); /* rgba(68,70,76,0.96) */
+  --color-palette-fce188f6bf68: #7f1d1d; /* #7f1d1d */
+  --color-palette-fdd6ec44807b: rgba(30, 41, 59, 0.75); /* rgba(30,41,59,0.75) */
+  --color-palette-fe07ce2b0bb3: rgba(129, 140, 248, 0.3); /* rgba(129,140,248,0.3) */
+  --color-palette-fea93952d4bf: rgba(56, 189, 248, .34); /* rgba(56,189,248,0.34) */
+  --color-palette-feefa8a704ab: #4a90d9; /* #4a90d9 */
+  --color-palette-fef646fa4c37: #282f3a; /* #282f3a */
+  --color-palette-fef85bb332cc: #242424; /* #242424 */
+  --color-palette-ff0e02a6b7fd: #733039; /* #733039 */
+  --color-palette-115e018f6107: #10b981; /* #10b981 */
+  --color-palette-1bac8ea6eefa: #24364b; /* #24364b */
+  --color-palette-251a7b8506a7: #f59e0b; /* #f59e0b */
+  --color-palette-3398ce8a6140: #6366f1; /* #6366f1 */
+  --color-palette-38beb975b7a0: #315f9a; /* #315f9a */
+  --color-palette-97b1caaa7b50: #8b5cf6; /* #8b5cf6 */
+  --color-palette-9fb7a7e170fe: #5b4a92; /* #5b4a92 */
+  --color-palette-b51de63d0eac: #3b82f6; /* #3b82f6 */
+  --color-palette-c36d4cdccdc9: #ef4444; /* #ef4444 */
+  --color-palette-fa48ddcd46aa: #0d9488; /* #0d9488 */
+  --color-palette-153b915fece2: rgba(129, 140, 248, 0.16); /* rgb(129,140,248,0.16) */
+  --color-palette-d1625d49ab59: rgba(241, 245, 249, 0.14); /* rgb(241,245,249,0.14) */
+  --color-palette-158af66371f2: #9a4d62; /* #9a4d62 */
+  --color-palette-47827bca2d0b: #9a6735; /* #9a6735 */
+  --color-palette-470408016489: #347364; /* #347364 */
+  --color-palette-6544a3a9f023: #080c13; /* #080c13 */
+  --color-palette-9b2908af7a5b: #e7edf8; /* #e7edf8 */
+  --color-premium-border: var(--color-palette-670e494f8dfd);
+}

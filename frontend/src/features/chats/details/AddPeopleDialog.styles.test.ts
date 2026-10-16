@@ -22,7 +22,7 @@ describe("Shared dialog close button appearance", () => {
     const dialog = ruleFor(".add-people-dialog");
     expect(dialog).toMatch(/padding:\s*0\s+(?:2[0-9]|[3-9][0-9])px/);
     const search = ruleFor(".add-people-dialog .new-chat-screen-search");
-    expect(search).toMatch(/border-radius:\s*(?:2[0-9]|[3-9][0-9])px/);
+    expect(search).toMatch(/border-radius:\s*var\(--radius-panel\)/);
   });
 
   it("gives both dialogs the same circular gray close control", () => {
@@ -30,7 +30,7 @@ describe("Shared dialog close button appearance", () => {
     const hover = ruleFor(".new-chat-screen-close:hover");
     expect(close).toMatch(/background:\s*var\(--surface-card\);/);
     expect(close).toMatch(/border:\s*1px\s+solid\s+var\(--border-default\);/);
-    expect(close).toMatch(/border-radius:\s*50%/);
+    expect(close).toMatch(/border-radius:\s*var\(--radius-circle\)/);
     expect(hover).toMatch(/background:\s*var\(--background-tertiary\);/);
   });
 });

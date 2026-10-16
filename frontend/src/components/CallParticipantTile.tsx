@@ -8,7 +8,7 @@ const videoStyle: CSSProperties = {
   height: "100%",
   objectFit: "contain",
   display: "block",
-  background: "#000",
+  background: "var(--color-palette-7b2817bf9b80)",
 };
 
 const screenVideoStyle: CSSProperties = {
@@ -22,8 +22,8 @@ const avatarStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#ccc",
-  fontSize: "1.25rem",
+  color: "var(--color-palette-f1147865f078)",
+  fontSize: "var(--font-size-heading-small)",
   letterSpacing: "0.02em",
 };
 
@@ -32,10 +32,10 @@ const labelStyle: CSSProperties = {
   left: 8,
   bottom: 8,
   padding: "2px 8px",
-  borderRadius: 4,
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  fontSize: 12,
+  borderRadius: "var(--radius-small)",
+  background: "var(--color-palette-e16ece2e238b)",
+  color: "var(--color-palette-f2074b6cef37)",
+  fontSize: "var(--font-size-caption)",
   zIndex: 3,
 };
 

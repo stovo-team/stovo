@@ -2,6 +2,7 @@ import { Camera, Check, Image as ImageIcon } from "lucide-react";
 
 import { isNativeMediaLibraryAvailable, nativeMediaPreviewUrl, type NativeMediaItem } from "../../native/mediaLibraryPlugin";
 import type { MediaPickerState } from "./useMediaPicker";
+import { useStrings } from "../../i18n/LanguageContext";
 
 type MediaGalleryGridProps = {
   media: NativeMediaItem[];
@@ -21,16 +22,17 @@ function durationLabel(durationMs: number): string | null {
 }
 
 export function MediaGalleryGrid({ media, selectedItemIds, state, onToggle, onPreview, onCamera, onChooseGallery, onRetry }: MediaGalleryGridProps) {
-  const chooser = <button type="button" className="attachment-picker-secondary-btn" onClick={onChooseGallery}><ImageIcon size={18} />Choose photos</button>;
+  const copy = useStrings().attachments.picker;
+  const chooser = <button type="button" className="attachment-picker-secondary-btn" onClick={onChooseGallery}><ImageIcon size={18} />{copy.choosePhotos}</button>;
   return <div className="attachment-picker-gallery-tab">
     <div className="attachment-picker-grid">
-      <button type="button" className="attachment-picker-grid-tile camera-tile" onClick={onCamera} title="Take photo or video">
-        <span className="camera-tile-icon"><Camera size={26} /></span><span className="camera-tile-label">Camera</span>
+      <button type="button" className="attachment-picker-grid-tile camera-tile" onClick={onCamera} title={copy.takePhotoOrVideo}>
+        <span className="camera-tile-icon"><Camera size={26} /></span><span className="camera-tile-label">{copy.camera}</span>
       </button>
       {media.map((item) => {
         const selected = selectedItemIds.includes(item.id);
         return <div key={item.id} className={`attachment-picker-grid-tile media-tile ${selected ? "selected" : ""}`}>
-          <button type="button" className="media-tile-thumb-btn" onClick={() => onPreview(item)} aria-label={`Preview ${item.name}`}>
+          <button type="button" className="media-tile-thumb-btn" onClick={() => onPreview(item)} aria-label={copy.previewItem(item.name)}>
             <img src={nativeMediaPreviewUrl(item)} alt="" loading="lazy" decoding="async" />
             {durationLabel(item.durationMs) && <span className="media-tile-badge">{durationLabel(item.durationMs)}</span>}
           </button>
@@ -40,9 +42,9 @@ export function MediaGalleryGrid({ media, selectedItemIds, state, onToggle, onPr
         </div>;
       })}
     </div>
-    {state === "loading" && <p className="attachment-picker-gallery-status">Loading your gallery…</p>}
-    {state === "empty" && <div className="attachment-picker-gallery-status"><p>No photos or videos found in the in-app gallery.</p>{chooser}</div>}
-    {state === "error" && <div className="attachment-picker-gallery-status"><p>Unable to load the in-app gallery.</p>{chooser}<button type="button" className="attachment-picker-secondary-btn" onClick={onRetry}>Try again</button></div>}
+    {state === "loading" && <p className="attachment-picker-gallery-status">{copy.loadingGallery}</p>}
+    {state === "empty" && <div className="attachment-picker-gallery-status"><p>{copy.emptyGallery}</p>{chooser}</div>}
+    {state === "error" && <div className="attachment-picker-gallery-status"><p>{copy.galleryError}</p>{chooser}<button type="button" className="attachment-picker-secondary-btn" onClick={onRetry}>{copy.retry}</button></div>}
     {!isNativeMediaLibraryAvailable() && chooser}
   </div>;
 }

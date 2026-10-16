@@ -26,6 +26,13 @@ Read the applicable guide before editing:
 
 Run the focused checks required by the applicable workflow and relevant commands from CONTRIBUTING.md. Report the commands and results, including any required check that could not be run. Avoid unrelated checks.
 
+## Frontend UI reuse
+
+- Before adding UI copy, search `frontend/src/config/strings/english.ts` and `russian.ts`; add the same key to both catalogs and consume it through `useStrings()` or the existing strings prop. Do not add another translation dictionary.
+- Before adding a UI component or style, search for an existing component and style token to reuse. Prefer extending the existing component over creating a parallel one.
+- Use the shared typography, weight, line-height, radius, and CSS color tokens in `frontend/src/design-system/tokens.css`. For static colors that must be passed as data to canvas, QR, or persisted color controls, reuse `frontend/src/design-system/palette.ts`; its values must have matching palette entries in `tokens.css`. Theme presets stay in `frontend/src/config/colors/`, and plugin-owned themes stay with the plugin. Do not add raw color literals or one-off font sizes, weights, or radii to production UI styles.
+- Run `npm run check:i18n` and `npm test -- --run src/design-system/tokens.test.ts` from `frontend` after UI copy or shared style changes. See [Frontend UI conventions](docs/engineering/frontend-ui-conventions.md) for token names and examples.
+
 ## Optional documentation search
 
 The canonical human-readable documentation lives in `docs/`. When a question spans several documentation areas and `okf-agent` is installed, use its standalone bundle profile to search the existing pages:

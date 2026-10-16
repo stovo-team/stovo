@@ -22,6 +22,10 @@ type: index
 - [Testing and verification](agent-workflows/testing.md): test-layer selection, test quality, isolation, and reporting.
 - [Task isolation and delivery](agent-workflows/isolation-and-delivery.md): branches, worktrees, pull requests, publication authorization, and cleanup.
 
+## Engineering
+
+- [Frontend UI conventions](engineering/frontend-ui-conventions.md): translation catalogs, shared components, design tokens, and focused checks.
+
 ## Project references
 
 - [Repository README](../README.md): project overview and quick start.

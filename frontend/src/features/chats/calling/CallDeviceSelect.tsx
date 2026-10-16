@@ -8,6 +8,7 @@ export type CallDeviceStrings = {
   deviceLabelFormat: string;
   systemDefault: string;
   deviceSelectionUnavailable: string;
+  selectDeviceLabel?: (label: string) => string;
 };
 
 const defaultStrings: CallDeviceStrings = {
@@ -135,7 +136,7 @@ export function CallDeviceSelect({
         ref={triggerRef}
         type="button"
         className={isSettings ? "call-audio-device-trigger" : "guest-device-menu-trigger"}
-        aria-label={`${deviceStrings.selectDevice} ${label}`}
+        aria-label={deviceStrings.selectDeviceLabel?.(label) ?? [deviceStrings.selectDevice, label].join(" ")}
         aria-haspopup="listbox"
         aria-controls={menuId}
         aria-expanded={open}

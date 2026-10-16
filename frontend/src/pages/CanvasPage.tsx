@@ -14,6 +14,7 @@ import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "../components/BackButton";
+import { useStrings } from "../i18n/LanguageContext";
 
 const remoteOrigin = Symbol("canvas-remote");
 
@@ -102,6 +103,7 @@ function replaceWithHeading(block: HTMLElement, level: number, content: string) 
 }
 
 function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
+  const copy = useStrings().auditUi;
   const text = record.get("content") as Y.Text;
   const [value, setValue] = useState(() => text?.toString() ?? "");
   const editorRef = useRef<HTMLDivElement | null>(null);
@@ -161,12 +163,13 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
   if (!text) return null;
   return (
     <section className="canvas-markdown-block">
-      <div ref={editorRef} className="canvas-markdown-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label="Canvas document" aria-multiline="true" onKeyDown={handleKeyDown} onInput={handleInput} />
+      <div ref={editorRef} className="canvas-markdown-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label={copy.canvasDocument} aria-multiline="true" onKeyDown={handleKeyDown} onInput={handleInput} />
     </section>
   );
 }
 
 function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
+  const copy = useStrings().auditUi;
   const key = "scene";
   const [revision, setRevision] = useState(0);
   const apiRef = useRef<ExcalidrawAPI | null>(null);
@@ -193,7 +196,7 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
 
   return (
     <section className="canvas-block canvas-whiteboard-block">
-      <header><Pencil size={17} /> <strong>Whiteboard</strong><small>Live drawing</small></header>
+      <header><Pencil size={17} /> <strong>{copy.whiteboard}</strong><small>{copy.liveDrawing}</small></header>
       <div className="canvas-excalidraw">
         <Excalidraw
           excalidrawAPI={(api) => { apiRef.current = api as unknown as ExcalidrawAPI; }}
@@ -210,6 +213,7 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
 }
 
 export default function CanvasPage() {
+  const copy = useStrings().auditUi;
   const { canvasId = "" } = useParams();
   const navigate = useNavigate();
   const { accessToken, currentUser } = useAuth();
@@ -339,26 +343,26 @@ export default function CanvasPage() {
     }
   };
 
-  if (error) return <main className="canvas-page canvas-page--error"><h1>Canvas unavailable</h1><p>{error}</p><BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} /></main>;
-  if (!canvas || !document) return <main className="canvas-page canvas-page--loading">Opening Canvas…</main>;
+  if (error) return <main className="canvas-page canvas-page--error"><h1>{copy.canvasUnavailable}</h1><p>{error}</p><BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} /></main>;
+  if (!canvas || !document) return <main className="canvas-page canvas-page--loading">{copy.openingCanvas}</main>;
 
   return (
     <main className="canvas-page">
       <header className="canvas-page-header">
-        <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
+        <BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} />
         <div className="canvas-title-group">
-          {isEditingTitle ? <input className="canvas-title-input" aria-label="Canvas name" autoFocus maxLength={160} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} onBlur={() => void saveTitle()} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void saveTitle(); } if (event.key === "Escape") { setIsEditingTitle(false); } }} /> : <h1>{canvas.title}</h1>}
-          {canvas.canManage && !isEditingTitle && <button type="button" className="canvas-title-edit" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => { setTitleDraft(canvas.title); setIsEditingTitle(true); }}><Pencil size={13} /></button>}
+          {isEditingTitle ? <input className="canvas-title-input" aria-label={copy.canvasName} autoFocus maxLength={160} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} onBlur={() => void saveTitle()} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void saveTitle(); } if (event.key === "Escape") { setIsEditingTitle(false); } }} /> : <h1>{canvas.title}</h1>}
+          {canvas.canManage && !isEditingTitle && <button type="button" className="canvas-title-edit" aria-label={copy.editCanvasName} title={copy.editCanvasName} onClick={() => { setTitleDraft(canvas.title); setIsEditingTitle(true); }}><Pencil size={13} /></button>}
         </div>
         <div className="canvas-page-actions">
-          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Forward canvas" title="Forward canvas" onClick={() => { setForwardChatIds([]); setShareOpen((current) => !current); }}><Forward size={18} /></button>}
+          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label={copy.forwardCanvas} title={copy.forwardCanvas} onClick={() => { setForwardChatIds([]); setShareOpen((current) => !current); }}><Forward size={18} /></button>}
           <div className="canvas-insert-menu">
-            <button type="button" className="canvas-add-button" aria-label="Insert into canvas" aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
-            {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>Whiteboard</strong><small>Insert a live drawing board</small></span></button></div>}
+            <button type="button" className="canvas-add-button" aria-label={copy.insertIntoCanvas} aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
+            {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>{copy.whiteboard}</strong><small>{copy.insertLiveBoard}</small></span></button></div>}
           </div>
         </div>
       </header>
-      {shareOpen && canvas.canManage && <ForwardChatDialog title="Forward Canvas" accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => void forwardCanvas()} onClose={() => { setForwardChatIds([]); setShareOpen(false); }} />}
+      {shareOpen && canvas.canManage && <ForwardChatDialog title={copy.forwardCanvas} accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => void forwardCanvas()} onClose={() => { setForwardChatIds([]); setShareOpen(false); }} />}
       <div className="canvas-workspace">
         {blocks.map((block) => block.kind === "markdown" ? <MarkdownBlock key={block.id} record={block.record} /> : <WhiteboardBlock key={block.id} record={block.record} />)}
       </div>

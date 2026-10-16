@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { BellRing, Repeat, X } from "lucide-react";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import type { PendingLocalAttachment } from "../shared/types";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export interface ReminderModalProps {
   isOpen: boolean;
@@ -11,16 +12,6 @@ export interface ReminderModalProps {
   onClose: () => void;
   onConfirmReminder: (rule: ReminderRule) => void;
 }
-
-const DAYS_OF_WEEK = [
-  { label: "Mon", value: 1 },
-  { label: "Tue", value: 2 },
-  { label: "Wed", value: 3 },
-  { label: "Thu", value: 4 },
-  { label: "Fri", value: 5 },
-  { label: "Sat", value: 6 },
-  { label: "Sun", value: 0 }
-];
 
 function formatDateToIsoString(date?: Date | null): string {
   const d = date && !Number.isNaN(date.getTime()) ? date : new Date();
@@ -41,6 +32,8 @@ export function ReminderModal({
   onClose,
   onConfirmReminder
 }: ReminderModalProps) {
+  const copy = useStrings().auditUi;
+  const weekdays = copy.weekdaysShort.map((label, index) => ({ label, value: (index + 1) % 7 }));
   const initialDate = useMemo(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() + 60);
@@ -144,7 +137,7 @@ export function ReminderModal({
   const daysMonthList = Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : [];
   if (frequency === "weekly") {
     const dayNames = daysWeekList
-      .map((val) => DAYS_OF_WEEK.find((d) => d.value === val)?.label)
+      .map((val) => weekdays.find((d) => d.value === val)?.label)
       .filter(Boolean)
       .join(", ");
     freqText = `weekly on ${dayNames || "selected days"}`;
@@ -184,15 +177,13 @@ export function ReminderModal({
         <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <BellRing size={20} className="modal-card-header-icon" aria-hidden="true" />
-            <h2 id="reminder-modal-title" className="modal-card-title">
-              Set Repeating Reminder
-            </h2>
+            <h2 id="reminder-modal-title" className="modal-card-title">{copy.setRepeatingReminder}</h2>
           </div>
           <button
             type="button"
             className="icon-button subtle icon-button--plain modal-card-close-btn"
             onClick={onClose}
-            aria-label="Close reminder dialog"
+            aria-label={copy.closeReminder}
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -200,15 +191,13 @@ export function ReminderModal({
 
         <div className="modal-card-body">
           <div className="reminder-preview-box">
-            <span className="reminder-preview-label">Reminder Message:</span>
+            <span className="reminder-preview-label">{copy.reminderMessage}</span>
             <span className="reminder-preview-text">{previewSnippet}</span>
           </div>
 
           <div className="reminder-form-row">
             <div className="reminder-form-group">
-              <label htmlFor="reminder-start-date" className="reminder-form-label">
-                Start Date:
-              </label>
+              <label htmlFor="reminder-start-date" className="reminder-form-label">{copy.startDate}</label>
               <input
                 id="reminder-start-date"
                 type="date"
@@ -218,9 +207,7 @@ export function ReminderModal({
               />
             </div>
             <div className="reminder-form-group">
-              <label htmlFor="reminder-start-time" className="reminder-form-label">
-                Exact Time:
-              </label>
+              <label htmlFor="reminder-start-time" className="reminder-form-label">{copy.exactTime}</label>
               <input
                 id="reminder-start-time"
                 type="time"
@@ -232,7 +219,7 @@ export function ReminderModal({
           </div>
 
           <div className="reminder-form-group">
-            <label className="reminder-form-label">Repeat Frequency:</label>
+            <label className="reminder-form-label">{copy.repeatFrequency}</label>
             <div className="reminder-freq-tabs" role="tablist">
               <button
                 type="button"
@@ -240,35 +227,29 @@ export function ReminderModal({
                 aria-selected={frequency === "daily"}
                 className={`reminder-freq-tab${frequency === "daily" ? " is-active" : ""}`}
                 onClick={() => setFrequency("daily")}
-              >
-                Daily
-              </button>
+              >{copy.daily}</button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={frequency === "weekly"}
                 className={`reminder-freq-tab${frequency === "weekly" ? " is-active" : ""}`}
                 onClick={() => setFrequency("weekly")}
-              >
-                Weekly
-              </button>
+              >{copy.weekly}</button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={frequency === "monthly"}
                 className={`reminder-freq-tab${frequency === "monthly" ? " is-active" : ""}`}
                 onClick={() => setFrequency("monthly")}
-              >
-                Monthly
-              </button>
+              >{copy.monthly}</button>
             </div>
           </div>
 
           {frequency === "weekly" && (
             <div className="reminder-form-group">
-              <label className="reminder-form-label">Custom Days of the Week:</label>
+              <label className="reminder-form-label">{copy.customWeekdays}</label>
               <div className="reminder-days-week-grid">
-                {DAYS_OF_WEEK.map((day) => {
+                {weekdays.map((day) => {
                   const isSelected = (Array.isArray(selectedDaysOfWeek) ? selectedDaysOfWeek : []).includes(day.value);
                   return (
                     <button
@@ -288,7 +269,7 @@ export function ReminderModal({
 
           {frequency === "monthly" && (
             <div className="reminder-form-group">
-              <label className="reminder-form-label">Custom Days of the Month:</label>
+              <label className="reminder-form-label">{copy.customMonthDays}</label>
               <div className="reminder-days-month-grid">
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((dayNum) => {
                   const isSelected = (Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : []).includes(dayNum);
@@ -309,9 +290,7 @@ export function ReminderModal({
           )}
 
           <div className="reminder-form-group">
-            <label htmlFor="reminder-repeat-count" className="reminder-form-label">
-              How Many Times to Repeat:
-            </label>
+            <label htmlFor="reminder-repeat-count" className="reminder-form-label">{copy.repeatCount}</label>
             <div className="reminder-repeat-presets">
               {[1, 3, 5, 10, 30].map((num) => (
                 <button
@@ -325,7 +304,7 @@ export function ReminderModal({
               ))}
             </div>
             <div className="reminder-repeat-custom-row">
-              <span className="reminder-repeat-label">Custom count:</span>
+              <span className="reminder-repeat-label">{copy.customCount}</span>
               <input
                 id="reminder-repeat-count"
                 type="number"
@@ -351,12 +330,8 @@ export function ReminderModal({
         </div>
 
         <div className="modal-card-footer modal-card-actions modal-actions">
-          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="primary-button btn-primary" onClick={handleConfirm}>
-            Set Reminder
-          </button>
+          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>{copy.cancel}</button>
+          <button type="button" className="primary-button btn-primary" onClick={handleConfirm}>{copy.setReminder}</button>
         </div>
       </section>
     </div>

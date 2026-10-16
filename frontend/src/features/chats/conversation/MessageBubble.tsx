@@ -44,6 +44,7 @@ function guestMeetingCard(content: string | null | undefined): GuestMeetingCardD
 }
 
 function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeetingCardData; sourceChatId: string }) {
+  const copy = useStrings().auditUi;
   const addToPlans = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     event.stopPropagation();
     window.sessionStorage.setItem("stovo:plan-draft", JSON.stringify({
@@ -54,7 +55,7 @@ function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeeti
   };
 
   return (
-    <section className="guest-meeting-invitation" aria-label={`Guest meeting: ${meeting.title}`}>
+    <section className="guest-meeting-invitation" aria-label={copy.guestMeeting(meeting.title)}>
       <span className="guest-meeting-invitation-icon" aria-hidden="true"><Video size={20} /></span>
       <div className="guest-meeting-invitation-copy">
         <strong>{meeting.title}</strong>
@@ -69,10 +70,10 @@ function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeeti
           rel="noopener noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          Join meeting <ArrowUpRight size={16} />
+          {copy.joinMeeting} <ArrowUpRight size={16} />
         </a>
         <a className="guest-meeting-invitation-plan" href={`${getClusterPrefix()}/app/plans`} onClick={addToPlans}>
-          <CalendarPlus size={16} /> Add to Plans
+          <CalendarPlus size={16} /> {copy.addToPlans}
         </a>
       </div>
     </section>
@@ -201,6 +202,7 @@ export function MessageBubble({
   onViewPollVoters?: (poll: Poll) => void;
 }) {
   const strings = useStrings();
+  const copy = strings.auditUi;
   const mine = message.senderId === currentUserId;
   const [inlineContent, setInlineContent] = useState(message.content ?? "");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -292,21 +294,21 @@ export function MessageBubble({
       {messageDeliveryLabel(message, mine)}
       {mine && message.deliveryState === "sending" ? (
         <Clock3
-          aria-label="message queued for delivery"
+          aria-label={copy.queuedMessage}
           className="message-receipt message-receipt--sending"
           role="img"
           size={14}
         />
       ) : mine && message.deliveryState === "scheduled" ? (
         <CalendarClock
-          aria-label="message scheduled"
+          aria-label={copy.scheduledMessage}
           className="message-receipt message-receipt--scheduled"
           role="img"
           size={14}
         />
       ) : receiptState ? (
         <svg
-          aria-label={`${receiptState} message`}
+          aria-label={copy.receiptMessage(receiptState)}
           className={`message-receipt message-receipt--${receiptState}`}
           role="img"
           viewBox="0 0 24 24"
@@ -488,9 +490,7 @@ export function MessageBubble({
                     e.stopPropagation();
                     onCancelEdit?.();
                   }}
-                >
-                  Cancel
-                </button>
+                >{copy.cancel}</button>
                 <button
                   type="button"
                   className="message-inline-editor-btn save"
@@ -541,7 +541,7 @@ export function MessageBubble({
                 >
                   <span className="message-collection-card-icon">{message.collection.available ? <Folder size={22} /> : <LockKeyhole size={22} />}</span>
                   <span><strong>{message.collection.available ? message.collection.title : "Collection unavailable"}</strong><small>{message.collection.available ? `${message.collection.itemCount ?? 0} items · ${message.collection.displayKind ?? "collection"}` : "You no longer have access"}</small></span>
-                  {message.collection.available && <span className="message-collection-open">Open</span>}
+                  {message.collection.available && <span className="message-collection-open">{copy.open}</span>}
                 </button>
               ) : message.type === "poll" && message.poll ? (
                 <PollBubble
@@ -554,12 +554,12 @@ export function MessageBubble({
                 />
               ) : meetingInvitation ? (
                 <GuestMeetingInvitation meeting={meetingInvitation} sourceChatId={selectedChat.id} />
-              ) : message.content === "__call_recording_processing__" ? <div className="message-body recording-processing-message"><Loader2 size={15} className="audio-player-spin" aria-hidden="true" /><span>Video processing…</span></div> : hasCaption ? (
+              ) : message.content === "__call_recording_processing__" ? <div className="message-body recording-processing-message"><Loader2 size={15} className="audio-player-spin" aria-hidden="true" /><span>{copy.videoProcessing}</span></div> : hasCaption ? (
                 <>
                   <div className="message-body">
                     {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
                     {message.isEdited && (
-                      <span className="message-edited-label" aria-label="Edited">
+                      <span className="message-edited-label" aria-label={copy.edited}>
                         (edited)
                       </span>
                     )}
@@ -595,7 +595,7 @@ export function MessageBubble({
         </div>
       )}
       {message.reactions.length > 0 && (
-        <div className="message-reactions" aria-label="Message reactions">
+        <div className="message-reactions" aria-label={copy.messageReactions}>
           {message.reactions.map((reaction) => {
             const userIds = uniqueUserIds(reaction.userIds);
             const names = userIds
@@ -606,7 +606,7 @@ export function MessageBubble({
               <button
                 type="button"
                 className={`reaction-pill ${reacted ? "active" : ""}`}
-                aria-label={`${reaction.emoji} reaction from ${names}`}
+                aria-label={copy.reactionFrom(reaction.emoji, names)}
                 title={names}
                 key={reaction.emoji}
                 onClick={() => onReact(message, reaction.emoji)}

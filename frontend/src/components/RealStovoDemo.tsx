@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import {
   CalendarDays,
   Check,
@@ -35,6 +36,7 @@ import {
   Volume2,
 } from "lucide-react";
 import StovoLogo from "./StovoLogo";
+import { useStrings } from "../i18n/LanguageContext";
 
 type Attachment =
   | {
@@ -114,7 +116,7 @@ const chats: Chat[] = [
     time: "10:36",
     type: "group",
     members: 18,
-    avatarBg: "#3b82f6",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[0],
     avatarText: "LR",
     avatarImage: "/avatars/chat-launch-room.webp",
     messages: [
@@ -198,7 +200,7 @@ const chats: Chat[] = [
     time: "10:42",
     type: "group",
     members: 42,
-    avatarBg: "#6366f1",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[1],
     avatarText: "AH",
     avatarImage: "/avatars/chat-allhands.webp",
     messages: [
@@ -253,7 +255,7 @@ const chats: Chat[] = [
     time: "09:15",
     type: "channel",
     subscribers: 42,
-    avatarBg: "#8b5cf6",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[2],
     avatarIcon: "megaphone",
     messages: [
       {
@@ -290,7 +292,7 @@ const chats: Chat[] = [
     type: "voice",
     voiceInfo: "3 active",
     disabled: true,
-    avatarBg: "#10b981",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[3],
     avatarIcon: "voice",
     messages: [],
   },
@@ -302,7 +304,7 @@ const chats: Chat[] = [
     time: "Yesterday",
     type: "group",
     members: 11,
-    avatarBg: "#0d9488",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[4],
     avatarText: "AT",
     avatarImage: "/avatars/chat-team-alpha.webp",
     messages: [
@@ -356,7 +358,7 @@ const chats: Chat[] = [
     time: "Sep 11",
     type: "group",
     members: 9,
-    avatarBg: "#f59e0b",
+    avatarBg: DESIGN_COLOR_VALUES.demo.channelAvatars[5],
     avatarText: "AC",
     avatarImage: "/avatars/chat-architecture.webp",
     messages: [
@@ -390,6 +392,7 @@ const chats: Chat[] = [
 const rotatableChatIds = ["launch", "allhands", "announcements", "atlas", "acme"];
 
 export default function RealStovoDemo() {
+  const copy = useStrings().realDemo;
   const [activeScreen, setActiveScreen] = useState<"chats" | "files" | "plans">("chats");
   const [selectedId, setSelectedId] = useState("launch");
   const [draft, setDraft] = useState("");
@@ -448,67 +451,67 @@ export default function RealStovoDemo() {
   };
 
   return (
-    <section className="stovo-source-snapshot" aria-label="Stovo corporate workspace preview">
+    <section className="stovo-source-snapshot" aria-label={copy.corporatePreview}>
       <div className="stovo-source-shell">
         {/* Leftmost app navigation bar (Real Stovo AppNav) */}
-        <nav className="stovo-source-nav" aria-label="Stovo navigation">
+        <nav className="stovo-source-nav" aria-label={copy.navigation}>
           <div className="stovo-source-nav-links">
             <button
               type="button"
               className={activeScreen === "chats" ? "active" : ""}
-              aria-label="Chats"
+              aria-label={copy.chats}
               onClick={() => {
                 setActiveScreen("chats");
                 handleUserActivity();
               }}
             >
               <MessageCircle />
-              <span>Chats</span>
+              <span>{copy.chats}</span>
             </button>
             <button
               type="button"
               className={activeScreen === "files" ? "active" : ""}
-              aria-label="Files"
+              aria-label={copy.files}
               onClick={() => {
                 setActiveScreen("files");
                 handleUserActivity();
               }}
             >
               <Folder />
-              <span>Files</span>
+              <span>{copy.files}</span>
             </button>
             <button
               type="button"
               className={activeScreen === "plans" ? "active" : ""}
-              aria-label="Plans"
+              aria-label={copy.plans}
               onClick={() => {
                 setActiveScreen("plans");
                 handleUserActivity();
               }}
             >
               <CalendarDays />
-              <span>Plans</span>
+              <span>{copy.plans}</span>
             </button>
             <button
               type="button"
               className="stovo-nav-disabled"
-              aria-label="Settings"
-              title="Settings (read-only preview)"
+              aria-label={copy.settings}
+              title={copy.settingsReadOnly}
               disabled
             >
               <Settings />
-              <span>Settings</span>
+              <span>{copy.settings}</span>
             </button>
           </div>
           <button
             type="button"
             className="stovo-source-logout stovo-nav-disabled"
-            aria-label="Log out"
-            title="Log out (read-only preview)"
+            aria-label={copy.logOut}
+            title={copy.logOutReadOnly}
             disabled
           >
             <LogOut />
-            <span>Log out</span>
+            <span>{copy.logOut}</span>
           </button>
         </nav>
 
@@ -517,28 +520,28 @@ export default function RealStovoDemo() {
           <div className={`stovo-source-layout ${activeScreen !== "chats" ? "is-fullscreen" : ""}`}>
             {/* Chats sidebar */}
             {activeScreen === "chats" && (
-              <aside className="stovo-source-sidebar" aria-label="Chats sidebar">
+              <aside className="stovo-source-sidebar" aria-label={copy.chatsSidebar}>
                 <div className="stovo-source-sidebar-header">
                   <div className="stovo-source-title-row">
                     <span className="stovo-source-brand">
                       <StovoLogo size={40} />
                     </span>
-                    <button className="stovo-source-space" aria-label="Select space">
-                      Stovo Team <ChevronDown size={14} />
+                    <button className="stovo-source-space" aria-label={copy.selectSpace}>
+                      {copy.teamName} <ChevronDown size={14} />
                     </button>
-                    <button className="stovo-source-invite" aria-label="Invite members">
+                    <button className="stovo-source-invite" aria-label={copy.inviteMembers}>
                       <UserPlus size={17} />
                     </button>
                   </div>
                   <label className="stovo-source-search">
                     <Search size={16} />
-                    <input placeholder="Search messages or members" readOnly />
+                    <input placeholder={copy.searchMessagesMembers} readOnly />
                   </label>
                   <div className="stovo-source-filters">
-                    <button type="button" className="active">All</button>
-                    <button type="button">Unread</button>
-                    <button type="button">Groups</button>
-                    <button type="button">Direct</button>
+                    <button type="button" className="active">{copy.all}</button>
+                    <button type="button">{copy.unread}</button>
+                    <button type="button">{copy.groups}</button>
+                    <button type="button">{copy.direct}</button>
                   </div>
                 </div>
 
@@ -615,8 +618,8 @@ export default function RealStovoDemo() {
                     <button
                       type="button"
                       className="stovo-header-icon-btn"
-                      aria-label="Start audio call"
-                      title="Audio call"
+                      aria-label={copy.startAudioCall}
+                      title={copy.audioCall}
                       disabled
                     >
                       <Phone size={16} />
@@ -624,8 +627,8 @@ export default function RealStovoDemo() {
                     <button
                       type="button"
                       className="stovo-header-icon-btn"
-                      aria-label="Start video call"
-                      title="Video call"
+                      aria-label={copy.startVideoCall}
+                      title={copy.videoCall}
                       disabled
                     >
                       <Video size={16} />
@@ -633,8 +636,8 @@ export default function RealStovoDemo() {
                     <button
                       type="button"
                       className="stovo-header-icon-btn"
-                      aria-label="Search conversation"
-                      title="Search"
+                      aria-label={copy.searchConversation}
+                      title={copy.search}
                       disabled
                     >
                       <Search size={16} />
@@ -648,7 +651,7 @@ export default function RealStovoDemo() {
                   onWheel={handleUserActivity}
                   onTouchStart={handleUserActivity}
                 >
-                  <span className="stovo-source-day">Today · Monday, September 14</span>
+                  <span className="stovo-source-day">{copy.todayDate}</span>
                   {[...selected.messages, ...(sent[selectedId] ?? [])].map((message) => {
                     const isOutgoing = message.sender === "You";
 
@@ -661,7 +664,7 @@ export default function RealStovoDemo() {
                           const imgSrc = SENDER_AVATARS[message.sender];
                           return imgSrc ? (
                             <span className={`stovo-source-message-avatar ${message.tone}`} style={{ overflow: "hidden", padding: 0 }}>
-                              <img src={imgSrc} alt={message.sender} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                              <img src={imgSrc} alt={message.sender} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} />
                             </span>
                           ) : (
                             <span className={`stovo-source-message-avatar ${message.tone}`}>
@@ -712,10 +715,10 @@ export default function RealStovoDemo() {
                     submit();
                   }}
                 >
-                  <button type="button" className="stovo-composer-tool" aria-label="Add attachment">
+                  <button type="button" className="stovo-composer-tool" aria-label={copy.addAttachment}>
                     <Paperclip size={19} />
                   </button>
-                  <button type="button" className="stovo-composer-tool" aria-label="Add emoji">
+                  <button type="button" className="stovo-composer-tool" aria-label={copy.addEmoji}>
                     <Smile size={19} />
                   </button>
                   <input
@@ -724,9 +727,9 @@ export default function RealStovoDemo() {
                       setDraft(event.target.value);
                       handleUserActivity();
                     }}
-                    placeholder={`Message ${selected.type === "channel" ? `#${selected.name}` : selected.name}`}
+                    placeholder={copy.messagePlaceholder(selected.type === "channel" ? `#${selected.name}` : selected.name)}
                   />
-                  <button type="submit" aria-label="Send message" className="stovo-send-btn">
+                  <button type="submit" aria-label={copy.sendMessage} className="stovo-send-btn">
                     <ArrowUp size={16} strokeWidth={2.5} />
                   </button>
                 </form>
@@ -807,6 +810,7 @@ function DocumentEmbedCard({
 }: {
   attachment: Extract<Attachment, { type: "document" }>;
 }) {
+  const copy = useStrings().realDemo;
   return (
     <div className="stovo-doc-embed-card" data-doc-kind={attachment.docType}>
       <div className="stovo-doc-embed-header">
@@ -824,7 +828,7 @@ function DocumentEmbedCard({
           <span>{attachment.detail}</span>
         </div>
         <button type="button" className="stovo-doc-open-btn">
-          Open
+          {copy.open}
         </button>
       </div>
       <div className="stovo-doc-sheet-preview">
@@ -859,6 +863,7 @@ function CanvasEmbedCard({
 }: {
   attachment: Extract<Attachment, { type: "canvas" }>;
 }) {
+  const copy = useStrings().realDemo;
   return (
     <div className="stovo-canvas-embed-card">
       <div className="stovo-canvas-header">
@@ -867,20 +872,20 @@ function CanvasEmbedCard({
           <b>CANVAS</b>
         </span>
         <strong className="stovo-canvas-title">{attachment.title}</strong>
-        <span className="stovo-canvas-action">Open canvas</span>
+        <span className="stovo-canvas-action">{copy.openCanvas}</span>
       </div>
       <div className="stovo-canvas-board-viewport">
         <div className="stovo-canvas-mini-node node-indigo">
-          <b># Release Gate</b>
-          <p>Security sign-off verified</p>
+          <b>{copy.releaseGate}</b>
+          <p>{copy.securitySignoff}</p>
         </div>
         <div className="stovo-canvas-mini-node node-cyan">
-          <b># Telemetry</b>
-          <p>99.99% replica sync</p>
+          <b>{copy.telemetry}</b>
+          <p>{copy.replicaSync}</p>
         </div>
         <div className="stovo-canvas-mini-node node-emerald">
-          <b># Client Audit</b>
-          <p>EU residency confirmed</p>
+          <b>{copy.clientAudit}</b>
+          <p>{copy.euResidency}</p>
         </div>
       </div>
       <div className="stovo-canvas-footer">
@@ -933,6 +938,7 @@ function FolderEmbedCard({
 }: {
   attachment: Extract<Attachment, { type: "folder" }>;
 }) {
+  const copy = useStrings().realDemo;
   return (
     <div className="stovo-folder-embed-card">
       <span className="stovo-folder-icon">
@@ -942,7 +948,7 @@ function FolderEmbedCard({
         <strong>{attachment.title}</strong>
         <small>{attachment.detail}</small>
       </div>
-      <span className="stovo-folder-open-label">Open folder</span>
+      <span className="stovo-folder-open-label">{copy.openFolder}</span>
     </div>
   );
 }
@@ -951,12 +957,13 @@ function FolderEmbedCard({
 // Redesigned FilesScreen (Matching Stovo FilesPage.tsx & styles)
 // ----------------------------------------------------------------------------
 function FilesScreen() {
+  const copy = useStrings().realDemo;
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   const folders = [
-    { name: "Q3 Launch Assets", detail: "12 files · 18 members", color: "#24364b", locked: false },
-    { name: "Client Deliverables", detail: "28 files · 6 clients", color: "#315f9a", locked: true },
-    { name: "Executive Records", detail: "19 files · Confidential", color: "#5b4a92", locked: true },
+    { name: "Q3 Launch Assets", detail: "12 files · 18 members", color: DESIGN_COLOR_VALUES.demo.collectionCovers[0], locked: false },
+    { name: "Client Deliverables", detail: "28 files · 6 clients", color: DESIGN_COLOR_VALUES.demo.collectionCovers[1], locked: true },
+    { name: "Executive Records", detail: "19 files · Confidential", color: DESIGN_COLOR_VALUES.demo.collectionCovers[2], locked: true },
   ];
 
   const files = [
@@ -964,42 +971,42 @@ function FilesScreen() {
       name: "Q3-launch-brief.pdf",
       size: "2.4 MB",
       type: "PDF",
-      badgeColor: "#ef4444",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[0],
       icon: FileText,
     },
     {
       name: "Launch readiness.canvas",
       size: "18 cards",
       type: "CANVAS",
-      badgeColor: "#8b5cf6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[1],
       icon: StickyNote,
     },
     {
       name: "Security-Compliance-Audit.docx",
       size: "1.8 MB",
       type: "DOCX",
-      badgeColor: "#3b82f6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[2],
       icon: FileType,
     },
     {
       name: "Q3-Financial-Model.xlsx",
       size: "3.4 MB",
       type: "XLSX",
-      badgeColor: "#10b981",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[3],
       icon: FileSpreadsheet,
     },
     {
       name: "Atlas-Architecture-Diagram.canvas",
       size: "24 cards",
       type: "CANVAS",
-      badgeColor: "#8b5cf6",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[1],
       icon: StickyNote,
     },
     {
       name: "Acme-Phase1-Signoff.pdf",
       size: "1.1 MB",
       type: "PDF",
-      badgeColor: "#ef4444",
+      badgeColor: DESIGN_COLOR_VALUES.demo.fileBadges[0],
       icon: FileText,
     },
   ];
@@ -1011,10 +1018,10 @@ function FilesScreen() {
       <div className="storage-main-header">
         <label className="search-field storage-search">
           <Search size={16} />
-          <input placeholder="Search files and folders in workspace" readOnly />
+          <input placeholder={copy.searchFilesFolders} readOnly />
         </label>
 
-        <div className="filter-chip-row" aria-label="Storage filters">
+        <div className="filter-chip-row" aria-label={copy.storageFilters}>
           {filters.map((filter) => (
             <button
               type="button"
@@ -1031,9 +1038,9 @@ function FilesScreen() {
       {/* Folders row (StorageCollections) */}
       <div className="storage-collections-section">
         <div className="storage-section-heading">
-          <h2>Folders &amp; collections</h2>
+          <h2>{copy.foldersCollections}</h2>
           <button type="button" className="storage-new-btn">
-            <Plus size={14} /> New
+            <Plus size={14} /> {copy.new}
           </button>
         </div>
         <div className="storage-collections-row">
@@ -1057,8 +1064,8 @@ function FilesScreen() {
       {/* Files Grid (StorageGrid) */}
       <div className="storage-files-section">
         <div className="storage-section-heading">
-          <h2>Files</h2>
-          <small>59 items · Synced locally</small>
+          <h2>{copy.files}</h2>
+          <small>{copy.itemsSynced}</small>
         </div>
         <div className="storage-grid">
           {files.map((file) => {
@@ -1110,6 +1117,7 @@ function FilesScreen() {
 // Redesigned PlansScreen (Matching Stovo PlansPage.tsx & styles)
 // ----------------------------------------------------------------------------
 function PlansScreen() {
+  const copy = useStrings().realDemo;
   const [view, setView] = useState<"today" | "threeDays" | "week">("today");
 
   return (
@@ -1117,11 +1125,11 @@ function PlansScreen() {
       {/* Plans header with navigation and tabs */}
       <header className="plans-view-header">
         <div className="plans-header-nav">
-          <button type="button" aria-label="Previous day" className="plans-nav-btn">
+          <button type="button" aria-label={copy.previousDay} className="plans-nav-btn">
             <ChevronLeft size={16} />
           </button>
-          <h2>Monday, September 14</h2>
-          <button type="button" aria-label="Next day" className="plans-nav-btn">
+          <h2>{copy.dayDate}</h2>
+          <button type="button" aria-label={copy.nextDay} className="plans-nav-btn">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -1132,27 +1140,27 @@ function PlansScreen() {
             className={view === "today" ? "active" : ""}
             onClick={() => setView("today")}
           >
-            Today
+            {copy.today}
           </button>
           <button
             type="button"
             className={view === "threeDays" ? "active" : ""}
             onClick={() => setView("threeDays")}
           >
-            3 Days
+            {copy.threeDays}
           </button>
           <button
             type="button"
             className={view === "week" ? "active" : ""}
             onClick={() => setView("week")}
           >
-            Week
+            {copy.week}
           </button>
         </div>
       </header>
 
       {/* Plans timeline schedule (PlansTimeline) */}
-      <div className="plans-timeline" role="region" aria-label="Today schedule timeline">
+      <div className="plans-timeline" role="region" aria-label={copy.todayTimeline}>
         {/* 09:00 slot */}
         <div className="plans-timeline-slot">
           <div className="plans-timeline-time">
@@ -1162,7 +1170,7 @@ function PlansScreen() {
           <div className="plans-timeline-content">
             <div className="plans-timeline-line" />
             <div className="plans-empty-slot">
-              <small>No events scheduled</small>
+              <small>{copy.noEvents}</small>
             </div>
           </div>
         </div>
@@ -1179,34 +1187,33 @@ function PlansScreen() {
               <div className="plan-card-header">
                 <div>
                   <div className="plan-title-line">
-                    <strong>Sprint Planning &amp; Launch Scope</strong>
-                    <span className="plan-status-badge happening">Happening</span>
+                    <strong>{copy.sprintPlanning}</strong>
+                    <span className="plan-status-badge happening">{copy.happening}</span>
                   </div>
-                  <small className="plan-location">Room 4B · Stovo Secure Video</small>
+                  <small className="plan-location">{copy.roomVideo}</small>
                 </div>
               </div>
               <p className="plan-notes-excerpt">
-                Review Q3 customer rollout checklist, resolve telemetry blockers, and finalize
-                ownership assignments.
+                {copy.sprintDescription}
               </p>
               <div className="plan-card-footer">
                 <div className="plan-created-by">
-                  <span className="plan-avatar mo" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-elena.webp" alt="Maya Ortiz" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} /></span>
-                  <small>Maya Ortiz</small>
+                  <span className="plan-avatar mo" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-elena.webp" alt={copy.mayaOrtiz} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} /></span>
+                  <small>{copy.mayaOrtiz}</small>
                 </div>
                 <div className="plan-rsvp-actions">
-                  <span>Going?</span>
+                  <span>{copy.going}</span>
                   <button type="button" className="rsvp-btn active">
-                    Yes
+                    {copy.yes}
                   </button>
                   <button type="button" className="rsvp-btn">
-                    No
+                    {copy.no}
                   </button>
                 </div>
                 <div className="plan-attendees-cluster">
-                  <span className="att-avatar ps" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-mira.webp" alt="PS" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /></span>
-                  <span className="att-avatar ac" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-alex.webp" alt="AC" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /></span>
-                  <span className="att-avatar jb" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-noah.webp" alt="JB" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /></span>
+                  <span className="att-avatar ps" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-mira.webp" alt="PS" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} /></span>
+                  <span className="att-avatar ac" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-alex.webp" alt="AC" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} /></span>
+                  <span className="att-avatar jb" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-noah.webp" alt="JB" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} /></span>
                   <span className="att-more">+3</span>
                 </div>
               </div>
@@ -1226,32 +1233,32 @@ function PlansScreen() {
               <div className="plan-card-header">
                 <div>
                   <div className="plan-title-line">
-                    <strong>Atlas Stakeholder Sync</strong>
-                    <span className="plan-status-badge scheduled">Scheduled</span>
+                    <strong>{copy.atlasSync}</strong>
+                    <span className="plan-status-badge scheduled">{copy.scheduled}</span>
                   </div>
-                  <small className="plan-location">Stovo Conference Link · External</small>
+                  <small className="plan-location">{copy.conferenceExternal}</small>
                 </div>
               </div>
               <p className="plan-notes-excerpt">
-                Milestone 2 integration sign-off and European data residency compliance review.
+                {copy.atlasDescription}
               </p>
               <div className="plan-card-footer">
                 <div className="plan-created-by">
-                  <span className="plan-avatar ps" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-mira.webp" alt="Priya Shah" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} /></span>
-                  <small>Priya Shah</small>
+                  <span className="plan-avatar ps" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-mira.webp" alt={copy.priyaShah} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} /></span>
+                  <small>{copy.priyaShah}</small>
                 </div>
                 <div className="plan-rsvp-actions">
-                  <span>Going?</span>
+                  <span>{copy.going}</span>
                   <button type="button" className="rsvp-btn active">
-                    Yes
+                    {copy.yes}
                   </button>
                   <button type="button" className="rsvp-btn">
-                    No
+                    {copy.no}
                   </button>
                 </div>
                 <div className="plan-attendees-cluster">
-                  <span className="att-avatar mo" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-elena.webp" alt="MO" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /></span>
-                  <span className="att-avatar you" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-marcus.webp" alt="You" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /></span>
+                  <span className="att-avatar mo" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-elena.webp" alt="MO" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} /></span>
+                  <span className="att-avatar you" style={{ overflow: "hidden", padding: 0 }}><img src="/avatars/user-marcus.webp" alt={copy.you} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "var(--radius-circle)" }} /></span>
                   <span className="att-more">+2</span>
                 </div>
               </div>
@@ -1268,7 +1275,7 @@ function PlansScreen() {
           <div className="plans-timeline-content">
             <div className="plans-timeline-line" />
             <div className="plans-empty-slot">
-              <small>End-of-day team sync</small>
+              <small>{copy.endOfDaySync}</small>
             </div>
           </div>
         </div>

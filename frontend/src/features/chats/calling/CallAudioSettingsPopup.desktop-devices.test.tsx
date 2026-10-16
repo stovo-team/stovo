@@ -53,7 +53,7 @@ describe("desktop call device selection", () => {
     const closeRule = css.match(/\.call-audio-popup-close\s*\{([^}]*)\}/s)?.[1] ?? "";
     expect(closeRule).toMatch(/background:\s*(?:var\(--(?:surface-hover|background-secondary)\)|color-mix\()/);
     expect(closeRule).toMatch(/border:\s*1px solid var\(--border-default\)/);
-    expect(closeRule).toMatch(/border-radius:\s*999px/);
+    expect(closeRule).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(closeRule).toMatch(/width:\s*36px/);
     expect(closeRule).toMatch(/height:\s*36px/);
     expect(closeRule).toMatch(/(?:flex:\s*0\s+0\s+36px|flex-shrink:\s*0)/);

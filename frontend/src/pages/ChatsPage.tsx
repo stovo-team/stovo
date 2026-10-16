@@ -23,6 +23,7 @@ import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
 import { advanceVoiceCallLayoutSnapshot, type VoiceCallLayoutSnapshot } from "./voiceCallLayoutSnapshot";
+import { useStrings } from "../i18n/LanguageContext";
 
 function loadMessageArchiveView(userId?: string): MessageArchiveView {
   if (!userId || typeof window === "undefined") return "all";
@@ -34,6 +35,7 @@ function loadMessageArchiveView(userId?: string): MessageArchiveView {
 }
 
 export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}) {
+  const copy = useStrings().sharedUi;
   const routeParams = useParams();
   const chatId = routeChatId ?? routeParams.chatId;
   const location = useLocation();
@@ -246,7 +248,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
         {!isOnline && (
           <p className="offline-banner" role="status">
             <WifiOff aria-hidden="true" size={18} />
-            Offline. Messages will send when you are back online.
+            {copy.offlineQueue}
           </p>
         )}
 

@@ -35,25 +35,15 @@ import { getChats } from "../api/chats";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "../components/BackButton";
 import AppNav from "./AppNav";
-
-const GROCERY_TEMPLATES = [
-  { section: "Produce", items: ["Apples", "Bananas", "Spinach", "Avocados", "Tomatoes"] },
-  { section: "Dairy & Eggs", items: ["Milk", "Eggs", "Greek Yogurt", "Butter", "Cheese"] },
-  { section: "Bakery & Pantry", items: ["Sourdough Bread", "Pasta", "Olive Oil", "Coffee Beans"] },
-  { section: "Meat & Seafood", items: ["Chicken Breast", "Salmon Fillet"] }
-];
-
-const ERRAND_TEMPLATES = [
-  { section: "Post Office", items: ["Drop off return package", "Buy stamps"] },
-  { section: "Pharmacy", items: ["Pick up prescription", "Vitamins"] },
-  { section: "Hardware / Home", items: ["Light bulbs", "Air filters"] },
-  { section: "Dry Cleaner", items: ["Drop off coats", "Pick up shirts"] }
-];
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function ChecklistPage() {
+  const copy = useStrings().checklistPage;
   const { checklistId = "" } = useParams();
   const navigate = useNavigate();
   const { accessToken, currentUser } = useAuth();
+  const groceryTemplates = copy.grocerySections.map((section, index) => ({ section, items: copy.groceryItems[index] }));
+  const errandTemplates = copy.errandSections.map((section, index) => ({ section, items: copy.errandItems[index] }));
 
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
@@ -387,7 +377,7 @@ export default function ChecklistPage() {
   };
 
   // Apply templates
-  const handleApplyTemplates = async (templates: typeof GROCERY_TEMPLATES) => {
+  const handleApplyTemplates = async (templates: ReadonlyArray<{ section: string; items: readonly string[] }>) => {
     if (!accessToken || !checklist) return;
     const itemsToAdd: Array<{ text: string; section: string; position: number }> = [];
     let pos = items.length + 1;
@@ -454,8 +444,8 @@ export default function ChecklistPage() {
         <AppNav />
         <section className="page-surface checklist-page-surface checklist-page-surface--error">
           <header className="checklist-page-header">
-            <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
-            <h1>Checklist unavailable</h1>
+            <BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} />
+            <h1>{copy.unavailable}</h1>
           </header>
           <p className="checklist-error-text">{error}</p>
         </section>
@@ -468,7 +458,7 @@ export default function ChecklistPage() {
       <main className="app-shell app-frame checklist-page-frame">
         <AppNav />
         <section className="page-surface checklist-page-surface checklist-page-surface--loading">
-          <p className="checklist-loading-text">Opening Checklist…</p>
+          <p className="checklist-loading-text">{copy.opening}</p>
         </section>
       </main>
     );
@@ -499,14 +489,14 @@ export default function ChecklistPage() {
       <AppNav />
       <section className="page-surface checklist-page-surface">
         <header className="checklist-page-header">
-          <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
+          <BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} />
 
           <div className="checklist-header-info">
             <div className="checklist-title-group">
               {isEditingTitle ? (
                 <input
                   className="checklist-title-input"
-                  aria-label="Checklist title"
+                  aria-label={copy.title}
                   autoFocus
                   maxLength={160}
                   value={titleDraft}
@@ -529,8 +519,8 @@ export default function ChecklistPage() {
                 <button
                   type="button"
                   className="checklist-title-edit"
-                  aria-label="Edit checklist title"
-                  title="Edit checklist title"
+                  aria-label={copy.editTitle}
+                  title={copy.editTitle}
                   onClick={() => {
                     setTitleDraft(checklist.title);
                     setIsEditingTitle(true);
@@ -548,7 +538,7 @@ export default function ChecklistPage() {
                 onClick={() => void changeCategory("groceries")}
               >
                 <ShoppingCart size={14} />
-                <span>Groceries</span>
+                <span>{copy.groceries}</span>
               </button>
               <button
                 type="button"
@@ -556,7 +546,7 @@ export default function ChecklistPage() {
                 onClick={() => void changeCategory("errands")}
               >
                 <ShoppingBag size={14} />
-                <span>Errands</span>
+                <span>{copy.errands}</span>
               </button>
               <button
                 type="button"
@@ -564,7 +554,7 @@ export default function ChecklistPage() {
                 onClick={() => void changeCategory("general")}
               >
                 <ListTodo size={14} />
-                <span>General</span>
+                <span>{copy.general}</span>
               </button>
             </div>
           </div>
@@ -574,8 +564,8 @@ export default function ChecklistPage() {
               <button
                 type="button"
                 className="checklist-icon-action"
-                aria-label="Share checklist in chat"
-                title="Share checklist in chat"
+                aria-label={copy.shareInChat}
+                title={copy.shareInChat}
                 onClick={() => {
                   setForwardChatIds([]);
                   setShareOpen((prev) => !prev);
@@ -589,7 +579,7 @@ export default function ChecklistPage() {
 
       {shareOpen && checklist.canManage && (
         <ForwardChatDialog
-          title="Share Checklist in Chat"
+          title={copy.shareTitle}
           accessToken={accessToken}
           currentUserId={currentUser?.id}
           chats={chats}
@@ -607,7 +597,7 @@ export default function ChecklistPage() {
       <div className="checklist-progress-container">
         <div className="checklist-progress-meta">
           <span className="checklist-progress-stat">
-            <strong>{completedCount}</strong> of <strong>{totalCount}</strong> items completed
+            {copy.itemsCompleted(completedCount, totalCount)}
           </span>
           <span className="checklist-progress-percent">{progressPercent}%</span>
         </div>
@@ -626,7 +616,7 @@ export default function ChecklistPage() {
             {sectionName ? (
               <header className="checklist-section-header">
                 <span className="checklist-section-title">{sectionName}</span>
-                <span className="checklist-section-count">{sectionItems.length} items</span>
+                <span className="checklist-section-count">{copy.sectionItems(sectionItems.length)}</span>
               </header>
             ) : null}
 
@@ -639,7 +629,7 @@ export default function ChecklistPage() {
                   <button
                     type="button"
                     className={`checklist-item-check-btn ${item.completed ? "checked" : ""}`}
-                    aria-label={item.completed ? "Mark incomplete" : "Mark complete"}
+                    aria-label={item.completed ? copy.markIncomplete : copy.markComplete}
                     onClick={() => void handleToggleItem(item.id, item.completed)}
                   >
                     {item.completed && <Check size={12} strokeWidth={3} className="icon-checked" />}
@@ -653,7 +643,7 @@ export default function ChecklistPage() {
                     type="text"
                     className="checklist-item-text-input"
                     value={item.text}
-                    placeholder="To-do item (type # for section heading)..."
+                    placeholder={copy.todoPlaceholder}
                     onChange={(e) => handleItemTextChange(item.id, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, item.id, item.section)}
                   />
@@ -661,8 +651,8 @@ export default function ChecklistPage() {
                   <button
                     type="button"
                     className="checklist-item-delete-btn"
-                    aria-label="Delete item"
-                    title="Delete item"
+                    aria-label={copy.deleteItem}
+                    title={copy.deleteItem}
                     onClick={() => void handleDeleteItem(item.id)}
                   >
                     <Trash2 size={15} />
@@ -677,7 +667,7 @@ export default function ChecklistPage() {
               onClick={() => void handleAddItemToSection(sectionName)}
             >
               <Plus size={15} />
-              <span>Add item</span>
+              <span>{copy.addItem}</span>
             </button>
           </section>
         ))}
@@ -690,7 +680,7 @@ export default function ChecklistPage() {
                 type="text"
                 className="checklist-new-section-input"
                 autoFocus
-                placeholder="Section name (e.g. Dairy, Bakery, Pharmacy)..."
+                placeholder={copy.sectionPlaceholder}
                 value={newSectionDraft}
                 onChange={(e) => setNewSectionDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -707,14 +697,14 @@ export default function ChecklistPage() {
                 onClick={handleCreateSection}
                 disabled={!newSectionDraft.trim()}
               >
-                Add Section
+                {copy.addSection}
               </button>
               <button
                 type="button"
                 className="checklist-btn-secondary"
                 onClick={() => setIsAddingSection(false)}
               >
-                Cancel
+                {copy.cancel}
               </button>
             </div>
           ) : (
@@ -725,7 +715,7 @@ export default function ChecklistPage() {
                 onClick={() => void handleAddItemToSection("")}
               >
                 <Plus size={15} />
-                <span>Add Task</span>
+                <span>{copy.addTask}</span>
               </button>
 
               <button
@@ -734,18 +724,18 @@ export default function ChecklistPage() {
                 onClick={() => setIsAddingSection(true)}
               >
                 <FolderPlus size={15} />
-                <span>Add Section</span>
+                <span>{copy.addSection}</span>
               </button>
 
               <button
                 type="button"
                 className="checklist-action-pill checklist-action-pill--disabled"
                 disabled
-                title="Dictate list via voice (Premium feature)"
-                aria-label="Dictate list via voice (Premium feature)"
+                title={copy.dictatePremium}
+                aria-label={copy.dictatePremium}
               >
                 <Mic size={15} />
-                <span>Voice List</span>
+                <span>{copy.voiceList}</span>
                 <span className="checklist-pro-badge">PRO</span>
               </button>
 
@@ -753,10 +743,10 @@ export default function ChecklistPage() {
                 <button
                   type="button"
                   className="checklist-action-pill highlight"
-                  onClick={() => void handleApplyTemplates(GROCERY_TEMPLATES)}
+                  onClick={() => void handleApplyTemplates(groceryTemplates)}
                 >
                   <ShoppingCart size={15} />
-                  <span>Insert Grocery Pack</span>
+                  <span>{copy.insertGroceryPack}</span>
                 </button>
               )}
 
@@ -764,10 +754,10 @@ export default function ChecklistPage() {
                 <button
                   type="button"
                   className="checklist-action-pill highlight"
-                  onClick={() => void handleApplyTemplates(ERRAND_TEMPLATES)}
+                  onClick={() => void handleApplyTemplates(errandTemplates)}
                 >
                   <ShoppingBag size={15} />
-                  <span>Insert Errand Pack</span>
+                  <span>{copy.insertErrandPack}</span>
                 </button>
               )}
             </div>

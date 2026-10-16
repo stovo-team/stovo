@@ -12,7 +12,7 @@ const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("chats page family invitation", () => {
   it("shows an invite button in the chats list header for admins", () => {
-    expect(chatSidebar).toContain('aria-label="Create invitation"');
+    expect(chatSidebar).toContain("aria-label={strings.chats.sidebar.createInvitation}");
     expect(chatSidebar).toContain("canCreateFamilyInvite");
     expect(chatOverlays).toContain("<InviteModal");
     expect(chatOverlays).toContain("isFamilyInviteOpen");
@@ -29,7 +29,7 @@ describe("chats page family invitation", () => {
     expect(styles).toContain(".invite-modal-actions");
     expect(styles).toMatch(/\.invite-modal-link[\s\S]*white-space:\s*nowrap/);
     expect(styles).toMatch(/\.invite-modal-section[\s\S]*border:\s*0/);
-    expect(styles).toMatch(/\.invite-modal-actions \.primary-button[\s\S]*border-radius:\s*999px/);
+    expect(styles).toMatch(/\.invite-modal-actions \.primary-button[\s\S]*border-radius:\s*var\(--radius-pill\)/);
     const qrIndex = inviteModal.indexOf("strings.inviteModal.qrCode");
     const linkIndex = inviteModal.indexOf("strings.inviteModal.inviteLink");
     expect(qrIndex).toBeGreaterThan(-1);

@@ -39,12 +39,20 @@ describe("mobile active video call UI", () => {
   });
 
   it("blacks out local preview before applying mirror during camera flip", () => {
+    const pipRule = styles.match(/\.mobile-active-pip\s*\{([^}]+)\}/)?.[1] ?? "";
+
     expect(mobileActiveSource).toContain("const [isCameraFlipping, setIsCameraFlipping]");
     expect(mobileActiveSource).toContain("const [previewFacingMode, setPreviewFacingMode]");
     expect(mobileActiveSource).toContain("Let the blackout paint before facingMode/mirror state updates");
     expect(mobileActiveSource).toContain("setPreviewFacingMode(nextFacing)");
     expect(mobileActiveSource).toContain("dst.srcObject = null");
-    expect(styles).toContain(".mobile-active-pip {\n  position: absolute;\n  width: 104px;\n  height: 140px;\n  border: 2px solid rgba(255, 255, 255, 0.35);\n  border-radius: 8px;\n  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.42);\n  background: #000;");
+    expect(pipRule).toContain("position: absolute;");
+    expect(pipRule).toContain("width: 104px;");
+    expect(pipRule).toContain("height: 140px;");
+    expect(pipRule).toContain("border: 2px solid var(--color-palette-");
+    expect(pipRule).toContain("border-radius: var(--radius-control);");
+    expect(pipRule).toContain("box-shadow: 0 4px 18px var(--color-palette-");
+    expect(pipRule).toContain("background: var(--color-palette-");
   });
 
   it("hides only the lower controls after inactivity and lets a screen tap reveal them", () => {

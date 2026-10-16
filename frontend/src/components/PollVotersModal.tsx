@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { X, Users } from "lucide-react";
 import type { Poll, PollVoterSummary } from "../api/polls";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
+import { useStrings } from "../i18n/LanguageContext";
 
 export interface PollVotersModalProps {
   accessToken?: string | null;
@@ -13,6 +14,8 @@ export interface PollVotersModalProps {
 }
 
 export function PollVotersModal({ accessToken = null, open, onClose, poll, votersMap, loading = false }: PollVotersModalProps) {
+  const strings = useStrings();
+  const copy = strings.auditUi;
   if (!open) return null;
 
   const content = (
@@ -21,15 +24,15 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
         className="modal-dialog poll-voters-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Poll Voters"
+        aria-label={copy.pollVoters}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <div className="modal-title">
             <Users size={20} style={{ marginRight: 8 }} />
-            <span>Poll Results & Voters</span>
+            <span>{copy.pollResultsVoters}</span>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label={strings.auditUi.close}>
             <X size={20} />
           </button>
         </div>
@@ -38,7 +41,7 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
           <div className="poll-voters-question">{poll.question}</div>
 
           {loading ? (
-            <div className="poll-voters-loading">Loading voters...</div>
+            <div className="poll-voters-loading">{copy.loadingVoters}</div>
           ) : (
             <div className="poll-voters-options-list">
               {poll.options.map((opt) => {
@@ -48,12 +51,12 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
                     <div className="poll-voters-option-header">
                       <span className="poll-voters-option-text">{opt.text}</span>
                       <span className="poll-voters-option-count">
-                        {voters.length} {voters.length === 1 ? "vote" : "votes"}
+                        {copy.voteCount(voters.length)}
                       </span>
                     </div>
 
                     {voters.length === 0 ? (
-                      <div className="poll-voters-empty">No votes for this option yet.</div>
+                      <div className="poll-voters-empty">{copy.noVotesForOption}</div>
                     ) : (
                       <div className="poll-voters-user-list">
                         {voters.map((u) => (

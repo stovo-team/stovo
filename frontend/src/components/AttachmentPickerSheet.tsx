@@ -23,6 +23,7 @@ import { RichChecklistCreator } from "./attachment-picker/RichChecklistCreator";
 import { useMediaPicker } from "./attachment-picker/useMediaPicker";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import type { CreatePollPayload } from "../api/polls";
+import { useStrings } from "../i18n/LanguageContext";
 
 export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file" | "poll" | "checklist";
 export type AttachmentPickerTab = "gallery" | "file" | "audio" | "poll" | "checklist";
@@ -72,6 +73,7 @@ export default function AttachmentPickerSheet({
   onCreateCanvas,
   onCreateChecklist
 }: AttachmentPickerSheetProps) {
+  const strings = useStrings();
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
 
@@ -453,13 +455,13 @@ export default function AttachmentPickerSheet({
   if (!Capacitor.isNativePlatform() && initialTab !== "poll" && activeTab !== "poll" && activeTab !== "checklist") {
     return createPortal(
       <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" role="presentation" onClick={closeSheet}>
-        <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>Photo or video</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>Document</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>Music</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>Poll</span></button>
-          {onCreateChecklist && <button type="button" onClick={() => handleWebMenuPick("checklist")}><CheckSquare size={19} /><span>Checklist</span></button>}
-          {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>Canvas</span></button>}
+        <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label={strings.attachments.attachToMessage} onClick={(event) => event.stopPropagation()}>
+          <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>{strings.attachments.photoOrVideo}</span></button>
+          <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>{strings.attachments.document}</span></button>
+          <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>{strings.attachments.music}</span></button>
+          <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>{strings.attachments.poll}</span></button>
+          {onCreateChecklist && <button type="button" onClick={() => handleWebMenuPick("checklist")}><CheckSquare size={19} /><span>{strings.attachments.checklist}</span></button>}
+          {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>{strings.attachments.canvas}</span></button>}
         </div>
       </div>,
       document.body
@@ -522,7 +524,7 @@ export default function AttachmentPickerSheet({
         className={`attachment-picker-sheet tg-style ${isFullScreen ? "is-fullscreen" : ""}${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label="Attach media and files"
+        aria-label={strings.attachments.attachMediaFiles}
         onClick={(event) => event.stopPropagation()}
         style={{
           transform: dragTranslateY !== 0 ? `translateY(${dragTranslateY}px)` : undefined,
@@ -540,15 +542,15 @@ export default function AttachmentPickerSheet({
           <div className="attachment-picker-header">
             <div className="attachment-picker-header-title">
               {selectedCount > 0 ? (
-                <span className="attachment-picker-selected-count">{selectedCount} selected</span>
+                <span className="attachment-picker-selected-count">{strings.attachments.selectedCount(selectedCount)}</span>
               ) : (
-                <span>Attach</span>
+                <span>{strings.attachments.attach}</span>
               )}
             </div>
             <button
               type="button"
               className="attachment-picker-close-btn"
-              aria-label="Close attachment menu"
+              aria-label={strings.attachments.closeMenu}
               onClick={closeSheet}
             >
               <span aria-hidden="true">×</span>
@@ -631,8 +633,8 @@ export default function AttachmentPickerSheet({
               <button
                 type="button"
                 className="file-picker"
-                aria-label="Attach files"
-                title="Attach files"
+                aria-label={strings.attachments.attachFiles}
+                title={strings.attachments.attachFiles}
                 disabled={isSending || isSendingMessage}
                 onClick={() => {
                   if (activeTab !== "file") {
@@ -650,16 +652,16 @@ export default function AttachmentPickerSheet({
                 <button
                   type="button"
                   className="emoji-picker-button"
-                  aria-label="Add emoji"
+                  aria-label={strings.attachments.addEmoji}
                   aria-expanded={isEmojiOpen}
-                  title="Add emoji"
+                  title={strings.attachments.addEmoji}
                   disabled={isSending || isSendingMessage}
                   onClick={() => setIsEmojiOpen((prev) => !prev)}
                 >
                   <Smile aria-hidden="true" size={22} />
                 </button>
                 {isEmojiOpen && (
-                  <div className="emoji-picker attachment-picker-emoji-popover" role="menu" aria-label="Choose emoji">
+                  <div className="emoji-picker attachment-picker-emoji-popover" role="menu" aria-label={strings.attachments.chooseEmoji}>
                     <CspSafeEmojiPicker
                       onEmojiClick={handleEmojiPick}
                       autoFocusSearch={false}
@@ -680,8 +682,8 @@ export default function AttachmentPickerSheet({
                 <div className="message-composer-input-wrap">
                   <textarea
                     ref={textareaRef}
-                    aria-label="Message with attachments"
-                    placeholder="Message"
+                    aria-label={strings.attachments.messageWithAttachments}
+                    placeholder={strings.attachments.message}
                     value={messageText}
                     maxLength={4000}
                     rows={1}
@@ -703,7 +705,7 @@ export default function AttachmentPickerSheet({
                 <button
                   type="button"
                   className="attachment-picker-message-send"
-                  aria-label="Send message"
+                  aria-label={strings.attachments.sendMessage}
                   aria-busy={isSending || isSendingMessage}
                   disabled={isSending || isSendingMessage || (!messageText.trim() && selectedCount === 0)}
                   onMouseDown={(event) => {
@@ -714,14 +716,14 @@ export default function AttachmentPickerSheet({
                   <span className="ms-icon ms-icon--20" aria-hidden={true}>
                     send
                   </span>
-                  {(isSending || isSendingMessage) && <span className="visually-hidden">Sending</span>}
+                  {(isSending || isSendingMessage) && <span className="visually-hidden">{strings.attachments.sending}</span>}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <nav className="attachment-picker-bottom-nav" aria-label="Attachment options">
+        <nav className="attachment-picker-bottom-nav" aria-label={strings.attachments.attachmentOptions}>
           <button
             type="button"
             className={`attachment-nav-item ${activeTab === "gallery" ? "active" : ""}`}
@@ -730,7 +732,7 @@ export default function AttachmentPickerSheet({
             <span className="nav-item-icon">
               <ImageIcon size={20} />
             </span>
-            <span className="nav-item-label">Gallery</span>
+            <span className="nav-item-label">{strings.attachments.gallery}</span>
           </button>
           <button
             type="button"
@@ -740,7 +742,7 @@ export default function AttachmentPickerSheet({
             <span className="nav-item-icon">
               <FileText size={20} />
             </span>
-            <span className="nav-item-label">File</span>
+            <span className="nav-item-label">{strings.attachments.file}</span>
           </button>
           <button
             type="button"
@@ -750,7 +752,7 @@ export default function AttachmentPickerSheet({
             <span className="nav-item-icon">
               <AudioLines size={20} />
             </span>
-            <span className="nav-item-label">Audio</span>
+            <span className="nav-item-label">{strings.attachments.audio}</span>
           </button>
           <button
             type="button"
@@ -760,7 +762,7 @@ export default function AttachmentPickerSheet({
             <span className="nav-item-icon">
               <BarChart2 size={20} />
             </span>
-            <span className="nav-item-label">Poll</span>
+            <span className="nav-item-label">{strings.attachments.poll}</span>
           </button>
           {onCreateChecklist && (
             <button
@@ -771,7 +773,7 @@ export default function AttachmentPickerSheet({
               <span className="nav-item-icon">
                 <CheckSquare size={20} />
               </span>
-              <span className="nav-item-label">Checklist</span>
+              <span className="nav-item-label">{strings.attachments.checklist}</span>
             </button>
           )}
         </nav>

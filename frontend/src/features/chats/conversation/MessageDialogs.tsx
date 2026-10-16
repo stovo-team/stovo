@@ -30,12 +30,13 @@ export function ForwardChatList({
   searchable?: boolean;
 }) {
   const strings = useStrings();
+  const copy = strings.auditUi;
   const [query, setQuery] = useState("");
   const visibleChats = chats.filter((chat) => displayChatName(chat, currentUserId, strings).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const isMultiSelect = selectedChatIds !== undefined;
   return (
     <>
-      {searchable && <label className="forward-chat-search"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search chats" aria-label="Search chats" /></label>}
+      {searchable && <label className="forward-chat-search"><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.searchChats} aria-label={copy.searchChats} /></label>}
       <div className="forward-chat-list">
       {visibleChats.map((chat) => {
         const name = displayChatName(chat, currentUserId, strings);
@@ -54,7 +55,7 @@ export function ForwardChatList({
           </button>
         );
       })}
-      {visibleChats.length === 0 && <p className="forward-chat-empty">No chats found.</p>}
+      {visibleChats.length === 0 && <p className="forward-chat-empty">{copy.noChatsFound}</p>}
       </div>
     </>
   );
@@ -79,15 +80,16 @@ export function ForwardChatDialog({
   onForward: () => void;
   onClose: () => void;
 }) {
+  const copy = useStrings().auditUi;
   return (
     <div className="modal-backdrop" role="presentation">
       <section className="messenger-modal forward-dialog" role="dialog" aria-modal="true" aria-labelledby="forward-dialog-title">
         <header className="forward-dialog-header">
           <div className="forward-dialog-heading"><Forward aria-hidden="true" size={22} /><h2 id="forward-dialog-title">{title}</h2></div>
-          <button type="button" className="icon-button subtle" aria-label="Close forward dialog" title="Close" onClick={onClose}><X aria-hidden="true" size={18} /></button>
+          <button type="button" className="icon-button subtle" aria-label={copy.closeForwardDialog} title={copy.close} onClick={onClose}><X aria-hidden="true" size={18} /></button>
         </header>
         <ForwardChatList accessToken={accessToken} currentUserId={currentUserId} chats={chats} searchable selectedChatIds={selectedChatIds} onToggle={onToggle} onSelect={() => undefined} />
-        <button type="button" className="forward-dialog-confirm" disabled={!selectedChatIds.length} onClick={onForward}><Forward aria-hidden="true" size={18} /> Forward</button>
+        <button type="button" className="forward-dialog-confirm" disabled={!selectedChatIds.length} onClick={onForward}><Forward aria-hidden="true" size={18} />{copy.forward}</button>
       </section>
     </div>
   );
@@ -124,6 +126,7 @@ export function MessageDialogs({
   onConfirmDelete: () => void;
   onCloseDelete: () => void;
 }) {
+  const copy = useStrings().auditUi;
   const [forwardChatIds, setForwardChatIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -136,7 +139,7 @@ export function MessageDialogs({
 
   return (
     <>
-      {forwardTarget && <ForwardChatDialog title={forwardCount > 1 ? `Forward ${forwardCount} messages` : "Forward message"} accessToken={accessToken} currentUserId={currentUserId} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => { forwardChatIds.forEach(onForwardMessage); setForwardChatIds([]); }} onClose={() => { setForwardChatIds([]); onCloseForward(); }} />}
+      {forwardTarget && <ForwardChatDialog title={forwardCount > 1 ? copy.forwardMessages(forwardCount) : copy.forwardMessage} accessToken={accessToken} currentUserId={currentUserId} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => { forwardChatIds.forEach(onForwardMessage); setForwardChatIds([]); }} onClose={() => { setForwardChatIds([]); onCloseForward(); }} />}
 
       {deleteTarget && (
         <div className="modal-backdrop" role="presentation">
@@ -147,12 +150,12 @@ export function MessageDialogs({
             aria-labelledby="delete-message-title"
           >
             <div className="modal-header">
-              <h2 id="delete-message-title">Delete message?</h2>
+              <h2 id="delete-message-title">{copy.deleteMessageQuestion}</h2>
               <button
                 type="button"
                 className="icon-button subtle"
-                aria-label="Close delete dialog"
-                title="Close"
+                aria-label={copy.closeDeleteDialog}
+                title={copy.close}
                 onClick={onCloseDelete}
               >
                 <X aria-hidden="true" size={18} />
@@ -164,17 +167,13 @@ export function MessageDialogs({
                   type="checkbox"
                   checked={deleteForMe}
                   onChange={(e) => onDeleteForMeChange(e.target.checked)}
-                />
-                Delete for me
-              </label>
+                />{copy.deleteForMe}</label>
               <label>
                 <input
                   type="checkbox"
                   checked={deleteForEveryone}
                   onChange={(e) => onDeleteForEveryoneChange(e.target.checked)}
-                />
-                Delete for everyone
-              </label>
+                />{copy.deleteForEveryone}</label>
             </div>
             <div className="modal-actions">
               <button
@@ -182,12 +181,8 @@ export function MessageDialogs({
                 className="button-danger"
                 disabled={!deleteForMe && !deleteForEveryone}
                 onClick={onConfirmDelete}
-              >
-                Delete
-              </button>
-              <button type="button" className="button-secondary" onClick={onCloseDelete}>
-                Cancel
-              </button>
+              >{copy.delete}</button>
+              <button type="button" className="button-secondary" onClick={onCloseDelete}>{copy.cancel}</button>
             </div>
           </section>
         </div>

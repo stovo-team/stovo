@@ -6,6 +6,7 @@
  */
 import React from "react";
 import type { LiveCaptionItem } from "./useLiveCaptions";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type LiveCaptionsOverlayProps = {
   isCaptionsEnabled: boolean;
@@ -22,6 +23,7 @@ export function LiveCaptionsOverlay({
   speakerDisplayName = "You",
   className = "",
 }: LiveCaptionsOverlayProps) {
+  const copy = useStrings().sharedUi;
   if (!isCaptionsEnabled) return null;
   if (recentCaptions.length === 0 && !currentInterimCaption) return null;
 
@@ -30,7 +32,7 @@ export function LiveCaptionsOverlay({
       className={`live-captions-overlay ${className}`}
       role="region"
       aria-live="polite"
-      aria-label="Live captions"
+      aria-label={copy.liveCaptionsLabel}
     >
       <div className="live-captions-container">
         {recentCaptions.slice(-2).map((item) => (
