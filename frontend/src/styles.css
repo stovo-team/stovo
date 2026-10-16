@@ -7945,11 +7945,16 @@ span.message-spoiler.is-revealed {
   border-radius: var(--radius-panel);
   bottom: calc(100% + 10px);
   box-shadow: var(--shadow-soft);
-  left: 50%;
+  left: 0;
   overflow: hidden;
   position: absolute;
-  transform: translateX(-50%);
+  transform: none;
   z-index: 20;
+}
+
+.emoji-picker .epr-category-content {
+  margin-left: 4px;
+  margin-right: 0;
 }
 
 .emoji-picker-dock {
@@ -18141,7 +18146,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-avatar-wrap .avatar,
 .chat-info-avatar-wrap .avatar-xl {
-  font-size: var(--font-size-display-small);
+  font-size: var(--font-size-body-large);
   font-weight: var(--font-weight-bold);
   height: 80px;
   letter-spacing: 0.02em;
@@ -18304,7 +18309,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   background: var(--island-surface);
   border: none;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
@@ -19492,7 +19497,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen .chat-info-action {
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-card);
     gap: 6px;
     min-height: 44px;
     padding: 6px 4px;
