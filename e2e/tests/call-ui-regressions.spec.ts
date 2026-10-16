@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const fixture = "/test-fixtures/call-ui.html";
 test("group audio controls are visible without pointer activity", async ({ page }) => {
-  await page.goto(fixture);
+  await page.goto(`${fixture}?controls-visible`);
   const end = page.getByRole("button", { name: "End call", exact: true });
   await expect(end).toBeVisible();
   await expect(end).toHaveCSS("background-color", "rgb(220, 38, 38)");
