@@ -6,6 +6,7 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 
 - Work on a dedicated task branch and worktree. Keep the primary checkout clean and preserve unrelated changes. See [task isolation and delivery](docs/agent-workflows/isolation-and-delivery.md).
 - Every bug or defect issue fix must include a regression test that reproduces the reported problem. Add and run that test before changing behavior; do not mark the issue complete without it. Follow [bug-fix workflow](docs/agent-workflows/bug-fixes.md).
+- If an agent discovers a defect in `okf-agent` itself while using or evaluating it, report it in the [`left-try/okf-agent`](https://github.com/left-try/okf-agent) repository using `gh` outside the sandbox. Follow the reporting steps in the [bug-fix workflow](docs/agent-workflows/bug-fixes.md); do not file `okf-agent` defects in this repository.
 - Never weaken or delete a test to make a change pass.
 - Keep changes focused and preserve unrelated work.
 - Do not push, publish, merge, or open a pull request without authorization.
