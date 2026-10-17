@@ -266,7 +266,7 @@ export default function FilesPage() {
     storageSelectionReducer,
     initialStorageSelection
   );
-  const { selectedFileId, mobileDetailsOpen } = selection;
+  const { selectedFileId } = selection;
   const [fullViewImage, setFullViewImage] = useState<{
     file: FamilyFile;
     previewUrl: string;
@@ -417,7 +417,7 @@ export default function FilesPage() {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (!mobileDetailsOpen) {
+    if (!selectedFileId) {
       return;
     }
 
@@ -433,7 +433,7 @@ export default function FilesPage() {
       window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", handleDetailsKeyDown);
     };
-  }, [closeMobileDetails, mobileDetailsOpen]);
+  }, [closeMobileDetails, selectedFileId]);
 
   useEffect(() => {
     if (!isSourceMenuOpen) {
@@ -558,7 +558,7 @@ export default function FilesPage() {
   }
 
   return (
-    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
+    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${selectedFile && !collectionPicker ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
       <AppNav />
       <section className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`} aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
@@ -743,7 +743,7 @@ export default function FilesPage() {
 
         {collectionPicker && <div className="storage-selection-bar" role="region" aria-label={strings.files.folderFileSelection}><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : strings.files.selectFilesToAdd}</span><div><button type="button" onClick={() => { const picker = collectionPicker; setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }}>{strings.files.cancelSelection}</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { const picker = collectionPicker; const pickedIds = collectionPickedIds; void picker.onConfirm(pickedIds).then(() => { setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }); }}>{strings.files.addSelected}</button></div></div>}
 
-        {mobileDetailsOpen && (
+        {selectedFile && !collectionPicker && (
           <button
             type="button"
             className="storage-details-backdrop"
@@ -754,9 +754,9 @@ export default function FilesPage() {
         <aside
           className="storage-details-panel"
           aria-label={strings.files.details}
-          aria-labelledby={mobileDetailsOpen ? "storage-file-details-title" : undefined}
-          aria-modal={mobileDetailsOpen ? false : undefined}
-          role={mobileDetailsOpen ? "dialog" : undefined}
+          aria-labelledby={selectedFile ? "storage-file-details-title" : undefined}
+          aria-modal={selectedFile ? true : undefined}
+          role={selectedFile ? "dialog" : undefined}
         >
           {selectedFile ? (
             <>

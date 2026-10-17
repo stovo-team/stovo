@@ -537,7 +537,7 @@ describe("VideoPlayer", () => {
     roots.splice(roots.indexOf(root), 1);
   });
 
-  it("sizes portrait videos to fill their bubble without a landscape height cap", async () => {
+  it("lets landscape videos use a larger viewport-based height while portrait videos fill their bubble", async () => {
     expect(orientationStyle(720, 1280)).toMatchObject({
       aspectRatio: "720 / 1280",
       width: "100%",
@@ -548,7 +548,7 @@ describe("VideoPlayer", () => {
     expect(orientationStyle(1920, 1080)).toMatchObject({
       aspectRatio: "1920 / 1080",
       width: "100%",
-      maxHeight: "min(56vh, 420px)",
+      maxHeight: "min(68dvh, 700px)",
     });
 
     const { container } = renderPlayer();
