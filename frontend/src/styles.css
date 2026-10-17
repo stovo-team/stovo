@@ -1963,14 +1963,6 @@ button:disabled {
   opacity: 0.58;
 }
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select {
   background: var(--surface-card);
@@ -15471,9 +15463,9 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
 }
 
 .meeting-intel-toggle-btn {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
   padding: 0;
   border-radius: var(--radius-circle);
   font-size: var(--font-size-caption);
@@ -15485,7 +15477,7 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 28px;
+  flex: 0 0 24px;
   transition: all 0.15s ease;
 }
 
@@ -15974,37 +15966,6 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
 
 .attachment-picker-selected-count {
   color: var(--accent-primary, var(--color-palette-4542dca0dfae));
-}
-
-.attachment-picker-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  flex: 0 0 36px;
-  width: 28px;
-  min-width: 36px;
-  height: 28px;
-  min-height: 36px;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: var(--surface-hover, var(--color-palette-c34f5a2a4d80));
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: var(--font-size-heading);
-  font-weight: var(--font-weight-regular);
-  line-height: 1;
-  padding: 0;
-  position: relative;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.attachment-picker-close-btn span { display: block; transform: translateY(-1px); }
-
-.attachment-picker-close-btn:hover {
-  background: var(--surface-active, var(--color-palette-1a2fd22ec28c));
-  color: var(--text-primary);
 }
 
 .attachment-picker-body {
@@ -17262,6 +17223,7 @@ button.attachment-nav-item:focus-visible {
 
 .popup-dialog.new-chat-screen {
   max-width: 460px;
+  padding: 12px;
   width: min(100%, 460px);
 }
 
@@ -17295,12 +17257,10 @@ button.attachment-nav-item:focus-visible {
 }
 
 .new-chat-screen-header h2 {
-  grid-column: 2;
-  grid-row: 1;
   font-size: var(--font-size-body-large);
   font-weight: var(--font-weight-bold);
   margin: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .new-chat-screen-back {
@@ -17341,7 +17301,7 @@ button.attachment-nav-item:focus-visible {
 }
 
 .new-chat-screen-spacer {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   min-width: 40px;
 }
@@ -30445,20 +30405,21 @@ button.checklist-add-item-btn:hover,
 .guest-meeting-media video, .guest-meeting-remotes video { width: 100%; max-height: 58vh; object-fit: cover; border-radius: var(--radius-surface); background: var(--color-palette-930c6a0c90da); }
 .guest-meeting-remotes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .guest-meeting-planner-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, var(--surface-base) 75%, transparent); backdrop-filter: blur(4px); }
+.popup-dialog.guest-meeting-planner { padding: 0; }
 .guest-meeting-planner { width: min(580px, 100%); overflow: visible; border: 1px solid var(--border-default); border-radius: var(--radius-panel); color: var(--text-primary); background: color-mix(in srgb, var(--surface-raised) 88%, var(--background-tertiary)); box-shadow: var(--float-shadow-strong); }
-.guest-meeting-planner-header { border-bottom: 0 !important; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.5rem 1.5rem .75rem; }
+.guest-meeting-planner-header { border-bottom: 0 !important; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.25rem .75rem; }
 .guest-meeting-planner h2 { margin: 0; color: var(--text-primary); font-size: var(--font-size-body-large); font-weight: var(--font-weight-bold); letter-spacing: -.02em; }
 .guest-meeting-planner-header .icon-button { align-items: center; background: var(--background-tertiary) !important; border: 0 !important; border-radius: var(--radius-circle); color: var(--text-secondary); display: inline-flex; flex: 0 0 40px; height: 40px; justify-content: center; padding: 0; width: 40px; }
 .guest-meeting-planner-header .icon-button:hover { background: var(--border-default) !important; color: var(--text-primary); }
-.guest-meeting-planner-body { display: grid; gap: 1.25rem; padding: .75rem 1.5rem 1.5rem; }
+.guest-meeting-planner-body { display: grid; gap: 1.25rem; padding: .75rem 1.25rem 1.25rem; }
 .guest-link-control { display: grid; gap: 1.15rem; }
 .guest-link-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
 .guest-link-field { display: grid; gap: .5rem; color: var(--text-primary); font-size: var(--font-size-small); font-weight: var(--font-weight-bold); }
-.guest-link-field > span { display: inline-flex; align-items: center; gap: .38rem; }
-.guest-link-field input { width: 100%; min-height: 48px; padding: 0 1.1rem; border: 1px solid var(--border-default); border-radius: var(--radius-panel); color: var(--text-primary); background: var(--surface-card); font: inherit; font-weight: var(--font-weight-semibold); }
+.guest-link-field > span { display: inline-flex; align-items: center; gap: .38rem; padding-inline-start: 8px; }
+.guest-link-field input { box-sizing: border-box; width: 100%; height: 46px; min-height: 46px; padding: 0 1.1rem; border: 1px solid var(--border-default); border-radius: var(--radius-panel); color: var(--text-primary); background: var(--surface-card); font: inherit; font-weight: var(--font-weight-semibold); }
 .guest-link-field input:focus { border-color: var(--accent-primary); box-shadow: none; outline: 0; }
 .guest-link-select { display: block; position: relative; }
-.guest-link-select-trigger { align-items: center; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-panel); color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: var(--font-weight-semibold); justify-content: space-between; min-height: 48px; padding: 0 1.05rem 0 1.1rem; text-align: left; width: 100%; }
+.guest-link-select-trigger { box-sizing: border-box; height: 46px; min-height: 46px; align-items: center; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-panel); color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: var(--font-weight-semibold); justify-content: space-between; padding: 0 1.05rem 0 1.1rem; text-align: left; width: 100%; }
 .guest-link-select-trigger:focus-visible { border-color: var(--accent-primary); box-shadow: none; outline: 0; }
 .guest-link-select-trigger svg { color: var(--text-secondary); flex: 0 0 auto; transition: transform .16s ease; }
 .guest-link-select:has([aria-expanded="true"]) .guest-link-select-trigger { background: color-mix(in oklab, var(--accent-soft) 28%, var(--surface-card)); border-color: var(--accent-primary); }.guest-link-select:has([aria-expanded="true"]) .guest-link-select-trigger svg { transform: rotate(180deg); }
@@ -31045,7 +31006,7 @@ button.checklist-add-item-btn:hover,
 }
 .meeting-intel-inline-toggle .meeting-intel-name { flex: 1; }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
-  box-sizing: border-box; width: 28px; min-width: 28px; height: 28px; min-height: 28px; flex: 0 0 28px;
+  box-sizing: border-box; width: 24px; min-width: 24px; height: 24px; min-height: 24px; flex: 0 0 24px;
   padding: 0; border-radius: var(--radius-circle); font: inherit;
 }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
@@ -32150,6 +32111,86 @@ button.minimized-call-button--end:active:not(:disabled) {
   color: var(--text-primary, var(--color-palette-f2074b6cef37)) !important;
 }
 
+/* Keep Storage and Plans source lists collapsible on desktop. */
+.storage-source-collapse,
+.plans-sidebar-collapse {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-circle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 36px;
+  height: 36px;
+  justify-items: center;
+  padding: 0;
+  width: 36px;
+}
+.storage-source-collapse { align-self: flex-end; margin: 0 2px 12px; }
+.plans-sidebar { position: relative; }
+.plans-sidebar-collapse { align-self: flex-end; margin: 0 4px 8px 0; }
+.storage-source-collapse:focus-visible,
+.plans-sidebar-collapse:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.storage-page .storage-layout.storage-layout--source-collapsed,
+.storage-page:has(.storage-tile.selected) .storage-layout.storage-layout--source-collapsed {
+  grid-template-columns: 52px minmax(0, 1fr) minmax(0, 340px);
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar > :not(.storage-source-collapse) {
+  display: none;
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar {
+  align-items: center;
+  overflow: visible;
+}
+.storage-page .storage-layout.storage-layout--source-collapsed .storage-source-collapse { align-self: center; margin: 4px 0; }
+.plans-layout { grid-template-columns: 300px minmax(0, 1fr); }
+.plans-layout--sidebar-collapsed { grid-template-columns: 44px minmax(0, 1fr); }
+.plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
+.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; }
+.plans-layout--sidebar-collapsed .plans-sidebar-collapse { align-self: flex-start; margin: 4px 0; }
+.plans-layout .plans-header { min-height: 48px; }
+.plans-header .plans-header-tabs { display: none; }
+.plans-layout--sidebar-collapsed .plans-header { flex-wrap: wrap; }
+.plans-layout--sidebar-collapsed .plans-header .plans-header-tabs {
+  display: flex;
+  flex: 0 0 100%;
+  gap: 8px;
+  margin: 0 0 8px;
+  overflow-x: auto;
+}
+.plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
+.plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
+.shared-call-controls .call-ctrl-btn:focus-visible,
+.shared-call-controls .voice-dock-btn:focus-visible,
+.shared-call-controls .mobile-active-ctrl-btn:focus-visible,
+.shared-call-controls .guest-device-control > button:focus-visible,
+.shared-call-controls .guest-device-menu-trigger:focus-visible {
+  box-shadow: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.shared-call-controls .call-ctrl-btn:focus:not(:focus-visible),
+.shared-call-controls .voice-dock-btn:focus:not(:focus-visible),
+.shared-call-controls .mobile-active-ctrl-btn:focus:not(:focus-visible),
+.shared-call-controls .guest-device-control > button:focus:not(:focus-visible),
+.shared-call-controls .guest-device-menu-trigger:focus:not(:focus-visible),
+.shared-call-controls .call-ctrl-btn:active,
+.shared-call-controls .voice-dock-btn:active,
+.shared-call-controls .mobile-active-ctrl-btn:active,
+.shared-call-controls .guest-device-control > button:active,
+.shared-call-controls .guest-device-menu-trigger:active {
+  box-shadow: none;
+  outline: none;
+}
+
+@media (max-width: 960px) {
+  .storage-page .storage-layout.storage-layout--source-collapsed { display: block; }
+  .storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar { display: block; height: 36px; padding: 0; }
+  .plans-layout { grid-template-columns: minmax(0, 1fr); }
+  .plans-layout--sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+}
+
 .popup-backdrop.wrapped-overlay { background: var(--popup-backdrop-color); backdrop-filter: none; display: grid; place-items: center; z-index: 1000; }
 .popup-dialog.wrapped-modal { background: var(--surface-card); border-color: var(--border-default); border-radius: var(--radius-panel); box-shadow: var(--popup-dialog-shadow); color: var(--text-primary); max-width: 540px; overflow: hidden; padding: 0; width: min(100%, 540px); }
 .wrapped-header { border: 0; font-size: var(--font-size-small); padding: 24px 64px 0 24px; }
@@ -32180,6 +32221,16 @@ button.minimized-call-button--end:active:not(:disabled) {
 .multi-admin-dialog { max-width: 520px; width: min(100%, 520px); }
 .multi-admin-dialog h2 { padding-right: 44px; }
 
+/* Popup actions and controls intentionally share a ring-free focus treatment. */
+.popup-dialog h2 {
+  text-align: left;
+}
+
+:focus,
+:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
 /* Storage file details are a viewport-sized preview dialog; the grid keeps its full width underneath. */
 .storage-page .storage-layout,
 .storage-page:has(.storage-tile.selected) .storage-layout {

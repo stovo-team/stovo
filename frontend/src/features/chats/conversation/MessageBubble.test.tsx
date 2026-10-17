@@ -134,6 +134,8 @@ describe("MessageBubble receipt status", () => {
 
     expect(container.querySelector(".guest-meeting-invitation")?.textContent).toContain("Some meetup");
     expect(container.querySelector(".guest-meeting-invitation-label")).toBeNull();
+    expect(container.querySelector(".guest-meeting-invitation-join")?.textContent?.trim()).toBe("Join");
+    expect(container.querySelector(".guest-meeting-invitation-plan")?.textContent?.trim()).toBe("In Plans");
   });
 
   it("renders a clock icon when message is in sending state", () => {

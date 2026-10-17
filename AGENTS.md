@@ -51,3 +51,4 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 ## Active pull requests
 
 - Chat transfer controls follow-up: https://github.com/stovo-team/stovo/pull/174
+- Call and sidebar UI fixes: https://github.com/stovo-team/stovo/pull/177

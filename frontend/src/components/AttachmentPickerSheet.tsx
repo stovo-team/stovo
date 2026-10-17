@@ -544,7 +544,9 @@ export default function AttachmentPickerSheet({
                 <span>{strings.attachments.attach}</span>
               )}
             </div>
-            <PopupCloseButton className="attachment-picker-close-btn" ariaLabel={strings.attachments.closeMenu} onClick={closeSheet} />
+            {activeTab !== "poll" && activeTab !== "checklist" && (
+              <PopupCloseButton ariaLabel={strings.attachments.closeMenu} onClick={closeSheet} />
+            )}
           </div>
         </div>
 

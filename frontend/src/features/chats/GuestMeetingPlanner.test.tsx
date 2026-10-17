@@ -9,11 +9,21 @@ import { ChatOverlays } from "./ChatOverlays";
 describe("guest meeting planner chat targets", () => {
   it("defines a dedicated popup surface and rounded input styling", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    const popupRule = styles.match(/\.guest-meeting-planner\s*\{([^}]*)\}/)?.[1] ?? "";
+    const popupRule = styles.match(/(?<![\w.-])\.guest-meeting-planner\s*\{([^}]*)\}/)?.[1] ?? "";
     const fieldRule = styles.match(/\.guest-link-field input\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(popupRule).toMatch(/background\s*:/);
     expect(popupRule).toContain("--surface-raised");
     expect(fieldRule).toMatch(/border-radius\s*:\s*var\(--radius-(?:bubble|panel|pill)\)/);
+  });
+
+  it("keeps the meeting chat dropdown and text inputs at the same control height", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const inputRule = styles.match(/\.guest-link-field input\s*\{([^}]*)\}/)?.[1] ?? "";
+    const selectRule = styles.match(/\.guest-link-select-trigger\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(inputRule).toMatch(/height:\s*46px/);
+    expect(inputRule).toMatch(/box-sizing:\s*border-box/);
+    expect(selectRule).toMatch(/height:\s*46px/);
+    expect(selectRule).toMatch(/box-sizing:\s*border-box/);
   });
 
   let container: HTMLDivElement;

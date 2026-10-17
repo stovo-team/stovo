@@ -50,6 +50,15 @@ describe("PopupDialog", () => {
     expect(ref.current).toBe(container.querySelector("button.popup-close"));
   });
 
+  it("closes the dialog when the shared close button is activated", () => {
+    const onClose = vi.fn();
+    act(() => root.render(<PopupDialog ariaLabel="Dialog" onClose={onClose}>Content</PopupDialog>));
+
+    act(() => container.querySelector<HTMLButtonElement>(".popup-close")?.click());
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onClose when the backdrop is clicked if enabled", () => {
     const onClose = vi.fn();
     act(() => root.render(<PopupDialog ariaLabel="Dialog" onClose={onClose} closeOnBackdrop>Content</PopupDialog>));
@@ -80,11 +89,15 @@ describe("PopupDialog", () => {
 });
 
 describe("shared popup shell styles", () => {
-  it("uses the shared 56% black backdrop without blur and a 34px close control", () => {
+  it("uses the shared 56% black backdrop without blur and a true 34px circular close control", () => {
     const styles = readFileSync("src/components/ui/Popup.css", "utf8");
     expect(styles).toMatch(/background:\s*rgba\(0,\s*0,\s*0,\s*0\.56\)/);
     expect(styles).toMatch(/\.popup-backdrop[\s\S]*?\{[^}]*backdrop-filter:\s*none/);
-    expect(styles).toMatch(/\.popup-close[\s\S]*?\{[^}]*width:\s*34px/);
-    expect(styles).toMatch(/\.popup-close[\s\S]*?\{[^}]*height:\s*34px/);
+    const closeRule = styles.match(/\.popup-close\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(closeRule).toMatch(/width:\s*34px/);
+    expect(closeRule).toMatch(/height:\s*34px/);
+    expect(closeRule).toMatch(/min-width:\s*34px/);
+    expect(closeRule).toMatch(/min-height:\s*34px/);
+    expect(closeRule).toMatch(/flex:\s*0\s+0\s+34px/);
   });
 });

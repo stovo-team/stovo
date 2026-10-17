@@ -33,6 +33,21 @@ describe("shared popup control dimensions", () => {
     expect(input).toMatch(/var\(--surface-card\)/);
   });
 
+  it("gives popup labels a small inset and keeps select triggers the same height as inputs", () => {
+    const label = ruleFor(".popup-field__label");
+    const input = ruleFor(".popup-field__input");
+    const select = ruleFor(".popup-select__trigger");
+    expect(label).toMatch(/padding-inline-start:\s*8px/);
+    expect(select).toMatch(/height:\s*46px/);
+    expect(input).toMatch(/height:\s*46px/);
+  });
+
+  it("left-aligns popup headings and does not add button focus rings", () => {
+    const dialogHeading = ruleFor(".popup-dialog h2");
+    expect(dialogHeading).toMatch(/text-align:\s*left/);
+    expect(appStyles).toMatch(/:focus\s*,\s*:focus-visible\s*\{\s*outline:\s*none\s*!important;\s*box-shadow:\s*none\s*!important;/);
+  });
+
   it("uses accent and danger theme tokens for the respective controls", () => {
     expect(ruleFor(".popup-button--primary")).toMatch(/var\(--accent-primary\)/);
     expect(ruleFor(".popup-button--danger")).toMatch(/var\(--danger\)/);
