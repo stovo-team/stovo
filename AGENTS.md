@@ -14,6 +14,14 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 - For new popup work and popup migrations, reuse the shared popup primitives and follow [Popup UI standards](docs/ui/popup-standards.md). Do not add popup-local overlay, surface, close, button, field, dropdown, radius, or blur styles that conflict with that standard.
 - Apply the approved typography work through `frontend/src/design-system/tokens.css`: use `--font-family-ui` (or `--font-family-mono` for code), shared font-size, weight, and line-height tokens. Popup primitives must inherit/use these tokens; reuse `PopupDialog`, `PopupBackdrop`, `PopupCloseButton`, `PopupButton`, `PopupField`, and `PopupSelect` instead of creating parallel popup components.
 
+## Implementation approach
+
+Adapted from [Ponytail](https://github.com/DietrichGebert/ponytail):
+
+- Before editing, trace the affected flow and callers; check existing helpers, platform capabilities, dependencies, tests, and configuration.
+- Choose the smallest complete solution. Reuse established code and installed dependencies; add abstractions, options, or dependencies only when the task requires them. Include every affected caller, test, fixture, configuration, and document.
+- Keep validation, error handling, security, accessibility, and data-loss protections intact. Follow the repository's stricter bug-fix, testing, and verification workflows above.
+
 ## Workflows
 
 Read the applicable guide before editing:
