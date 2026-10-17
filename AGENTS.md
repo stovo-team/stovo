@@ -24,6 +24,7 @@ Read the applicable guide before editing:
 | Bug, defect, incident, or regression fix | [Bug fixes](docs/agent-workflows/bug-fixes.md) |
 | Test selection and verification expectations | [Testing](docs/agent-workflows/testing.md) |
 | Branches, worktrees, pull requests, and cleanup | [Task isolation and delivery](docs/agent-workflows/isolation-and-delivery.md) |
+| Review findings, comment evidence, and follow-up issues | [PR review findings](docs/agent-workflows/pr-review-findings.md) |
 
 ## Verification
 
