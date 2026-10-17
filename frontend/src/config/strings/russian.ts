@@ -1200,7 +1200,7 @@ export const strings = {
     delete: "Удалить",
     favorite: "В избранное",
     removeFavorite: "Удалить из избранного",
-    openInChat: "Открыть в чате",
+    openInChat: "Открыть в чате", metadata: "Метаданные", moreActions: "Другие действия", closeMetadata: "Закрыть метаданные", storageSettings: "Настройки файлов", fileGroups: "Группы файлов", folderGroups: "Группы папок", premium: "Премиум", groupFilesByChat: "Группировать файлы по чатам", groupFoldersByChat: "Группировать папки по чатам", sharedFolderGroup: "Общие папки",
     familyStorage: "Общее хранилище",
     chatMembers: "Участники чата",
     pickerDescription: "Выберите файлы из хранилища. Файлы, уже добавленные в эту папку, заблокированы.",

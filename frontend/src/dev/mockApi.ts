@@ -12,6 +12,7 @@ import {
   getMockFileUpload,
   listMockFiles,
   reserveMockFileUpload,
+  seedMockPreviewFiles,
   transferMockFileUpload,
   updateMockFilePreferences,
 } from "./mockFileStore";
@@ -103,16 +104,15 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
     return jsonResponse(mockData.users);
   }
   if (method === "GET" && path === "/api/plans") return jsonResponse([]);
+  if (method === "GET" && path === "/api/family/roles") return jsonResponse([]);
   if (method === "GET" && path === "/api/v1/config/manifest") {
     return jsonResponse(createMockManifest());
   }
   if (method === "GET" && path === "/api/chats") {
     return jsonResponse(mockData.chats);
   }
-
-  if (method === "GET" && path === "/api/files") {
-    return jsonResponse(await listMockFiles());
-  }
+  if (method === "GET" && path === "/api/collections") return jsonResponse([]);
+  if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
 
   if (method === "POST" && path === "/api/files/uploads") {
     const body = await requestBody(input, init);

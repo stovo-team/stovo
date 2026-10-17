@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "../api/client";
 import type { AuthResponse } from "../api/auth";
+import type { FamilyFile } from "../api/files";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import { sendMessage } from "../api/chats";
@@ -38,6 +39,27 @@ describe("local mock chat API", () => {
     const { response, body } = await request<unknown[]>("/api/plans?start=2026-10-17T00%3A00%3A00.000Z&end=2026-10-18T00%3A00%3A00.000Z");
     expect(response.status).toBe(200);
     expect(body).toEqual([]);
+  });
+
+  it("provides ephemeral preview files without an upload", async () => {
+    const { response, body } = await request<FamilyFile[]>("/api/files");
+
+    expect(response.status).toBe(200);
+    expect(body.map((file) => file.originalName)).toEqual([
+      "Storage preview photo.svg",
+      "Storage preview video.webm",
+      "Storage preview report.pdf",
+      "Storage preview notes.md",
+    ]);
+
+    const markdownResponse = await fetch(`${MOCK_ORIGIN}/api/files/${body[3].id}/download`);
+    await expect(markdownResponse.text()).resolves.toContain("# Storage preview notes");
+    const pdfResponse = await fetch(`${MOCK_ORIGIN}/api/files/${body[2].id}/download`);
+    const pdf = await pdfResponse.text();
+    expect(pdf).toContain("xref\n0 6");
+    expect(pdf).toContain("Storage preview demo");
+    await expect(request<unknown[]>("/api/collections").then((result) => result.body)).resolves.toEqual([]);
+    await expect(request<unknown[]>("/api/family/roles").then((result) => result.body)).resolves.toEqual([]);
   });
 
   it("returns a refresh session for the synthetic Stovo Demo user", async () => {
@@ -88,7 +110,12 @@ describe("local mock chat API", () => {
     expect(favorited.isFavorite).toBe(true);
     await deleteFile("local-mock-access-token", uploaded.id);
     await expect(getFile("local-mock-access-token", uploaded.id)).rejects.toMatchObject({ status: 404 });
-    await expect(getFiles("local-mock-access-token")).resolves.toEqual([]);
+    await expect(getFiles("local-mock-access-token")).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "mock-storage-preview-photo" }),
+      expect.objectContaining({ id: "mock-storage-preview-video" }),
+      expect.objectContaining({ id: "mock-storage-preview-report" }),
+      expect.objectContaining({ id: "mock-storage-preview-notes" }),
+    ]));
   });
 
   it("uses the tab-selected fixture user for refresh and sent messages", async () => {

@@ -89,7 +89,7 @@ function CollectionFileCard({ file, token, editable, onRemove }: { file: FamilyF
   return <article className={`storage-tile collection-file-tile ${storageFileKind(file)}`} data-file-type={extensionLabel(file)}>{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span>{editable && <button type="button" onClick={onRemove}><X size={14} /></button>}</article>;
 }
 
-export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void }) {
+export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage, groupByChat = false, groupFallbackLabel }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void; groupByChat?: boolean; groupFallbackLabel?: string }) {
   const copy = useStrings().files.collections;
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,6 +119,15 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
   const erase = async () => { if (!accessToken || !selected) return; await deleteCollection(accessToken, selected.id); setCollections((all) => all.filter((item) => item.id !== selected.id)); setSelected(null); };
   if (!accessToken) return null;
   const visible = collections.filter((item) => matches(item, filter)); const label = filter === "audio" ? copy.musicAlbums : filter === "documents" ? copy.folders : filter === "photos" || filter === "videos" ? copy.albums : copy.foldersAlbums; const available = files.filter((file) => !items.some((item) => item.id === file.id));
+  const groupedCollections = groupByChat ? visible.reduce<Array<{ label: string; collections: StorageCollection[] }>>((groups, collection) => {
+    const source = files.find((file) => file.id === collection.coverFileId);
+    const label = source?.chatTitle || groupFallbackLabel || copy.folders;
+    const existing = groups.find((group) => group.label === label);
+    if (existing) existing.collections.push(collection);
+    else groups.push({ label, collections: [collection] });
+    return groups;
+  }, []) : [];
+  const renderCollection = (collection: StorageCollection) => <article className="storage-collection-card" key={collection.id}><button className="storage-collection-open" onClick={() => void open(collection)}><Cover collection={collection} token={accessToken} file={files.find((file) => file.id === collection.coverFileId) ?? null} /><span><strong>{collection.title}</strong><small>{copy.items(collection.itemCount, typeLabel(collection, copy))}</small></span>{collection.accessLevel === "viewer" && <LockKeyhole size={15} />}</button><button className="storage-collection-forward" onClick={() => { setForwardChatIds([]); setForwarding(collection); }} title={copy.forwardToChats}><Forward size={20} /></button></article>;
   const current = selected as StorageCollection;
   const CustomCoverIcon = coverIconOptions.find((option) => option.value === coverIcon)?.Icon ?? Folder;
   if (Boolean(selected)) return <section className="storage-collection-full-page" aria-label={current.title}>
@@ -181,7 +190,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
       </PopupDialog>
     )}
   </section>;
-  return <section className="storage-collections"><div className="storage-collections-heading"><h2>{label}</h2><button className="storage-collection-new" onClick={() => setCreating(true)}><Plus size={16} /></button></div><div className="storage-collections-row">{visible.map((collection) => <article className="storage-collection-card" key={collection.id}><button className="storage-collection-open" onClick={() => void open(collection)}><Cover collection={collection} token={accessToken} file={files.find((file) => file.id === collection.coverFileId) ?? null} /><span><strong>{collection.title}</strong><small>{copy.items(collection.itemCount, typeLabel(collection, copy))}</small></span>{collection.accessLevel === "viewer" && <LockKeyhole size={15} />}</button><button className="storage-collection-forward" onClick={() => { setForwardChatIds([]); setForwarding(collection); }} title={copy.forwardToChats}><Forward size={20} /></button></article>)}</div>
+  return <section className="storage-collections"><div className="storage-collections-heading"><h2>{label}</h2><button className="storage-collection-new" onClick={() => setCreating(true)}><Plus size={16} /></button></div>{groupByChat ? <div className="storage-collection-groups">{groupedCollections.map((group) => <section className="storage-collection-group" data-chat-group={group.label} key={group.label}><h3 className="storage-group-heading">{group.label}</h3><div className="storage-collections-row">{group.collections.map(renderCollection)}</div></section>)}</div> : <div className="storage-collections-row">{visible.map(renderCollection)}</div>}
     {creating && (
       <PopupDialog
         className="storage-collection-dialog storage-collection-create"

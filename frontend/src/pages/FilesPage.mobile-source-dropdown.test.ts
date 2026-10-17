@@ -25,7 +25,7 @@ describe("Storage mobile source dropdown", () => {
   });
 
   it("keeps file-details close in the header, not over the preview image", () => {
-    expect(page).toContain("aria-label={strings.files.closeDetails}");
+    expect(page).toContain("closeLabel={strings.files.closeDetails}");
     expect(page).not.toContain('className="storage-preview-close"');
     expect(page).not.toContain('aria-label="Close file preview"');
     expect(styles).toMatch(

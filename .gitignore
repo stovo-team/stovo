@@ -86,3 +86,5 @@ clean_input.txt
 .codex/
 /Stovo/
 /scratch/
+/e2e/test-results/
+/e2e/playwright-report/

@@ -16,6 +16,7 @@ import {
   Image,
   Info,
   Maximize2,
+  Minimize2,
   Hash,
   LockKeyhole,
   MoreVertical,
@@ -23,6 +24,7 @@ import {
   Megaphone,
   RefreshCw,
   Search,
+  Settings2,
   Trash2,
   Upload,
   Users,
@@ -52,11 +54,13 @@ import {
 import ImageLightbox from "../components/ImageLightbox";
 import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { storagePreviewVideoStyle } from "../components/video-player/storagePreviewStyle";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import { StorageCollections, type StorageCollectionPickerRequest } from "../components/StorageCollections";
 import { StorageCanvases } from "../components/StorageCanvases";
 import { StorageChecklists } from "../components/StorageChecklists";
+import { PopupDialog } from "../components/ui/Popup";
 import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 import {
   loadCachedFileList,
@@ -198,12 +202,13 @@ function StorageTile({
   onOpenImage: (file: FamilyFile, previewUrl: string) => void;
   favoriteLabel: string;
 }) {
-  const previewUrl = useFilePreviewUrl(accessToken, file);
+  const isMockVideo = import.meta.env.MODE === "mock" && fileKind(file) === "videos";
+  const previewUrl = useFilePreviewUrl(accessToken, file, true, isMockVideo);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const Icon = fileIcon(file);
 
   useEffect(() => {
-    if (!accessToken || fileKind(file) !== "videos") {
+    if (!accessToken || fileKind(file) !== "videos" || import.meta.env.MODE === "mock") {
       setVideoPreviewUrl(null);
       return;
     }
@@ -280,11 +285,17 @@ export default function FilesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
   const [isSourceSidebarCollapsed, setIsSourceSidebarCollapsed] = useState(false);
+  const [isMetadataMenuOpen, setIsMetadataMenuOpen] = useState(false);
+  const [isMetadataInformationOpen, setIsMetadataInformationOpen] = useState(false);
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [previewImageSize, setPreviewImageSize] = useState({ fileId: "", width: 16, height: 9 });
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const groupFilesByChat = false;
+  const groupFoldersByChat = false;
   const [collectionPicker, setCollectionPicker] = useState<StorageCollectionPickerRequest | null>(null);
   const [collectionPickedIds, setCollectionPickedIds] = useState<string[]>([]);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const sourceMenuRef = useRef<HTMLDivElement | null>(null);
-  const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
   const storageFilters: Array<{ label: string; value: StorageFilter }> = [
     { label: strings.files.filters.all, value: "all" },
     { label: strings.files.filters.photos, value: "photos" },
@@ -295,6 +306,11 @@ export default function FilesPage() {
     { label: strings.files.filters.checklists ?? "Checklists", value: "checklists" },
     { label: strings.files.filters.favorites, value: "favorites" }
   ];
+
+  useEffect(() => {
+    window.localStorage.removeItem("stovo_storage_group_files");
+    window.localStorage.removeItem("stovo_storage_group_folders");
+  }, []);
   const storageSourceItems = useMemo(() => {
     const chatLinks = (id: string, originChatId: string, linkedChatIds: string[], mimeType: string) =>
       [...new Set([originChatId, ...linkedChatIds].filter(Boolean))].map((chatId) => ({
@@ -326,6 +342,9 @@ export default function FilesPage() {
   const closeMobileDetails = useCallback(() => {
     const fileIdToRestore = selectedFileId;
     setFullViewImage(null);
+    setIsMetadataMenuOpen(false);
+    setIsMetadataInformationOpen(false);
+    setIsPreviewExpanded(false);
     dispatchSelection({ type: "close" });
     window.requestAnimationFrame(() => {
       const selectedTile = Array.from(
@@ -417,23 +436,28 @@ export default function FilesPage() {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (!selectedFileId) {
-      return;
+    if (!isMetadataMenuOpen && !isSettingsMenuOpen) return undefined;
+    function handlePopoverOutside(event: MouseEvent | TouchEvent) {
+      if ((event.target as Element).closest(".storage-popover-anchor")) return;
+      setIsMetadataMenuOpen(false);
+      setIsSettingsMenuOpen(false);
     }
-
-    const focusFrame = window.requestAnimationFrame(() => storageDetailsCloseRef.current?.focus());
-    function handleDetailsKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeMobileDetails();
-      }
+    function handlePopoverEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      setIsMetadataMenuOpen(false);
+      setIsSettingsMenuOpen(false);
     }
-    document.addEventListener("keydown", handleDetailsKeyDown);
+    document.addEventListener("mousedown", handlePopoverOutside);
+    document.addEventListener("touchstart", handlePopoverOutside);
+    document.addEventListener("keydown", handlePopoverEscape);
     return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener("keydown", handleDetailsKeyDown);
+      document.removeEventListener("mousedown", handlePopoverOutside);
+      document.removeEventListener("touchstart", handlePopoverOutside);
+      document.removeEventListener("keydown", handlePopoverEscape);
     };
-  }, [closeMobileDetails, selectedFileId]);
+  }, [isMetadataMenuOpen, isSettingsMenuOpen]);
 
   useEffect(() => {
     if (!isSourceMenuOpen) {
@@ -496,6 +520,19 @@ export default function FilesPage() {
     }, []);
   }, [filteredFiles, strings]);
   const resolvedLanguage = useResolvedLanguage();
+  const renderStorageTile = (file: FamilyFile) => (
+    <StorageTile
+      accessToken={accessToken}
+      file={file}
+      favoriteLabel={strings.files.favorite}
+      isSelected={collectionPicker ? collectionPicker.lockedFileIds.includes(file.id) || collectionPickedIds.includes(file.id) : selectedFile?.id === file.id}
+      selectionLocked={Boolean(collectionPicker?.lockedFileIds.includes(file.id))}
+      suppressPreview={Boolean(collectionPicker)}
+      key={file.id}
+      onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
+      onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 960px)").matches, file.id))}
+    />
+  );
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -675,14 +712,40 @@ export default function FilesPage() {
           {notice && <p className="success-text">{notice}</p>}
 
           <div className="storage-main-header">
-            <label className="search-field storage-search">
-              <Search aria-hidden="true" size={18} />
-              <input
-                placeholder={strings.files.searchPlaceholder}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
+            <div className="storage-search-tools">
+              <label className="search-field storage-search">
+                <Search aria-hidden="true" size={18} />
+                <input
+                  placeholder={strings.files.searchPlaceholder}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <div className="storage-popover-anchor">
+                <button
+                  type="button"
+                  className="storage-search-settings"
+                  aria-label={strings.files.storageSettings}
+                  aria-expanded={isSettingsMenuOpen}
+                  onClick={() => setIsSettingsMenuOpen((open) => !open)}
+                >
+                  <Settings2 aria-hidden="true" size={18} />
+                </button>
+                {isSettingsMenuOpen && (
+                  <div className="storage-settings-menu" role="group" aria-label={strings.files.storageSettings}>
+                    <h3>{strings.files.storageSettings}</h3>
+                    <button type="button" className="storage-setting-option" aria-label={strings.files.fileGroups} aria-pressed={groupFilesByChat} disabled>
+                      <span><strong>{strings.files.fileGroups}</strong><small>{strings.files.groupFilesByChat}</small></span>
+                      <span className="storage-setting-option-meta"><small className="premium-badge">{strings.files.premium}</small><span className={groupFilesByChat ? "storage-setting-switch is-on" : "storage-setting-switch"} aria-hidden="true" /></span>
+                    </button>
+                    <button type="button" className="storage-setting-option" aria-label={strings.files.folderGroups} aria-pressed={groupFoldersByChat} disabled>
+                      <span><strong>{strings.files.folderGroups}</strong><small>{strings.files.groupFoldersByChat}</small></span>
+                      <span className="storage-setting-option-meta"><small className="premium-badge">{strings.files.premium}</small><span className={groupFoldersByChat ? "storage-setting-switch is-on" : "storage-setting-switch"} aria-hidden="true" /></span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="filter-chip-row" aria-label={strings.files.storageFilters}>
               {storageFilters.map((item) => (
@@ -700,7 +763,7 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-            {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
+            {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} groupByChat={groupFoldersByChat} groupFallbackLabel={strings.files.sharedFolderGroup} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
             {filter !== "canvases" && filter !== "checklists" && (![".canvas", "*.canvas", "type:canvas", "ext:canvas", ".checklist", "*.checklist", "type:checklist", "ext:checklist"].includes(search.trim().toLowerCase()) || collectionPickerFiles.length > 0) && <>
             <div className="storage-files-heading">
               <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : strings.files.title}</h2>{collectionPicker && <p className="storage-picker-hint">{strings.files.pickerDescription}</p>}</div>
@@ -719,21 +782,16 @@ export default function FilesPage() {
                 <strong>{strings.files.empty}</strong>
               </div>
             ) : (
-              <div className="storage-grid">
-                {collectionPickerFiles.map((file) => (
-                  <StorageTile
-                    accessToken={accessToken}
-                    file={file}
-                    favoriteLabel={strings.files.favorite}
-                    isSelected={collectionPicker ? collectionPicker.lockedFileIds.includes(file.id) || collectionPickedIds.includes(file.id) : selectedFile?.id === file.id}
-                    selectionLocked={Boolean(collectionPicker?.lockedFileIds.includes(file.id))}
-                    suppressPreview={Boolean(collectionPicker)}
-                    key={file.id}
-                    onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
-                    onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 960px)").matches, file.id))}
-                  />
-                ))}
-              </div>
+              groupFilesByChat && !collectionPicker ? (
+                <div className="storage-file-groups">
+                  {groupedFiles.map((group) => (
+                    <section className="storage-file-group" key={group.id}>
+                      <h3 className="storage-group-heading">{group.label}</h3>
+                      <div className="storage-grid">{group.items.map(renderStorageTile)}</div>
+                    </section>
+                  ))}
+                </div>
+              ) : <div className="storage-grid">{collectionPickerFiles.map(renderStorageTile)}</div>
             )}
             </>}
             {!collectionPicker && <StorageCanvases accessToken={accessToken} userId={currentUser?.id} filter={filter} search={search} sourceChatId={sourceChatId} onCanvasesChange={setStorageCanvases} />}
@@ -744,152 +802,75 @@ export default function FilesPage() {
         {collectionPicker && <div className="storage-selection-bar" role="region" aria-label={strings.files.folderFileSelection}><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : strings.files.selectFilesToAdd}</span><div><button type="button" onClick={() => { const picker = collectionPicker; setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }}>{strings.files.cancelSelection}</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { const picker = collectionPicker; const pickedIds = collectionPickedIds; void picker.onConfirm(pickedIds).then(() => { setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }); }}>{strings.files.addSelected}</button></div></div>}
 
         {selectedFile && !collectionPicker && (
-          <button
-            type="button"
-            className="storage-details-backdrop"
-            aria-label={strings.files.closeDetails}
-            onClick={closeMobileDetails}
-          />
-        )}
-        <aside
-          className="storage-details-panel"
-          aria-label={strings.files.details}
-          aria-labelledby={selectedFile ? "storage-file-details-title" : undefined}
-          aria-modal={selectedFile ? true : undefined}
-          role={selectedFile ? "dialog" : undefined}
-        >
-          {selectedFile ? (
-            <>
-              <div className="storage-mobile-detail-header">
-                <strong id="storage-file-details-title">{selectedFile.originalName}</strong>
-                <button
-                  ref={storageDetailsCloseRef}
-                  type="button"
-                  className="mobile-back-button"
-                  aria-label={strings.files.closeDetails}
-                  onClick={closeMobileDetails}
-                >
-                  <X aria-hidden="true" size={20} />
-                </button>
-              </div>
-              <div className="storage-preview storage-preview-frame">
+          <PopupDialog
+            className={`storage-preview-dialog${isPreviewExpanded ? " is-expanded" : ""}`}
+            backdropClassName="storage-preview-backdrop"
+            ariaLabelledBy="storage-file-details-title"
+            onClose={closeMobileDetails}
+            closeLabel={strings.files.closeDetails}
+            closeOnBackdrop
+            closeOnEscape={!isMetadataMenuOpen && !isMetadataInformationOpen}
+            size="xl"
+          >
+            <header className="storage-mobile-detail-header">
+              <h2 id="storage-file-details-title" title={selectedFile.originalName}>{selectedFile.originalName}</h2>
+            </header>
+            <div className="storage-preview storage-preview-frame">
+              <div className="storage-preview-media">
                 <div className="storage-preview-actions">
-                  {accessToken && (
-                    <button
-                      type="button"
-                      aria-label={strings.files.download}
-                      title={strings.files.download}
-                      onClick={() => void saveFileToDisk(accessToken, selectedFile)}
-                    >
-                      <Download aria-hidden="true" size={20} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={selectedFile.isFavorite ? "is-active" : undefined}
-                    aria-label={selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite}
-                    aria-pressed={selectedFile.isFavorite}
-                    title={selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite}
-                    onClick={() => void handleFavoriteToggle(selectedFile)}
-                  >
-                    <Heart aria-hidden="true" size={20} />
-                  </button>
-                  {selectedFilePreviewUrl && (
-                    <button
-                      type="button"
-                      aria-label={strings.files.openFullScreen(selectedFile.originalName)}
-                      title={strings.files.fullScreen}
-                      onClick={() =>
-                        setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl })
-                      }
-                    >
-                      <Maximize2 aria-hidden="true" size={20} />
-                    </button>
-                  )}
-                  {canDeleteFile(selectedFile, currentUser?.id, currentUser?.role) && (
-                    <button
-                      type="button"
-                      className="storage-delete-icon"
-                      aria-label={strings.files.delete}
-                      title={strings.files.delete}
-                      onClick={() => void handleDelete(selectedFile.id)}
-                    >
-                      <Trash2 aria-hidden="true" size={20} />
-                    </button>
-                  )}
+                  {accessToken && <button type="button" aria-label={strings.files.download} title={strings.files.download} onClick={() => void saveFileToDisk(accessToken, selectedFile)}><Download aria-hidden="true" size={20} /></button>}
+                  <button type="button" aria-label={strings.files.fullScreen} aria-pressed={isPreviewExpanded} title={strings.files.fullScreen} onClick={() => setIsPreviewExpanded((expanded) => !expanded)}>{isPreviewExpanded ? <Minimize2 aria-hidden="true" size={20} /> : <Maximize2 aria-hidden="true" size={20} />}</button>
+                  <div className="storage-popover-anchor storage-metadata-anchor">
+                    <button type="button" aria-label={strings.files.moreActions} aria-expanded={isMetadataMenuOpen} title={strings.files.moreActions} onClick={() => setIsMetadataMenuOpen((open) => !open)}><MoreVertical aria-hidden="true" size={20} /></button>
+                    {isMetadataMenuOpen && (
+                      <div className="storage-metadata-menu" role="region" aria-label={strings.files.moreActions}>
+                        <button type="button" className="storage-metadata-action" aria-label={strings.files.metadata} onClick={() => { setIsMetadataMenuOpen(false); setIsMetadataInformationOpen(true); }}><Info aria-hidden="true" size={17} />{strings.files.metadata}</button>
+                        {selectedFile.chatId && selectedFile.originMessageId && <button type="button" className="storage-metadata-action" aria-label={strings.files.openInChat} onClick={() => { setIsMetadataMenuOpen(false); navigate(`/app/chats/${selectedFile.chatId}?message=${selectedFile.originMessageId}`); }}><MessageCircle aria-hidden="true" size={17} />{strings.files.openInChat}</button>}
+                        <button type="button" className="storage-metadata-action" aria-label={selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite} aria-pressed={selectedFile.isFavorite} onClick={() => void handleFavoriteToggle(selectedFile)}><Heart aria-hidden="true" size={17} />{selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite}</button>
+                        {canDeleteFile(selectedFile, currentUser?.id, currentUser?.role) && <button type="button" className="storage-metadata-action storage-delete-icon" aria-label={strings.files.delete} onClick={() => void handleDelete(selectedFile.id)}><Trash2 aria-hidden="true" size={17} />{strings.files.delete}</button>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="storage-preview-media">
-                  {fileKind(selectedFile) === "audio" && accessToken ? (
-                    <AudioPlayer
-                      descriptor={{
-                        identity: {
-                          chatId: selectedFile.chatId ?? "storage",
-                          messageId: selectedFile.originMessageId ?? selectedFile.id,
-                          fileId: selectedFile.id
-                        },
-                        title: selectedFile.originalName,
-                        mimeType: selectedFile.mimeType
-                      }}
-                      sourceFactory={buildAudioSourceFactory(accessToken)}
-                      hideTitle
-                      accessToken={accessToken}
-                    />
-                  ) : fileKind(selectedFile) === "videos" && accessToken ? (
-                    <VideoPlayer
-                      file={selectedFile}
-                      accessToken={accessToken}
-                      identity={{
-                        chatId: selectedFile.chatId ?? "storage",
-                        messageId: selectedFile.originMessageId ?? selectedFile.id,
-                        fileId: selectedFile.id
-                      }}
-                      autoplay={false}
-                    />
-                  ) : selectedDocumentKind !== "unsupported" && accessToken ? (
-                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} inlinePreview />
-                  ) : selectedFilePreviewUrl ? (
-                    <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
-                  ) : (
-                    (() => {
-                      const Icon = fileIcon(selectedFile);
-                      return <Icon aria-hidden="true" size={42} />;
-                    })()
-                  )}
-                </div>
+                {fileKind(selectedFile) === "audio" && accessToken ? (
+                  <AudioPlayer descriptor={{ identity: { chatId: selectedFile.chatId ?? "storage", messageId: selectedFile.originMessageId ?? selectedFile.id, fileId: selectedFile.id }, title: selectedFile.originalName, mimeType: selectedFile.mimeType }} sourceFactory={buildAudioSourceFactory(accessToken)} hideTitle accessToken={accessToken} />
+                ) : fileKind(selectedFile) === "videos" && accessToken ? (
+                  <VideoPlayer file={selectedFile} accessToken={accessToken} identity={{ chatId: selectedFile.chatId ?? "storage", messageId: selectedFile.originMessageId ?? selectedFile.id, fileId: selectedFile.id }} autoplay={false} previewExpanded={isPreviewExpanded} />
+                ) : selectedDocumentKind !== "unsupported" && accessToken ? (
+                  <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} inlinePreview hideActions />
+                ) : selectedFilePreviewUrl ? (
+                  <img key={selectedFile.id} src={selectedFilePreviewUrl} alt={selectedFile.originalName}
+                    style={storagePreviewVideoStyle(previewImageSize.fileId === selectedFile.id ? previewImageSize.width : 16, previewImageSize.fileId === selectedFile.id ? previewImageSize.height : 9, window.innerWidth, window.innerHeight, isPreviewExpanded)}
+                    onLoad={(event) => setPreviewImageSize({ fileId: selectedFile.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
+                ) : (
+                  (() => {
+                    const Icon = fileIcon(selectedFile);
+                    return <Icon aria-hidden="true" size={42} />;
+                  })()
+                )}
               </div>
-              <dl className="file-detail-list">
-                <div>
-                  <dt>{strings.files.size}</dt>
-                  <dd>{formatFileSize(selectedFile.sizeBytes)}</dd>
-                </div>
-                <div>
-                  <dt>{strings.files.saved}</dt>
-                  <dd>{groupLabel(selectedFile.createdAt, resolvedLanguage)}</dd>
-                </div>
-                <div>
-                  <dt>{strings.files.source}</dt>
-                  <dd>
-                    {chatFolderLabel(selectedFile, strings)} / {accessLabel(selectedFile, strings.files.familyStorage)}
-                  </dd>
-                </div>
-              </dl>
-              {selectedFile.chatId && selectedFile.originMessageId && (
-                <button
-                  type="button"
-                  className="storage-jump-message"
-                  onClick={() => navigate(`/app/chats/${selectedFile.chatId}?message=${selectedFile.originMessageId}`)}
-                >
-                  {strings.files.openInChat}
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="empty-state compact-empty">
-              <Info aria-hidden="true" size={28} />
-              <strong>{strings.files.empty}</strong>
             </div>
-          )}
-        </aside>
+          </PopupDialog>
+        )}
+
+        {selectedFile && isMetadataInformationOpen && (
+          <PopupDialog
+            className="storage-metadata-information-dialog"
+            ariaLabel={strings.files.metadata}
+            onClose={() => setIsMetadataInformationOpen(false)}
+            closeLabel={strings.files.closeMetadata}
+            closeOnBackdrop
+            closeOnEscape
+            size="sm"
+          >
+            <h2>{strings.files.metadata}</h2>
+            <dl className="file-detail-list">
+              <div><dt>{strings.files.size}</dt><dd>{formatFileSize(selectedFile.sizeBytes)}</dd></div>
+              <div><dt>{strings.files.saved}</dt><dd>{groupLabel(selectedFile.createdAt, resolvedLanguage)}</dd></div>
+              <div><dt>{strings.files.source}</dt><dd>{chatFolderLabel(selectedFile, strings)} / {accessLabel(selectedFile, strings.files.familyStorage)}</dd></div>
+            </dl>
+          </PopupDialog>
+        )}
 
         {fullViewImage && (
           <ImageLightbox
