@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ACCENT_OPTIONS, type AppearanceSettings } from "../../appearance/AppearanceContext";
 import type { AppStrings } from "../../config/strings";
+import { avatarInitials } from "../../utils/avatarInitials";
 
 export type SettingsDashboardGroup = { title: string; items: Array<{ id: string; label: string; helper: string; icon: LucideIcon }> };
 
@@ -40,7 +41,5 @@ export function SettingsDashboard({ strings, profilePhotoControl, profileName, r
 }
 
 function AppearancePreview({ strings, name, appearance }: { strings: AppStrings; name: string; appearance: AppearanceSettings }) {
-  return <div className="settings-appearance-preview" aria-hidden="true"><div className="settings-appearance-preview-chat"><span className="preview-avatar">{initials(name)}</span><div className="preview-thread"><span className="preview-bubble">{strings.appearance.previewBubble1}</span><span className="preview-bubble mine">{strings.appearance.previewBubble2}</span></div></div><div className="settings-appearance-preview-meta"><div className="settings-appearance-preview-swatches">{ACCENT_OPTIONS.filter((option) => option.value !== "custom").map((accent) => <span key={accent.value} className={`color-swatch ${accent.swatchClassName}${appearance.accent === accent.value ? " active" : ""}`} />)}</div><span>{strings.settings.tapToPersonalize}</span></div></div>;
+  return <div className="settings-appearance-preview" aria-hidden="true"><div className="settings-appearance-preview-chat"><span className="preview-avatar">{avatarInitials(name)}</span><div className="preview-thread"><span className="preview-bubble">{strings.appearance.previewBubble1}</span><span className="preview-bubble mine">{strings.appearance.previewBubble2}</span></div></div><div className="settings-appearance-preview-meta"><div className="settings-appearance-preview-swatches">{ACCENT_OPTIONS.filter((option) => option.value !== "custom").map((accent) => <span key={accent.value} className={`color-swatch ${accent.swatchClassName}${appearance.accent === accent.value ? " active" : ""}`} />)}</div><span>{strings.settings.tapToPersonalize}</span></div></div>;
 }
-
-function initials(name: string) { return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part.at(0)?.toUpperCase()).join(""); }

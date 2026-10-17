@@ -6,12 +6,9 @@ import { uploadFile } from "../../api/files";
 import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
 import { AppearanceMessageControls, AppearanceThemeControls } from "./AppearanceControls";
 import { BackButton } from "../../components/BackButton";
+import { avatarInitials } from "../../utils/avatarInitials";
 import { PopupDialog } from "../../components/ui/Popup";
 import { PopupButton } from "../../components/ui/PopupButton";
-
-function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part.at(0)?.toUpperCase()).join("");
-}
 
 export function AppearanceEditor({
   accessToken,
@@ -101,7 +98,7 @@ export function AppearanceEditor({
       data-wallpaper={appearance.wallpaper}
     >
       <span className="preview-avatar" aria-hidden="true">
-        {initials(displayName)}
+        {avatarInitials(displayName)}
       </span>
       <div className="preview-thread">
         <span className="preview-bubble">{strings.appearance.previewBubble1}</span>

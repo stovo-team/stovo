@@ -141,10 +141,7 @@ export default function AttachmentPickerSheet({
       const viewportInset = 8;
       const gap = 8;
       const maxLeft = Math.max(viewportInset, window.innerWidth - menuWidth - viewportInset);
-      const opensRight = triggerRect.left - gap + menuWidth <= window.innerWidth - viewportInset;
-      const intendedLeft = opensRight
-        ? triggerRect.left - gap
-        : triggerRect.right - menuWidth + gap;
+      const intendedLeft = triggerRect.left;
 
       setWebMenuPosition({
         bottom: Math.max(viewportInset, window.innerHeight - triggerRect.top + gap),
