@@ -347,8 +347,7 @@ export function DocumentAttachmentPreview({
 }: {
   accessToken: string | null;
   file: FamilyFile;
-  hideActions?: boolean;
-  inlinePreview?: boolean;
+  hideActions?: boolean; inlinePreview?: boolean;
 }) {
   const copy = useStrings().auditUi;
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
@@ -366,49 +365,51 @@ export function DocumentAttachmentPreview({
   return (
     <>
       <article
-        className="document-preview-card document-preview-card--compact"
+        className={`document-preview-card document-preview-card--compact${inlinePreview ? " document-preview-card--inline" : ""}`}
         data-preview-kind={kind}
         onClick={() => setViewerOpen(true)}
       >
-        <header className="document-preview-header">
-          <DocumentKindIcon kind={kind} />
-          <div className="document-preview-copy">
-            <strong title={file.originalName}>{file.originalName}</strong>
-            <span>
-              {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
-            </span>
-          </div>
-          {!hideActions && (
-            <div className="document-preview-actions">
-              <button
-                type="button"
-                className="document-preview-open"
-                aria-label={copy.openFile(file.originalName)}
-                title={copy.open}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setViewerOpen(true);
-                }}
-              >
-                <ExternalLink size={16} aria-hidden="true" />
-              </button>
-              {accessToken && (
+        {!(inlinePreview && hideActions) && (
+          <header className="document-preview-header">
+            <DocumentKindIcon kind={kind} />
+            <div className="document-preview-copy">
+              <strong title={file.originalName}>{file.originalName}</strong>
+              <span>
+                {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
+              </span>
+            </div>
+            {!hideActions && (
+              <div className="document-preview-actions">
                 <button
                   type="button"
-                  className="document-preview-save"
-                  aria-label={copy.saveFile(file.originalName)}
-                  title={copy.save}
+                  className="document-preview-open"
+                  aria-label={copy.openFile(file.originalName)}
+                  title={copy.open}
                   onClick={(e) => {
                     e.stopPropagation();
-                    void saveFileToDisk(accessToken, file);
+                    setViewerOpen(true);
                   }}
                 >
-                  <Download size={16} aria-hidden="true" />
+                  <ExternalLink size={16} aria-hidden="true" />
                 </button>
-              )}
-            </div>
-          )}
-        </header>
+                {accessToken && (
+                  <button
+                    type="button"
+                    className="document-preview-save"
+                    aria-label={copy.saveFile(file.originalName)}
+                    title={copy.save}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void saveFileToDisk(accessToken, file);
+                    }}
+                  >
+                    <Download size={16} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )}
+          </header>
+        )}
         {inlinePreview && (
           <InlineDocumentPreview
             accessToken={accessToken ?? ""}

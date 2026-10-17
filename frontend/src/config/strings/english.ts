@@ -1177,7 +1177,7 @@ export const strings = {
     delete: "Delete",
     favorite: "Favorite",
     removeFavorite: "Remove favorite",
-    openInChat: "Open in chat",
+    openInChat: "Open in chat", metadata: "Metadata", moreActions: "More actions", closeMetadata: "Close metadata", storageSettings: "Storage settings", fileGroups: "File groups", folderGroups: "Folder groups", premium: "Premium", groupFilesByChat: "Group files by chat", groupFoldersByChat: "Group folders by chat", sharedFolderGroup: "Shared folders",
     familyStorage: "Shared storage",
     chatMembers: "Chat members",
     pickerDescription: "Select files from Storage. Files already in this folder are locked.",

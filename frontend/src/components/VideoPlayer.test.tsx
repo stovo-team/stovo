@@ -7,6 +7,7 @@ import type { FamilyFile } from "../api/files";
 import { clearMediaBlobCache, seedMediaBlobCache } from "../mediaBlobCache";
 import { videoPlaybackSession, type VideoIdentity } from "../videoPlaybackSession";
 import { expandedVideoStyle, formatVideoTime, orientationStyle, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
+import { storagePreviewVideoStyle } from "./video-player/storagePreviewStyle";
 
 const { downloadFileBlobMock, createStreamingMediaUrlMock } = vi.hoisted(() => ({
   downloadFileBlobMock: vi.fn(),
@@ -586,6 +587,32 @@ describe("VideoPlayer", () => {
       height: "738px",
       width: "415.125px",
     });
+  });
+
+  it("sizes Storage previews to the video's intrinsic aspect ratio within the viewport", () => {
+    expect(storagePreviewVideoStyle(1920, 1080, 1400, 900, false)).toMatchObject({
+      width: "760px",
+      height: "428px",
+      aspectRatio: "1920 / 1080",
+    });
+    expect(storagePreviewVideoStyle(720, 1280, 1400, 1200, false)).toMatchObject({
+      width: "405px",
+      height: "720px",
+      aspectRatio: "720 / 1280",
+    });
+    expect(storagePreviewVideoStyle(1920, 1080, 560, 500, false)).toMatchObject({
+      width: "448px",
+      height: "252px",
+    });
+  });
+
+  it("upscales small Storage videos and enlarges the actual frame without changing its ratio", () => {
+    const regular = storagePreviewVideoStyle(320, 180, 1400, 900, false);
+    const enlarged = storagePreviewVideoStyle(320, 180, 1400, 900, true);
+    expect(regular.width).toBe("760px");
+    expect(regular.height).toBe("428px");
+    expect(parseFloat(String(enlarged.width))).toBeGreaterThan(760);
+    expect(parseFloat(String(enlarged.width)) / parseFloat(String(enlarged.height))).toBeCloseTo(16 / 9, 2);
   });
 
   it("autoplays muted when visible and pauses when scrolled away", async () => {

@@ -28,13 +28,15 @@ import {
   type VideoPlaybackRegistration,
 } from "../videoPlaybackSession";
 import { useVideoSource } from "./video-player/useVideoSource";
+import { storagePreviewVideoStyle } from "./video-player/storagePreviewStyle";
 
 export interface VideoPlayerProps {
   file: FamilyFile;
   accessToken: string;
   identity: VideoIdentity;
   disabledReason?: string;
-  beforePlay?: () => void | Promise<void>;
+  beforePlay?: () => void | Promise<void>; fullViewRequest?: number;
+  previewExpanded?: boolean;
   /** Telegram-style muted inline autoplay. Defaults to true. */
   autoplay?: boolean;
 }
@@ -98,8 +100,7 @@ export function VideoPlayer({
   accessToken,
   identity,
   disabledReason,
-  beforePlay,
-  autoplay = true,
+  beforePlay, fullViewRequest = 0, autoplay = true, previewExpanded,
 }: VideoPlayerProps) {
   const strings = useStrings();
   const copy = strings.videoPlayer;
@@ -176,14 +177,14 @@ export function VideoPlayer({
     updateSession({ status: "loading", error: null });
   }, [updateSession]);
   const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure, canLoad);
-
   useEffect(() => {
+    if (fullViewRequest > 0) setIsExpanded(true);
     if (!isExpanded) return;
     const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
     updateViewport();
     window.addEventListener("resize", updateViewport);
     return () => window.removeEventListener("resize", updateViewport);
-  }, [isExpanded]);
+  }, [fullViewRequest, isExpanded]);
 
   useEffect(() => {
     const dialog = rootRef.current;
@@ -319,9 +320,8 @@ export function VideoPlayer({
     return () => observer.disconnect();
   }, [autoplayEnabled, disabledReason, sourceUrl]);
 
-  const frameStyle = isExpanded
-    ? expandedVideoStyle(videoSize.width, videoSize.height, viewport.width, viewport.height)
-    : orientationStyle(videoSize.width, videoSize.height);
+  const frameStyle = isExpanded ? expandedVideoStyle(videoSize.width, videoSize.height, viewport.width, viewport.height)
+    : previewExpanded === undefined ? orientationStyle(videoSize.width, videoSize.height) : storagePreviewVideoStyle(videoSize.width, videoSize.height, window.innerWidth, window.innerHeight, previewExpanded);
   const videoNode = (
     <video
       ref={videoRef}
