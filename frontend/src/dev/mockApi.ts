@@ -102,6 +102,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "GET" && path === "/api/family/members") {
     return jsonResponse(mockData.users);
   }
+  if (method === "GET" && path === "/api/plans") return jsonResponse([]);
   if (method === "GET" && path === "/api/v1/config/manifest") {
     return jsonResponse(createMockManifest());
   }

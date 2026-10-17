@@ -44,7 +44,7 @@ describe("PlansPage date localization", () => {
     expect(host.querySelector(".plans-header h2")?.textContent).toBe(expected);
   });
 
-  it("moves the view filters into the date header when the event list is collapsed", async () => {
+  it("places the view filters in a separate row below the date header when the event list is collapsed", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -63,7 +63,11 @@ describe("PlansPage date localization", () => {
     await act(async () => collapse?.click());
 
     expect(host.querySelector(".plans-layout")?.classList.contains("plans-layout--sidebar-collapsed")).toBe(true);
-    expect(host.querySelector(".plans-header .plans-mobile-tabs")).not.toBeNull();
+    const header = host.querySelector(".plans-header");
+    const tabs = host.querySelector(".plans-mobile-tabs.plans-header-tabs");
+    expect(tabs).not.toBeNull();
+    expect(header?.contains(tabs)).toBe(false);
+    expect(tabs?.previousElementSibling).toBe(header);
     expect(host.querySelector(".plans-sidebar-row")?.getAttribute("aria-current")).toBe("true");
     expect(host.querySelector<HTMLButtonElement>(".plans-sidebar-collapse")?.getAttribute("aria-expanded")).toBe("false");
   });

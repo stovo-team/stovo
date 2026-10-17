@@ -583,14 +583,14 @@ export default function PlansPage() {
             <button aria-label={strings.plans.next} onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : view === "week" ? 7 : view === "threeDays" ? 3 : 1))}>
               <ChevronRight />
             </button>
-            {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
-              {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
-                <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                  {item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
-                </button>
-              ))}
-            </nav>}
           </header>
+          {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
+            {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
+              <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
+                {item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
+              </button>
+            ))}
+          </nav>}
           <nav className="plans-mobile-tabs" aria-label={strings.plans.view}>
             <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
             <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}>{strings.plans.threeDays}</button>

@@ -34,6 +34,12 @@ afterEach(() => {
 });
 
 describe("local mock chat API", () => {
+  it("returns an empty plans collection so the mock Plans page renders without an API error", async () => {
+    const { response, body } = await request<unknown[]>("/api/plans?start=2026-10-17T00%3A00%3A00.000Z&end=2026-10-18T00%3A00%3A00.000Z");
+    expect(response.status).toBe(200);
+    expect(body).toEqual([]);
+  });
+
   it("returns a refresh session for the synthetic Stovo Demo user", async () => {
     const { response, body } = await request<AuthResponse>("/api/auth/refresh", { method: "POST" });
 
