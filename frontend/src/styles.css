@@ -13326,6 +13326,7 @@ span.message-spoiler.is-revealed {
 .plans-calendar--3 { min-width: 620px; }
 .plans-calendar--7 { min-width: 1200px; }
 .plans-calendar-day { border-left: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent); box-sizing: border-box; min-width: 0; }
+.plans-calendar-day:first-child { border-left: 0; }
 .plans-calendar-day-heading { align-items: center; background: var(--chat-layout-background, var(--background-secondary)); border: 0; border-color: transparent; color: var(--text-secondary); cursor: default; display: flex; gap: 4px; height: 32px; justify-content: flex-start; padding: 0 5px; position: sticky; top: 0; transition: none; width: 100%; z-index: 2; }
 .plans-calendar-day-heading:hover:not(:disabled) { background: var(--chat-layout-background, var(--background-secondary)); border-color: transparent; box-shadow: none; color: var(--text-secondary); transform: none; }
 .plans-calendar-day-heading small { font-size: var(--font-size-caption); font-weight: var(--font-weight-extrabold); line-height: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }

@@ -142,7 +142,8 @@ test('plans week gives every day room and separates weekday columns visibly', as
 
   expect(days).toHaveLength(7);
   expect(Math.min(...days.map(({ width }) => width))).toBeGreaterThanOrEqual(150);
-  expect(days.every(({ borderLeftWidth, borderLeftStyle }) => borderLeftWidth === '1px' && borderLeftStyle === 'solid')).toBe(true);
+  expect(days[0].borderLeftWidth).toBe('0px');
+  expect(days.slice(1).every(({ borderLeftWidth, borderLeftStyle }) => borderLeftWidth === '1px' && borderLeftStyle === 'solid')).toBe(true);
 });
 
 test('plans date headers stay compact, icon-free, hoverless, and sticky while the calendar scrolls', async ({ page }) => {
