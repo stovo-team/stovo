@@ -188,7 +188,7 @@ export function NewChatDialog({
         <span className="new-chat-screen-spacer" aria-hidden={true} />
          <PopupCloseButton ariaLabel={strings.chats.newChat.close} onClick={onClose} />
       </header>
-      <PopupField label={strings.chats.searchPlaceholder} type="search" autoFocus placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
+      <PopupField label={strings.chats.searchPlaceholder} labelHidden type="search" autoFocus placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
       <div className="new-chat-actions">
         {canManageSpaces && <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("group")}>
           <span className="new-chat-action-icon" aria-hidden={true}>

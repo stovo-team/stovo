@@ -571,6 +571,7 @@ export default function FilesPage() {
           >
             {isSourceSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
+          <div className="storage-source-scroll">
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
             <button
               type="button"
@@ -632,7 +633,6 @@ export default function FilesPage() {
               </div>
             )}
           </div>
-
           <button
             type="button"
             className={!sourceChatId ? "storage-source active" : "storage-source"}
@@ -665,12 +665,12 @@ export default function FilesPage() {
               ))}
             </section>
           ))}
+          </div>
         </aside>
         <div className="storage-main">
           <header className="section-header">
             <div aria-hidden="true" />
           </header>
-
           {error && <p className="error-text">{error}</p>}
           {notice && <p className="success-text">{notice}</p>}
 

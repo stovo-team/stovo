@@ -12,7 +12,8 @@ function rule(selector: string) {
 describe("Storage and Plans collapsible layout styles", () => {
   it("allows Storage's source picker to collapse while keeping the content column flexible", () => {
     expect(styles.includes(".storage-page .storage-layout.storage-layout--source-collapsed")).toBe(true);
-    expect(styles).toMatch(/grid-template-columns:\s*52px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*340px\)/);
+    expect(styles).toMatch(/\.storage-page \.storage-layout\.storage-layout--source-collapsed\s*\{\s*grid-template-columns:\s*52px\s+minmax\(0,\s*1fr\);/);
+    expect(styles).toMatch(/\.storage-page:has\(\.storage-tile\.selected\) \.storage-layout\.storage-layout--source-collapsed\s*\{\s*grid-template-columns:\s*52px\s+minmax\(0,\s*1fr\)\s+minmax\(440px,\s*500px\);/);
     expect(rule(".storage-source-sidebar")).toMatch(/min-width:\s*0/);
   });
 

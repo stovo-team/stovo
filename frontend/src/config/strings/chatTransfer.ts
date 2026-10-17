@@ -78,9 +78,9 @@ const english: ChatTransferStrings = {
 
 const russian: ChatTransferStrings = {
   transferSectionTitle: "Импорт и экспорт",
-  importAction: "Импортировать чат из файла",
+  importAction: "Импортировать чат",
   exportAction: "Экспортировать чат",
-  importTitle: "Импорт чата из файла",
+  importTitle: "Импорт чата",
   exportTitle: "Экспорт чата",
   importHelp: "Выберите файл экспорта одного чата. Файл обрабатывается на этом устройстве.",
   exportHelp: "Выберите формат для этого чата. Форматы провайдеров могут не содержать часть данных.",

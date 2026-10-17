@@ -17,10 +17,10 @@ describe("Storage mobile source dropdown", () => {
 
   it("hides the desktop chat source list on mobile so only the dropdown remains", () => {
     expect(styles).toMatch(
-      /@media \(max-width:\s*960px\)[\s\S]*\.storage-page \.storage-source-sidebar > \.storage-source[\s\S]*display:\s*none/
+      /@media \(max-width:\s*960px\)[\s\S]*\.storage-page \.storage-source-scroll > \.storage-source[\s\S]*display:\s*none/
     );
     expect(styles).toMatch(
-      /@media \(max-width:\s*960px\)[\s\S]*\.storage-page \.storage-source-sidebar > \.storage-source-group[\s\S]*display:\s*none/
+      /@media \(max-width:\s*960px\)[\s\S]*\.storage-page \.storage-source-scroll > \.storage-source-group[\s\S]*display:\s*none/
     );
   });
 

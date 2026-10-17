@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { Chat, Message } from "../../../api/chats";
 import type { ChatImportPreparedContent, ChatExportSource } from "../../../api/chatTransfer";
@@ -194,7 +195,7 @@ export function ChatTransferDialog({
   const title = mode === "import" ? copy.importTitle : copy.exportTitle;
   const importComplete = mode === "import" && completeChat !== null;
 
-  return (
+  return createPortal((
     <PopupDialog className="chat-transfer-dialog" ariaLabelledBy="chat-transfer-title" onClose={busy ? undefined : onClose} closeLabel={copy.cancel} closeOnBackdrop={!busy} size="lg">
         <div className="modal-card-header">
           <h2 id="chat-transfer-title">{importComplete ? copy.imported : title}</h2>
@@ -248,7 +249,7 @@ export function ChatTransferDialog({
           </div>
         </div>
     </PopupDialog>
-  );
+  ), document.body);
 }
 
 function makeExportArchive(source: ChatExportSource): ChatArchive {

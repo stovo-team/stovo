@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { ApiError } from "../api/client";
 import { peekApiResponseCache } from "../api/apiResponseCache";
@@ -484,7 +484,6 @@ export default function PlansPage() {
   const renderTimedCalendar = (days: Date[]) => (
     <div className={`plans-calendar plans-calendar--${days.length}`} role="grid" aria-label={days.length === 3 ? strings.plans.threeDays : strings.plans.thisWeek}>
       <div className="plans-calendar-hours" aria-hidden="true">
-        <span className="plans-calendar-hours-icon"><Clock3 size={16} /></span>
         {CALENDAR_TIME_MARKERS.map((hour) => <time key={hour}>{formatSlotTime(hour)}</time>)}
       </div>
       <div className="plans-calendar-days">
@@ -495,7 +494,6 @@ export default function PlansPage() {
           return (
             <section className={`plans-calendar-day${sameDay(day, selectedDay) ? " active" : ""}`} key={day.toISOString()} role="gridcell">
               <button type="button" className="plans-calendar-day-heading" onClick={() => setSelectedDay(day)}>
-                <CalendarDays className="plans-calendar-day-icon" size={14} aria-hidden="true" />
                 <small>{new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(day)}</small>
                 <strong>{day.getDate()}</strong>
               </button>
@@ -583,19 +581,19 @@ export default function PlansPage() {
             <button aria-label={strings.plans.next} onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : view === "week" ? 7 : view === "threeDays" ? 3 : 1))}>
               <ChevronRight />
             </button>
-            {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
-              {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
-                <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                  {item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
-                </button>
-              ))}
-            </nav>}
           </header>
+          {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
+            {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
+              <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
+                <span className="plans-view-tab-label">{item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}</span>
+              </button>
+            ))}
+          </nav>}
           <nav className="plans-mobile-tabs" aria-label={strings.plans.view}>
-            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
-            <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}>{strings.plans.threeDays}</button>
-            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{strings.plans.thisWeek}</button>
-            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>{strings.plans.month}</button>
+            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}><span className="plans-view-tab-label">{strings.plans.today}</span></button>
+            <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}><span className="plans-view-tab-label">{strings.plans.threeDays}</span></button>
+            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}><span className="plans-view-tab-label">{strings.plans.thisWeek}</span></button>
+            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}><span className="plans-view-tab-label">{strings.plans.month}</span></button>
           </nav>
           {error && <p className="error-text" role="alert">{error}</p>}
           {view === "month" ? (
