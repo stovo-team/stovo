@@ -153,6 +153,7 @@ test('plans date headers stay compact, icon-free, hoverless, and sticky while th
   const dateHeading = page.locator('.plans-calendar-day-heading').first();
   await expect(dateHeading).toBeVisible();
   await expect(page.locator('.plans-calendar-day-icon')).toHaveCount(0);
+  await expect(page.locator('.plans-calendar-hours-icon')).toHaveCount(0);
   const compactStyle = await dateHeading.evaluate((heading) => {
     const style = getComputedStyle(heading);
     const date = heading.querySelector('strong')!;
@@ -195,7 +196,10 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto('/app/plans');
   const tabs = page.locator('.plans-mobile-tabs:not(.plans-header-tabs)');
-  const sizing = await tabs.evaluate((nav) => ({ clientWidth: nav.clientWidth, scrollWidth: nav.scrollWidth }));
+  const sizing = await tabs.evaluate((nav) => {
+    const style = getComputedStyle(nav);
+    return { clientWidth: nav.clientWidth, scrollWidth: nav.scrollWidth, overflowX: style.overflowX, flexWrap: style.flexWrap };
+  });
   const buttons = await tabs.locator('button').evaluateAll((items) => items.map((item) => {
     const style = getComputedStyle(item);
     return { width: item.getBoundingClientRect().width, height: item.getBoundingClientRect().height, flexShrink: style.flexShrink, whiteSpace: style.whiteSpace };
@@ -203,9 +207,20 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
 
   expect(sizing.clientWidth).toBeGreaterThan(0);
   expect(sizing.scrollWidth).toBeGreaterThan(sizing.clientWidth);
+  expect(sizing.overflowX).toBe('auto');
+  expect(sizing.flexWrap).toBe('nowrap');
   expect(buttons).toHaveLength(4);
   expect(buttons.every(({ width, flexShrink, whiteSpace }) => width >= 60 && flexShrink === '0' && whiteSpace === 'nowrap')).toBe(true);
+  expect(Math.max(...buttons.map(({ height }) => height))).toBeLessThanOrEqual(60);
   expect(Math.max(...buttons.map(({ height }) => height)) - Math.min(...buttons.map(({ height }) => height))).toBeLessThanOrEqual(2);
+
+  const scroll = await tabs.evaluate((nav) => {
+    nav.scrollLeft = nav.scrollWidth;
+    const lastButton = nav.querySelectorAll('button')[3].getBoundingClientRect();
+    return { scrollLeft: nav.scrollLeft, lastButtonRight: lastButton.right, viewportRight: nav.getBoundingClientRect().right };
+  });
+  expect(scroll.scrollLeft).toBeGreaterThan(0);
+  expect(scroll.lastButtonRight).toBeLessThanOrEqual(scroll.viewportRight + 1);
 });
 
 test('plans event-list collapse control sits on the list/content divider', async ({ page }) => {

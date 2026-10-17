@@ -13234,7 +13234,7 @@ span.message-spoiler.is-revealed {
 .plans-search { gap: 9px; padding: 0 16px; height: 48px; }
 .plans-search input { background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text-primary); min-width: 0; outline: 0; width: 100%; }
 .plans-tabs { display: flex; gap: 8px; margin: 16px 0 30px; }
-.plans-mobile-tabs { display: none; }
+.plans-mobile-tabs { box-sizing: border-box; display: none; flex-wrap: nowrap; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .plans-tabs button, .plan-rsvp button, .plan-details-rsvp button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-size: var(--font-size-small); font-weight: var(--font-weight-bold); padding: 8px 13px; }
 .plans-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .plans-list-label { color: var(--accent-primary); font-size: var(--font-size-small); font-weight: var(--font-weight-extrabold); letter-spacing: .08em; text-transform: uppercase; }
@@ -13318,7 +13318,7 @@ span.message-spoiler.is-revealed {
 .plans-month button.selected { color: var(--accent-primary); font-weight: var(--font-weight-bold); }
 .plans-calendar { display: grid; flex: 1; grid-template-columns: 62px minmax(0, 1fr); min-height: 0; padding: 4px 0 24px; }
 .plans-calendar-hours { color: var(--text-muted); display: grid; grid-template-rows: 48px repeat(8, 66px); text-align: left; }
-.plans-calendar-hours-icon { align-items: center; color: var(--accent-primary); display: flex; padding-left: 8px; }
+.plans-calendar-hours::before { content: ""; grid-row: 1; }
 .plans-calendar-hours time { font-size: var(--font-size-caption); font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); padding-left: 8px; transform: translateY(-8px); }
 .plans-calendar-days { display: grid; gap: 4px; min-width: 0; }
 .plans-calendar--3 .plans-calendar-days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -13548,11 +13548,11 @@ span.message-spoiler.is-revealed {
     min-height: 56px;
   }
   .plans-mobile-tabs {
+    align-self: stretch;
     display: flex;
     flex-shrink: 0;
     gap: 8px;
     margin: 10px 0 4px;
-    overflow-x: auto;
   }
   .plans-mobile-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 8px 12px; }
   .plans-mobile-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
@@ -13585,7 +13585,6 @@ span.message-spoiler.is-revealed {
   .plan-rsvp-actions button { min-height: 24px; padding: 2px 7px; }
   .plans-calendar { grid-template-columns: 58px minmax(0, 1fr); }
   .plans-calendar-hours { grid-template-rows: 44px repeat(8, 54px); }
-  .plans-calendar-hours-icon { padding-left: 7px; }
   .plans-calendar-hours time { font-size: var(--font-size-caption); padding-left: 7px; }
   .plans-calendar-days { gap: 2px; }
   .plans-calendar-day-heading { gap: 3px; height: 44px; padding: 0 3px; }
@@ -32170,7 +32169,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   width: 100%;
 }
 .plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
-.plans-mobile-tabs button { flex: 0 0 auto; white-space: nowrap; }
+.plans-mobile-tabs button { flex: 0 0 max-content; min-width: max-content; white-space: nowrap; }
 .plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .shared-call-controls .call-ctrl-btn:focus-visible,
 .shared-call-controls .voice-dock-btn:focus-visible,

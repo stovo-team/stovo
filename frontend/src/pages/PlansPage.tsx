@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { ApiError } from "../api/client";
 import { peekApiResponseCache } from "../api/apiResponseCache";
@@ -484,7 +484,6 @@ export default function PlansPage() {
   const renderTimedCalendar = (days: Date[]) => (
     <div className={`plans-calendar plans-calendar--${days.length}`} role="grid" aria-label={days.length === 3 ? strings.plans.threeDays : strings.plans.thisWeek}>
       <div className="plans-calendar-hours" aria-hidden="true">
-        <span className="plans-calendar-hours-icon"><Clock3 size={16} /></span>
         {CALENDAR_TIME_MARKERS.map((hour) => <time key={hour}>{formatSlotTime(hour)}</time>)}
       </div>
       <div className="plans-calendar-days">
