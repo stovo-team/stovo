@@ -239,6 +239,7 @@ test('plans three-day view switch remains on one line at the reported 500px view
       height: button.getBoundingClientRect().height,
       scrollHeight: button.scrollHeight,
       lineHeight: Number.parseFloat(style.lineHeight),
+      flexBasis: style.flexBasis,
       whiteSpace: style.whiteSpace,
       width: button.getBoundingClientRect().width,
       text: button.innerText,
@@ -248,10 +249,10 @@ test('plans three-day view switch remains on one line at the reported 500px view
     };
   });
   expect(metrics.whiteSpace).toBe('nowrap');
+  expect(metrics.flexBasis).toBe('auto');
   expect(metrics.height).toBeLessThanOrEqual(60);
   expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.lineHeight + 24);
   expect(metrics.navOverflowX).toBe('auto');
-  expect(metrics.navScrollWidth).toBeGreaterThan(metrics.navClientWidth);
 });
 
 test('plans event-list collapse control sits on the list/content divider', async ({ page }) => {

@@ -32170,7 +32170,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   width: 100%;
 }
 .plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
-.plans-mobile-tabs button { flex: 0 0 120px; min-width: max-content; white-space: nowrap; }
+.plans-mobile-tabs button { flex: 0 0 auto; white-space: nowrap; }
 .plans-mobile-tabs .plans-view-tab-label { display: block; white-space: nowrap; width: max-content; }
 .plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .shared-call-controls .call-ctrl-btn:focus-visible,
