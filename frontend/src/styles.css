@@ -13324,8 +13324,8 @@ span.message-spoiler.is-revealed {
 .plans-calendar--3 .plans-calendar-days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .plans-calendar--7 .plans-calendar-days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .plans-calendar--3 { min-width: 620px; }
-.plans-calendar--7 { min-width: 900px; }
-.plans-calendar-day { min-width: 0; }
+.plans-calendar--7 { min-width: 1200px; }
+.plans-calendar-day { border-left: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent); box-sizing: border-box; min-width: 0; }
 .plans-calendar-day-heading { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: flex; gap: 4px; height: 48px; justify-content: flex-start; padding: 0 5px; width: 100%; }
 .plans-calendar-day-icon { color: var(--accent-primary); flex: 0 0 auto; }
 .plans-calendar-day-heading small { font-size: var(--font-size-caption); font-weight: var(--font-weight-extrabold); line-height: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
@@ -32141,7 +32141,9 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-source-sidebar { position: relative; }
 .storage-source-collapse { position: absolute; right: -36px; top: 8px; }
 .plans-sidebar { overflow: visible; position: relative; }
-.plans-sidebar-collapse { position: absolute; right: -36px; top: 8px; }
+.plans-sidebar-collapse { opacity: .72; position: absolute; right: -36px; top: 50%; transform: translateY(-50%); transition: opacity .16s ease; }
+.plans-sidebar-collapse:hover,
+.plans-sidebar-collapse:focus-visible { opacity: 1; }
 .storage-source-collapse:focus-visible,
 .plans-sidebar-collapse:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .storage-page .storage-layout.storage-layout--source-collapsed { grid-template-columns: 52px minmax(0, 1fr); }
@@ -32156,7 +32158,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .plans-layout--sidebar-collapsed { grid-template-columns: 44px minmax(0, 1fr); }
 .plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
 .plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; }
-.plans-layout--sidebar-collapsed .plans-sidebar-collapse { right: -36px; top: 8px; }
+.plans-layout--sidebar-collapsed .plans-sidebar-collapse { right: -36px; top: 50%; transform: translateY(-50%); }
 .plans-layout .plans-header { min-height: 48px; }
 .plans-header-tabs { display: none; }
 .plans-layout--sidebar-collapsed .plans-header-tabs {

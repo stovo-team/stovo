@@ -93,9 +93,12 @@ test('plans keep dates above the calendar, allow the week view to scroll horizon
       titleBottom: title.getBoundingClientRect().bottom,
       tabsTop: tabs.getBoundingClientRect().top,
       sidebarRight: sidebar.getBoundingClientRect().right,
+      sidebarCenterY: sidebar.getBoundingClientRect().top + sidebar.getBoundingClientRect().height / 2,
       contentLeft: document.querySelector<HTMLElement>('.plans-content')!.getBoundingClientRect().left,
       buttonLeft: button.getBoundingClientRect().left,
       buttonRight: button.getBoundingClientRect().right,
+      buttonCenterY: button.getBoundingClientRect().top + button.getBoundingClientRect().height / 2,
+      buttonOpacity: getComputedStyle(button).opacity,
       buttonCenter: button.getBoundingClientRect().left + button.getBoundingClientRect().width / 2,
       agendaClientWidth: agenda.clientWidth,
       agendaScrollWidth: agenda.scrollWidth,
@@ -106,6 +109,9 @@ test('plans keep dates above the calendar, allow the week view to scroll horizon
   expect(geometry.tabsTop).toBeGreaterThanOrEqual(geometry.titleBottom);
   expect(geometry.agendaScrollWidth).toBeGreaterThan(geometry.agendaClientWidth);
   expect(Math.abs(geometry.buttonCenter - geometry.contentLeft)).toBeLessThanOrEqual(24);
+  expect(Math.abs(geometry.buttonCenterY - geometry.sidebarCenterY)).toBeLessThanOrEqual(8);
+  expect(Number(geometry.buttonOpacity)).toBeGreaterThan(0.5);
+  expect(Number(geometry.buttonOpacity)).toBeLessThan(1);
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.sidebarRight);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.contentLeft);
   expect(geometry.layoutWidth).toBeGreaterThan(0);
@@ -118,6 +124,21 @@ test('plans week calendar remains horizontally scrollable when the event list is
   await page.getByRole('button', { name: 'Collapse event list' }).click();
   const widths = await page.locator('.plans-agenda').evaluate((agenda) => ({ client: agenda.clientWidth, scroll: agenda.scrollWidth }));
   expect(widths.scroll).toBeGreaterThan(widths.client);
+});
+
+test('plans week gives every day room and separates weekday columns visibly', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await page.goto('/app/plans');
+  await page.getByRole('button', { name: 'Week', exact: true }).click();
+
+  const days = await page.locator('.plans-calendar--7 .plans-calendar-day').evaluateAll((items) => items.map((item) => {
+    const style = getComputedStyle(item);
+    return { width: item.getBoundingClientRect().width, borderLeftWidth: style.borderLeftWidth, borderLeftStyle: style.borderLeftStyle };
+  }));
+
+  expect(days).toHaveLength(7);
+  expect(Math.min(...days.map(({ width }) => width))).toBeGreaterThanOrEqual(150);
+  expect(days.every(({ borderLeftWidth, borderLeftStyle }) => borderLeftWidth === '1px' && borderLeftStyle === 'solid')).toBe(true);
 });
 
 test('plans event-list collapse control sits on the list/content divider', async ({ page }) => {
