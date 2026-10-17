@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { ApiError } from "../api/client";
 import { peekApiResponseCache } from "../api/apiResponseCache";
@@ -495,7 +495,6 @@ export default function PlansPage() {
           return (
             <section className={`plans-calendar-day${sameDay(day, selectedDay) ? " active" : ""}`} key={day.toISOString()} role="gridcell">
               <button type="button" className="plans-calendar-day-heading" onClick={() => setSelectedDay(day)}>
-                <CalendarDays className="plans-calendar-day-icon" size={14} aria-hidden="true" />
                 <small>{new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(day)}</small>
                 <strong>{day.getDate()}</strong>
               </button>

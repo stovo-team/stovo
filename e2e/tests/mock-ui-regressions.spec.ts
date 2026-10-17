@@ -99,6 +99,8 @@ test('plans keep dates above the calendar, allow the week view to scroll horizon
       buttonRight: button.getBoundingClientRect().right,
       buttonCenterY: button.getBoundingClientRect().top + button.getBoundingClientRect().height / 2,
       buttonOpacity: getComputedStyle(button).opacity,
+      buttonPosition: getComputedStyle(button).position,
+      buttonZIndex: getComputedStyle(button).zIndex,
       buttonCenter: button.getBoundingClientRect().left + button.getBoundingClientRect().width / 2,
       agendaClientWidth: agenda.clientWidth,
       agendaScrollWidth: agenda.scrollWidth,
@@ -112,6 +114,8 @@ test('plans keep dates above the calendar, allow the week view to scroll horizon
   expect(Math.abs(geometry.buttonCenterY - geometry.sidebarCenterY)).toBeLessThanOrEqual(8);
   expect(Number(geometry.buttonOpacity)).toBeGreaterThan(0.5);
   expect(Number(geometry.buttonOpacity)).toBeLessThan(1);
+  expect(geometry.buttonPosition).toBe('absolute');
+  expect(Number(geometry.buttonZIndex)).toBeGreaterThanOrEqual(100);
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.sidebarRight);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.contentLeft);
   expect(geometry.layoutWidth).toBeGreaterThan(0);
@@ -139,6 +143,69 @@ test('plans week gives every day room and separates weekday columns visibly', as
   expect(days).toHaveLength(7);
   expect(Math.min(...days.map(({ width }) => width))).toBeGreaterThanOrEqual(150);
   expect(days.every(({ borderLeftWidth, borderLeftStyle }) => borderLeftWidth === '1px' && borderLeftStyle === 'solid')).toBe(true);
+});
+
+test('plans date headers stay compact, icon-free, hoverless, and sticky while the calendar scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await page.goto('/app/plans');
+  await page.getByRole('button', { name: 'Week', exact: true }).click();
+
+  const dateHeading = page.locator('.plans-calendar-day-heading').first();
+  await expect(dateHeading).toBeVisible();
+  await expect(page.locator('.plans-calendar-day-icon')).toHaveCount(0);
+  const compactStyle = await dateHeading.evaluate((heading) => {
+    const style = getComputedStyle(heading);
+    const date = heading.querySelector('strong')!;
+    return {
+      position: style.position,
+      height: heading.getBoundingClientRect().height,
+      dateFontSize: Number.parseFloat(getComputedStyle(date).fontSize),
+      cursor: style.cursor,
+    };
+  });
+  expect(compactStyle.position).toBe('sticky');
+  expect(compactStyle.height).toBeLessThanOrEqual(36);
+  expect(compactStyle.dateFontSize).toBeLessThanOrEqual(14);
+  expect(compactStyle.cursor).toBe('default');
+
+  const beforeHover = await dateHeading.evaluate((heading) => {
+    const { backgroundColor, borderColor, color } = getComputedStyle(heading);
+    return { backgroundColor, borderColor, color };
+  });
+  await dateHeading.hover();
+  const afterHover = await dateHeading.evaluate((heading) => {
+    const { backgroundColor, borderColor, color } = getComputedStyle(heading);
+    return { backgroundColor, borderColor, color };
+  });
+  expect(afterHover).toEqual(beforeHover);
+
+  const stickyTop = await page.locator('.plans-agenda').evaluate((agenda) => {
+    const header = agenda.querySelector<HTMLElement>('.plans-calendar-day-heading')!;
+    agenda.scrollTop = 240;
+    const headerTop = header.getBoundingClientRect().top;
+    const agendaTop = agenda.getBoundingClientRect().top;
+    const paddingTop = Number.parseFloat(getComputedStyle(agenda).paddingTop);
+    const calendarTopPadding = Number.parseFloat(getComputedStyle(agenda.querySelector('.plans-calendar')!).paddingTop);
+    return { headerTop, expectedTop: agendaTop + paddingTop + calendarTopPadding };
+  });
+  expect(Math.abs(stickyTop.headerTop - stickyTop.expectedTop)).toBeLessThanOrEqual(2);
+});
+
+test('plans view switches retain their width instead of wrapping or shrinking', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto('/app/plans');
+  const tabs = page.locator('.plans-mobile-tabs:not(.plans-header-tabs)');
+  const sizing = await tabs.evaluate((nav) => ({ clientWidth: nav.clientWidth, scrollWidth: nav.scrollWidth }));
+  const buttons = await tabs.locator('button').evaluateAll((items) => items.map((item) => {
+    const style = getComputedStyle(item);
+    return { width: item.getBoundingClientRect().width, height: item.getBoundingClientRect().height, flexShrink: style.flexShrink, whiteSpace: style.whiteSpace };
+  }));
+
+  expect(sizing.clientWidth).toBeGreaterThan(0);
+  expect(sizing.scrollWidth).toBeGreaterThan(sizing.clientWidth);
+  expect(buttons).toHaveLength(4);
+  expect(buttons.every(({ width, flexShrink, whiteSpace }) => width >= 60 && flexShrink === '0' && whiteSpace === 'nowrap')).toBe(true);
+  expect(Math.max(...buttons.map(({ height }) => height)) - Math.min(...buttons.map(({ height }) => height))).toBeLessThanOrEqual(2);
 });
 
 test('plans event-list collapse control sits on the list/content divider', async ({ page }) => {

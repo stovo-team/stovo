@@ -13326,10 +13326,10 @@ span.message-spoiler.is-revealed {
 .plans-calendar--3 { min-width: 620px; }
 .plans-calendar--7 { min-width: 1200px; }
 .plans-calendar-day { border-left: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent); box-sizing: border-box; min-width: 0; }
-.plans-calendar-day-heading { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: flex; gap: 4px; height: 48px; justify-content: flex-start; padding: 0 5px; width: 100%; }
-.plans-calendar-day-icon { color: var(--accent-primary); flex: 0 0 auto; }
+.plans-calendar-day-heading { align-items: center; background: var(--chat-layout-background, var(--background-secondary)); border: 0; border-color: transparent; color: var(--text-secondary); cursor: default; display: flex; gap: 4px; height: 32px; justify-content: flex-start; padding: 0 5px; position: sticky; top: 0; transition: none; width: 100%; z-index: 2; }
+.plans-calendar-day-heading:hover:not(:disabled) { background: var(--chat-layout-background, var(--background-secondary)); border-color: transparent; box-shadow: none; color: var(--text-secondary); transform: none; }
 .plans-calendar-day-heading small { font-size: var(--font-size-caption); font-weight: var(--font-weight-extrabold); line-height: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.plans-calendar-day-heading strong { color: var(--text-primary); flex: 0 0 auto; font-size: var(--font-size-body-large); line-height: 1; }
+.plans-calendar-day-heading strong { color: var(--text-primary); flex: 0 0 auto; font-size: var(--font-size-caption); line-height: 1; }
 .plans-calendar-day.active .plans-calendar-day-heading strong { color: var(--accent-primary); }
 .plans-calendar-day-track { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 65px, color-mix(in srgb, var(--border-default) 70%, transparent) 65px, color-mix(in srgb, var(--border-default) 70%, transparent) 66px); display: grid; grid-template-rows: repeat(48, 11px); min-height: 528px; }
 .plans-calendar-event { background: var(--accent-soft); border: 1px solid var(--accent-border-soft); border-radius: var(--radius-control); color: var(--text-primary); cursor: pointer; display: grid; gap: 2px; margin: 2px; min-width: 0; overflow: hidden; padding: 4px; position: relative; text-align: left; z-index: 1; }
@@ -13589,9 +13589,9 @@ span.message-spoiler.is-revealed {
   .plans-calendar-hours time { font-size: var(--font-size-caption); padding-left: 7px; }
   .plans-calendar-days { gap: 2px; }
   .plans-calendar-day-heading { gap: 3px; height: 44px; padding: 0 3px; }
-  .plans-calendar-day-icon { height: 12px; width: 12px; }
-  .plans-calendar-day-heading small { font-size: var(--font-size-micro); }
-  .plans-calendar-day-heading strong { font-size: var(--font-size-body); }
+  .plans-calendar-day-heading { height: 32px; }
+  .plans-calendar-day-heading small,
+  .plans-calendar-day-heading strong { font-size: var(--font-size-micro); }
   .plans-calendar-day-track { background-size: 100% 54px; grid-template-rows: repeat(48, 9px); min-height: 432px; }
   .plans-calendar-event { border-radius: var(--radius-control); margin: 1px; padding: 3px; }
   .plans-calendar-event time { font-size: var(--font-size-micro); }
@@ -32141,7 +32141,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-source-sidebar { position: relative; }
 .storage-source-collapse { position: absolute; right: -36px; top: 8px; }
 .plans-sidebar { overflow: visible; position: relative; }
-.plans-sidebar-collapse { opacity: .72; position: absolute; right: -36px; top: 50%; transform: translateY(-50%); transition: opacity .16s ease; }
+.plans-sidebar-collapse { opacity: .72; position: absolute; right: -36px; top: 50%; transform: translateY(-50%); transition: opacity .16s ease; z-index: 1000; }
 .plans-sidebar-collapse:hover,
 .plans-sidebar-collapse:focus-visible { opacity: 1; }
 .storage-source-collapse:focus-visible,
@@ -32170,6 +32170,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   width: 100%;
 }
 .plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
+.plans-mobile-tabs button { flex: 0 0 auto; white-space: nowrap; }
 .plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .shared-call-controls .call-ctrl-btn:focus-visible,
 .shared-call-controls .voice-dock-btn:focus-visible,
