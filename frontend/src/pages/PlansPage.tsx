@@ -13,6 +13,7 @@ import { useLanguage, useStrings } from "../i18n/LanguageContext";
 import { PopupDialog } from "../components/ui/Popup";
 import { PopupButton } from "../components/ui/PopupButton";
 import { PopupField } from "../components/ui/PopupField";
+import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
 import { formatSlotTime, TODAY_TIME_SLOT_HOURS, TODAY_TIME_SLOTS } from "./plansTimeline";
 
 type View = "today" | "threeDays" | "week" | "month";
@@ -533,15 +534,13 @@ export default function PlansPage() {
       <AppNav />
       <section className={`plans-layout${isEventListCollapsed ? " plans-layout--sidebar-collapsed" : ""}`} aria-busy={loading}>
         <aside className="plans-sidebar">
-          <button
-            type="button"
+          <SidebarCollapseButton
+            expanded={!isEventListCollapsed}
+            expandLabel={strings.auditUi.expandEvents}
+            collapseLabel={strings.auditUi.collapseEvents}
+            onToggle={() => setIsEventListCollapsed((collapsed) => !collapsed)}
             className="plans-sidebar-collapse"
-            aria-label={isEventListCollapsed ? strings.auditUi.expandEvents : strings.auditUi.collapseEvents}
-            aria-expanded={!isEventListCollapsed}
-            onClick={() => setIsEventListCollapsed((collapsed) => !collapsed)}
-          >
-            {isEventListCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          />
           <div className="plans-sidebar-header">
             <label className="plans-search">
               <Search size={17} />

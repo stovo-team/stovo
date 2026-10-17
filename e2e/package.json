@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:mock": "E2E_MODE=mock E2E_BASE_URL=http://127.0.0.1:5180 playwright test tests/storage-plans-ui-regressions.spec.ts",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:ci": "playwright test --reporter=github,html,junit",
