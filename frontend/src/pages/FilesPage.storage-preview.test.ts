@@ -49,10 +49,10 @@ describe("storage video preview sizing", () => {
   });
 
   it("places the source collapse arrow as a translucent fixed overlay", () => {
-    expect(rule(".storage-source-collapse")).toContain("opacity: 0.55;");
-    expect(rule(".storage-source-collapse")).toContain("position: absolute;");
-    expect(rule(".storage-source-collapse")).toContain("top: 50%;");
-    expect(rule(".storage-source-collapse")).toContain("transform: translateY(-50%);");
+    expect(rule(".sidebar-collapse-button")).toContain("opacity: .35;");
+    expect(rule(".sidebar-collapse-button")).toContain("position: absolute;");
+    expect(rule(".sidebar-collapse-button")).toContain("top: 50%;");
+    expect(rule(".sidebar-collapse-button")).toContain("transform: translateY(-50%);");
   });
 
   it("shows premium grouping controls as unavailable", () => {

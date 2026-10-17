@@ -4,8 +4,6 @@ import {
   Download,
   Archive,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   FileAudio,
   FileSpreadsheet,
   FileText,
@@ -53,6 +51,7 @@ import {
 } from "../components/DocumentAttachmentPreview";
 import ImageLightbox from "../components/ImageLightbox";
 import { VideoPlayer } from "../components/VideoPlayer";
+import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { storagePreviewVideoStyle } from "../components/video-player/storagePreviewStyle";
 import AppNav from "./AppNav";
@@ -599,15 +598,13 @@ export default function FilesPage() {
       <AppNav />
       <section className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`} aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
-          <button
-            type="button"
+          <SidebarCollapseButton
+            expanded={!isSourceSidebarCollapsed}
+            expandLabel={strings.auditUi.expandStorageSources}
+            collapseLabel={strings.auditUi.collapseStorageSources}
+            onToggle={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
             className="storage-source-collapse"
-            aria-label={isSourceSidebarCollapsed ? strings.auditUi.expandStorageSources : strings.auditUi.collapseStorageSources}
-            aria-expanded={!isSourceSidebarCollapsed}
-            onClick={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
-          >
-            {isSourceSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          />
           <div className="storage-source-scroll">
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
             <button
