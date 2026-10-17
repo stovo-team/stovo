@@ -112,12 +112,12 @@ test('plans keep dates above the calendar, allow the week view to scroll horizon
   expect(geometry.agendaScrollWidth).toBeGreaterThan(geometry.agendaClientWidth);
   expect(Math.abs(geometry.buttonCenter - geometry.contentLeft)).toBeLessThanOrEqual(24);
   expect(Math.abs(geometry.buttonCenterY - geometry.sidebarCenterY)).toBeLessThanOrEqual(8);
-  expect(Number(geometry.buttonOpacity)).toBeGreaterThan(0.5);
-  expect(Number(geometry.buttonOpacity)).toBeLessThan(1);
+  expect(Number(geometry.buttonOpacity)).toBeGreaterThan(0);
+  expect(Number(geometry.buttonOpacity)).toBeLessThanOrEqual(0.4);
   expect(geometry.buttonPosition).toBe('absolute');
   expect(Number(geometry.buttonZIndex)).toBeGreaterThanOrEqual(100);
   expect(geometry.buttonLeft).toBeGreaterThanOrEqual(geometry.sidebarRight);
-  expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.contentLeft);
+  expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.contentLeft + 6);
   expect(geometry.layoutWidth).toBeGreaterThan(0);
 });
 
@@ -199,7 +199,14 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
   const tabs = page.locator('.plans-mobile-tabs:not(.plans-header-tabs)');
   const sizing = await tabs.evaluate((nav) => {
     const style = getComputedStyle(nav);
-    return { clientWidth: nav.clientWidth, scrollWidth: nav.scrollWidth, overflowX: style.overflowX, flexWrap: style.flexWrap };
+    return {
+      clientWidth: nav.clientWidth,
+      scrollWidth: nav.scrollWidth,
+      overflowX: style.overflowX,
+      flexWrap: style.flexWrap,
+      scrollbarWidth: style.scrollbarWidth,
+      webkitScrollbarDisplay: getComputedStyle(nav, '::-webkit-scrollbar').display,
+    };
   });
   const buttons = await tabs.locator('button').evaluateAll((items) => items.map((item) => {
     const style = getComputedStyle(item);
@@ -210,6 +217,8 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
   expect(sizing.scrollWidth).toBeGreaterThan(sizing.clientWidth);
   expect(sizing.overflowX).toBe('auto');
   expect(sizing.flexWrap).toBe('nowrap');
+  expect(sizing.scrollbarWidth).toBe('none');
+  expect(sizing.webkitScrollbarDisplay).toBe('none');
   expect(buttons).toHaveLength(4);
   expect(buttons.every(({ width, flexShrink, whiteSpace }) => width >= 60 && flexShrink === '0' && whiteSpace === 'nowrap')).toBe(true);
   expect(Math.max(...buttons.map(({ height }) => height))).toBeLessThanOrEqual(60);
@@ -288,12 +297,27 @@ test('plans event-list collapse control sits on the list/content divider', async
     const sidebar = document.querySelector<HTMLElement>('.plans-sidebar')!;
     const content = document.querySelector<HTMLElement>('.plans-content')!;
     const button = document.querySelector<HTMLElement>('.plans-sidebar-collapse')!;
-    const center = (sidebar.getBoundingClientRect().right + content.getBoundingClientRect().left) / 2;
     const rect = button.getBoundingClientRect();
-    return { distance: Math.abs(rect.left + rect.width / 2 - center), insideDivider: rect.left >= sidebar.getBoundingClientRect().right && rect.right <= content.getBoundingClientRect().left };
+    const contentLeft = content.getBoundingClientRect().left;
+    const style = getComputedStyle(button);
+    return {
+      distanceToDivider: Math.abs(rect.left + rect.width / 2 - contentLeft),
+      overlapsContentBoundary: rect.left < contentLeft && rect.right > contentLeft,
+      contentOverhang: rect.right - contentLeft,
+      position: style.position,
+      opacity: Number(style.opacity),
+      zIndex: Number(style.zIndex),
+      contentLeft,
+      sidebarRight: sidebar.getBoundingClientRect().right,
+    };
   });
-  expect(geometry.distance).toBeLessThanOrEqual(8);
-  expect(geometry.insideDivider).toBe(true);
+  expect(geometry.distanceToDivider).toBeLessThanOrEqual(12);
+  expect(geometry.overlapsContentBoundary).toBe(true);
+  expect(geometry.contentOverhang).toBeLessThanOrEqual(6);
+  expect(geometry.position).toBe('absolute');
+  expect(geometry.opacity).toBeLessThanOrEqual(0.4);
+  expect(geometry.zIndex).toBeGreaterThanOrEqual(100);
+  expect(geometry.contentLeft).toBeGreaterThan(geometry.sidebarRight);
 });
 
 test('plans date and view controls sit in a separate row above the plan display', async ({ page }) => {
