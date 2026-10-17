@@ -88,7 +88,7 @@ export function orientationStyle(width: number, height: number): CSSProperties {
     width: "100%",
     maxWidth: "100%",
     height: "auto",
-    maxHeight: "min(56vh, 420px)",
+    maxHeight: "min(68dvh, 700px)",
     ["--video-aspect-ratio" as string]: `${width} / ${height}`,
   };
 }

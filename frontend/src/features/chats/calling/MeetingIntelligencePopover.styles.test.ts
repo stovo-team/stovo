@@ -39,10 +39,10 @@ describe("meeting intelligence popover design", () => {
     expect(component).toContain("<Circle size={17}");
     const button = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
     expect(button).toMatch(/border-radius:\s*var\(--radius-circle\)/);
-    expect(button).toMatch(/min-width:\s*28px/);
-    expect(button).toMatch(/flex:\s*0 0 28px/);
-    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/width:\s*28px/);
-    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/height:\s*28px/);
+    expect(button).toMatch(/min-width:\s*24px/);
+    expect(button).toMatch(/flex:\s*0 0 24px/);
+    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/width:\s*24px/);
+    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/height:\s*24px/);
     expect(ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
     const titleRules = Array.from(styles.matchAll(/\.meeting-intel-popover--inline-menu \.meeting-intel-name\s*\{([^}]*)\}/g), (match) => match[1]);
     expect(titleRules.at(-1)).toMatch(/font-size:\s*var\(--font-size-small\)/);

@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const popupStyles = readFileSync(resolve(process.cwd(), "src/components/ui/Popup.css"), "utf8");
+const dialogSource = readFileSync(resolve(process.cwd(), "src/features/chats/transfer/ChatTransferDialog.tsx"), "utf8");
 
 function declarations(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -10,12 +12,10 @@ function declarations(selector: string): string {
 }
 
 describe("chat transfer controls", () => {
-  it("uses a custom, themed dropdown with a non-intercepting chevron", () => {
-    expect(declarations(".chat-transfer-profile-control")).toMatch(/position:\s*relative/);
-    expect(declarations(".chat-transfer-profile-control select")).toMatch(/appearance:\s*none/);
-    expect(declarations(".chat-transfer-profile-control select")).toMatch(/padding:\s*10px\s+42px\s+10px\s+14px/);
-    expect(declarations(".chat-transfer-profile-control select option")).toMatch(/background:\s*var\(--surface-card\)/);
-    expect(declarations(".chat-transfer-profile-chevron")).toMatch(/pointer-events:\s*none/);
+  it("uses the shared rounded dropdown and keeps its chevron at a fixed size", () => {
+    expect(dialogSource).toContain("<PopupSelect");
+    expect(popupStyles).toMatch(/\.popup-select__trigger\s*\{[^}]*height:\s*46px;[^}]*border-radius:\s*999px;/s);
+    expect(popupStyles).toMatch(/\.popup-select__chevron\s*\{[^}]*width:\s*16px;[^}]*flex:\s*0\s+0\s+16px;/s);
   });
 
   it("gives the file picker equal outer padding and aligns settings actions left", () => {

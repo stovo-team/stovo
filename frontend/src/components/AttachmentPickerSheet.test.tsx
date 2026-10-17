@@ -120,12 +120,9 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-nav-item.active");
   });
 
-  it("keeps the close control circular despite the global button minimum size", () => {
-    const rule = styles.match(/\.attachment-picker-close-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
-    expect(rule).toContain("flex: 0 0 36px;");
-    expect(rule).toContain("min-width: 36px;");
-    expect(rule).toContain("min-height: 36px;");
-    expect(rule).toContain("border-radius: var(--radius-pill);");
+  it("does not render a redundant close button in the poll and checklist sheet header", () => {
+    expect(attachmentSheetSource).toContain('activeTab !== "poll" && activeTab !== "checklist"');
+    expect(attachmentSheetSource).toContain("<PopupCloseButton ariaLabel={strings.attachments.closeMenu}");
   });
 
   it("supports sliding up from top to open full screen, sliding down to restore default state, and sliding down more to close", () => {

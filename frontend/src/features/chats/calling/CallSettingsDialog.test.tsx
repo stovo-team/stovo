@@ -42,6 +42,25 @@ describe("CallSettingsDialog", () => {
     expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe("Camera");
     expect(host.querySelector('[aria-label="Camera settings"]')).toBeTruthy();
   });
+  it("keeps the dialog open while changing an audio device from its dropdown", () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); roots.push(root);
+    const onClose = vi.fn();
+    const onPatch = vi.fn();
+    act(() => root.render(<CallSettingsDialog initialTab="audio" preferences={{ autoHideControls: false, cameraFit: "fit" }} settings={settings} capabilities={{ ...capabilities, canSelectInputDevice: true }} devices={[{ deviceId: "mic-1", kind: "audioinput", label: "Desk microphone" }]} warning={null} onPatch={onPatch} onPreferencePatch={() => undefined} onClose={onClose} isMobile={false} />));
+
+    const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]');
+    expect(trigger).not.toBeNull();
+    act(() => trigger?.click());
+    const option = host.querySelector<HTMLButtonElement>('[role="option"][aria-selected="false"]');
+    expect(option?.textContent).toContain("Desk microphone");
+    act(() => option?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+    act(() => option?.click());
+
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onPatch).toHaveBeenCalledWith({ inputDeviceId: "mic-1" });
+  });
   it("supports arrow-key navigation across the settings tabs", () => {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);

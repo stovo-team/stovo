@@ -127,7 +127,15 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-describe("GuestMeetingPage pre-join controls", () => {
+describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
+  it("renders pre-join actions in Russian for a Russian device locale", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(host?.textContent).toContain("Ваше имя");
+    expect(host?.querySelector<HTMLInputElement>('input[placeholder="Введите имя"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Присоединиться к встрече");
+    expect(host?.textContent).not.toContain("Join meeting");
+  });
   it("renders pre-join actions in Russian for a Russian device locale", async () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();

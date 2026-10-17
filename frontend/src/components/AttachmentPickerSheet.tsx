@@ -15,6 +15,7 @@ import {
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/emojiCategories";
 import { ImageEditorModal } from "./ImageEditorModal";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
 import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
 import { MediaGalleryGrid } from "./attachment-picker/MediaGalleryGrid";
@@ -451,16 +452,16 @@ export default function AttachmentPickerSheet({
   // the composer and open the requested chooser immediately.
   if (!Capacitor.isNativePlatform() && initialTab !== "poll" && activeTab !== "poll" && activeTab !== "checklist") {
     return createPortal(
-      <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" role="presentation" onClick={closeSheet}>
-        <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label={strings.attachments.attachToMessage} onClick={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>{strings.attachments.photoOrVideo}</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>{strings.attachments.document}</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>{strings.attachments.music}</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>{strings.attachments.poll}</span></button>
-          {onCreateChecklist && <button type="button" onClick={() => handleWebMenuPick("checklist")}><CheckSquare size={19} /><span>{strings.attachments.checklist}</span></button>}
-          {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>{strings.attachments.canvas}</span></button>}
+        <PopupBackdrop className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" onClick={closeSheet}>
+          <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label={strings.attachments.attachToMessage} onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>{strings.attachments.photoOrVideo}</span></button>
+            <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>{strings.attachments.document}</span></button>
+            <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>{strings.attachments.music}</span></button>
+            <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>{strings.attachments.poll}</span></button>
+            {onCreateChecklist && <button type="button" onClick={() => handleWebMenuPick("checklist")}><CheckSquare size={19} /><span>{strings.attachments.checklist}</span></button>}
+            {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>{strings.attachments.canvas}</span></button>}
         </div>
-      </div>,
+      </PopupBackdrop>,
       document.body
     );
   }
@@ -512,11 +513,7 @@ export default function AttachmentPickerSheet({
 
   const selectedCount = selectedItemIds.length;
   const sheetContent = (
-    <div
-      className={`attachment-picker-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
-      role="presentation"
-      onClick={closeSheet}
-    >
+    <PopupBackdrop className={`attachment-picker-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`} onClick={closeSheet}>
       <div
         className={`attachment-picker-sheet tg-style ${isFullScreen ? "is-fullscreen" : ""}${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
         role="dialog"
@@ -544,14 +541,9 @@ export default function AttachmentPickerSheet({
                 <span>{strings.attachments.attach}</span>
               )}
             </div>
-            <button
-              type="button"
-              className="attachment-picker-close-btn"
-              aria-label={strings.attachments.closeMenu}
-              onClick={closeSheet}
-            >
-              <span aria-hidden="true">×</span>
-            </button>
+            {activeTab !== "poll" && activeTab !== "checklist" && (
+              <PopupCloseButton ariaLabel={strings.attachments.closeMenu} onClick={closeSheet} />
+            )}
           </div>
         </div>
 
@@ -775,7 +767,7 @@ export default function AttachmentPickerSheet({
           )}
         </nav>
       </div>
-    </div>
+    </PopupBackdrop>
   );
 
   const fullContent = (

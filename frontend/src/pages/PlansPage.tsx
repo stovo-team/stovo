@@ -9,19 +9,22 @@ import { createPlan, getPlans, Plan, PlanDraft, PlanRSVP, rsvpPlan } from "../ap
 import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import AppNav from "./AppNav";
-import { useStrings } from "../i18n/LanguageContext";
+import { useLanguage, useStrings } from "../i18n/LanguageContext";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
+import { PopupField } from "../components/ui/PopupField";
 import { formatSlotTime, TODAY_TIME_SLOT_HOURS, TODAY_TIME_SLOTS } from "./plansTimeline";
 
 type View = "today" | "threeDays" | "week" | "month";
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-const formatDay = (date: Date) => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(date);
-const formatTime = (value: string) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
-const formatDateTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+const formatDay = (date: Date, locale: string) => new Intl.DateTimeFormat(locale, { weekday: "long", month: "long", day: "numeric" }).format(date);
+const formatTime = (value: string, locale: string) => new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+const formatDateTime = (value: string, locale: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
-function formatDateRange(start: Date, end: Date) {
-  const formatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long" });
+function formatDateRange(start: Date, end: Date, locale: string) {
+  const formatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" });
   return formatter.formatRange?.(start, end) ?? `${formatter.format(start)} – ${formatter.format(end)}`;
 }
 
@@ -112,8 +115,11 @@ function renderPlanNotes(text: string) {
 
 export default function PlansPage() {
   const strings = useStrings();
+  const { resolvedLanguage } = useLanguage();
+  const dateLocale = resolvedLanguage === "ru" ? "ru-RU" : "en-US";
   const { accessToken, currentUser } = useAuth();
   const [view, setView] = useState<View>("today");
+  const [isEventListCollapsed, setIsEventListCollapsed] = useState(false);
 
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -360,12 +366,12 @@ export default function PlansPage() {
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(calendarStart, index));
   const threeDayRange = Array.from({ length: 3 }, (_, index) => addDays(selectedDay, index));
   const headerTitle = view === "today"
-    ? formatDay(selectedDay)
+    ? formatDay(selectedDay, dateLocale)
     : view === "threeDays"
-      ? formatDateRange(threeDayRange[0], threeDayRange[2])
+      ? formatDateRange(threeDayRange[0], threeDayRange[2], dateLocale)
       : view === "week"
-        ? formatDateRange(weekDays[0], weekDays[6])
-        : formatDateRange(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1), new Date(selectedDay.getFullYear(), selectedDay.getMonth() + 1, 0));
+        ? formatDateRange(weekDays[0], weekDays[6], dateLocale)
+        : formatDateRange(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1), new Date(selectedDay.getFullYear(), selectedDay.getMonth() + 1, 0), dateLocale);
   const membersById = useMemo(() => {
     const result = new Map(members.map((member) => [member.id, member]));
     if (currentUser) result.set(currentUser.id, currentUser);
@@ -490,7 +496,7 @@ export default function PlansPage() {
             <section className={`plans-calendar-day${sameDay(day, selectedDay) ? " active" : ""}`} key={day.toISOString()} role="gridcell">
               <button type="button" className="plans-calendar-day-heading" onClick={() => setSelectedDay(day)}>
                 <CalendarDays className="plans-calendar-day-icon" size={14} aria-hidden="true" />
-                <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
+                <small>{new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(day)}</small>
                 <strong>{day.getDate()}</strong>
               </button>
               <div className="plans-calendar-day-track">
@@ -501,9 +507,9 @@ export default function PlansPage() {
                     key={plan.id}
                     style={getCalendarEventStyle(plan)}
                     onClick={(event) => openPlanDetails(plan, event.currentTarget)}
-                    title={strings.plans.eventTitle(plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt), getPlanTitle(plan))}
+                    title={strings.plans.eventTitle(plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt, dateLocale), getPlanTitle(plan))}
                   >
-                    <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
+                    <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt, dateLocale)}</time>
                     <span>{getPlanTitle(plan)}</span>
                   </button>
                 ))}
@@ -527,8 +533,17 @@ export default function PlansPage() {
   return (
     <main className="app-shell app-frame plans-page">
       <AppNav />
-      <section className="plans-layout" aria-busy={loading}>
+      <section className={`plans-layout${isEventListCollapsed ? " plans-layout--sidebar-collapsed" : ""}`} aria-busy={loading}>
         <aside className="plans-sidebar">
+          <button
+            type="button"
+            className="plans-sidebar-collapse"
+            aria-label={isEventListCollapsed ? strings.auditUi.expandEvents : strings.auditUi.collapseEvents}
+            aria-expanded={!isEventListCollapsed}
+            onClick={() => setIsEventListCollapsed((collapsed) => !collapsed)}
+          >
+            {isEventListCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
           <div className="plans-sidebar-header">
             <label className="plans-search">
               <Search size={17} />
@@ -551,7 +566,7 @@ export default function PlansPage() {
                 aria-current={selectedPlanId === plan.id ? "true" : undefined}
                 onClick={(event) => openPlanDetails(plan, event.currentTarget)}
               >
-                <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
+                <time>{new Intl.DateTimeFormat(dateLocale, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
                 <span>{getPlanTitle(plan)}</span>
               </button>
             ))}
@@ -568,6 +583,13 @@ export default function PlansPage() {
             <button aria-label={strings.plans.next} onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : view === "week" ? 7 : view === "threeDays" ? 3 : 1))}>
               <ChevronRight />
             </button>
+            {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
+              {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
+                <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
+                  {item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
+                </button>
+              ))}
+            </nav>}
           </header>
           <nav className="plans-mobile-tabs" aria-label={strings.plans.view}>
             <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
@@ -624,7 +646,7 @@ export default function PlansPage() {
                         <div className="plans-timeline-content">
                           <div className="plans-timeline-line" />
                           <div className="plans-timeline-events">
-                            {slotPlans.map((plan) => renderPlanCard(plan, formatTime(plan.startsAt)))}
+                            {slotPlans.map((plan) => renderPlanCard(plan, formatTime(plan.startsAt, dateLocale)))}
                           </div>
                         </div>
                       </div>
@@ -640,42 +662,17 @@ export default function PlansPage() {
         </section>
       </section>
       {dialogOpen && (
-        <div
-          className="modal-backdrop plans-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setDialogOpen(false);
-              setDialogError(null);
-            }
-          }}
-        >
+        <PopupDialog className="plans-dialog" ariaLabelledBy="new-plan-title" onClose={() => { setDialogOpen(false); setDialogError(null); }} closeOnBackdrop backdropClassName="plans-dialog-backdrop" size="md">
           <form
-            className="messenger-modal modal-form plans-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="new-plan-title"
+            className="modal-form"
             onSubmit={submit}
-            onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
               <h2 id="new-plan-title">{strings.plans.newPlan}</h2>
-              <button
-                type="button"
-                className="icon-button subtle icon-button--plain"
-                aria-label={strings.plans.close}
-                onClick={() => {
-                  setDialogOpen(false);
-                  setDialogError(null);
-                }}
-              >
-                <X aria-hidden="true" size={20} />
-              </button>
             </div>
             {dialogError && <p className="error-text modal-error-text" role="alert">{dialogError}</p>}
-            <label>
-              {strings.plans.planTitle}
-              <input
+            <PopupField
+                label={strings.plans.planTitle}
                 autoFocus
                 required
                 value={draft.title}
@@ -684,11 +681,9 @@ export default function PlansPage() {
                   if (dialogError) setDialogError(null);
                 }}
               />
-            </label>
             <div className="plans-dialog-times">
-              <label>
-                {strings.plans.starts}
-                <input
+              <PopupField
+                  label={strings.plans.starts}
                   required
                   type="datetime-local"
                   value={draft.startsAt}
@@ -697,10 +692,8 @@ export default function PlansPage() {
                     if (dialogError) setDialogError(null);
                   }}
                 />
-              </label>
-              <label>
-                {strings.plans.ends}
-                <input
+              <PopupField
+                  label={strings.plans.ends}
                   required
                   type="datetime-local"
                   min={draft.startsAt}
@@ -710,28 +703,25 @@ export default function PlansPage() {
                     if (dialogError) setDialogError(null);
                   }}
                 />
-              </label>
             </div>
             <div className="time-preset-chips" aria-label={strings.plans.durationPresets}>
-              <button type="button" onClick={() => applyDurationMinutes(30)}>30m</button>
-              <button type="button" onClick={() => applyDurationMinutes(60)}>1h</button>
-              <button type="button" onClick={() => applyDurationMinutes(120)}>2h</button>
-              <button
-                type="button"
-                className={draft.allDay ? "active" : ""}
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(30)}>30m</PopupButton>
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(60)}>1h</PopupButton>
+              <PopupButton variant="secondary" onClick={() => applyDurationMinutes(120)}>2h</PopupButton>
+              <PopupButton
+                variant="secondary"
+                aria-pressed={draft.allDay}
                 onClick={() => setDraft((current) => ({ ...current, allDay: !current.allDay }))}
               >
                 {strings.plans.allDay}
-              </button>
+              </PopupButton>
             </div>
-            <label>
-              {strings.plans.location}
-              <input
+            <PopupField
+                label={strings.plans.location}
                 value={draft.location ?? ""}
                 onChange={(e) => setDraft({ ...draft, location: e.target.value })}
                 placeholder={strings.plans.locationOptional}
               />
-            </label>
             <label>
               {strings.plans.descriptionOrLink}
               <textarea
@@ -741,11 +731,11 @@ export default function PlansPage() {
                 placeholder={strings.plans.descriptionPlaceholder}
               />
             </label>
-            <button type="submit" className="primary-button">
+            <PopupButton type="submit" variant="primary">
               {strings.plans.createPlan}
-            </button>
+            </PopupButton>
           </form>
-        </div>
+        </PopupDialog>
       )}
       {detailsPlan && planDetails && createPortal(
         <section
@@ -770,8 +760,8 @@ export default function PlansPage() {
             </button>
           </header>
           <dl className="plan-details-list">
-            <div><dt>{strings.plans.starts}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.startsAt)}</dd></div>
-            <div><dt>{strings.plans.ends}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.endsAt)}</dd></div>
+            <div><dt>{strings.plans.starts}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.startsAt, dateLocale)}</dd></div>
+            <div><dt>{strings.plans.ends}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.endsAt, dateLocale)}</dd></div>
             <div><dt>{strings.plans.timeZone}</dt><dd>{detailsPlan.timeZone}</dd></div>
             {detailsPlan.location && <div><dt>{strings.plans.location}</dt><dd>{detailsPlan.location}</dd></div>}
             <div>

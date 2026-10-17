@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, FormEvent, MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { BellRing, Repeat, X } from "lucide-react";
+import { BellRing, Repeat } from "lucide-react";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupField } from "../../../components/ui/PopupField";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import type { PendingLocalAttachment } from "../shared/types";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -57,19 +60,6 @@ export function ReminderModal({
       setSelectedDaysOfMonth([d.getDate()]);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   function toggleDayOfWeek(day: number) {
     setSelectedDaysOfWeek((current) => {
@@ -150,43 +140,13 @@ export function ReminderModal({
   const repeatSummary = `Starts on ${safeDate} at ${safeTime}, repeats ${freqText} for ${safeCount} time${safeCount > 1 ? "s" : ""}.`;
 
   const modalContent = (
-    <div
-      className="modal-backdrop reminder-modal-backdrop"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          e.stopPropagation();
-        }
-      }}
-    >
-      <section
-        className="messenger-modal reminder-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="reminder-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
+    <PopupDialog className="reminder-modal-card" ariaLabelledBy="reminder-modal-title" onClose={onClose} closeOnBackdrop closeOnEscape backdropClassName="reminder-modal-backdrop">
+      <div className="reminder-modal-content" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()}>
         <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <BellRing size={20} className="modal-card-header-icon" aria-hidden="true" />
             <h2 id="reminder-modal-title" className="modal-card-title">{copy.setRepeatingReminder}</h2>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle icon-button--plain modal-card-close-btn"
-            onClick={onClose}
-            aria-label={copy.closeReminder}
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <div className="modal-card-body">
@@ -197,21 +157,19 @@ export function ReminderModal({
 
           <div className="reminder-form-row">
             <div className="reminder-form-group">
-              <label htmlFor="reminder-start-date" className="reminder-form-label">{copy.startDate}</label>
-              <input
+              <PopupField
+                label={copy.startDate}
                 id="reminder-start-date"
                 type="date"
-                className="reminder-input"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
             <div className="reminder-form-group">
-              <label htmlFor="reminder-start-time" className="reminder-form-label">{copy.exactTime}</label>
-              <input
+              <PopupField
+                label={copy.exactTime}
                 id="reminder-start-time"
                 type="time"
-                className="reminder-input"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
               />
@@ -304,13 +262,13 @@ export function ReminderModal({
               ))}
             </div>
             <div className="reminder-repeat-custom-row">
-              <span className="reminder-repeat-label">{copy.customCount}</span>
-              <input
+              <PopupField
+                label={copy.customCount}
                 id="reminder-repeat-count"
                 type="number"
                 min={1}
                 max={999}
-                className="reminder-input reminder-count-input"
+                className="reminder-count-input"
                 value={repeatCount}
                 onChange={(e) => setRepeatCount(Math.max(1, Number(e.target.value) || 1))}
                 onKeyDown={(e) => {
@@ -330,11 +288,15 @@ export function ReminderModal({
         </div>
 
         <div className="modal-card-footer modal-card-actions modal-actions">
-          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>{copy.cancel}</button>
-          <button type="button" className="primary-button btn-primary" onClick={handleConfirm}>{copy.setReminder}</button>
+          <PopupButton variant="secondary" onClick={onClose}>
+            {copy.cancel}
+          </PopupButton>
+          <PopupButton variant="primary" onClick={handleConfirm}>
+            {copy.setReminder}
+          </PopupButton>
         </div>
-      </section>
-    </div>
+      </div>
+    </PopupDialog>
   );
 
   if (typeof document === "undefined" || !document.body) {

@@ -20,22 +20,14 @@ import { SharedCallStage } from "../features/chats/calling/SharedCallStage";
 import { CALL_CONTROLS_REVEAL_EVENT, SharedCallControlPanel } from "../features/chats/calling/SharedCallControlPanel";
 import { useCallUIPreferences } from "../features/chats/calling/callUIPreferences";
 import { DEFAULT_CALL_SETTINGS, type CallSettings } from "../realtime/call/types";
+import { PopupDialog } from "../components/ui/Popup";
+import { PopupButton } from "../components/ui/PopupButton";
 import { CallSettingsDialog } from "../features/chats/calling/CallSettingsDialog";
 import GuestMeetingConnectingScreen from "./GuestMeetingConnectingScreen";
 import { createGuestAudioProcessor, guestCaptureConstraints } from "./guestMeetingMediaSettings";
 import { GuestParticipantTile, LocalStreamVideo, RemoteVideo } from "./GuestMeetingMedia";
 import { createCallSpeakingIndicator, isCallSpeakingActive, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
-import {
-  createGuestMeetingSession,
-  getGuestMeetingIntelligence,
-  getGuestMeetingStatus,
-  getGuestMeetingToken,
-  GuestMeetingLinkError,
-  leaveGuestMeetingSession,
-  previewGuestMeeting,
-  type GuestMeetingIntelligenceStatus,
-  type GuestMeetingPreview,
-} from "../api/guestMeetings";
+import { createGuestMeetingSession, getGuestMeetingIntelligence, getGuestMeetingStatus, getGuestMeetingToken, GuestMeetingLinkError, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingIntelligenceStatus, type GuestMeetingPreview } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 import { resolveGuestMeetingQualityBitrates, videoTrackPublishOptions } from "../realtime/call/callQuality";
 import { EmptyGuestRoomTimeout } from "./guestMeetingEmptyRoomTimeout";
@@ -690,7 +682,7 @@ export default function GuestMeetingPage() {
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={text.meetingTitle(preview?.title)} onPointerDown={() => { if (isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }} onPointerMove={() => { if (!isMobile) window.dispatchEvent(new Event(CALL_CONTROLS_REVEAL_EVENT)); }}>
-        {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">{text.stillWaiting}</h2><p>{text.onlyPerson}</p><div><button type="button" className="secondary-button" onClick={() => void leave()}>{text.leaveMeeting}</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>{text.stayMeeting}</button></div></section></div>}
+        {emptyRoomWarning && <PopupDialog className="guest-empty-room-timeout" ariaLabelledBy="guest-empty-room-timeout-title" onClose={stayInEmptyRoom} size="sm"><h2 id="guest-empty-room-timeout-title">{text.stillWaiting}</h2><p>{text.onlyPerson}</p><div><PopupButton variant="secondary" onClick={() => void leave()}>{text.leaveMeeting}</PopupButton><PopupButton variant="primary" onClick={stayInEmptyRoom}>{text.stayMeeting}</PopupButton></div></PopupDialog>}
         <LiveCaptionsOverlay
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}

@@ -8,10 +8,15 @@ import { DEFAULT_CALL_SETTINGS } from "../src/realtime/call/types";
 import type { CallSessionApi } from "../src/features/chats/calling/useCallSession";
 import type { Chat } from "../src/api/chats";
 import type { User } from "../src/api/auth";
+import "../src/design-system/tokens.css";
 import "../src/styles.css";
 
 const params = new URLSearchParams(location.search);
 const voice = params.get("kind") === "voice";
+const withDevices = params.has("devices");
+if (params.has("controls-visible")) {
+  localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: false, cameraFit: "fit" }));
+}
 const self = { id: "self", displayName: "Test User", profilePhoto: null } as User;
 const chat = { id: "group", title: "Test call", type: voice ? "voice" : "group", members: [self], activeCall: { participants: [{ userId: "self", state: "connected" }] } } as unknown as Chat;
 function media(color: string) {
@@ -33,7 +38,7 @@ function Fixture() {
   const audioCallRef = useRef(null), socketRef = useRef(null), remoteVideoRef = useRef(null), localVideoRef = useRef(null), callSettingsButtonRef = useRef(null), callSettingsMenuRef = useRef(null), callAudioPopupRef = useRef(null), remoteAudioRef = useRef(null);
   const session = {
     callPhase: phase, callType: type, setCallType: setType, activeCallChatId: "group", activeGroupCalls: { group: chat.activeCall },
-    callAudioSettings: settings, callAudioCapabilities: { canUseCamera: true, canShareScreen: true }, callAudioDevices: [], callRemoteMedia: [],
+    callAudioSettings: settings, callAudioCapabilities: { canUseCamera: true, canShareScreen: true, canSelectInputDevice: withDevices, canSelectOutputDevice: withDevices }, callAudioDevices: withDevices ? [{ deviceId: "mock-microphone", kind: "audioinput", label: "Desk microphone" }] : [], callRemoteMedia: [],
     callParticipantIds: ["self"], callInviteSelection: [], isCallInviteOpen: false,
     localVideoStream: settings.cameraEnabled ? cameraStream : null, localScreenStream: settings.screenSharing ? screenStream : null,
     remoteVideoStream: null, hasRemoteVideo: false, speakingUserIds: [], isLocalSpeaking: false, isPeerSpeaking: false,

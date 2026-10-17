@@ -61,6 +61,7 @@ test("simulates a video call between two demo users in separate tabs without med
   const socketRequests: string[] = [];
   const installMediaGuard = async (targetPage: typeof page) => {
     await targetPage.addInitScript(() => {
+      localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: false, cameraFit: "fit" }));
       const mockWindow = window as Window & {
         __mockMediaCalls?: number;
         __mockRtcConnections?: number;

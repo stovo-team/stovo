@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2, X } from "lucide-react";
+import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2 } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
 import { useStrings } from "../i18n/LanguageContext";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 interface Stroke {
   color: string;
@@ -261,8 +262,8 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   }, [brightness, contrast, crop, gamma, imgElement, onSave, pending.file, strokes]);
 
   return createPortal(
-    <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label={copy.editImage}>
-      <div className="image-editor-modal">
+    <PopupBackdrop className="image-editor-backdrop">
+      <div className="image-editor-modal" role="dialog" aria-modal="true" aria-label={copy.editImage}>
         {/* Header */}
         <header className="image-editor-header">
           <div className="image-editor-title">
@@ -279,14 +280,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               <RotateCcw size={16} />
               <span>{copy.reset}</span>
             </button>
-            <button
-              type="button"
-              className="image-editor-close-btn"
-              onClick={onClose}
-              aria-label={copy.close}
-            >
-              <X size={20} />
-            </button>
+            <PopupCloseButton className="image-editor-close-btn" onClick={onClose} ariaLabel={copy.close} />
           </div>
         </header>
 
@@ -571,7 +565,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           </button>
         </footer>
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body
   );
 }

@@ -13,6 +13,7 @@ export type ChatTransferStrings = {
   reviewExport: string;
   downloadExport: string;
   importAsNewChat: string;
+  cancel: string;
   importing: string;
   exporting: string;
   messages: (count: number) => string;
@@ -51,6 +52,7 @@ const english: ChatTransferStrings = {
   reviewExport: "Review export",
   downloadExport: "Download export",
   importAsNewChat: "Import as new chat",
+  cancel: "Cancel",
   importing: "Importing chat…",
   exporting: "Preparing export…",
   messages: (count) => `${count} message${count === 1 ? "" : "s"}`,
@@ -89,6 +91,7 @@ const russian: ChatTransferStrings = {
   reviewExport: "Просмотреть экспорт",
   downloadExport: "Скачать экспорт",
   importAsNewChat: "Импортировать как новый чат",
+  cancel: "Отмена",
   importing: "Импорт чата…",
   exporting: "Подготовка экспорта…",
   messages: (count) => `${count} сообщ.`,

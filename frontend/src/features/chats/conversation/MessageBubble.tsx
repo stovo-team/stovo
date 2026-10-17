@@ -70,10 +70,10 @@ function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeeti
           rel="noopener noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          {copy.joinMeeting} <ArrowUpRight size={16} />
+          {copy.joinMeetingAction} <ArrowUpRight size={16} />
         </a>
         <a className="guest-meeting-invitation-plan" href={`${getClusterPrefix()}/app/plans`} onClick={addToPlans}>
-          <CalendarPlus size={16} /> {copy.addToPlans}
+          <CalendarPlus size={16} /> {copy.plansAction}
         </a>
       </div>
     </section>

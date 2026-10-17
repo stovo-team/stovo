@@ -1,6 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
 
 import type { Chat, Message } from "../../../api/chats";
 import type { ChatImportPreparedContent, ChatExportSource } from "../../../api/chatTransfer";
@@ -10,6 +8,9 @@ import { downloadFileBlob } from "../../../api/files";
 import { decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity } from "../../../api/messageCrypto";
 import { useResolvedLanguage, useStrings } from "../../../i18n/LanguageContext";
 import { getChatTransferStrings, type ChatTransferStrings } from "../../../config/strings/chatTransfer";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupSelect } from "../../../components/ui/PopupSelect";
 import { validateArchive, type ChatArchive, type ChatArchiveAttachment, type ChatArchiveMessage } from "./archive";
 import { importedSourceKind, importedSourceReactions } from "./attribution";
 import { CHAT_EXPORT_PROFILES, parseChatFile, serializeChatArchive } from "./adapters";
@@ -193,14 +194,10 @@ export function ChatTransferDialog({
   const title = mode === "import" ? copy.importTitle : copy.exportTitle;
   const importComplete = mode === "import" && completeChat !== null;
 
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <div className="modal-backdrop chat-transfer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-      <section className="messenger-modal chat-transfer-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-transfer-title">
+  return (
+    <PopupDialog className="chat-transfer-dialog" ariaLabelledBy="chat-transfer-title" onClose={busy ? undefined : onClose} closeLabel={copy.cancel} closeOnBackdrop={!busy} size="lg">
         <div className="modal-card-header">
           <h2 id="chat-transfer-title">{importComplete ? copy.imported : title}</h2>
-          <button type="button" className="quick-access-close" aria-label={uiCopy.close} disabled={busy} onClick={onClose}>×</button>
         </div>
         <div className="chat-transfer-body">
           <p>{mode === "import" ? copy.importHelp : copy.exportHelp}</p>
@@ -208,22 +205,13 @@ export function ChatTransferDialog({
             <ChatTransferFilePicker copy={copy} busy={busy} onFilesSelected={handleFiles} />
           )}
           {mode === "export" && !exportSource && (
-            <button className="chat-transfer-primary-action" type="button" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</button>
+            <PopupButton variant="primary" onClick={() => void loadExportSource()} disabled={busy}>{copy.reviewExport}</PopupButton>
           )}
           {mode === "export" && exportSource && (
-            <label className="chat-transfer-profile">
+            <div className="chat-transfer-profile">
               <span>{copy.selectProvider}</span>
-              <span className="chat-transfer-profile-control">
-                <select value={selectedProfileId} onChange={(event) => setSelectedProfileId(event.currentTarget.value)} disabled={busy}>
-                  {CHAT_EXPORT_PROFILES.map((profile) => (
-                    <option key={`${profile.providerId}:${profile.profileId}`} value={profile.profileId}>
-                      {profile.providerId} — {profile.formatVersion}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="chat-transfer-profile-chevron" aria-hidden="true" size={18} />
-              </span>
-            </label>
+              <PopupSelect ariaLabel={copy.selectProvider} value={selectedProfileId} onChange={setSelectedProfileId} disabled={busy} options={CHAT_EXPORT_PROFILES.map((profile) => ({ value: profile.profileId, label: `${profile.providerId} — ${profile.formatVersion}` }))} />
+            </div>
           )}
           {busy && <p role="status">{mode === "import" ? copy.importing : copy.exporting}</p>}
           {error && <p role="alert">{error}</p>}
@@ -250,17 +238,16 @@ export function ChatTransferDialog({
             <p className="chat-transfer-plaintext-warning" role="alert">{copy.plaintextWarning}</p>
           )}
           <div className="chat-transfer-actions">
+            <PopupButton variant="secondary" onClick={onClose} disabled={busy}>{copy.cancel}</PopupButton>
             {mode === "import" && !importComplete && archive && (
-              <button className="chat-transfer-primary-action" type="button" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</button>
+              <PopupButton variant="primary" onClick={() => void importArchive()} disabled={busy}>{copy.importAsNewChat}</PopupButton>
             )}
             {mode === "export" && exportSource && (
-              <button className="chat-transfer-primary-action" type="button" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</button>
+              <PopupButton variant="primary" onClick={() => void downloadExport()} disabled={busy}>{copy.downloadExport}</PopupButton>
             )}
           </div>
         </div>
-      </section>
-    </div>,
-    document.body
+    </PopupDialog>
   );
 }
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, MoreVertical, Share2, X } from "lucide-react";
+import { Download, MoreVertical, Share2 } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { shareContent } from "../native/nativeSharePlugin";
 import { useStrings } from "../i18n/LanguageContext";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 interface ImageLightboxProps {
   imageUrl: string;
@@ -112,9 +113,8 @@ export default function ImageLightbox({
   }, [isClosing, onClose, prefersReducedMotion]);
 
   return createPortal(
-    <div
+    <PopupBackdrop
       className={`image-lightbox-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
-      role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           requestClose();
@@ -122,14 +122,7 @@ export default function ImageLightbox({
       }}
     >
       <header className="image-lightbox-toolbar">
-        <button
-          type="button"
-          className="image-lightbox-close"
-          aria-label={copy.closePreview}
-          onClick={requestClose}
-        >
-          <X aria-hidden="true" size={24} strokeWidth={2.25} />
-        </button>
+        <PopupCloseButton className="image-lightbox-close" ariaLabel={copy.closePreview} onClick={requestClose} />
         <div className="image-lightbox-copy">
           <strong>{title}</strong>
           {subtitle && <span>{subtitle}</span>}
@@ -182,7 +175,7 @@ export default function ImageLightbox({
       <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={copy.fullView(title)}>
         <img src={imageUrl} alt={title} decoding="async" />
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body
   );
 }

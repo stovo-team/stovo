@@ -11,6 +11,8 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 - Keep changes focused and preserve unrelated work.
 - Do not push, publish, merge, or open a pull request without authorization.
 - After authorization, create pull requests with `gh` outside the sandbox and record their URLs in the Active pull requests section below.
+- For new popup work and popup migrations, reuse the shared popup primitives and follow [Popup UI standards](docs/ui/popup-standards.md). Do not add popup-local overlay, surface, close, button, field, dropdown, radius, or blur styles that conflict with that standard.
+- Apply the approved typography work through `frontend/src/design-system/tokens.css`: use `--font-family-ui` (or `--font-family-mono` for code), shared font-size, weight, and line-height tokens. Popup primitives must inherit/use these tokens; reuse `PopupDialog`, `PopupBackdrop`, `PopupCloseButton`, `PopupButton`, `PopupField`, and `PopupSelect` instead of creating parallel popup components.
 
 ## Workflows
 
@@ -49,3 +51,4 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 ## Active pull requests
 
 - Chat transfer controls follow-up: https://github.com/stovo-team/stovo/pull/174
+- Call and sidebar UI fixes: https://github.com/stovo-team/stovo/pull/177
