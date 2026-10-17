@@ -21,6 +21,7 @@ type: index
 - [Feature development](agent-workflows/feature-development.md): feature and test plans, test-first implementation, and relevant verification.
 - [Testing and verification](agent-workflows/testing.md): test-layer selection, test quality, isolation, and reporting.
 - [Task isolation and delivery](agent-workflows/isolation-and-delivery.md): branches, worktrees, pull requests, publication authorization, and cleanup.
+- [PR review findings](agent-workflows/pr-review-findings.md): actionable review comments, evidence, and when to create follow-up issues.
 
 ## Engineering
 
