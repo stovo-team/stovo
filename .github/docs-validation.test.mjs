@@ -71,6 +71,9 @@ test('agent instructions link to the PR review findings workflow', () => {
   assert.ok(existsSync(path.join(root, workflowPath)), `missing ${workflowPath}`);
   assert.ok(instructions.includes(workflowPath), 'AGENTS.md must point agents to the review workflow');
   assert.ok(docsIndex.includes('pr-review-findings.md'), 'docs index must link to the review workflow');
+  const workflow = read(workflowPath);
+  assert.match(workflow, /Include evidence when opening a PR/);
+  assert.match(workflow, /before-and-after screenshots/);
 });
 
 test('bug report deployment choices cover hosted, managed, and local deployments', () => {

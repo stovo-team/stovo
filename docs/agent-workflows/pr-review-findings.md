@@ -17,6 +17,10 @@ Use this workflow when reporting a defect or risk found while reviewing a pull r
 
 Do not attach evidence that contains credentials, private messages, personal data, or production data. Redact sensitive values while keeping the behavior reproducible.
 
+## Include evidence when opening a PR
+
+Put verification evidence in the PR description so reviewers can understand the change before reading the diff. For visual changes, include before-and-after screenshots or a short recording when the relevant UI can be safely reproduced; state the viewport/device and interaction shown. For non-visual changes, list the focused checks and results, or link a sanitized trace or reproduction artifact. For documentation-only changes, report the validation command and result; screenshots are unnecessary unless the docs change itself affects a rendered UI.
+
 ## Keep findings useful
 
 - Lead with impact and severity, then explain the trigger and evidence. Prefer one finding per comment.
