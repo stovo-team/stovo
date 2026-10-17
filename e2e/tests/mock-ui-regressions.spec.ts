@@ -223,6 +223,36 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
   expect(scroll.lastButtonRight).toBeLessThanOrEqual(scroll.viewportRight + 1);
 });
 
+test('plans three-day view switch remains on one line at the reported 500px viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.goto('/app/plans');
+  await page.getByRole('button', { name: 'Collapse event list' }).click();
+  await page.setViewportSize({ width: 500, height: 700 });
+  const tabs = page.locator('.plans-header-tabs');
+  const threeDays = tabs.getByRole('button', { name: '3 days', exact: true });
+  await expect(threeDays).toBeVisible();
+  const metrics = await threeDays.evaluate((button) => {
+    const style = getComputedStyle(button);
+    const nav = button.closest('nav')!;
+    return {
+      height: button.getBoundingClientRect().height,
+      scrollHeight: button.scrollHeight,
+      lineHeight: Number.parseFloat(style.lineHeight),
+      whiteSpace: style.whiteSpace,
+      width: button.getBoundingClientRect().width,
+      text: button.innerText,
+      navClientWidth: nav.clientWidth,
+      navScrollWidth: nav.scrollWidth,
+      navOverflowX: getComputedStyle(nav).overflowX,
+    };
+  });
+  expect(metrics.whiteSpace).toBe('nowrap');
+  expect(metrics.height).toBeLessThanOrEqual(60);
+  expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.lineHeight + 24);
+  expect(metrics.navOverflowX).toBe('auto');
+  expect(metrics.navScrollWidth).toBeGreaterThan(metrics.navClientWidth);
+});
+
 test('plans event-list collapse control sits on the list/content divider', async ({ page }) => {
   await page.goto('/app/plans');
   await page.getByRole('button', { name: 'Collapse event list' }).click();

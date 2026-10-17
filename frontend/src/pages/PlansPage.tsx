@@ -585,15 +585,15 @@ export default function PlansPage() {
           {isEventListCollapsed && <nav className="plans-mobile-tabs plans-header-tabs" aria-label={strings.plans.view}>
             {(["today", "threeDays", "week", "month"] as View[]).map((item) => (
               <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                {item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
+                <span className="plans-view-tab-label">{item === "threeDays" ? strings.plans.threeDays : item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}</span>
               </button>
             ))}
           </nav>}
           <nav className="plans-mobile-tabs" aria-label={strings.plans.view}>
-            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
-            <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}>{strings.plans.threeDays}</button>
-            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{strings.plans.thisWeek}</button>
-            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>{strings.plans.month}</button>
+            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}><span className="plans-view-tab-label">{strings.plans.today}</span></button>
+            <button className={view === "threeDays" ? "active" : ""} onClick={() => setView("threeDays")}><span className="plans-view-tab-label">{strings.plans.threeDays}</span></button>
+            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}><span className="plans-view-tab-label">{strings.plans.thisWeek}</span></button>
+            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}><span className="plans-view-tab-label">{strings.plans.month}</span></button>
           </nav>
           {error && <p className="error-text" role="alert">{error}</p>}
           {view === "month" ? (
