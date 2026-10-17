@@ -13233,9 +13233,10 @@ span.message-spoiler.is-revealed {
 .plans-search, .plans-header { align-items: center; background: color-mix(in srgb, var(--surface-card) 86%, var(--color-palette-7b2817bf9b80) 14%); border: 0; border-radius: var(--radius-pill); display: flex; }
 .plans-search { gap: 9px; padding: 0 16px; height: 48px; }
 .plans-search input { background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text-primary); min-width: 0; outline: 0; width: 100%; }
-.plans-tabs { display: flex; gap: 8px; margin: 16px 0 30px; }
+.plans-tabs { display: flex; flex-wrap: nowrap; gap: 8px; margin: 16px 0 30px; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .plans-mobile-tabs { box-sizing: border-box; display: none; flex-wrap: nowrap; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .plans-tabs button, .plan-rsvp button, .plan-details-rsvp button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-size: var(--font-size-small); font-weight: var(--font-weight-bold); padding: 8px 13px; }
+.plans-tabs button { flex: 0 0 auto; white-space: nowrap; }
 .plans-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .plans-list-label { color: var(--accent-primary); font-size: var(--font-size-small); font-weight: var(--font-weight-extrabold); letter-spacing: .08em; text-transform: uppercase; }
 .plans-sidebar-row { align-items: center; background: transparent; border: 0; border-left: 2px solid transparent; color: var(--text-primary); cursor: pointer; display: flex; gap: 12px; justify-content: flex-start; padding: 11px 8px; text-align: left; width: 100%; }

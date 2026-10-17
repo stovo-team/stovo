@@ -224,6 +224,32 @@ test('plans view switches retain their width instead of wrapping or shrinking', 
   expect(scroll.lastButtonRight).toBeLessThanOrEqual(scroll.viewportRight + 1);
 });
 
+test('plans view switches stay at a normal compact height in the event-list panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await page.goto('/app/plans');
+
+  const tabs = page.locator('.plans-tabs');
+  await expect(tabs).toBeVisible();
+  const sizing = await tabs.evaluate((nav) => ({
+    overflowX: getComputedStyle(nav).overflowX,
+    flexWrap: getComputedStyle(nav).flexWrap,
+    clientWidth: nav.clientWidth,
+    scrollWidth: nav.scrollWidth,
+  }));
+  const buttons = await tabs.locator('button').evaluateAll((items) => items.map((button) => {
+    const style = getComputedStyle(button);
+    return { text: button.textContent?.trim(), height: button.getBoundingClientRect().height, whiteSpace: style.whiteSpace, flexShrink: style.flexShrink };
+  }));
+
+  expect(buttons).toHaveLength(4);
+  expect(buttons.every(({ text }) => Boolean(text))).toBe(true);
+  expect(Math.max(...buttons.map(({ height }) => height))).toBeLessThanOrEqual(44);
+  expect(sizing.overflowX).toBe('auto');
+  expect(sizing.flexWrap).toBe('nowrap');
+  expect(sizing.scrollWidth).toBeGreaterThan(sizing.clientWidth);
+  expect(buttons.every(({ whiteSpace, flexShrink }) => whiteSpace === 'nowrap' && flexShrink === '0')).toBe(true);
+});
+
 test('plans three-day view switch remains on one line at the reported 500px viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
   await page.goto('/app/plans');
