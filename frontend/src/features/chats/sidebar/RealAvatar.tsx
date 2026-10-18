@@ -44,7 +44,7 @@ export function RealAvatar({
     if (fallbackKind === "family") {
       return <Home aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
     }
-    return chatInitials(label);
+    return <span className="avatar-initials">{chatInitials(label)}</span>;
   }
 
   const showImage = Boolean(previewUrl) && !imageBroken;

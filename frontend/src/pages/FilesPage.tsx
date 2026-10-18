@@ -180,7 +180,7 @@ function StorageSourceAvatar({
   if (kind === "family") return <Home aria-hidden="true" size={20} />;
   if (kind === "group") return <Users aria-hidden="true" size={20} />;
   if (kind === "channel") return <Megaphone aria-hidden="true" size={20} />;
-  return <span aria-hidden="true">{chatInitials(label)}</span>;
+  return <span className="avatar-initials" aria-hidden="true">{chatInitials(label)}</span>;
 }
 
 function StorageTile({
