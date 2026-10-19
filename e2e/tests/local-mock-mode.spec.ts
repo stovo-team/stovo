@@ -203,6 +203,7 @@ test("simulates a video call between two demo users in separate tabs without med
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("dialog", { name: "Active call" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
   await expect(page).toHaveScreenshot("active-call-mobile.png");
 
   await page.close();
