@@ -170,7 +170,7 @@ test("simulates a video call between two demo users in separate tabs without med
 
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({
-    content: `*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; scroll-behavior: auto !important; caret-color: transparent !important; }`,
+    content: `*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; scroll-behavior: auto !important; caret-color: transparent !important; } .call-popup-notice, .mobile-active-notice-banner { display: none !important; }`,
   });
   await expect(page).toHaveScreenshot("active-call-desktop.png");
 
