@@ -11,7 +11,8 @@
     "test:production": "playwright test tests/production-smoke.spec.ts --reporter=github,html,junit",
     "report": "playwright show-report",
     "test:visual": "playwright test --config playwright.visual.config.ts",
-    "evidence:capture": "node tools/capture-evidence.mjs"
+    "evidence:capture": "node tools/capture-evidence.mjs",
+    "evidence:compare": "node tools/compare-revisions.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

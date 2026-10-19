@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stovo evidence v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "sourceRevision",
+    "baseRevision",
+    "dirty",
+    "contractDigest",
+    "environment",
+    "checks",
+    "screenshots",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "sourceRevision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}([a-f0-9]{24})?$"
+    },
+    "baseRevision": {
+      "type": "string"
+    },
+    "dirty": {
+      "type": "boolean"
+    },
+    "patchDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "contractDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "platform",
+        "browserVersion",
+        "timezone"
+      ]
+    },
+    "checks": {
+      "type": "array"
+    },
+    "screenshots": {
+      "type": "array"
+    },
+    "limitations": {
+      "type": "array"
+    },
+    "afterOnly": {
+      "type": "array"
+    }
+  }
+}

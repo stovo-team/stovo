@@ -4,7 +4,7 @@ import path from 'node:path';
 import {readVisualOptions} from './tools/visual-options.mjs';
 const options=readVisualOptions();
 export default defineConfig({
- testDir:'./visual',fullyParallel:false,workers:1,retries:0,timeout:30000,
+ snapshotPathTemplate:'{testDir}/__screenshots__/{platform}/{arg}{ext}',testDir:'./visual',fullyParallel:false,workers:1,retries:0,timeout:30000,
  outputDir:path.join(options.output,'test-results'),
  reporter:[['list'],['json',{outputFile:path.join(options.output,'report.json')}],['html',{outputFolder:path.join(options.output,'html'),open:'never'}]],
  use:{baseURL:options.origin,headless:true,browserName:'chromium',viewport:{width:1440,height:900},timezoneId:'UTC',locale:'en-US',reducedMotion:'reduce',trace:'retain-on-failure',screenshot:'only-on-failure'},
