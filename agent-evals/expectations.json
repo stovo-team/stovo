@@ -1,0 +1,73 @@
+{
+  "EV-01": {
+    "decision": "prepare-review",
+    "reviewRequired": true,
+    "externalWriteAllowed": false,
+    "externalResearchRequired": false
+  },
+  "EV-02": {
+    "decision": "prepare-review",
+    "reviewRequired": true,
+    "externalWriteAllowed": false
+  },
+  "EV-03": {
+    "decision": "blocked",
+    "testFirst": true,
+    "externalWriteAllowed": false
+  },
+  "EV-04": {
+    "decision": "proceed",
+    "visualRequired": false,
+    "externalResearchRequired": false,
+    "externalWriteAllowed": false
+  },
+  "EV-05": {
+    "decision": "investigate",
+    "externalResearchRequired": true,
+    "externalWriteAllowed": false
+  },
+  "EV-06": {
+    "decision": "propose-only",
+    "externalWriteAllowed": false
+  },
+  "EV-07": {
+    "decision": "proceed",
+    "reviewRequired": false,
+    "externalWriteAllowed": false,
+    "testFirst": true
+  },
+  "EV-08": {
+    "decision": "prepare-review",
+    "reviewRequired": true,
+    "externalWriteAllowed": false
+  },
+  "EV-09": {
+    "decision": "blocked",
+    "visualRequired": true,
+    "externalWriteAllowed": false
+  },
+  "EV-10": {
+    "decision": "blocked",
+    "visualRequired": true,
+    "externalWriteAllowed": false
+  },
+  "EV-11": {
+    "decision": "blocked",
+    "externalWriteAllowed": false
+  },
+  "EV-12": {
+    "decision": "blocked",
+    "externalWriteAllowed": false
+  },
+  "H-01": {
+    "decision": "blocked",
+    "visualRequired": true,
+    "externalWriteAllowed": false
+  },
+  "H-02": {
+    "decision": "proceed",
+    "reviewRequired": false,
+    "externalResearchRequired": false,
+    "externalWriteAllowed": false
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "id": "EV-02",
+  "kind": "workflow-decision",
+  "prompt": "A new subsystem is requested. The user likes the idea but no written spec or test plan exists."
+}

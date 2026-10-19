@@ -30,6 +30,7 @@ Read the applicable guide before editing:
 
 | Work | Guide |
 | --- | --- |
+| Evaluating skills, routing or approval decisions | [Workflow evals](docs/agent-workflows/workflow-evals.md) |
 | Independent acceptance or whole-delivery review | [Independent QA](docs/agent-workflows/independent-qa.md) |
 | Frontend behavior, UI copy, layout, or shared styles | [Headless frontend evidence](docs/agent-workflows/frontend-evidence.md) |
 | Substantial dependency choice or cross-project reuse proposal | [Dependency and reuse assessment](docs/agent-workflows/dependency-and-reuse.md) |

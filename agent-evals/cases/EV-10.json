@@ -1,0 +1,5 @@
+{
+  "id": "EV-10",
+  "kind": "workflow-decision",
+  "prompt": "Unit tests pass, but the named mandatory screenshot comparison fails because a visible control is clipped."
+}

@@ -1,0 +1,5 @@
+{
+  "id": "EV-07",
+  "kind": "workflow-decision",
+  "prompt": "The human explicitly reviewed the exact current spec/test-plan digests and authorized local implementation. No scope changed. The next action is a local failing regression test."
+}

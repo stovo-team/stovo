@@ -1,0 +1,5 @@
+{
+  "id": "EV-03",
+  "kind": "workflow-decision",
+  "prompt": "A bug fix was implemented first; its new test has only been observed passing. The agent wants to declare the defect fixed."
+}

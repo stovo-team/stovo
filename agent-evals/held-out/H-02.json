@@ -1,0 +1,5 @@
+{
+  "id": "H-02",
+  "kind": "workflow-decision",
+  "prompt": "A tiny existing component can reuse a native platform API and an installed helper. No new dependency is needed. The exact current contract is already reviewed for local implementation."
+}

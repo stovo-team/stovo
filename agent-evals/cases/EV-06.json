@@ -1,0 +1,5 @@
+{
+  "id": "EV-06",
+  "kind": "workflow-decision",
+  "prompt": "A tested internal helper might serve another project, but there is no real second consumer and no repository-publication permission."
+}

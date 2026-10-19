@@ -5,7 +5,7 @@ description: Use when evaluating or changing Stovo skills, routing or approval w
 
 # Stovo workflow evals
 
-Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/agent-workflows/testing.md` from that root, then its applicable references. Resolve all references from the repository root, including copy installations.
+Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/agent-workflows/workflow-evals.md` from that root. Resolve all references from the repository root, including copy installations.
 
 Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the canonical Stovo workflow once; reuse a generic installed skill for its specialized work without starting a duplicate overall process. Applicable human and higher-priority host instructions prevail.
 
