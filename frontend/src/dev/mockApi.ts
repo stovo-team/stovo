@@ -34,9 +34,17 @@ let mockCanvases: Canvas[] = [];
 let mockCanvasDocuments: Record<string, CanvasUpdate[]> = {};
 let nextLocalMessageId = 1;
 let nextLocalCanvasId = 1;
+const MOCK_CANVAS_STORAGE_KEY = "stovo.localMockCanvases";
 
-function resetMockCanvases(): void {
-  mockCanvases = [{
+function persistMockCanvases(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(MOCK_CANVAS_STORAGE_KEY, JSON.stringify({ canvases: mockCanvases, documents: mockCanvasDocuments }));
+  } catch { /* Canvas mock remains usable when browser storage is unavailable. */ }
+}
+
+function resetMockCanvases(restorePersisted = true): void {
+  const seededCanvases: Canvas[] = [{
     id: "mock-canvas-planning",
     familyId: mockData.family.id,
     originChatId: "chat-planning-team",
@@ -47,8 +55,25 @@ function resetMockCanvases(): void {
     createdAt: "2026-10-10T09:00:00.000Z",
     updatedAt: "2026-10-10T09:00:00.000Z",
   }];
+  mockCanvases = seededCanvases;
   mockCanvasDocuments = { "mock-canvas-planning": [] };
-  nextLocalCanvasId = 1;
+  if (restorePersisted && typeof window !== "undefined") {
+    try {
+      const saved = window.localStorage.getItem(MOCK_CANVAS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { canvases?: unknown; documents?: unknown };
+        if (Array.isArray(parsed.canvases) && parsed.documents && typeof parsed.documents === "object" && !Array.isArray(parsed.documents)) {
+          mockCanvases = parsed.canvases as Canvas[];
+          mockCanvasDocuments = parsed.documents as Record<string, CanvasUpdate[]>;
+        }
+      }
+    } catch { /* Reset to the seeded canvas if local mock state is stale. */ }
+  }
+  nextLocalCanvasId = mockCanvases.reduce((next, canvas) => {
+    const match = /^mock-canvas-local-(\d+)$/u.exec(canvas.id);
+    return match ? Math.max(next, Number(match[1]) + 1) : next;
+  }, 1);
+  persistMockCanvases();
 }
 
 resetMockCanvases();
@@ -158,6 +183,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       : [];
     mockCanvases = [...mockCanvases, canvas];
     mockCanvasDocuments[id] = updates;
+    persistMockCanvases();
     return jsonResponse(canvas, 201);
   }
 
@@ -178,6 +204,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       };
       mockCanvasDocuments[canvasId] = [...updates, update];
       mockCanvases = mockCanvases.map((canvas) => canvas.id === canvasId ? { ...canvas, updatedAt: update.createdAt } : canvas);
+      persistMockCanvases();
       return jsonResponse(update, 201);
     }
   }
@@ -193,6 +220,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       if (typeof body.title !== "string" || !body.title.trim()) return errorResponse(422, "Canvas title is required.");
       const renamed = { ...canvas, title: body.title.trim(), updatedAt: new Date().toISOString() };
       mockCanvases = mockCanvases.map((item) => item.id === canvasId ? renamed : item);
+      persistMockCanvases();
       return jsonResponse(renamed);
     }
   }
@@ -443,7 +471,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
-  resetMockCanvases();
+  resetMockCanvases(false);
   nextLocalMessageId = 1;
 }
 
