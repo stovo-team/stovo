@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 import { ApiError, apiRequest, getApiUrl, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
+import { normalizePasskeyOptions } from "./passkeyOptions";
 
 export type UserRole = string;
 
@@ -128,7 +129,7 @@ export function beginPasskeyAuthentication() {
   return apiRequest<PasskeyAuthenticationCeremony>("/api/auth/passkeys/authentication/options", {
     method: "POST",
     body: {},
-  });
+  }).then(normalizePasskeyOptions);
 }
 
 export function finishPasskeyAuthentication(ceremonyId: string, response: PasskeyAuthenticationResponse) {
@@ -139,7 +140,8 @@ export function finishPasskeyAuthentication(ceremonyId: string, response: Passke
 }
 
 export function beginPasskeyRegistration(accessToken: string) {
-  return apiRequest<PasskeyAuthenticationCeremony>("/api/auth/passkeys/registration/options", { method: "POST", accessToken });
+  return apiRequest<PasskeyAuthenticationCeremony>("/api/auth/passkeys/registration/options", { method: "POST", accessToken })
+    .then(normalizePasskeyOptions);
 }
 
 export function finishPasskeyRegistration(accessToken: string, ceremonyId: string, response: object) {
