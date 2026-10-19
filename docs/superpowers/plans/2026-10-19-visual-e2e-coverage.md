@@ -51,15 +51,15 @@
 - Canvas REST responses must match `Canvas` and `CanvasUpdate` in `frontend/src/api/canvas.ts`.
 - The mock document store retains ordered base64 Yjs updates per canvas and resets to seeded fixtures when `resetMockData()` runs.
 
-- [ ] **Step 1: Add failing contract tests** in the `local mock chat API` describe block:
+- [x] **Step 1: Add failing contract tests** in the `local mock chat API` describe block:
   - `lists a seeded canvas and returns its document` — GET `/api/v1/plugins/canvas/canvases` returns a typed canvas fixture; GET its `/document` returns stable updates.
   - `creates a canvas and appends document updates` — POST `/canvases` creates the requested chat/title; GET by ID returns it; POST `/document` appends an update with increasing sequence; GET `/document` returns both in order.
   - `renames a canvas and reset restores the seeded state` — PATCH changes the title; `resetMockData()` removes locally created canvases and restores the initial fixture.
-- [ ] **Step 2: Run the focused Vitest file and confirm the new assertions fail** because the canvas routes return mock 501 responses.
+- [x] **Step 2: Run the focused Vitest file and confirm the new assertions fail** because the canvas routes return mock 501 responses.
   - Run: `cd frontend && npm test -- src/dev/mockApi.test.ts`
   - Expected: only the new canvas contract tests fail on unimplemented routes; existing mock API tests remain green.
-- [ ] **Step 3: Implement the smallest in-memory canvas store and REST handlers** in `mockApi.ts`, backed by deterministic fixture data if required. Support list, create (including optional `initialUpdate`), get, document read/append, rename, and 404 for unknown canvas IDs. Store document update strings without parsing Yjs; the actual Canvas page applies them.
-- [ ] **Step 4: Reset canvas state from `resetMockData()` and rerun the focused file.**
+- [x] **Step 3: Implement the smallest in-memory canvas store and REST handlers** in `mockApi.ts`, backed by deterministic fixture data if required. Support list, create (including optional `initialUpdate`), get, document read/append, rename, and 404 for unknown canvas IDs. Store document update strings without parsing Yjs; the actual Canvas page applies them.
+- [x] **Step 4: Reset canvas state from `resetMockData()` and rerun the focused file.**
   - Run: `cd frontend && npm test -- src/dev/mockApi.test.ts`
   - Expected: all mock API tests pass.
 
@@ -69,11 +69,11 @@
 - Modify: `e2e/tests/local-mock-mode.spec.ts`
 - Reuse: current attachment APIs in `frontend/src/dev/mockApi.ts` and `mockFileStore.ts`
 
-- [ ] **Step 1: Extend the existing upload test** to select a deterministic text file in the composer, send it with a message, and assert both the message and attachment appear in chat.
-- [ ] **Step 2: Verify the same file in Storage** after navigating to `/app/files` and reloading. Open the file preview, assert its content, capture a Playwright download and assert the filename and bytes, delete the uploaded file, then assert it disappears and its download endpoint returns 404. Keep seeded preview files intact.
-- [ ] **Step 3: Add a canvas browser journey** using the accessible `/canvas` composer suggestion. Assert navigation to `/app/canvas/<id>`, add a whiteboard block through the existing insert menu, wait for the mock document update request, reload, and assert the block remains. Open Storage and assert that the created canvas can be reopened.
-- [ ] **Step 4: Block `/socket.io` for the canvas journey** and assert no real network connection is attempted. This proves the route and saved document work using only the mock REST contract.
-- [ ] **Step 5: Run the focused browser spec against local mock mode.**
+- [x] **Step 1: Extend the existing upload test** to select a deterministic text file in the composer, send it with a message, and assert both the message and attachment appear in chat.
+- [x] **Step 2: Verify the same file in Storage** after navigating to `/app/files` and reloading. Open the file preview, assert its content, capture a Playwright download and assert the filename and bytes, delete the uploaded file, then assert it disappears and its download endpoint returns 404. Keep seeded preview files intact.
+- [x] **Step 3: Add a canvas browser journey** using the accessible `/canvas` composer suggestion. Assert navigation to `/app/canvas/<id>`, add a whiteboard block through the existing insert menu, wait for the mock document update request, reload, and assert the block remains. Open Storage and assert that the created canvas can be reopened.
+- [x] **Step 4: Block `/socket.io` for the canvas journey** and assert no real network connection is attempted. This proves the route and saved document work using only the mock REST contract.
+- [x] **Step 5: Run the focused browser spec against local mock mode.**
   - Start: `cd frontend && npm run dev:mock -- --strictPort`
   - Run: `cd e2e && E2E_BASE_URL=http://127.0.0.1:5174 npx playwright test tests/local-mock-mode.spec.ts`
   - Expected: existing chat/call/file checks and the expanded attachment/canvas journeys pass with no backend services.
@@ -86,11 +86,11 @@
 - Create: `e2e/tests/visual-regression.spec.ts-snapshots/` baselines
 - Modify: `e2e/tests/local-mock-mode.spec.ts` for active call screenshot assertion, unless the visual spec can reuse a single existing call fixture without duplicating lifecycle setup
 
-- [ ] **Step 1: Add screenshot assertions for** seeded chat at desktop and mobile, Storage file preview, and seeded Canvas page with a whiteboard block. Reuse real routes and fixture data; assert key content is visible before each screenshot.
-- [ ] **Step 2: Add one active-call screenshot** from the existing multi-tab call lifecycle after participants have joined. Do not build a second call setup path. Retain all existing media-device and transport guards.
-- [ ] **Step 3: Stabilize visual capture** by using fixed viewports, waiting for `document.fonts.ready` and visible app state, hiding the caret, and disabling animations for screenshot assertions. Use a narrow `maxDiffPixelRatio` only if a baseline comparison demonstrates harmless Chromium raster differences; do not raise it speculatively.
-- [ ] **Step 4: Establish baselines explicitly** with Playwright's `--update-snapshots`, inspect every generated diff, and commit only the reviewed screenshots.
-- [ ] **Step 5: Run the visual spec in comparison mode** without the update flag.
+- [x] **Step 1: Add screenshot assertions for** seeded chat at desktop and mobile, Storage file preview, and seeded Canvas page with a whiteboard block. Reuse real routes and fixture data; assert key content is visible before each screenshot.
+- [x] **Step 2: Add one active-call screenshot** from the existing multi-tab call lifecycle after participants have joined. Do not build a second call setup path. Retain all existing media-device and transport guards.
+- [x] **Step 3: Stabilize visual capture** by using fixed viewports, waiting for `document.fonts.ready` and visible app state, hiding the caret, and disabling animations for screenshot assertions. Use a narrow `maxDiffPixelRatio` only if a baseline comparison demonstrates harmless Chromium raster differences; do not raise it speculatively.
+- [x] **Step 4: Establish baselines explicitly** with Playwright's `--update-snapshots`, inspect every generated diff, and commit only the reviewed screenshots.
+- [x] **Step 5: Run the visual spec in comparison mode** without the update flag.
   - Run: `cd e2e && E2E_BASE_URL=http://127.0.0.1:5174 npx playwright test tests/visual-regression.spec.ts`
   - Expected: all snapshots match; a changed rendered screen fails and produces expected/actual/diff output.
 
@@ -100,20 +100,20 @@
 - Modify: `e2e/package.json`
 - Create: `e2e/README.md`
 
-- [ ] **Step 1: Add `test:visual` and `test:visual:update` scripts** that target `visual-regression.spec.ts` and `local-mock-mode.spec.ts`; the update script is the only documented routine that writes visual baselines.
-- [ ] **Step 2: Document local setup** using `npm ci` in `frontend` and `e2e`, `npm run dev:mock`, focused E2E commands, snapshot review, and the rule that snapshots are updated only for intentional UI changes.
-- [ ] **Step 3: Verify focused E2E commands** against the running mock server:
+- [x] **Step 1: Add `test:visual` and `test:visual:update` scripts** that target `visual-regression.spec.ts` and `local-mock-mode.spec.ts`; the update script is the only documented routine that writes visual baselines.
+- [x] **Step 2: Document local setup** using `npm ci` in `frontend` and `e2e`, `npm run dev:mock`, focused E2E commands, snapshot review, and the rule that snapshots are updated only for intentional UI changes.
+- [x] **Step 3: Verify focused E2E commands** against the running mock server:
   - `E2E_BASE_URL=http://127.0.0.1:5174 npm run test:visual` (both visual spec and active-call screenshot assertion)
   - `E2E_BASE_URL=http://127.0.0.1:5174 npm run test:visual:update` only when establishing or intentionally changing baselines, followed by `npm run test:visual`.
 
 ### Task 5: Run required verification and review
 
-- [ ] Run: `cd frontend && npm test -- src/dev/mockApi.test.ts` — all relevant mock API tests pass.
-- [ ] Run: `cd frontend && npm test` — full frontend suite passes.
-- [ ] Run: `cd frontend && npm run build` — production build passes and mock-only behavior remains development-gated.
-- [ ] Run: `cd e2e && E2E_BASE_URL=http://127.0.0.1:5174 npm run test:ci` — full browser suite passes against the isolated mock server.
-- [ ] Run: `git diff --check` — no whitespace errors.
-- [ ] Review changed files and visual diffs; report any required check that cannot run. Do not run live E2E or publish, push, merge, or open a PR without authorization.
+- [x] Run: `cd frontend && npm test -- src/dev/mockApi.test.ts` — all relevant mock API tests pass.
+- [x] Run: `cd frontend && npm test` — full frontend suite passes.
+- [x] Run: `cd frontend && npm run build` — production build passes and mock-only behavior remains development-gated.
+- [x] Run: `cd e2e && E2E_BASE_URL=http://127.0.0.1:5174 npm run test:visual` — full visual and local mock browser suite passes against the isolated mock server.
+- [x] Run: `git diff --check` — no whitespace errors.
+- [x] Review changed files and visual diffs; report any required check that cannot run. Do not run live E2E or publish, push, merge, or open a PR without authorization.
 
 ## Execution handoff
 

@@ -1,9 +1,9 @@
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
-import type { Canvas, CanvasUpdate } from "../api/canvas";
 import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
+import { handleMockCanvasRequest, resetMockCanvases } from "./mockCanvasStore";
 import {
   associateMockFileWithMessage,
   completeMockFileUpload,
@@ -30,53 +30,9 @@ type GlobalWithMockApi = typeof globalThis & { [MOCK_API_STATE_KEY]?: MockApiIns
 
 const mockGlobal = globalThis as GlobalWithMockApi;
 let mockData: MockData = createMockData();
-let mockCanvases: Canvas[] = [];
-let mockCanvasDocuments: Record<string, CanvasUpdate[]> = {};
 let nextLocalMessageId = 1;
-let nextLocalCanvasId = 1;
-const MOCK_CANVAS_STORAGE_KEY = "stovo.localMockCanvases";
 
-function persistMockCanvases(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(MOCK_CANVAS_STORAGE_KEY, JSON.stringify({ canvases: mockCanvases, documents: mockCanvasDocuments }));
-  } catch { /* Canvas mock remains usable when browser storage is unavailable. */ }
-}
-
-function resetMockCanvases(restorePersisted = true): void {
-  const seededCanvases: Canvas[] = [{
-    id: "mock-canvas-planning",
-    familyId: mockData.family.id,
-    originChatId: "chat-planning-team",
-    createdBy: mockData.users[0].id,
-    title: "Planning Notes",
-    linkedChatIds: [],
-    canManage: true,
-    createdAt: "2026-10-10T09:00:00.000Z",
-    updatedAt: "2026-10-10T09:00:00.000Z",
-  }];
-  mockCanvases = seededCanvases;
-  mockCanvasDocuments = { "mock-canvas-planning": [] };
-  if (restorePersisted && typeof window !== "undefined") {
-    try {
-      const saved = window.localStorage.getItem(MOCK_CANVAS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as { canvases?: unknown; documents?: unknown };
-        if (Array.isArray(parsed.canvases) && parsed.documents && typeof parsed.documents === "object" && !Array.isArray(parsed.documents)) {
-          mockCanvases = parsed.canvases as Canvas[];
-          mockCanvasDocuments = parsed.documents as Record<string, CanvasUpdate[]>;
-        }
-      }
-    } catch { /* Reset to the seeded canvas if local mock state is stale. */ }
-  }
-  nextLocalCanvasId = mockCanvases.reduce((next, canvas) => {
-    const match = /^mock-canvas-local-(\d+)$/u.exec(canvas.id);
-    return match ? Math.max(next, Number(match[1]) + 1) : next;
-  }, 1);
-  persistMockCanvases();
-}
-
-resetMockCanvases();
+resetMockCanvases(mockData.family.id, mockData.users[0]?.id);
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -84,10 +40,7 @@ function jsonResponse(value: unknown, status = 200): Response {
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
-
-function errorResponse(status: number, detail: string): Response {
-  return jsonResponse({ detail }, status);
-}
+const errorResponse = (status: number, detail: string): Response => jsonResponse({ detail }, status);
 
 function findMessage(messageId: string): Message | undefined {
   return Object.values(mockData.messages).flat().find((message) => message.id === messageId);
@@ -118,11 +71,7 @@ async function requestBlob(input: FetchInput, init?: RequestInit): Promise<Blob 
   const body = init?.body ?? (typeof Request !== "undefined" && input instanceof Request ? input.body : null);
   if (typeof Blob !== "undefined" && body instanceof Blob) return body;
   if (typeof Request !== "undefined" && input instanceof Request) {
-    try {
-      return await input.clone().blob();
-    } catch {
-      return null;
-    }
+    try { return await input.clone().blob(); } catch { return null; }
   }
   return null;
 }
@@ -138,92 +87,27 @@ async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Pr
 
 async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit): Promise<Response> {
   const path = decodeURI(url.pathname);
-  if (method === "POST" && path === "/api/auth/refresh") {
-    return jsonResponse(responseForRefresh());
-  }
+  if (method === "POST" && path === "/api/auth/refresh") return jsonResponse(responseForRefresh());
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
-  if (method === "GET" && path === "/api/family") {
-    return jsonResponse(mockData.family);
-  }
-  if (method === "GET" && path === "/api/family/members") {
-    return jsonResponse(mockData.users);
-  }
+  if (method === "GET" && path === "/api/family") return jsonResponse(mockData.family);
+  if (method === "GET" && path === "/api/family/members") return jsonResponse(mockData.users);
   if (method === "GET" && path === "/api/plans") return jsonResponse([]);
   if (method === "GET" && path === "/api/family/roles") return jsonResponse([]);
-  if (method === "GET" && path === "/api/v1/config/manifest") {
-    return jsonResponse(createMockManifest());
-  }
-  if (method === "GET" && path === "/api/chats") {
-    return jsonResponse(mockData.chats);
-  }
-  const canvasRoot = "/api/v1/plugins/canvas/canvases";
-  if (method === "GET" && path === canvasRoot) return jsonResponse(mockCanvases);
-  if (method === "POST" && path === canvasRoot) {
-    const body = await requestBody(input, init);
-    const chatId = typeof body.chatId === "string" ? body.chatId : "";
-    const chat = mockData.chats.find((item) => item.id === chatId);
-    if (!chat) return errorResponse(404, "Mock chat not found.");
-    const now = new Date().toISOString();
-    const id = `mock-canvas-local-${nextLocalCanvasId++}`;
-    const canvas: Canvas = {
-      id,
+  if (method === "GET" && path === "/api/v1/config/manifest") return jsonResponse(createMockManifest());
+  if (method === "GET" && path === "/api/chats") return jsonResponse(mockData.chats);
+  const canvasResponse = await handleMockCanvasRequest(
+    path,
+    method,
+    () => requestBody(input, init),
+    {
+      chats: mockData.chats,
       familyId: mockData.family.id,
-      originChatId: chatId,
-      createdBy: getMockUserId(),
-      title: typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Untitled canvas",
-      linkedChatIds: [],
-      canManage: true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const updates: CanvasUpdate[] = typeof body.initialUpdate === "string" && body.initialUpdate
-      ? [{ sequence: 1, update: body.initialUpdate, createdBy: getMockUserId(), createdAt: now }]
-      : [];
-    mockCanvases = [...mockCanvases, canvas];
-    mockCanvasDocuments[id] = updates;
-    persistMockCanvases();
-    return jsonResponse(canvas, 201);
-  }
-
-  const canvasDocumentMatch = path.match(/^\/api\/v1\/plugins\/canvas\/canvases\/([^/]+)\/document$/);
-  if (canvasDocumentMatch) {
-    const canvasId = canvasDocumentMatch[1];
-    if (!mockCanvases.some((item) => item.id === canvasId)) return errorResponse(404, "Mock canvas not found.");
-    const updates = mockCanvasDocuments[canvasId] ?? [];
-    if (method === "GET") return jsonResponse({ updates });
-    if (method === "POST") {
-      const body = await requestBody(input, init);
-      if (typeof body.update !== "string" || !body.update) return errorResponse(422, "Canvas update is required.");
-      const update: CanvasUpdate = {
-        sequence: updates.length + 1,
-        update: body.update,
-        createdBy: getMockUserId(),
-        createdAt: new Date().toISOString(),
-      };
-      mockCanvasDocuments[canvasId] = [...updates, update];
-      mockCanvases = mockCanvases.map((canvas) => canvas.id === canvasId ? { ...canvas, updatedAt: update.createdAt } : canvas);
-      persistMockCanvases();
-      return jsonResponse(update, 201);
+      userId: getMockUserId(),
     }
-  }
-
-  const canvasMatch = path.match(/^\/api\/v1\/plugins\/canvas\/canvases\/([^/]+)$/);
-  if (canvasMatch) {
-    const canvasId = canvasMatch[1];
-    const canvas = mockCanvases.find((item) => item.id === canvasId);
-    if (!canvas) return errorResponse(404, "Mock canvas not found.");
-    if (method === "GET") return jsonResponse(canvas);
-    if (method === "PATCH") {
-      const body = await requestBody(input, init);
-      if (typeof body.title !== "string" || !body.title.trim()) return errorResponse(422, "Canvas title is required.");
-      const renamed = { ...canvas, title: body.title.trim(), updatedAt: new Date().toISOString() };
-      mockCanvases = mockCanvases.map((item) => item.id === canvasId ? renamed : item);
-      persistMockCanvases();
-      return jsonResponse(renamed);
-    }
-  }
+  );
+  if (canvasResponse) return canvasResponse;
 
   if (method === "GET" && path === "/api/collections") return jsonResponse([]);
   if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
@@ -377,18 +261,11 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
         type: body.type === "mixed" || attachments.length ? "mixed" : "text",
         content,
         encryptionProtocol: "legacy_plaintext",
-        ciphertext: null,
-        nonce: null,
-        keyVersion: null,
-        encryptionMetadata: null,
+        ciphertext: null, nonce: null, keyVersion: null, encryptionMetadata: null,
         replyToMessageId: typeof body.replyToMessageId === "string" ? body.replyToMessageId : null,
         threadRootMessageId: typeof body.threadRootMessageId === "string" ? body.threadRootMessageId : null,
         messageKind: body.threadRootMessageId ? "thread" : "chat",
-        createdAt: sentAt,
-        updatedAt: sentAt,
-        deletedAt: null,
-        isEdited: false,
-        forwardedFrom: null,
+        createdAt: sentAt, updatedAt: sentAt, deletedAt: null, isEdited: false, forwardedFrom: null,
         statuses: [{ userId: currentUserId, status: "sent", createdAt: sentAt }],
         reactions: [],
         attachments,
@@ -471,7 +348,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
-  resetMockCanvases(false);
+  resetMockCanvases(mockData.family.id, mockData.users[0]?.id, false);
   nextLocalMessageId = 1;
 }
 
