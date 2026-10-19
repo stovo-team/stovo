@@ -12,3 +12,5 @@ Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the c
 Output: Approved concrete spec/test-plan and contract with stable acceptance IDs. Reuse existing approval within scope.
 
 Complete only when actual command results or observed artifacts support each claim. Record missing prerequisites as blocked and preserve unrelated work.
+
+For substantial standard capability or reuse proposals, read `docs/agent-workflows/dependency-and-reuse.md`. Small changes need no compulsory external research.

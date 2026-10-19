@@ -30,6 +30,7 @@ Read the applicable guide before editing:
 
 | Work | Guide |
 | --- | --- |
+| Substantial dependency choice or cross-project reuse proposal | [Dependency and reuse assessment](docs/agent-workflows/dependency-and-reuse.md) |
 | Human approval, task scope, or changed approved artifacts | [Approvals and contracts](docs/agent-workflows/approvals.md) |
 | New feature or materially new user-visible behavior | [Feature development](docs/agent-workflows/feature-development.md) |
 | Bug, defect, incident, or regression fix | [Bug fixes](docs/agent-workflows/bug-fixes.md) |

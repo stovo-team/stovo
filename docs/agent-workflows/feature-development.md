@@ -15,3 +15,5 @@ Use this workflow for new features and materially new user-visible capabilities.
 6. Refactor while keeping tests green, run the relevant broader checks, and review the test plan for omissions.
 
 Keep the feature and test plans reviewable before implementation. Prefer tests of externally observable behavior. Use unit or component tests for local rules and UI states, integration tests for persistence and HTTP or transaction boundaries, and end-to-end tests for critical user journeys. Use property-based or fuzz tests when they address a broad input space or parser/protocol risk. Follow the shared [testing expectations](testing.md).
+
+Use [dependency and reusable-code assessment](dependency-and-reuse.md) when substantial capability or extraction is involved.
