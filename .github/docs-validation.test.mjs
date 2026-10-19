@@ -40,7 +40,7 @@ function markdownFiles(directory, found = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (!['.git', 'node_modules', 'dist', 'coverage'].includes(entry.name)) markdownFiles(file, found);
+      if (!['.git', 'node_modules', 'dist', 'coverage', 'artifacts'].includes(entry.name)) markdownFiles(file, found);
     } else if (entry.isFile() && entry.name.endsWith('.md')) found.push(file);
   }
   return found;

@@ -1,0 +1,116 @@
+name: Agent workflow evidence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Fork PRs and draft PRs run on disposable hosted workers, with no application credentials.
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      visual: ${{ steps.select.outputs.visual }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/agent-workflows-gate.mjs select
+
+  validators:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Validate workflow tools and policy links
+        run: |
+          node --test scripts/agent-workflows/*.test.mjs e2e/tools/*.test.mjs .github/agent-workflows-ci.test.mjs
+          node --test --test-name-pattern='all Markdown local links|documented Compose filenames|agent instructions' .github/docs-validation.test.mjs
+
+  visual:
+    needs: changes
+    if: needs.changes.outputs.visual == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install locked frontend, harness and Chromium
+        run: |
+          npm --prefix frontend ci
+          npm --prefix e2e ci
+          cd e2e
+          npx playwright install --with-deps chromium
+      - name: Capture all twelve head scenarios against reviewed references
+        env:
+          STOVO_VISUAL_COMPARE: 'true'
+        run: node e2e/tools/capture-evidence.mjs --task pr-${{ github.event.pull_request.number }} --output artifacts/agent-workflows/ci/head
+      - name: Capture the common shell matrix at exact base and head
+        if: ${{ !cancelled() }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STOVO_VISUAL_COMPARE: 'false'
+        run: node e2e/tools/compare-revisions.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --task pr-${{ github.event.pull_request.number }} --output artifacts/agent-workflows/ci/comparison --grep 'loaded shell'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        id: evidence
+        if: ${{ always() }}
+        with:
+          name: agent-evidence-${{ github.event.pull_request.head.sha }}
+          path: artifacts/agent-workflows/ci/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Link the synthetic evidence artifact
+        if: ${{ always() }}
+        env:
+          EVIDENCE_URL: ${{ steps.evidence.outputs.artifact-url }}
+          SOURCE_REVISION: ${{ github.event.pull_request.head.sha }}
+          COMPARISON_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          printf 'Source: `%s`\n\nBase: `%s`\n\n[Evidence artifact](%s)\n' "$SOURCE_REVISION" "$COMPARISON_BASE" "$EVIDENCE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  aggregate:
+    name: Agent workflow gate
+    if: ${{ always() }}
+    needs: [changes, validators, visual]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node .github/agent-workflows-gate.mjs aggregate
