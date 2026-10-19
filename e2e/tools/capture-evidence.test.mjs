@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync,existsSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';
+let api={};try{api=await import('./capture-evidence.mjs');}catch(e){if(e.code!=='ERR_MODULE_NOT_FOUND')throw e;}
+test('failed browser invocation never becomes successful evidence',()=>{const output=mkdtempSync(path.join(tmpdir(),'stovo-capture-'));try{const r=api.captureEvidence?.({taskId:'test',output,run:()=>({status:1,stdout:'',stderr:'server unavailable'})});assert.equal(r?.ok,false);assert.equal(existsSync(path.join(output,'capture.json')),true);}finally{rmSync(output,{recursive:true,force:true});}});
+test('unsafe task identity is rejected before subprocess execution',()=>assert.throws(()=>api.captureEvidence?.({taskId:'../escape',output:'/tmp/unused',run:()=>{throw Error('must not run');}})));

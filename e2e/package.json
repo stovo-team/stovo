@@ -9,7 +9,9 @@
     "test:headed": "playwright test --headed",
     "test:ci": "playwright test --reporter=github,html,junit",
     "test:production": "playwright test tests/production-smoke.spec.ts --reporter=github,html,junit",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "evidence:capture": "node tools/capture-evidence.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
