@@ -63,7 +63,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     channelCommentsDisabledForViewer, missingCommentThread, thread, composerApi, chatOverview,
     isNewChatOpen, openNewChatScreen, callSession, videoPipBridge, audioRestoreStatus,
     sharedContentItems, memberLookup, canCreateFamilyInvite, detailsActions, incomingSharedFiles,
-    requestCloseActiveChatSurface, visibleError, isDockedEmojiPicker, showDockedEmojiPicker,
+    requestCloseActiveChatSurface, visibleError, dataLoadError, retryChatData, isDockedEmojiPicker, showDockedEmojiPicker,
     openChat, focusComposer, focusMessageInPanel, typingNames, openFullViewImage,
     finishCloseFullViewImage, handleGoToFullViewImageMessage, endChatExitSwipe, beginChatExitSwipe, moveChatExitSwipe
   } = ctrl;
@@ -245,6 +245,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
+        {dataLoadError && <div role="alert" className="error-text"><span>{dataLoadError}</span><button type="button" className="secondary-button" onClick={retryChatData}>{copy.retry}</button></div>}
         {!isOnline && (
           <p className="offline-banner" role="status">
             <WifiOff aria-hidden="true" size={18} />

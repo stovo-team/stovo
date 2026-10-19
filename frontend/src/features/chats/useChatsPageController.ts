@@ -84,6 +84,8 @@ export function useChatsPageController({
   >(null);
   const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  useEffect(() => setDataLoadError(null), [chatId]);
   const [isFamilyInviteOpen, setIsFamilyInviteOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(isMobileCallViewport);
   const socketRef = useRef<Socket | null>(null);
@@ -122,7 +124,7 @@ export function useChatsPageController({
   const missingCommentThread = requiresThreadToSend && !threadRootMessageId;
 
   const dataLoader = useChatDataLoader({
-    accessTokenRef, authRequest, currentUser, chatId, archiveGroup, onError: setError,
+    accessTokenRef, authRequest, currentUser, chatId, archiveGroup, onError: (message) => { setError(message); setDataLoadError(message); },
     setFamily: workspace.setFamily, setMembers, setChats, setSelectedChat,
     setIsLoading: workspace.setIsLoading, setHasLoadedOverview: workspace.setHasLoadedOverview,
     setIsChatLoading, activeChatIdRef, chatsRef, chatMutationVersionRef,
@@ -420,7 +422,8 @@ export function useChatsPageController({
     channelCommentsDisabledForViewer, missingCommentThread, thread, composerApi, chatOverview,
     isNewChatOpen, openNewChatScreen, callSession,
     videoPipBridge, audioRestoreStatus, sharedContentItems, memberLookup, canCreateFamilyInvite,
-    detailsActions, incomingSharedFiles, requestCloseActiveChatSurface, visibleError,
+    detailsActions, incomingSharedFiles, requestCloseActiveChatSurface, visibleError, dataLoadError,
+    retryChatData: () => { setError(null); setDataLoadError(null); void (chatId ? dataLoader.loadSelectedChat(chatId) : dataLoader.loadOverview()); },
     isDockedEmojiPicker, showDockedEmojiPicker, openChat, focusComposer, focusMessageInPanel,
     typingNames, openFullViewImage, finishCloseFullViewImage, handleGoToFullViewImageMessage,
     endChatExitSwipe, beginChatExitSwipe, moveChatExitSwipe

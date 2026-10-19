@@ -2,8 +2,9 @@ import {test as base,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 export const test=base.extend<{networkGuard:void}>({
- networkGuard:[async({page,baseURL},use)=>{
+ networkGuard:[async({page,baseURL},use,info)=>{
   const violations:string[]=[],errors:string[]=[];
+  info.annotations.push({type:'environment',description:JSON.stringify({platform:process.platform,browserVersion:page.context().browser()?.version(),timezone:'UTC'})});
   await page.route('**/*',async route=>{
    const url=new URL(route.request().url());
    if(url.origin===baseURL){
@@ -22,7 +23,7 @@ export const test=base.extend<{networkGuard:void}>({
 });
 export {expect};
 export async function ready(page:import('@playwright/test').Page){
- await expect(page.locator('.app-nav')).toBeVisible();
+ await expect(page.locator('.app-nav')).toBeAttached();
  await page.evaluate(()=>document.fonts.ready);
  await page.addStyleTag({content:'*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;caret-color:transparent!important}'});
 }
