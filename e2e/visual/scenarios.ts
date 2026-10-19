@@ -15,7 +15,7 @@ export async function screenshot(page:Page,info:TestInfo,s:Scenario){
  const file=info.outputPath(s.id+'.png');await page.screenshot({path:file,animations:'disabled'});
  await info.attach(s.id,{path:file,contentType:'image/png'});
  if(process.env.STOVO_VISUAL_COMPARE==='true'){
-  verifyReferences({directory:path.resolve('visual/__screenshots__',process.platform),environment:{platform:process.platform,browserVersion:page.context().browser()?.version(),timezone:'UTC'}});
+  verifyReferences({requiredFiles:[s.id+'.png'],directory:path.resolve('visual/__screenshots__',process.platform),environment:{platform:process.platform,browserVersion:page.context().browser()?.version(),timezone:'UTC'}});
   await expect(page).toHaveScreenshot(s.id+'.png',{animations:'disabled',maxDiffPixels:0});
  }
  info.annotations.push({type:'scenario',description:JSON.stringify({...s,timezone:'UTC'})});

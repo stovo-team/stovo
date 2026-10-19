@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "source": "Human selected «Принять как текущие эталоны» for gallery http://127.0.0.1:36587 in this Codex chat on 2026-10-19. Known contrast/pointer issues remain documented.",
+  "sourceRevision": "f7559e395c535373e4c1ea27a12174927a527063",
+  "environment": {
+    "node": "v22.23.1",
+    "platform": "linux",
+    "browserVersion": "151.0.7922.34",
+    "timezone": "UTC"
+  },
+  "files": [
+    {
+      "path": "V-01.png",
+      "sha256": "f4618687a51445c1c76e495d3caadf6c5b924d0c376f1bc3ece38293940e0851"
+    },
+    {
+      "path": "V-02.png",
+      "sha256": "2b7093166e282dcc2385913e7d2d7da26f0ac5f59f0ddb24a11ae15ad781d013"
+    },
+    {
+      "path": "V-03.png",
+      "sha256": "2902f0705d9d34aeed5215382d0bf08ded8156f7d936cfc87bd406e0f0accbe9"
+    },
+    {
+      "path": "V-04.png",
+      "sha256": "1c98b338d31c471708484ccb0482c2303e8d09cae17a1a90350a8e824dcaa3d6"
+    },
+    {
+      "path": "V-05.png",
+      "sha256": "a1f272ac578411159d963224e9f3ca6394d1d063533de8c96a563e5c1c6c9b66"
+    },
+    {
+      "path": "V-06.png",
+      "sha256": "195a4042b774e0dd1e5755dbfba32ccc0ddda4b10834bcbba4f360de506ebf7b"
+    },
+    {
+      "path": "V-07.png",
+      "sha256": "5747f5faa909b783a0dced460d2d7c810cd5352322ca5e1caaa5ce914b8a3155"
+    },
+    {
+      "path": "V-08.png",
+      "sha256": "940f12d3738f504bda09d0170f16923bd24f39d55f66a3f64302ff47cb9aa0ba"
+    },
+    {
+      "path": "V-09.png",
+      "sha256": "a777126942c9fe29aa39009b880d7a5e2b6849213a28cbb956d62cfeaa03444a"
+    },
+    {
+      "path": "V-10.png",
+      "sha256": "5517540dcaec0905411fbd6a205ef5f7a79eb6e5911a2038491e0116766b517b"
+    },
+    {
+      "path": "V-11.png",
+      "sha256": "9fc34a21cee286cb6d8173e82787c31db42ecc919c3c3377861e336772375b81"
+    },
+    {
+      "path": "V-12.png",
+      "sha256": "ed3beabef485f3d78aa5570a9f0a18a744eb2ad228351d91e6f1af12057a0382"
+    }
+  ]
+}

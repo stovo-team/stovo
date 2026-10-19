@@ -1,0 +1,2 @@
+import path from 'node:path';import {fileURLToPath} from 'node:url';import {defineConfig} from '@playwright/test';import visual from './playwright.visual.config';
+export default defineConfig({...visual,testDir:'./negative-controls',snapshotPathTemplate:path.join(path.dirname(fileURLToPath(import.meta.url)),'visual/__screenshots__/{platform}/{arg}{ext}'),outputDir:'../artifacts/agent-workflows/negative-controls',reporter:[['list']]});

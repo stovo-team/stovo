@@ -13,9 +13,9 @@ export function localFile(root, relative) {
   if (file === base || !file.startsWith(base + path.sep)) throw new Error('path escapes checkout');
   return file;
 }
-export function main(meta, action) {
+export async function main(meta, action) {
   if (!process.argv[1] || meta !== pathToFileURL(path.resolve(process.argv[1])).href) return;
-  try { const result = action(process.argv.slice(2)); console.log(JSON.stringify(result,null,2)); process.exitCode = result.ok === false ? 1 : 0; }
+  try { const result = await action(process.argv.slice(2)); if(result!==undefined)console.log(JSON.stringify(result,null,2)); process.exitCode = result?.ok === false ? 1 : 0; }
   catch (e) { console.error(e.message); process.exitCode=1; }
 }
 export function argumentsOf(args) {
