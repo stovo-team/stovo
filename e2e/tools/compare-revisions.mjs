@@ -12,7 +12,7 @@ export function compareRevisions({root,base,head,output,taskId,grep}){
  const command=(bin,args,cwd=root)=>{const r=spawnSync(bin,args,{cwd,encoding:'utf8',timeout:240000});if(r.status!==0)throw Error(`${bin} ${args[0]} failed: ${r.stderr||r.stdout}`);return r.stdout;};
  for(const sha of [base,head])command('git',['cat-file','-e',sha+'^{commit}']);
  const temp=mkdtempSync(path.join(tmpdir(),'stovo-compare-')),owned=[],sides=[];mkdirSync(output,{recursive:true});
- const harnessPaths=['e2e/visual','e2e/tools','e2e/playwright.visual.config.ts','scripts/agent-workflows/common.mjs'];
+ const harnessPaths=['e2e/visual','e2e/tools','e2e/playwright.visual.config.ts','scripts/agent-workflows/common.mjs','scripts/agent-workflows/source.mjs'];
  const harness=path.join(temp,'harness'),harnessDigest=freezeHarness(root,harness,harnessPaths);
  try{for(const [side,sha] of [['before',base],['after',head]]){
   const checkout=path.join(temp,side);command('git',['worktree','add','--detach',checkout,sha]);owned.push(checkout);

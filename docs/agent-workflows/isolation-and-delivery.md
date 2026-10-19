@@ -33,3 +33,5 @@ type: workflow
 Use [human approvals](approvals.md) for action scopes and freshness. A delivery includes acceptance coverage, exact checks/results, independent QA where required, and before/after evidence for visual behavior. Prepare a self-contained English PR description and a short manual review scenario before requesting publication. Existing publication authorization applies within its stated scope.
 
 Use [dependency and reusable-code assessment](dependency-and-reuse.md) when substantial capability or extraction is involved.
+
+From the repository root, `node scripts/agent-workflows/validate-delivery.mjs --contract <contract.json> --evidence <evidence.json> --qa <qa.json> --changed-paths <paths.json>` verifies current source-bound readiness. Generate the English description with `node scripts/agent-workflows/render-pr.mjs --packet <packet.json> --output <body.md>`. Both operate locally and perform no publication. Remote evidence uses actual HTTPS artifact links; keep publication-pending local outputs clearly labelled. Use the [delivery template](templates/delivery-packet.md).

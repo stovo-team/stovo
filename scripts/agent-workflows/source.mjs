@@ -1,0 +1,10 @@
+import {spawnSync} from 'node:child_process';
+import {lstatSync,readlinkSync} from 'node:fs';
+import path from 'node:path';
+import {hashFile,sha256} from './common.mjs';
+export function sourceSnapshot(root){
+ const git=(...args)=>{const r=spawnSync('git',args,{cwd:root,encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout;};
+ const revision=git('rev-parse','HEAD').trim(),diff=git('diff','HEAD','--binary');
+ const other=git('ls-files','--others','--exclude-standard','-z').split('\0').filter(Boolean).sort().map(p=>{const file=path.join(root,p);return [p,lstatSync(file).isSymbolicLink()?sha256('symlink:'+readlinkSync(file)):hashFile(file)];});
+ const dirty=!!diff||other.length>0;return {sourceRevision:revision,dirty,...dirty?{patchDigest:sha256(JSON.stringify({diff,other}))}:{}};
+}

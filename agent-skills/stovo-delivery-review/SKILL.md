@@ -12,3 +12,5 @@ Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the c
 Output: Self-contained English PR body, required check results, evidence and outstanding blockers. Verify actual human authorization before remote writes.
 
 Complete only when actual command results or observed artifacts support each claim. Record missing prerequisites as blocked and preserve unrelated work.
+
+Run `scripts/agent-workflows/validate-delivery.mjs` with the actual contract/evidence/QA and changed-path files. Render the PR packet with `render-pr.mjs`; these commands never authorize or perform publication.

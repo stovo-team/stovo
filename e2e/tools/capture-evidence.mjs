@@ -4,12 +4,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {main,argumentsOf,sha256,hashFile} from '../../scripts/agent-workflows/common.mjs';
 const e2e=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-export function sourceSnapshot(root){
- const git=(...args)=>{const r=spawnSync('git',args,{cwd:root,encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout;};
- const revision=git('rev-parse','HEAD').trim(),diff=git('diff','HEAD','--binary');
- const other=git('ls-files','--others','--exclude-standard','-z').split('\0').filter(Boolean).sort().map(p=>{const file=path.join(root,p);return [p,lstatSync(file).isSymbolicLink()?sha256('symlink:'+readlinkSync(file)):hashFile(file)];});
- const dirty=!!diff||other.length>0;return {sourceRevision:revision,dirty,...dirty?{patchDigest:sha256(JSON.stringify({diff,other}))}:{}};
-}
+import {sourceSnapshot} from '../../scripts/agent-workflows/source.mjs';
+export {sourceSnapshot};
 export function captureEvidence({taskId,output,contract,grep,config='playwright.visual.config.ts',run=spawnSync}){
  if(!/^[a-z0-9][a-z0-9-]*$/.test(taskId??''))throw Error('invalid task identity');if(!output)throw Error('output directory is required');
  output=path.resolve(output);mkdirSync(output,{recursive:true});const start=Date.now(),source=sourceSnapshot(path.resolve(e2e,'..'));
