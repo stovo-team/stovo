@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stovo GitHub mutation plan v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "repository",
+    "discoveryDigest",
+    "operations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[-\\w.]+\\/[-\\w.]+$"
+    },
+    "discoveryDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "scope",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "issue.create",
+              "milestone.create",
+              "project.create",
+              "project.statuses",
+              "rules.upsert"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9._:-]+$"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "issues",
+              "projects",
+              "administration"
+            ]
+          },
+          "before": {},
+          "after": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "followUps": {
+      "type": "array"
+    },
+    "limitations": {
+      "type": "array"
+    }
+  }
+}

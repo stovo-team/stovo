@@ -25,6 +25,7 @@ type: index
 - [Testing and verification](agent-workflows/testing.md): test-layer selection, test quality, isolation, and reporting.
 - [Task isolation and delivery](agent-workflows/isolation-and-delivery.md): branches, worktrees, pull requests, publication authorization, and cleanup.
 - [PR review findings](agent-workflows/pr-review-findings.md): actionable review comments, evidence, and when to create follow-up issues.
+- [GitHub Project, milestone, and rules planning](agent-workflows/github-projects.md): idempotent discovery, scopes, Project statuses, and ruleset administration.
 
 ## Engineering
 
