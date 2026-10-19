@@ -59,6 +59,7 @@ test("renders the real chats route with mock data, sends locally, and resets on 
 });
 
 test("simulates a video call between two demo users in separate tabs without media devices", async ({ page }) => {
+  test.setTimeout(60000);
   const socketRequests: string[] = [];
   const installMediaGuard = async (targetPage: typeof page) => {
     await targetPage.addInitScript(() => {
@@ -166,6 +167,13 @@ test("simulates a video call between two demo users in separate tabs without med
   await expect(thirdPage.locator(".call-grid__tile--remote")).toHaveCount(2);
   await expect(page.locator(".call-grid__tile")).toHaveCount(3);
   await expect(secondPage.locator(".call-grid__tile")).toHaveCount(3);
+
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({
+    content: `*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; scroll-behavior: auto !important; caret-color: transparent !important; }`,
+  });
+  await expect(page).toHaveScreenshot("active-call-desktop.png");
+
   const sharedScreen = page.getByRole("img", { name: "Stovo Demo's shared screen" });
   await page.getByRole("button", { name: "Share screen" }).click();
   await expect(sharedScreen).toBeVisible();
@@ -192,6 +200,10 @@ test("simulates a video call between two demo users in separate tabs without med
     expect(await targetPage.evaluate(() => (window as Window & { __mockAudioPlays?: number }).__mockAudioPlays)).toBe(0);
     expect(await targetPage.evaluate(() => (window as Window & { __mockMediaCalls?: number }).__mockMediaCalls)).toBe(0);
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("dialog", { name: "Active call" })).toBeVisible();
+  await expect(page).toHaveScreenshot("active-call-mobile.png");
 
   await page.close();
   await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
