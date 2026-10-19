@@ -2,6 +2,7 @@ import {writeFileSync,readdirSync} from 'node:fs';import path from 'node:path';i
 export function compareEvals({baseline,candidate,expectedIds}){
  const errors=[],hardFailures=[];
  if(!Array.isArray(baseline)||!Array.isArray(candidate))return {ok:false,errors:['result arrays required'],hardFailures,cost:'unavailable'};
+ if([...baseline,...candidate].some(r=>!object(r)||!Array.isArray(r.checks)||r.checks.some(c=>!object(c))))return {ok:false,errors:['malformed result or checks'],hardFailures,cost:'unavailable'};
  const ids=x=>x.map(r=>r?.id).sort();if(expectedIds&&JSON.stringify([...expectedIds].sort())!==JSON.stringify(ids(candidate)))errors.push('fixed expected case registry incomplete');if(!baseline.length||JSON.stringify(ids(baseline))!==JSON.stringify(ids(candidate))||new Set(ids(baseline)).size!==baseline.length||new Set(ids(candidate)).size!==candidate.length)errors.push('identical complete case sets required');
  const failures=rows=>rows.flatMap(r=>(r.checks??[]).filter(c=>c.mandatory&&c.passed!==true).map(c=>({case:r.id,check:c.id})));
  for(const result of [...baseline,...candidate]){

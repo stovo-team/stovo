@@ -14,3 +14,8 @@ export function changedSourcePaths(root,baseRevision){
  const git=(...args)=>{const r=spawnSync('git',args,{cwd:root,encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout.split('\0').filter(Boolean);};
  return [...new Set([...git('diff',baseRevision,'--name-only','-z'),...git('ls-files','--others','--exclude-standard','-z')])].sort();
 }
+
+export function deliveryBase(root,target='origin/master'){
+ if(typeof target!=='string'||target.startsWith('-'))throw Error('invalid target ref');
+ const r=spawnSync('git',['merge-base','HEAD',target],{cwd:root,encoding:'utf8'});if(r.status!==0)throw Error('Cannot determine delivery base; provide an available trusted --target ref');return r.stdout.trim();
+}

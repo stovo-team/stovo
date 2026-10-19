@@ -1,12 +1,13 @@
-import {validateContract,states} from './contracts.mjs';import {validateEvidence} from './evidence.mjs';import {sourceSnapshot,changedSourcePaths} from './source.mjs';import {main,argumentsOf,readJson,hashFile,object,nonempty} from './common.mjs';
+import {validateContract,states} from './contracts.mjs';import {validateEvidence} from './evidence.mjs';import {sourceSnapshot,changedSourcePaths,deliveryBase} from './source.mjs';import {main,argumentsOf,readJson,hashFile,object,nonempty} from './common.mjs';
 export function classifyChanges(paths){
  if(!Array.isArray(paths)||!paths.every(p=>typeof p==='string'&&!p.startsWith('/')&&!p.split(/[\\/]/).includes('..')))return {valid:false,visual:true,allScenarios:true};
  const product=paths.filter(p=>!/(?:\.test\.|\.spec\.|__tests__\/)/.test(p));
  return {valid:true,visual:product.some(p=>/^frontend\/(?:src\/|public\/|index\.html|package(?:-lock)?\.json|vite\.config)/.test(p)),allScenarios:product.some(p=>/^frontend\/src\/(?:design-system\/tokens\.css|styles\.css|appearance\/)/.test(p))};
 }
-export function validateDelivery({root=process.cwd(),contract,evidence,qa,changedPaths,contractDigest,expectedRevision,expectedPatchDigest,actualChangedPaths}){
+export function validateDelivery({root=process.cwd(),contract,evidence,qa,changedPaths,contractDigest,expectedRevision,expectedPatchDigest,actualChangedPaths,expectedBaseRevision}){
  const c=validateContract(contract,{root}),missing=[...c.errors],blocked=[];
  if(actualChangedPaths&&(!Array.isArray(changedPaths)||actualChangedPaths.some(p=>!changedPaths.includes(p))))missing.push('claimed paths omit actual changed source');
+ if(expectedBaseRevision&&evidence?.baseRevision!==expectedBaseRevision)missing.push('evidence base does not match trusted delivery target');
  const change=classifyChanges(actualChangedPaths??changedPaths);if(!change.valid)missing.push('invalid changed paths');
  if(states.indexOf(contract?.state)<states.indexOf('approved'))missing.push('contract approval required before readiness');
  const result=validateEvidence(evidence,{root,contract,contractDigest,expectedRevision,requireVisual:change.visual});missing.push(...result.errors);
@@ -17,4 +18,4 @@ export function validateDelivery({root=process.cwd(),contract,evidence,qa,change
  if(change.allScenarios)for(let i=1;i<=12;i++){const id='V-'+String(i).padStart(2,'0');if(!evidence?.screenshots?.some?.(s=>s?.side==='after'&&s.scenarioId===id))missing.push('shared UI change requires '+id);}
  return {ok:missing.length===0&&blocked.length===0,visualRequired:change.visual,missing,blocked,warnings:c.warnings};
 }
-main(import.meta.url,args=>{const o=argumentsOf(args);for(const key of ['contract','evidence','qa','changed-paths'])if(!o[key])throw Error('Missing --'+key);const root=o.root??process.cwd(),source=sourceSnapshot(root),evidence=readJson(o.evidence);return validateDelivery({root,contract:readJson(o.contract),evidence,actualChangedPaths:changedSourcePaths(root,evidence.baseRevision),qa:readJson(o.qa),changedPaths:readJson(o['changed-paths']),contractDigest:hashFile(o.contract),expectedRevision:source.sourceRevision,expectedPatchDigest:source.patchDigest});});
+main(import.meta.url,args=>{const o=argumentsOf(args);for(const key of ['contract','evidence','qa','changed-paths'])if(!o[key])throw Error('Missing --'+key);const root=o.root??process.cwd(),source=sourceSnapshot(root),evidence=readJson(o.evidence),base=deliveryBase(root,o.target??'origin/master');return validateDelivery({root,contract:readJson(o.contract),evidence,actualChangedPaths:changedSourcePaths(root,base),expectedBaseRevision:base,qa:readJson(o.qa),changedPaths:readJson(o['changed-paths']),contractDigest:hashFile(o.contract),expectedRevision:source.sourceRevision,expectedPatchDigest:source.patchDigest});});
