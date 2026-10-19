@@ -423,7 +423,7 @@ export function useChatsPageController({
     isNewChatOpen, openNewChatScreen, callSession,
     videoPipBridge, audioRestoreStatus, sharedContentItems, memberLookup, canCreateFamilyInvite,
     detailsActions, incomingSharedFiles, requestCloseActiveChatSurface, visibleError, dataLoadError,
-    retryChatData: () => { setError(null); setDataLoadError(null); void (chatId ? dataLoader.loadSelectedChat(chatId) : dataLoader.loadOverview()); },
+    retryChatData: () => { setError(null); setDataLoadError(null); void dataLoader.retryFailedLoads(); },
     isDockedEmojiPicker, showDockedEmojiPicker, openChat, focusComposer, focusMessageInPanel,
     typingNames, openFullViewImage, finishCloseFullViewImage, handleGoToFullViewImageMessage,
     endChatExitSwipe, beginChatExitSwipe, moveChatExitSwipe

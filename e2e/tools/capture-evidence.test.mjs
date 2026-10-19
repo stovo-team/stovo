@@ -1,4 +1,11 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync,existsSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtempSync,rmSync,existsSync,writeFileSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';
 let api={};try{api=await import('./capture-evidence.mjs');}catch(e){if(e.code!=='ERR_MODULE_NOT_FOUND')throw e;}
 test('failed browser invocation never becomes successful evidence',()=>{const output=mkdtempSync(path.join(tmpdir(),'stovo-capture-'));try{const r=api.captureEvidence?.({taskId:'test',output,run:()=>({status:1,stdout:'',stderr:'server unavailable'})});assert.equal(r?.ok,false);assert.equal(existsSync(path.join(output,'capture.json')),true);}finally{rmSync(output,{recursive:true,force:true});}});
 test('unsafe task identity is rejected before subprocess execution',()=>assert.throws(()=>api.captureEvidence?.({taskId:'../escape',output:'/tmp/unused',run:()=>{throw Error('must not run');}})));
+
+function seededReport(output, screenshots=true){
+ if(screenshots)writeFileSync(path.join(output,'V-01.png'),'synthetic fixture');
+ return {stats:{expected:1,unexpected:0,skipped:0},suites:screenshots?[{specs:[{tests:[{annotations:[{type:'scenario',description:JSON.stringify({id:'V-01',viewport:{width:390,height:844},theme:'light',locale:'ru'})}],results:[{attachments:[{name:'V-01',contentType:'image/png',path:path.join(output,'V-01.png')}]}]}]}]}]:[]};
+}
+test('successful test stats without scenario screenshots are not visual evidence',()=>{const output=mkdtempSync(path.join(tmpdir(),'stovo-empty-capture-'));try{const r=api.captureEvidence({taskId:'empty',output,run:()=>{writeFileSync(path.join(output,'report.json'),JSON.stringify(seededReport(output,false)));return {status:0};}});assert.equal(r.ok,false);}finally{rmSync(output,{recursive:true,force:true});}});
+test('preexisting reports cannot be relabeled as new source evidence',()=>{const output=mkdtempSync(path.join(tmpdir(),'stovo-stale-capture-'));try{writeFileSync(path.join(output,'report.json'),JSON.stringify(seededReport(output)));const r=api.captureEvidence({taskId:'stale',output,run:()=>({status:0})});assert.equal(r.ok,false);}finally{rmSync(output,{recursive:true,force:true});}});
