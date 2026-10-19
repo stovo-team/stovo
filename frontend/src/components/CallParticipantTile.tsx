@@ -23,7 +23,7 @@ const avatarStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   color: "var(--color-palette-f1147865f078)",
-  fontSize: "var(--font-size-heading-small)",
+  fontSize: "var(--font-size-avatar-initials)",
   letterSpacing: "0.02em",
 };
 

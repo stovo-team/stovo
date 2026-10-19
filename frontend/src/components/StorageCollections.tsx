@@ -49,7 +49,7 @@ function memberInitials(name: string) { return name.split(" ").filter(Boolean).s
 function StorageMemberAvatar({ accessToken, member }: { accessToken: string; member: User }) {
   const [url, setUrl] = useState<string | null>(() => member.profilePhoto ? peekCachedObjectUrl(member.profilePhoto.id) : null);
   useEffect(() => { let cancelled = false; const photo = member.profilePhoto; if (!photo) { setUrl(null); return; } const cached = peekCachedObjectUrl(photo.id); if (cached) { setUrl(cached); return; } void downloadFileBlob(accessToken, photo.id).then(() => { if (!cancelled) setUrl(peekCachedObjectUrl(photo.id)); }).catch(() => { if (!cancelled) setUrl(null); }); return () => { cancelled = true; }; }, [accessToken, member.profilePhoto?.id]);
-  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : memberInitials(member.displayName)}</span>;
+  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : <span className="avatar-initials">{memberInitials(member.displayName)}</span>}</span>;
 }
 function AccessPrincipalPicker({ accessToken, members, roles, value, onChange }: { accessToken: string; members: User[]; roles: ServerRole[]; value: string; onChange: (value: string) => void }) {
   const copy = useStrings().files.collections;

@@ -36,7 +36,7 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
   const previewUrl = useFilePreviewUrl(accessToken, member.profilePhoto, Boolean(member.profilePhoto));
   return (
     <span className="avatar member-avatar admin-member-avatar">
-      {previewUrl ? <img src={previewUrl} alt="" /> : initials(member.displayName)}
+      {previewUrl ? <img src={previewUrl} alt="" /> : <span className="avatar-initials">{initials(member.displayName)}</span>}
     </span>
   );
 }

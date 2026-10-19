@@ -55,7 +55,7 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
 
   return (
     <span className="avatar member-avatar">
-      {previewUrl ? <img src={previewUrl} alt="" /> : initials(member.displayName)}
+      {previewUrl ? <img src={previewUrl} alt="" /> : <span className="avatar-initials">{initials(member.displayName)}</span>}
     </span>
   );
 }
