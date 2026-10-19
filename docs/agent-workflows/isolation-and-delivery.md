@@ -27,3 +27,7 @@ type: workflow
 - Never delete an unmerged branch or a worktree with uncommitted changes.
 - Target cleanup immediately after merge. Treat 30 days without activity as stale and inspect/report it; do not automatically discard unmerged work or data.
 - Retain intentionally open work. If there is no remote pull request or the user asks to keep the result locally, retain the branch and worktree until the user confirms they are no longer needed.
+
+## Review readiness
+
+Use [human approvals](approvals.md) for action scopes and freshness. A delivery includes acceptance coverage, exact checks/results, independent QA where required, and before/after evidence for visual behavior. Prepare a self-contained English PR description and a short manual review scenario before requesting publication. Existing publication authorization applies within its stated scope.

@@ -1,3 +1,8 @@
+---
+title: "Intelligence Source v2 Backup Operations CLI and Restore Safety Plan"
+type: implementation-plan
+---
+
 # Intelligence Source v2 Backup Operations CLI and Restore Safety Plan
 
 > This plan was updated on 2026-10-15 while resolving PR #169 conflicts. Current `master` explicitly requires independent proof for restore completion; the earlier plan to expose `restore begin` and `restore complete` from same-database state is superseded. This implementation keeps restore fail-closed and limits the CLI to backup registration and inventory verification.

@@ -1,3 +1,8 @@
+---
+title: "Popup UI standards"
+type: workflow
+---
+
 # Popup UI standards
 
 Use the shared popup primitives for dialogs, modal sheets, popup forms, and custom dropdowns. New popup work and popup migrations must use these components instead of adding local overlay, surface, close, button, field, or dropdown styles.

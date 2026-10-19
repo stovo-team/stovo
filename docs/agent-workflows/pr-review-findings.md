@@ -1,3 +1,8 @@
+---
+title: "PR Review Findings"
+type: workflow
+---
+
 # PR Review Findings
 
 Use this workflow when reporting a defect or risk found while reviewing a pull request. A review comment should let the author understand and verify the finding without guessing what the reviewer saw.
@@ -35,3 +40,5 @@ Do not create a backlog issue automatically for every observation. Use an inline
 Create a separate issue only when the finding is confirmed, actionable, and outside the PR's agreed scope or needs independent tracking. Before creating it, search existing issues and avoid duplicates. Do not create issues for speculative concerns, preferences, or findings already being fixed in the PR. Handle suspected security vulnerabilities through the private reporting path in `SECURITY.md`, not a public issue.
 
 When issue creation is authorized for the task, include a concise title, the affected behavior, impact, reproduction or verification steps, sanitized evidence, and any relevant PR link. Codex should report the proposed issue details for review before creating issues when the user has not authorized issue creation. Never treat a review finding by itself as authorization to create a public issue.
+
+Review readiness and human decisions follow [approvals](approvals.md); no review finding grants publication or issue-creation permission by itself.

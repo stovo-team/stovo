@@ -22,12 +22,15 @@ Adapted from [Ponytail](https://github.com/DietrichGebert/ponytail):
 - Choose the smallest complete solution. Reuse established code and installed dependencies; add abstractions, options, or dependencies only when the task requires them. Include every affected caller, test, fixture, configuration, and document.
 - Keep validation, error handling, security, accessibility, and data-loss protections intact. Follow the repository's stricter bug-fix, testing, and verification workflows above.
 
+Use one applicable Stovo workflow as the task entry point. Project skill wrappers route to these canonical pages; applicable human and higher-priority host instructions take precedence. Generic installed skills remain available for their specific work.
+
 ## Workflows
 
 Read the applicable guide before editing:
 
 | Work | Guide |
 | --- | --- |
+| Human approval, task scope, or changed approved artifacts | [Approvals and contracts](docs/agent-workflows/approvals.md) |
 | New feature or materially new user-visible behavior | [Feature development](docs/agent-workflows/feature-development.md) |
 | Bug, defect, incident, or regression fix | [Bug fixes](docs/agent-workflows/bug-fixes.md) |
 | Test selection and verification expectations | [Testing](docs/agent-workflows/testing.md) |
