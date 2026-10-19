@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "taskId": "agent-workflow-program",
+  "state": "approved",
+  "artifacts": [
+    {
+      "role": "implementation-plan",
+      "path": "docs/superpowers/plans/2026-10-19-agent-workflow-system.md",
+      "sha256": "d3539d7354bbb9b1e4e356de964a6199dd605cdff7a59519b831ab2abcc6dea7"
+    },
+    {
+      "role": "spec",
+      "path": "docs/superpowers/specs/2026-10-19-agent-workflow-system-design.md",
+      "sha256": "585d1960436b5ea8e74ee17552408d5d7b1a69dfe36f06ba757ea9c07bea423c"
+    },
+    {
+      "role": "test-plan",
+      "path": "docs/feature-plans/agent-workflow-system-tests.md",
+      "sha256": "26e967fdb7f579de9d42ec189cc2faad3d26654806ab5a901c842a08ee9de99f"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "expected": "A task routes to one authoritative workflow and the intended project skill; unrelated requests do not activate it."
+    },
+    {
+      "id": "AC-02",
+      "expected": "Feature implementation depends on reviewed spec/test-plan contents; stale or unsupported approval cannot advance readiness."
+    },
+    {
+      "id": "AC-03",
+      "expected": "Applicable existing authorization is reused; publication, remote management, merge, and deployment scopes remain explicit."
+    },
+    {
+      "id": "AC-04",
+      "expected": "Substantial standard functionality receives a documented reuse/dependency decision; trivial tasks avoid compulsory external research."
+    },
+    {
+      "id": "AC-05",
+      "expected": "Reuse candidates have a consumer, interface, provenance, and extraction cost; no candidate is an acceptable documented result."
+    },
+    {
+      "id": "AC-06",
+      "expected": "One local command produces deterministic headless UI evidence from the real mock app without external services or browser-use tools."
+    },
+    {
+      "id": "AC-07",
+      "expected": "Before/after screenshots and approved references match scenario/environment metadata and the exact source contents."
+    },
+    {
+      "id": "AC-08",
+      "expected": "Independent QA reports reproducible findings and missing coverage without changing the acceptance contract."
+    },
+    {
+      "id": "AC-09",
+      "expected": "Delivery validation rejects missing, failed, stale, or mismatched mandatory evidence and produces a readable English PR body."
+    },
+    {
+      "id": "AC-10",
+      "expected": "CI publishes sanitized evidence securely and exposes a stable required check without blocking unrelated docs changes."
+    },
+    {
+      "id": "AC-11",
+      "expected": "GitHub planning is idempotent; authorized mutations and administrative controls are applied and verified separately."
+    },
+    {
+      "id": "AC-12",
+      "expected": "Fixed eval cases compare baseline/candidate outcomes; mandatory failures cannot be averaged away."
+    },
+    {
+      "id": "AC-13",
+      "expected": "OKF finds all program pages and their relationships; new policy has one source of truth and repaired metadata validates."
+    },
+    {
+      "id": "AC-14",
+      "expected": "Skills are portable, project installation preserves unrelated content, and normal development, E2E, and production behavior remain protected."
+    }
+  ],
+  "checks": [
+    {
+      "id": "program-acceptance-review",
+      "acceptanceIds": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14"
+      ],
+      "layer": "manual",
+      "command": [
+        "review",
+        "docs/feature-plans/agent-workflow-system-tests.md"
+      ],
+      "required": true
+    }
+  ],
+  "approvals": [
+    {
+      "actor": "human",
+      "source": "Human message «подтверждаю» in Codex chat 01a150b2-69d5-7503-a300-4b6908c01c71, after planning commit 120cc13",
+      "decision": "approved",
+      "artifacts": {
+        "docs/superpowers/plans/2026-10-19-agent-workflow-system.md": "d3539d7354bbb9b1e4e356de964a6199dd605cdff7a59519b831ab2abcc6dea7",
+        "docs/superpowers/specs/2026-10-19-agent-workflow-system-design.md": "585d1960436b5ea8e74ee17552408d5d7b1a69dfe36f06ba757ea9c07bea423c",
+        "docs/feature-plans/agent-workflow-system-tests.md": "26e967fdb7f579de9d42ec189cc2faad3d26654806ab5a901c842a08ee9de99f"
+      }
+    }
+  ],
+  "authorizations": [
+    {
+      "scope": "local-implementation",
+      "source": "Human message «подтверждаю» in Codex chat 01a150b2-69d5-7503-a300-4b6908c01c71, after planning commit 120cc13"
+    },
+    {
+      "scope": "local-tests",
+      "source": "Human message «подтверждаю» in Codex chat 01a150b2-69d5-7503-a300-4b6908c01c71, after planning commit 120cc13"
+    },
+    {
+      "scope": "independent-qa",
+      "source": "Human message «подтверждаю» in Codex chat 01a150b2-69d5-7503-a300-4b6908c01c71, after planning commit 120cc13"
+    }
+  ]
+}

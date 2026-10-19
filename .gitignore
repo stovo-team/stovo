@@ -88,3 +88,8 @@ clean_input.txt
 /scratch/
 /e2e/test-results/
 /e2e/playwright-report/
+
+# Maintained agent workflow tooling; runtime output stays local.
+!/scripts/agent-workflows/
+!/scripts/agent-workflows/**
+/artifacts/agent-workflows/
