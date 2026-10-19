@@ -5,7 +5,7 @@ description: Use for independent acceptance review of a coherent Stovo delivery 
 
 # Stovo qa review
 
-Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/agent-workflows/pr-review-findings.md` from that root, then its applicable references. Resolve all references from the repository root, including copy installations.
+Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/agent-workflows/independent-qa.md` from that root, then its applicable references. Resolve all references from the repository root, including copy installations.
 
 Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the canonical Stovo workflow once; reuse a generic installed skill for its specialized work without starting a duplicate overall process. Applicable human and higher-priority host instructions prevail.
 

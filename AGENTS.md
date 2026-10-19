@@ -30,6 +30,7 @@ Read the applicable guide before editing:
 
 | Work | Guide |
 | --- | --- |
+| Independent acceptance or whole-delivery review | [Independent QA](docs/agent-workflows/independent-qa.md) |
 | Frontend behavior, UI copy, layout, or shared styles | [Headless frontend evidence](docs/agent-workflows/frontend-evidence.md) |
 | Substantial dependency choice or cross-project reuse proposal | [Dependency and reuse assessment](docs/agent-workflows/dependency-and-reuse.md) |
 | Human approval, task scope, or changed approved artifacts | [Approvals and contracts](docs/agent-workflows/approvals.md) |

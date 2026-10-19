@@ -24,3 +24,9 @@ The source-bound evidence record validator could be useful to another repository
 History-load errors were stored but not displayed on ChatsPage. A browser regression test failed before the fix; the actual error banner and retry now reuse existing styles and translated strings. Mock state remains guarded by the existing dev-only dynamic installation path.
 
 On mobile, navigation intentionally hides while viewing a chat; the visible back button is the correct contract. Section-settings mouse activation can be intercepted by its heading; the keyboard path works. This existing pointer issue and observed theme contrast should be investigated independently with screenshots before proposing fixes or accepting design references. They are not silently certified by successful functional screenshots.
+
+## Independent QA pilot
+
+A fresh native reviewer inspected 120cc13..092fdb0, ran 20 focused Node tests and 25 mock tests, and reproduced three defects: wrong-operation retry, zero-screenshot false success, and stale report reuse. Each received a failing regression test before the parent fixed it; afterward 33 focused frontend tests and 32 Node tests passed. The reviewer changed no application or expected test files. The errors were found by independently testing requirements and gaps rather than accepting the author's passing suite.
+
+Official Playwright 1.62.1 planner/generator/healer instructions were inspected from the locked package. Planner/generator require browser-tool interaction and do not match the requested routine scripted path; healer's fixme escape conflicts with required checks. Reuse their scenario-planning ideas, retain the custom QA protocol. A live model-to-model benchmark remains blocked by the configured CLI model; static capability inspection is not reported as such a benchmark.
