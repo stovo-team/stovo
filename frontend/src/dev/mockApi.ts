@@ -1,5 +1,6 @@
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
+import type { Canvas, CanvasUpdate } from "../api/canvas";
 import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
@@ -29,7 +30,28 @@ type GlobalWithMockApi = typeof globalThis & { [MOCK_API_STATE_KEY]?: MockApiIns
 
 const mockGlobal = globalThis as GlobalWithMockApi;
 let mockData: MockData = createMockData();
+let mockCanvases: Canvas[] = [];
+let mockCanvasDocuments: Record<string, CanvasUpdate[]> = {};
 let nextLocalMessageId = 1;
+let nextLocalCanvasId = 1;
+
+function resetMockCanvases(): void {
+  mockCanvases = [{
+    id: "mock-canvas-planning",
+    familyId: mockData.family.id,
+    originChatId: "chat-planning-team",
+    createdBy: mockData.users[0].id,
+    title: "Planning Notes",
+    linkedChatIds: [],
+    canManage: true,
+    createdAt: "2026-10-10T09:00:00.000Z",
+    updatedAt: "2026-10-10T09:00:00.000Z",
+  }];
+  mockCanvasDocuments = { "mock-canvas-planning": [] };
+  nextLocalCanvasId = 1;
+}
+
+resetMockCanvases();
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -111,6 +133,70 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "GET" && path === "/api/chats") {
     return jsonResponse(mockData.chats);
   }
+  const canvasRoot = "/api/v1/plugins/canvas/canvases";
+  if (method === "GET" && path === canvasRoot) return jsonResponse(mockCanvases);
+  if (method === "POST" && path === canvasRoot) {
+    const body = await requestBody(input, init);
+    const chatId = typeof body.chatId === "string" ? body.chatId : "";
+    const chat = mockData.chats.find((item) => item.id === chatId);
+    if (!chat) return errorResponse(404, "Mock chat not found.");
+    const now = new Date().toISOString();
+    const id = `mock-canvas-local-${nextLocalCanvasId++}`;
+    const canvas: Canvas = {
+      id,
+      familyId: mockData.family.id,
+      originChatId: chatId,
+      createdBy: getMockUserId(),
+      title: typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Untitled canvas",
+      linkedChatIds: [],
+      canManage: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updates: CanvasUpdate[] = typeof body.initialUpdate === "string" && body.initialUpdate
+      ? [{ sequence: 1, update: body.initialUpdate, createdBy: getMockUserId(), createdAt: now }]
+      : [];
+    mockCanvases = [...mockCanvases, canvas];
+    mockCanvasDocuments[id] = updates;
+    return jsonResponse(canvas, 201);
+  }
+
+  const canvasDocumentMatch = path.match(/^\/api\/v1\/plugins\/canvas\/canvases\/([^/]+)\/document$/);
+  if (canvasDocumentMatch) {
+    const canvasId = canvasDocumentMatch[1];
+    if (!mockCanvases.some((item) => item.id === canvasId)) return errorResponse(404, "Mock canvas not found.");
+    const updates = mockCanvasDocuments[canvasId] ?? [];
+    if (method === "GET") return jsonResponse({ updates });
+    if (method === "POST") {
+      const body = await requestBody(input, init);
+      if (typeof body.update !== "string" || !body.update) return errorResponse(422, "Canvas update is required.");
+      const update: CanvasUpdate = {
+        sequence: updates.length + 1,
+        update: body.update,
+        createdBy: getMockUserId(),
+        createdAt: new Date().toISOString(),
+      };
+      mockCanvasDocuments[canvasId] = [...updates, update];
+      mockCanvases = mockCanvases.map((canvas) => canvas.id === canvasId ? { ...canvas, updatedAt: update.createdAt } : canvas);
+      return jsonResponse(update, 201);
+    }
+  }
+
+  const canvasMatch = path.match(/^\/api\/v1\/plugins\/canvas\/canvases\/([^/]+)$/);
+  if (canvasMatch) {
+    const canvasId = canvasMatch[1];
+    const canvas = mockCanvases.find((item) => item.id === canvasId);
+    if (!canvas) return errorResponse(404, "Mock canvas not found.");
+    if (method === "GET") return jsonResponse(canvas);
+    if (method === "PATCH") {
+      const body = await requestBody(input, init);
+      if (typeof body.title !== "string" || !body.title.trim()) return errorResponse(422, "Canvas title is required.");
+      const renamed = { ...canvas, title: body.title.trim(), updatedAt: new Date().toISOString() };
+      mockCanvases = mockCanvases.map((item) => item.id === canvasId ? renamed : item);
+      return jsonResponse(renamed);
+    }
+  }
+
   if (method === "GET" && path === "/api/collections") return jsonResponse([]);
   if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
 
@@ -357,6 +443,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
+  resetMockCanvases();
   nextLocalMessageId = 1;
 }
 
