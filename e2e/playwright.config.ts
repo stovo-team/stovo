@@ -16,6 +16,11 @@ export default defineConfig({
   timeout: 30000,
   expect: {
     timeout: 5000,
+    toHaveScreenshot: {
+      animations: 'disabled',
+      caret: 'hide',
+      fullPage: true,
+    },
   },
   reporter: process.env.CI
     ? [
