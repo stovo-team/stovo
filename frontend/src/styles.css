@@ -32491,3 +32491,10 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+/* Record actions use a small inner dot, with space to the outer ring. */
+.meeting-intel-toggle-btn > svg.lucide-circle {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
