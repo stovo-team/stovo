@@ -32491,3 +32491,16 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+@media (min-width: 1600px) {
+  .storage-page .storage-preview-dialog {
+    --storage-preview-height: min(78dvh, 1080px);
+    --storage-document-width: min(960px, calc(100vw - 112px));
+  }
+  .storage-page .storage-preview-dialog.is-expanded {
+    --storage-document-width: min(1440px, calc(100vw - 82px));
+  }
+  .storage-page .storage-preview-media > img {
+    max-height: min(78dvh, 1080px);
+  }
+}
