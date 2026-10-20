@@ -32491,3 +32491,13 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+.forward-dialog {
+  background: var(--chat-popup-surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--float-shadow-soft);
+}
+
+.forward-dialog .popup-field {
+  margin-bottom: 8px;
+}
