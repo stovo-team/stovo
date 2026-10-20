@@ -32491,3 +32491,15 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+/* Device-menu chevrons stay undecorated in every interaction state. */
+.guest-device-menu-trigger,
+.guest-device-menu-trigger:hover,
+.guest-device-menu-trigger[aria-expanded="true"],
+.guest-device-menu-trigger:focus,
+.guest-device-menu-trigger:focus-visible,
+.guest-device-menu-trigger:active {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
