@@ -7426,6 +7426,10 @@ span.message-spoiler.is-revealed {
   animation: replyPreviewEnter var(--motion-fast, 180ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
+.reply-composer-preview {
+  margin-bottom: 10px;
+}
+
 .reply-composer-preview--no-thumb,
 .editing-indicator {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
