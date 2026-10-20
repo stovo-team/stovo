@@ -11114,17 +11114,17 @@ span.message-spoiler.is-revealed {
   border-radius: var(--radius-panel);
   color: var(--text-primary);
   display: grid;
-  gap: 22px;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  min-height: 124px;
-  padding: 20px 28px;
+  gap: 14px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  min-height: 76px;
+  padding: 12px 18px;
   text-align: left;
 }
 
 .settings-page.settings-detail-view .privacy-row > svg {
   color: var(--color-palette-c3b60550fc67);
-  height: 38px;
-  width: 38px;
+  height: 28px;
+  width: 28px;
 }
 
 .settings-page.settings-detail-view .privacy-row > span,
@@ -11142,7 +11142,7 @@ span.message-spoiler.is-revealed {
 
 .settings-page.settings-detail-view .privacy-row small,
 .settings-page.settings-detail-view .privacy-choice small { color: var(--color-palette-2d3a27f1736a); font-size: var(--font-size-small); }
-.settings-page.settings-detail-view .privacy-row > svg:last-child { border: 1px solid var(--color-palette-6bc40ecb8c82); border-radius: var(--radius-circle); padding: 10px; height: 48px; width: 48px; }
+.settings-page.settings-detail-view .privacy-row > svg:last-child { border: 1px solid var(--color-palette-6bc40ecb8c82); border-radius: var(--radius-circle); padding: 6px; height: 34px; width: 34px; }
 .settings-page.settings-detail-view .privacy-row input { justify-self: end; }
 .settings-page.settings-detail-view .privacy-choice {
   grid-template-columns: minmax(0, 1fr) auto;
