@@ -32491,3 +32491,11 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+/* Keep document actions on the page and expose more of each document. */
+.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  padding: 0;
+}
+.storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  --storage-preview-height: min(78dvh, 960px);
+}
