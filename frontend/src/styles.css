@@ -32491,3 +32491,12 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+@media (min-width: 961px) {
+  .storage-page .storage-layout.storage-layout--source-collapsed .sidebar-collapse-button {
+    left: 300px;
+  }
+  .storage-page.is-collection-picking .storage-layout.storage-layout--source-collapsed {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+  }
+}
