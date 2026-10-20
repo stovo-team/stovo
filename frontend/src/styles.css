@@ -32491,3 +32491,8 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+/* Photo captions must not cover the folder's remove control. */
+.storage-collection-file-grid .collection-file-tile:has(> img) > button {
+  z-index: 3;
+}
