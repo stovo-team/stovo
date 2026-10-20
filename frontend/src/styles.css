@@ -25935,6 +25935,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   translate: 0 0;
 }
 .call-settings-dialog {
+  position: relative;
   background: var(--color-palette-d52f4f4f306c);
   border: 1px solid var(--border-default, var(--color-palette-eabbb4eda5b3));
   border-radius: var(--radius-bubble);

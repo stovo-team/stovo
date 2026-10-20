@@ -90,7 +90,7 @@ export function CallSettingsDialog({
       >
         <header className="call-settings-dialog-header">
           <strong>{copy.settings}</strong>
-          <PopupCloseButton className="call-audio-popup-close" ariaLabel={copy.close} autoFocus onClick={closeDialog} />
+          <PopupCloseButton ariaLabel={copy.close} autoFocus onClick={closeDialog} />
         </header>
         <div className="call-settings-dialog-layout">
           <div className="call-settings-tabs" role="tablist" aria-label={copy.callSettings}>
