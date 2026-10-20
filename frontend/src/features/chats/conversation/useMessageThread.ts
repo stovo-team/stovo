@@ -1,3 +1,4 @@
+import { forwardMessages } from "./forwardMessages";
 import {
   Dispatch,
   RefObject,
@@ -20,17 +21,15 @@ import {
   archiveMessage,
   deleteMessage,
   editMessage,
-  forwardMessage,
   getMessageHistoryPage,
   getMessages,
   pinMessage,
-  sendMessage,
   unpinMessage
 } from "../../../api/chats";
 import { prefetchFiles } from "../../../api/files";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { ApiError } from "../../../api/client";
-import { decryptMessage, decryptMessages, encryptMessageContent } from "../../../api/messageCrypto";
+import { decryptMessage, decryptMessages } from "../../../api/messageCrypto";
 import { addMessageReaction, removeMessageReaction } from "../../../api/chats";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { messageMatchesSearch } from "../../../messageSearch";
@@ -616,42 +615,10 @@ export function useMessageThread({
         ? [forwardTarget]
         : [];
     if (targets.length === 0) return;
+    setForwardTarget(null);
+    clearSelectedMessages();
 
-    try {
-      for (const message of targets) {
-        const targetChat = chats.find((chat) => chat.id === targetChatId);
-        const shouldForwardLocally =
-          targetChat &&
-          message.encryptionProtocol === "end_to_end" &&
-          Boolean(message.content?.trim()) &&
-          message.attachments.length === 0;
-        const forwarded = shouldForwardLocally
-          ? await (async () => {
-              const encrypted = await encryptMessageContent(targetChat, message.content, currentUser?.id);
-              const created = await sendMessage(
-                accessToken,
-                targetChatId,
-                encrypted.content,
-                [],
-                null,
-                null,
-                encrypted.encryption
-              );
-              return decryptMessage(targetChatId, created, currentUser?.id);
-            })()
-          : await forwardMessage(accessToken, message.id, targetChatId);
-        if (targetChatId === selectedChat?.id) {
-          applyMessagesForChat(targetChatId, (current) => mergeIncomingMessage(current, forwarded));
-        }
-        onChatsUpdate((current) =>
-          current.map((chat) => (chat.id === targetChatId ? applyMessagePreviewToChat(chat, forwarded) : chat))
-        );
-      }
-      setForwardTarget(null);
-      clearSelectedMessages();
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not forward message");
-    }
+    await forwardMessages({ accessToken, currentUser, targets, targetChatId, chats, applyMessagesForChat, onChatsUpdate, onError });
   }
 
   async function handleOpenThread(rootMessage: Message) {
