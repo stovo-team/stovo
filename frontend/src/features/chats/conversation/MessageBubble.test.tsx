@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -111,6 +112,21 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("renders reaction users through the standard round avatar component", () => {
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 1, userIds: ["user-1"], reacted: true }] }));
+    expect(host.querySelector(".reaction-avatar.avatar .avatar-initials")?.textContent).toBe("SE");
+  });
+
+  it("keeps reaction avatars small and round without composer layout styles", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const stack = css.match(/\.reaction-avatar-stack\s*\{([^}]*)\}/)?.[1] ?? "";
+    const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(stack).not.toContain("--composer-action");
+    expect(avatar).toMatch(/border-radius:\s*50%/);
+    expect(avatar).toMatch(/width:\s*20px/);
+    expect(avatar).toMatch(/height:\s*20px/);
+  });
+
   it("labels an imported message with its source author and provider", () => {
     const message = createMockMessage({
       importAttribution: {

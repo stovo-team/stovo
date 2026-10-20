@@ -113,7 +113,6 @@ function embeddedChecklistReference(content: string | null | undefined): Checkli
     canManage: false
   };
 }
-import { chatInitials } from "../shared/chatPresentation";
 import type { CallPhase } from "../shared/types";
 import {
   emojiSizeClass,
@@ -619,9 +618,8 @@ export function MessageBubble({
                     {userIds.map((userId) => {
                       const user = memberLookup.get(userId);
                       return (
-                        <span className="reaction-avatar" key={userId}>
-                          {chatInitials(user?.displayName ?? "?")}
-                        </span>
+                        <RealAvatar key={userId} accessToken={accessToken} className="avatar reaction-avatar"
+                          file={selectedChat.members.find((member) => member.id === userId)?.profilePhoto} label={user?.displayName ?? "?"} />
                       );
                     })}
                   </span>
