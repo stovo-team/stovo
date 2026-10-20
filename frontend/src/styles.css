@@ -30609,7 +30609,7 @@ button.checklist-add-item-btn:hover,
   box-shadow: 0 0 0 1px var(--accent-primary), 0 2px 8px var(--color-palette-279245c0d6e0);
   color: var(--color-palette-f2074b6cef37);
 }
-.archive-group-back-button { display: inline-flex; }
+.archive-group-back-button, .thread-back-button { display: inline-flex; }
 .chat-title-group--archive-group { align-items: center; display: flex; gap: 8px; min-width: 0; }
 .chat-title-group.chat-title-group--archive-group .chat-title-row { align-items: center; display: flex; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .archive-group-title-divider { color: var(--text-muted); margin-inline: 6px; }
