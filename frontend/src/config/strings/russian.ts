@@ -1208,6 +1208,7 @@ export const strings = {
     selectFilesToAdd: "Выберите файлы для добавления", closeDetails: "Закрыть сведения о файле", details: "Сведения о файле",
     openFullScreen: (name: string) => `Открыть файл ${name} на весь экран`, fullScreen: "На весь экран", size: "Размер", saved: "Сохранён", source: "Источник",
     collections: {
+      removeFile: (name: string) => `Убрать ${name} из этой коллекции`,
       chooseAccess: "Выберите, кому предоставить доступ", members: "Участники", roles: "Роли", roleMembers: (count: number) => `${count} участн.`,
       allowedTypes: "Разрешённые типы файлов", chooseTypesHelp: "Выберите, какие файлы можно добавлять в эту коллекцию.", custom: "Другие", customPatternsHelp: "Задайте собственные шаблоны файлов",
       allowedPatterns: "Шаблоны файлов", commaPatterns: "Перечислите шаблоны через запятую, например", patternPlaceholder: "*.png, *.jpg, *.pdf", patternExamples: "*.png, *.webp, *.pdf", applyCustomTypes: "Применить типы файлов",

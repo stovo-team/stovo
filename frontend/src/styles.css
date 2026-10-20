@@ -26928,9 +26928,9 @@ button.voice-dock-btn--disconnect:active:not(:disabled) {
   display: inline-flex;
   height: 28px !important;
   justify-content: center;
-  opacity: 0;
+  opacity: 1;
   padding: 0 !important;
-  pointer-events: none;
+  pointer-events: auto;
   right: 6px;
   top: 6px;
   transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
