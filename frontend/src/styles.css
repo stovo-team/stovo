@@ -20482,7 +20482,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: none;
-  border-radius: var(--radius-surface);
+  border-radius: 999px;
   box-shadow: var(--float-shadow-soft);
   display: grid;
   gap: 10px;
@@ -32490,4 +32490,9 @@ button.minimized-call-button--end:active:not(:disabled) {
     height: calc(100dvh - var(--float-outer-gap));
     max-height: calc(100dvh - var(--float-outer-gap));
   }
+}
+
+.messenger-shell.has-active-chat .pinned-banner {
+  margin-top: calc(var(--chat-floating-header-overlap) + 8px);
+  flex-shrink: 0;
 }
