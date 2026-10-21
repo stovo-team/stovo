@@ -1,3 +1,4 @@
+import { mockCanvasResponse } from "./mockCanvas";
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { createMockData, createMockManifest } from "./mockFixtures";
@@ -97,6 +98,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
+  if (path.startsWith("/api/v1/plugins/canvas/")) return mockCanvasResponse(path, method, mockData.family.id, getMockUserId(), await requestBody(input, init));
   if (method === "GET" && path === "/api/family") {
     return jsonResponse(mockData.family);
   }

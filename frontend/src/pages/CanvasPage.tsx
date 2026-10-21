@@ -1,9 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
-import { Excalidraw } from "@excalidraw/excalidraw";
-import "@excalidraw/excalidraw/index.css";
 import { ChevronDown, Forward, Pencil, Plus } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -15,6 +13,8 @@ import { getChats } from "../api/chats";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "../components/BackButton";
 import { useStrings } from "../i18n/LanguageContext";
+
+const Excalidraw = lazy(() => import("../components/CanvasWhiteboardEditor"));
 
 const remoteOrigin = Symbol("canvas-remote");
 
@@ -198,6 +198,7 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
     <section className="canvas-block canvas-whiteboard-block">
       <header><Pencil size={17} /> <strong>{copy.whiteboard}</strong><small>{copy.liveDrawing}</small></header>
       <div className="canvas-excalidraw">
+        <Suspense fallback={<p role="status">{copy.openingCanvas}</p>}>
         <Excalidraw
           excalidrawAPI={(api) => { apiRef.current = api as unknown as ExcalidrawAPI; }}
           initialData={{ elements }}
@@ -207,6 +208,7 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
             sceneText.doc?.transact(() => { sceneText.delete(0, sceneText.length); sceneText.insert(0, next); });
           }}
         />
+        </Suspense>
       </div>
     </section>
   );
@@ -236,6 +238,9 @@ export default function CanvasPage() {
   useEffect(() => {
     if (!accessToken || !canvasId) return;
     let cancelled = false;
+    setCanvas(null);
+    setDocument(null);
+    setError(null);
     saveQueueRef.current = [];
     pendingUpdatesRef.current = [];
     isSavingRef.current = false;
@@ -243,7 +248,11 @@ export default function CanvasPage() {
     const blocks = doc.getArray<Y.Map<unknown>>("blocks");
     const connect = async () => {
       try {
-        const [loadedCanvas, loadedDocument] = await Promise.all([getCanvas(accessToken, canvasId), getCanvasDocument(accessToken, canvasId)]);
+        const canvasRequest = getCanvas(accessToken, canvasId).then((metadata) => {
+          if (!cancelled) setCanvas(metadata);
+          return metadata;
+        });
+        const [loadedCanvas, loadedDocument] = await Promise.all([canvasRequest, getCanvasDocument(accessToken, canvasId)]);
         if (cancelled) return;
         loadedDocument.updates.forEach(({ update }) => Y.applyUpdate(doc, base64ToBytes(update), remoteOrigin));
         setCanvas(loadedCanvas);
@@ -344,7 +353,7 @@ export default function CanvasPage() {
   };
 
   if (error) return <main className="canvas-page canvas-page--error"><h1>{copy.canvasUnavailable}</h1><p>{error}</p><BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} /></main>;
-  if (!canvas || !document) return <main className="canvas-page canvas-page--loading">{copy.openingCanvas}</main>;
+  if (!canvas) return <main className="canvas-page canvas-page--loading">{copy.openingCanvas}</main>;
 
   return (
     <main className="canvas-page">
@@ -357,13 +366,14 @@ export default function CanvasPage() {
         <div className="canvas-page-actions">
           {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label={copy.forwardCanvas} title={copy.forwardCanvas} onClick={() => { setForwardChatIds([]); setShareOpen((current) => !current); }}><Forward size={18} /></button>}
           <div className="canvas-insert-menu">
-            <button type="button" className="canvas-add-button" aria-label={copy.insertIntoCanvas} aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
+            <button type="button" className="canvas-add-button" aria-label={copy.insertIntoCanvas} disabled={!document} aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
             {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>{copy.whiteboard}</strong><small>{copy.insertLiveBoard}</small></span></button></div>}
           </div>
         </div>
       </header>
       {shareOpen && canvas.canManage && <ForwardChatDialog title={copy.forwardCanvas} accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => void forwardCanvas()} onClose={() => { setForwardChatIds([]); setShareOpen(false); }} />}
       <div className="canvas-workspace">
+        {!document && <p role="status">{copy.openingCanvas}</p>}
         {blocks.map((block) => block.kind === "markdown" ? <MarkdownBlock key={block.id} record={block.record} /> : <WhiteboardBlock key={block.id} record={block.record} />)}
       </div>
     </main>
