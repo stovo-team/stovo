@@ -1,4 +1,5 @@
 import { mockCanvasResponse } from "./mockCanvas";
+import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { createMockData, createMockManifest } from "./mockFixtures";
@@ -94,6 +95,9 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   }
   if (path.startsWith("/api/v1/plugins/canvas/canvases/canvas-planning-notes")) return mockCanvasResponse(path, method, mockData.family.id, getMockUserId(), await requestBody(input, init));
   if (method === "GET" && path === "/api/family") return jsonResponse(mockData.family);
+  if ((method === "GET" || method === "PATCH") && path === "/api/family") {
+    return jsonResponse(updateMockFamilySettings(mockData, method, await requestBody(input, init)));
+  }
   if (method === "GET" && path === "/api/family/members") {
     return jsonResponse(mockData.users);
   }
