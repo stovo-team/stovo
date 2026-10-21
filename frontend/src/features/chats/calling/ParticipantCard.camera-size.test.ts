@@ -23,4 +23,5 @@ it("scopes vertical voice-row fitting to voice rooms, preserving two-column grou
   const selectors=[...fitting.matchAll(/^([^{}]+)\{/gm)].map(match=>match[1].trim());
   expect(selectors).toHaveLength(4);
   expect(selectors.every(selector=>selector.startsWith(".voice-channel-room "))).toBe(true);
+  expect(fitting).not.toContain(".call-popup-group-call");
 });
