@@ -171,10 +171,10 @@ export function MessageContextMenu({
           {strings.contextMenu.reply}
         </button>
       )}
-      <button type="button" role="menuitem" disabled={!menu.message.content} onClick={onCopy}>
+      {menu.message.type !== "canvas" && menu.message.type !== "checklist" && !/^(canvas|checklist):/i.test(menu.message.content?.trim() ?? "") && <button type="button" role="menuitem" disabled={!menu.message.content} onClick={onCopy}>
         <Copy aria-hidden="true" size={16} />
         {strings.contextMenu.copy}
-      </button>
+      </button>}
       {selectedChat && canManagePins && (
         <button
           type="button"
