@@ -12,7 +12,6 @@ import (
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 const (
@@ -40,6 +39,7 @@ type canvasUpdatePublic struct {
 }
 
 type createCanvasRequest struct {
+	CanvasID      string `json:"canvasId"`
 	ChatID        string `json:"chatId"`
 	Title         string `json:"title"`
 	InitialUpdate string `json:"initialUpdate"`
@@ -232,63 +232,6 @@ func (s *Server) canvasError(w http.ResponseWriter, err error) {
 	default:
 		s.detail(w, http.StatusInternalServerError, "Canvas operation failed")
 	}
-}
-
-func (s *Server) createCanvas(ctx context.Context, user userPublic, request createCanvasRequest) (canvasPublic, error) {
-	chatID := strings.TrimSpace(request.ChatID)
-	chat, err := s.buildChatPublic(chatID, user)
-	if err != nil {
-		return canvasPublic{}, errNotFound
-	}
-	title := strings.TrimSpace(request.Title)
-	if title == "" {
-		title = "Untitled canvas"
-	}
-	if len(title) > 160 {
-		return canvasPublic{}, errBadRequest
-	}
-	var initialDecoded []byte
-	if request.InitialUpdate != "" {
-		initialDecoded, err = decodeCanvasUpdate(request.InitialUpdate)
-		if err != nil {
-			return canvasPublic{}, err
-		}
-	}
-	id := uuid.NewString()
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvases (id,family_id,origin_chat_id,created_by,title) VALUES ($1,$2,$3,$4,$5)`, id, user.FamilyID, chat.ID, user.ID, title); err != nil {
-		return canvasPublic{}, err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_chat_links (canvas_id,chat_id,created_by) VALUES ($1,$2,$3)`, id, chat.ID, user.ID); err != nil {
-		return canvasPublic{}, err
-	}
-	if request.InitialUpdate != "" {
-		if _, err := s.saveCanvasUpdate(ctx, id, user, request.InitialUpdate, initialDecoded); err != nil {
-			_, _ = s.canvasDB.ExecContext(ctx, `DELETE FROM canvases WHERE id=$1`, id)
-			return canvasPublic{}, err
-		}
-	}
-	if err := s.createCanvasCard(ctx, id, title, chat, user); err != nil {
-		return canvasPublic{}, err
-	}
-	return s.getCanvasForUser(ctx, id, user)
-}
-
-func (s *Server) createCanvasCard(ctx context.Context, canvasID, title string, chat chatPublic, user userPublic) error {
-	content := "canvas:" + canvasID + "\n" + title
-	message, replayed, err := s.createRESTMessageWithSyncImmediately(ctx, user, chat.ID, sendMessageRequest{Type: "canvas", Content: &content})
-	if err != nil {
-		return err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_cards (message_id,canvas_id) VALUES ($1,$2) ON CONFLICT (message_id) DO NOTHING`, message.ID, canvasID); err != nil {
-		return err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `UPDATE canvas_chat_links SET card_message_id=$3 WHERE canvas_id=$1 AND chat_id=$2`, canvasID, chat.ID, message.ID); err != nil {
-		return err
-	}
-	if !replayed {
-		s.notifyCreatedRESTMessage(chat, user, message, sendMessageRequest{Type: "canvas", Content: &content})
-	}
-	return nil
 }
 
 func (s *Server) getCanvasForUser(ctx context.Context, canvasID string, user userPublic) (canvasPublic, error) {
