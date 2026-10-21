@@ -133,3 +133,8 @@ describe("messageState", () => {
     expect(failed[1].deliveryError).toBe("offline");
   });
 });
+it("reconciles a local ended-call projection with the server row for the same room", () => {
+  const local = { id: "local-call:room-1", type: "call", call: { roomId: "room-1", status: "completed" }, createdAt: "2026-01-01T10:00:00Z" } as unknown as Message;
+  const server = { ...local, id: "server-history", call: { ...local.call!, durationSeconds: 42 } };
+  expect(mergeIncomingMessage([local], server)).toEqual([expect.objectContaining({ id: "server-history" })]);
+});
