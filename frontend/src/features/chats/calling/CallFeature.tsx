@@ -1,3 +1,4 @@
+import { CallDeviceErrorToast, isCallDeviceError } from "./CallDeviceErrorToast";
 import { useEffect, useState } from "react";
 import { resetFloatingCallPosition } from "./useFloatingCallPanel";
 import { useLocation } from "react-router-dom";
@@ -151,12 +152,14 @@ export function CallFeature() {
     ? { userId: mockScreenShareOwnerId, displayName: mockScreenShareOwnerUser?.displayName ?? mockScreenShareOwnerId }
     : null;
 
+  const deviceError = callAudioWarning || (isCallDeviceError(callNotice) ? callNotice : null);
   if (callPhase === "idle" && !preJoinChatId) {
-    return null;
+    return <CallDeviceErrorToast message={deviceError} />;
   }
 
   const callUi = (
     <>
+      <CallDeviceErrorToast message={deviceError} />
       <MinimizedCallBar
           key={session.callRoomId ?? session.activeCallChatId ?? "call"}
           anchorChatId={session.activeCallChatId ?? undefined}
@@ -277,7 +280,7 @@ export function CallFeature() {
                 }}
                 onEnd={() => void endActiveCall()}
                 onShrink={() => session.setIsCallMinimized(true)}
-                notice={callNotice}
+                notice={deviceError ? null : callNotice}
                 roomId={session.callRoomId}
                 currentUserId={currentUser?.id}
                 socketRef={session.socketRef}
@@ -316,7 +319,7 @@ export function CallFeature() {
           capabilities={callAudioCapabilities}
           devices={callAudioDevices}
           localStream={audioCallRef.current?.getLocalStream() ?? localVideoStream}
-          warning={callAudioWarning}
+          warning={deviceError ? null : callAudioWarning}
           onPatch={(patch) => void applyCallAudioPatch(patch)}
           onPreferencePatch={patchPreferences}
           onClose={() => { setIsCallAudioPopupOpen(false); setIsCallVideoPopupOpen(false); }}

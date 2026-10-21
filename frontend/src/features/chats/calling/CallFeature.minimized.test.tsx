@@ -93,3 +93,33 @@ it("restores from another page through the cached chat navigation", () => {
   expect(document.querySelector('[aria-label="Minimized call"]')).toBeNull();
   expect(document.querySelector<HTMLElement>('.call-popup')?.hidden).toBe(false);
 });
+
+it.each(["direct", "group", "voice"])("shows missing-camera failures as a viewport toast for %s calls", (type) => {
+  const session = {
+    callPhase: "in-call", callType: "audio", isCallMinimized: true, callNotice: "No camera device found",
+    activeCallChatId: "camera-chat", activeGroupCalls: {}, callAudioSettings: DEFAULT_CALL_SETTINGS,
+    callRemoteMedia: [], callParticipantIds: [], speakingUserIds: [], localScreenStream: null,
+  } as unknown as CallSessionApi;
+  const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  act(() => root.render(<MemoryRouter><CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[{ id: "camera-chat", type, members: [] } as Chat]}><CallFeature /></CallFeatureProvider></MemoryRouter>));
+  const toast = document.querySelector('[role="alert"].call-device-error-toast');
+  expect(toast?.textContent).toContain("No camera device found");
+  expect(document.querySelector(".call-popup-header .call-popup-notice")).toBeNull();
+});
+
+it("shows device failures once when the Audio settings tab is open", () => {
+  const warning = "Requested audio device not found";
+  const session = {
+    callPhase: "in-call", callType: "audio", isCallMinimized: false, callNotice: warning, callAudioWarning: warning,
+    activeCallChatId: "audio-settings-chat", activeGroupCalls: {}, callAudioSettings: DEFAULT_CALL_SETTINGS,
+    callRemoteMedia: [], callParticipantIds: [], speakingUserIds: [], localScreenStream: null,
+    isCallAudioPopupOpen: true, callAudioCapabilities: {}, callAudioDevices: [], audioCallRef: { current: null },
+    applyCallAudioPatch: vi.fn(), setIsCallAudioPopupOpen: vi.fn(), setIsCallVideoPopupOpen: vi.fn(),
+  } as unknown as CallSessionApi;
+  const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  act(() => root.render(<MemoryRouter initialEntries={["/app/chats/audio-settings-chat"]}><CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[{ id: "audio-settings-chat", type: "group", members: [] } as Chat]}><CallFeature /></CallFeatureProvider></MemoryRouter>));
+  act(() => [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(tab => tab.textContent === "Audio")!.click());
+  expect(document.querySelectorAll('[role="alert"].call-device-error-toast')).toHaveLength(1);
+  expect(document.querySelector('.call-device-error-toast')?.textContent).toContain(warning);
+  expect(document.querySelector('.call-audio-popup-warning')).toBeNull();
+});
