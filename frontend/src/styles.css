@@ -27532,8 +27532,9 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
 /* Canvas card bubble (chat messages) */
 .message-bubble:has(.canvas-card-bubble) {
   box-sizing: border-box;
-  max-width: min(560px, 92%);
-  width: 100%;
+  max-width: min(560px, calc(100vw - 48px));
+  padding-inline: 6px;
+  width: min(560px, calc(100vw - 48px));
 }
 .canvas-card-bubble {
   border: 1px solid var(--color-palette-b749cc259197);
@@ -27544,7 +27545,8 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 540px;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: border-color 0.18s, box-shadow 0.18s;
   box-shadow: 0 4px 18px var(--color-palette-0bf61dd701cd);
 }
@@ -27627,8 +27629,9 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
 }
 .canvas-card-bubble-preview {
   position: relative;
-  min-height: 180px;
-  max-height: 270px;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  max-height: none;
   overflow: hidden;
   background: var(--color-palette-8d6f5252e02c);
 }
@@ -27637,8 +27640,8 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   inset: unset;
   width: 100%;
   height: 100%;
-  min-height: 180px;
-  max-height: 270px;
+  min-height: 0;
+  max-height: none;
   border-radius: 0;
   padding: 16px 18px 26px;
   background: var(--color-palette-8d6f5252e02c);
