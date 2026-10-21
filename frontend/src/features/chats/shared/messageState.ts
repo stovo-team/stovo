@@ -46,6 +46,9 @@ export function inferOptimisticMessageType(files: FamilyFile[], content: string 
 }
 
 export function mergeIncomingMessage(current: Message[], incoming: Message) {
+  if (incoming.type === "call" && incoming.call?.roomId && !incoming.id.startsWith("local-call:")) {
+    current = current.filter((message) => message.id !== `local-call:${incoming.call!.roomId}`);
+  }
   const clientMessageId = incoming.clientMessageId;
   const message = {
     ...incoming,
