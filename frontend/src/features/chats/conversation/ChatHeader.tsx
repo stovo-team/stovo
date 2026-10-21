@@ -143,7 +143,7 @@ export function ChatHeader({
   return (
     <div className="chat-detail-header chat-detail-header--floating" data-call-header-chat-id={selectedChat.id}>
       <BackButton
-        className={isArchiveGroup ? "archive-group-back-button" : "mobile-back-button"}
+        className={isArchiveGroup ? "archive-group-back-button" : threadRootMessage ? "thread-back-button" : "mobile-back-button"}
         ariaLabel={isArchiveGroup ? headerCopy.backToGroupedArchive : threadRootMessage ? headerCopy.backToChat : headerCopy.backToChats}
         title={isArchiveGroup ? headerCopy.backToGroupedArchive : undefined}
         onClick={handleBack}
