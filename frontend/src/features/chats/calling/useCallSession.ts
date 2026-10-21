@@ -762,46 +762,15 @@ export function useCallSession({
 
   async function endActiveCall() {
     if (mockCallSession.endActiveCall()) return;
-    if (!socketRef.current || !activeCallChatId) {
+    const endingChatId = activeCallChatId ?? activeCallChatIdRef.current;
+    if (!endingChatId) {
       return;
     }
-    callStartupGenerationRef.current += 1;
     const terminationEvent = callTerminationEvent(callPhaseRef.current);
-    setCallNotice("Ending call...");
-    stopCallRingtone();
-    playCallEndSound();
-    callPhaseRef.current = "idle";
-    activeCallSessionIdRef.current = null;
-    activeCallChatIdRef.current = null;
-    callTypeRef.current = "audio";
-    pictureInPictureActiveRef.current = false;
-    socketRef.current.emit(terminationEvent, { chatId: activeCallChatId });
-    // serverAlreadyNotified=true: we just sent the phase-appropriate termination
-    // event above, so cleanup must not send a second call:end.
-    await audioCallRef.current?.cleanup(true).catch(() => undefined);
-    setCallPhase("idle");
-    setActiveCallChatId(null);
-    setCallPeerUserId(null);
-    setCallPeerDisplayName(null);
-    setHasRemoteVideo(false);
-    setLocalVideoStream(null);
-    setLocalScreenStream(null);
-    setRemoteVideoStream(null);
-    setCallType("audio");
-    setCallAudioSettings((cur) => ({
-      ...cur,
-      micMuted: false,
-      soundDisabled: false,
-      cameraEnabled: false,
-      screenSharing: false
-    }));
-    setIsCallSettingsMenuOpen(false);
-    setIsCallAudioPopupOpen(false);
-    setIsCallMinimized(false);
-    setCallTrackStatus(null);
-    setCallAudioWarning(null);
-    setIsPeerSpeaking(false);
-    setCallNotice(null);
+    socketRef.current?.emit(terminationEvent, { chatId: endingChatId });
+    // resetCallState publishes idle locally before awaiting controller cleanup.
+    // The signaling event above already notified the server.
+    await resetCallState(undefined, true);
   }
 
   /**
