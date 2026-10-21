@@ -32522,6 +32522,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   .storage-page.is-collection-picking .storage-layout.storage-layout--source-collapsed {
     grid-template-columns: 36px minmax(0, 1fr) !important;
   }
+}
 /* Folder views occupy the source sidebar's space. */
 .storage-page:has(.storage-collection-full-page) .storage-source-collapse {
   display: none;
