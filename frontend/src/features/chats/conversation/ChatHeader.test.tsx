@@ -2,7 +2,7 @@ import { act, createRef } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChatHeader } from "./ChatHeader";
-import type { Chat } from "../../../api/chats";
+import type { Chat, Message } from "../../../api/chats";
 import type { User } from "../../../api/auth";
 
 const mountedRoots: Root[] = [];
@@ -54,6 +54,22 @@ const mockDirectChat: Chat = {
 };
 
 describe("ChatHeader", () => {
+  it("keeps a desktop-visible back arrow beside the chat icon while reading comments", () => {
+    const onBackFromThread = vi.fn();
+    const host = renderComponent(<ChatHeader accessToken={null} currentUser={mockUser} selectedChat={mockDirectChat}
+      typingNames={[]} callPhase="idle" isChatMenuOpen={false} chatMenuRef={createRef()}
+      onToggleChatMenu={vi.fn()} onBack={vi.fn()} onOpenDetails={vi.fn()} onStartAudioCall={vi.fn()} onStartVideoCall={vi.fn()}
+      isMessageSearchOpen={false} onToggleMessageSearch={vi.fn()} onOpenMessageSearch={vi.fn()}
+      onMarkRead={vi.fn()} onTogglePinned={vi.fn()} onToggleMuted={vi.fn()} onToggleFavorite={vi.fn()}
+      threadRootMessage={{ id: "root-message" } as Message} onBackFromThread={onBackFromThread} />);
+    const back = host.querySelector<HTMLButtonElement>('[aria-label="Back to chat"]')!;
+    expect(back).not.toBeNull();
+    expect(back.classList.contains("mobile-back-button")).toBe(false);
+    expect(back.nextElementSibling?.classList.contains("chat-title-group--thread")).toBe(true);
+    act(() => back.click());
+    expect(onBackFromThread).toHaveBeenCalledOnce();
+  });
+
   it("renders search button and call buttons for direct chat", () => {
     const onToggleMessageSearch = vi.fn();
     const container = renderComponent(
