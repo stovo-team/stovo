@@ -3015,7 +3015,6 @@ h2 {
   width: 22px;
 }
 .thread-summary-overflow { background: var(--surface-raised); }
-.thread-summary-action { margin-left: auto; }
 .thread-open-button > svg { flex-shrink: 0; }
 
 .avatar {
