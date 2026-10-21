@@ -11,6 +11,8 @@ it("parses global styles and keeps independent call, settings and storage rules 
     ".storage-page:has(.storage-collection-full-page) .storage-source-collapse",
     ".voice-grid--9 > .voice-participant-card:last-child:nth-child(3n + 2)",
     ".call-popup.call-popup-group-call > .shared-call-stage",
+    ".app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before",
+    ".app-frame .logout-row:is(:hover, :focus-visible)",
   ]) {
     expect(root.nodes.some(node => node.type === "rule" && node.selector.includes(selector))).toBe(true);
   }
