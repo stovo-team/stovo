@@ -32551,6 +32551,20 @@ button.minimized-call-button--end:active:not(:disabled) {
   }
 }
 
+/* Logout is a destructive action in both navigation layouts. */
+.app-frame .logout-row:is(:hover, :focus-visible) {
+  background: color-mix(in oklab, var(--danger) 22%, var(--surface-card));
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible),
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) .ms-icon,
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > span:not(.ms-icon) {
+  color: var(--danger);
+}
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before {
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+}
 @media (min-width: 721px) and (max-height: 800px) {
   .guest-prejoin-preview {
     aspect-ratio: 16 / 9;
