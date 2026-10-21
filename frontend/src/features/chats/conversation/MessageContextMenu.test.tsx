@@ -224,3 +224,20 @@ describe("MessageContextMenu commenting and replying", () => {
     expect(buttonTexts).toContain("Reply");
   });
 });
+
+describe("structured message copy action", () => {
+  it.each(["canvas", "checklist"] as const)("does not offer Copy for a %s card", (type) => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+    act(() => root.render(<MessageContextMenu
+      menu={{ message: createMockMessage({ type, content: `${type}:internal-id` }), x: 100, y: 100 }}
+      currentUser={mockUser} selectedChat={createMockChat()} channelCommentsDisabledForViewer={false}
+      isInThreadMode={false} isPinned={false} seenBy={[]}
+      onReact={vi.fn()} onReply={vi.fn()} onComment={vi.fn()} onCopy={vi.fn()} onTogglePin={vi.fn()}
+      onForward={vi.fn()} onArchive={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
+    />));
+    expect(Array.from(container.querySelectorAll('[role="menuitem"]')).map((node) => node.textContent?.trim())).not.toContain("Copy");
+  });
+});
