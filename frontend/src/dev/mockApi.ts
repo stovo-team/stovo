@@ -99,9 +99,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
   if (path.startsWith("/api/v1/plugins/canvas/")) return mockCanvasResponse(path, method, mockData.family.id, getMockUserId(), await requestBody(input, init));
-  if (method === "GET" && path === "/api/family") {
-    return jsonResponse(mockData.family);
-  }
+  if (method === "GET" && path === "/api/family") return jsonResponse(mockData.family);
   if (method === "GET" && path === "/api/family/members") {
     return jsonResponse(mockData.users);
   }
