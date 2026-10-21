@@ -114,7 +114,6 @@ function embeddedChecklistReference(content: string | null | undefined): Checkli
     canManage: false
   };
 }
-import { chatInitials } from "../shared/chatPresentation";
 import type { CallPhase } from "../shared/types";
 import {
   emojiSizeClass,
@@ -613,20 +612,16 @@ export function MessageBubble({
                 onClick={() => onReact(message, reaction.emoji)}
               >
                 <span className="reaction-emoji">{reaction.emoji}</span>
-                {userIds.length > 3 ? (
-                  <span className="reaction-count">{reaction.count}</span>
-                ) : (
-                  <span className="reaction-avatar-stack" aria-hidden="true">
-                    {userIds.map((userId) => {
-                      const user = memberLookup.get(userId);
-                      return (
-                        <span className="reaction-avatar" key={userId}>
-                          {chatInitials(user?.displayName ?? "?")}
-                        </span>
-                      );
-                    })}
-                  </span>
-                )}
+                <span className="reaction-avatar-stack" aria-hidden="true">
+                  {userIds.slice(0, userIds.length > 3 ? 2 : 3).map((userId) => {
+                    const user = memberLookup.get(userId);
+                    return (
+                      <RealAvatar key={userId} accessToken={accessToken} className="avatar reaction-avatar"
+                        file={selectedChat.members.find((member) => member.id === userId)?.profilePhoto} label={user?.displayName ?? "?"} />
+                    );
+                  })}
+                  {userIds.length > 3 && <span className="reaction-avatar reaction-avatar-more">+{userIds.length - 2}</span>}
+                </span>
               </button>
             );
           })}
