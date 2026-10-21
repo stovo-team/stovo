@@ -118,18 +118,23 @@ function renderBubble(
 }
 
 describe("MessageBubble receipt status", () => {
-  it("shows comment count, two commenter avatars, overflow and a trailing comment action", () => {
+  it("shows a numeric comment summary with left content and a right-aligned arrow", () => {
     const message = createMockMessage();
     const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
     const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), [message, ...replies], replies.length);
     const action = host.querySelector(".thread-open-button")!;
     expect(action.getAttribute("aria-label")).toBe("3 comments");
     expect(action.querySelector(".lucide-message-circle")).not.toBeNull();
-    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
     expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
     expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
-    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
     expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const arrow = css.match(/\.thread-open-button\s*>\s*\.lucide-chevron-right\s*\{([^}]*)\}/)?.[1] ?? "";
+    const avatar = css.match(/\.thread-summary-avatars\s+\.thread-summary-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(arrow).toMatch(/margin-left:\s*auto/);
+    expect(avatar).toMatch(/border:\s*0/);
   });
 
   it("renders reaction users through the standard round avatar component", () => {
@@ -250,7 +255,7 @@ describe("MessageBubble receipt status", () => {
     expect(receipt).toBeNull();
   });
 
-  it("renders a persistent singular comment label when threadReplyCount is 1", () => {
+  it("keeps the accessible singular label while displaying only the count", () => {
     const onOpenThread = vi.fn();
     const message = createMockMessage();
     const container = document.createElement("div");
@@ -295,7 +300,7 @@ describe("MessageBubble receipt status", () => {
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("1 comment");
-    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("1 comment");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("1");
 
     act(() => {
       threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -303,7 +308,7 @@ describe("MessageBubble receipt status", () => {
     expect(onOpenThread).toHaveBeenCalledWith(message);
   });
 
-  it("renders plural comments label when threadReplyCount is > 1", () => {
+  it("keeps the accessible plural label while displaying only the count", () => {
     const message = createMockMessage();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -347,7 +352,7 @@ describe("MessageBubble receipt status", () => {
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("3 comments");
-    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("3");
   });
 
   it("does not render a comments button when threadReplyCount is 0", () => {

@@ -39,7 +39,7 @@ export function ThreadSummaryButton({ message, messages, chat, count, currentUse
   }, [accessToken, chat.id, count, key, message.id, messages]);
   return <button type="button" className="thread-open-button" aria-label={strings.comments.count(count)} onClick={onOpen}>
     <MessageCircle size={16} aria-hidden="true" />
-    <span className="thread-summary-count">{strings.comments.count(count)}</span>
+    <span className="thread-summary-count">{count}</span>
     <span className="thread-summary-avatars" aria-hidden="true">
       {users.slice(0, 2).map((user) => <RealAvatar key={user.id} accessToken={accessToken} className="avatar thread-summary-avatar"
         file={chat.members.find((member) => member.id === user.id)?.profilePhoto} label={user.name} />)}
