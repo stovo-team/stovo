@@ -325,7 +325,7 @@ export function useChatDataLoader({
         historyCursorRef.current[requestedChatId] = null;
       }
 
-      let cachedMessages = archiveGroup ? undefined : messageCacheRef.current[requestedChatId];
+      let cachedMessages = messageCacheRef.current[requestedChatId];
       if (!cachedMessages && !archiveGroup && currentUserIdRef.current) {
         const localCached = loadRecentChatHistoryFromLocalStorage<Message>(
           currentUserIdRef.current,
