@@ -32735,6 +32735,14 @@ button.minimized-call-button--end:active:not(:disabled) {
   width: 32px;
 }
 
+/* Keep document actions on the page and expose more of each document. */
+.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  padding: 0;
+}
+.storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  --storage-preview-height: min(78dvh, 960px);
+}
+
 /* Fit whole voice rows, including their 12px gaps, inside the stage budget. */
 .voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--2 {
   width: min(100%, 1120px, calc((100dvh - 232px) * 8 / 9)) !important;
