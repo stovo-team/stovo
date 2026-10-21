@@ -32637,3 +32637,13 @@ button.minimized-call-button--end:active:not(:disabled) {
 .voice-grid--9 > .voice-participant-card:last-child:nth-child(3n + 2) {
   transform: translateX(calc(50% + 6px));
 }
+
+.forward-dialog {
+  background: var(--chat-popup-surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--float-shadow-soft);
+}
+
+.forward-dialog .popup-field {
+  margin-bottom: 8px;
+}
