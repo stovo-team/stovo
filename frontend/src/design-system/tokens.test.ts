@@ -28,11 +28,11 @@ const sourceCodeFiles = (directory: string): string[] => readdirSync(directory, 
 });
 
 describe("shared design tokens", () => {
-  it("uses the configured control size for chat detail tabs and member invitation", () => {
+  it("uses compact text for chat detail tabs and the configured control size for member invitation", () => {
     const styles = read("src/styles.css");
     const rule = (selector: string) => styles.match(new RegExp(`${selector}\\s*\\{([^}]+)\\}`))?.[1] ?? "";
 
-    expect(rule("\\.chat-info-tab")).toContain("font-size: var(--font-size-button)");
+    expect(rule("\\.chat-info-tab")).toContain("font-size: var(--font-size-caption)");
     expect(rule("\\.chat-info-member-invite")).toContain("font-size: var(--font-size-button)");
   });
 

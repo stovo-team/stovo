@@ -18920,7 +18920,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-radius: var(--radius-pill);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--font-size-button);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   min-height: 36px;
   min-width: 0;
@@ -32513,6 +32513,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .chat-info-member-row .avatar {
   height: 32px;
   width: 32px;
+}
 /* Preserve source-list widths while keeping wide-screen main panes readable. */
 @media (min-width: 1600px) {
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,
