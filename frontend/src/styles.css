@@ -26958,9 +26958,9 @@ button.voice-dock-btn--disconnect:active:not(:disabled) {
   display: inline-flex;
   height: 28px !important;
   justify-content: center;
-  opacity: 0;
+  opacity: 1;
   padding: 0 !important;
-  pointer-events: none;
+  pointer-events: auto;
   right: 6px;
   top: 6px;
   transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
@@ -32593,6 +32593,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   outline-offset: -3px;
 }
 .storage-collection-file-grid .collection-file-tile > button:not(.collection-file-open) { z-index: 5; }
+.storage-collection-file-grid .collection-file-tile:has(> img) > button:not(.collection-file-open) { z-index: 6; }
 /* Record actions use a small inner dot, with space to the outer ring. */
 .meeting-intel-toggle-btn > svg.lucide-circle {
   width: 10px;
