@@ -6781,7 +6781,7 @@ span.message-spoiler.is-revealed {
   --avatar-size: 20px;
   align-items: center;
   background: var(--accent-primary);
-  border: 2px solid var(--surface-card);
+  border: 0;
   border-radius: 50%;
   box-sizing: border-box;
   color: var(--accent-contrast, #fff);
