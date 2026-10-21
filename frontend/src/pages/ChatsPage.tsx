@@ -1,3 +1,4 @@
+import { useArchiveSelectionSync } from "../features/chats/useArchiveSelectionSync";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
@@ -101,11 +102,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     }
   }, [archiveGroup]);
 
-  useEffect(() => {
-    if (selectedChat?.type === "archive") {
-      setIsMessageArchiveOpen(true);
-    }
-  }, [selectedChat?.id, selectedChat?.type]);
+  useArchiveSelectionSync(selectedChat, setIsMessageArchiveOpen);
 
   useEffect(() => {
     if (!isDraftsAndScheduledOpen) return;

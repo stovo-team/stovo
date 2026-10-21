@@ -18,6 +18,16 @@ export type UseChatWorkspaceStateParams = {
  */
 export function useChatWorkspaceState({ accessToken }: UseChatWorkspaceStateParams) {
   const [family, setFamily] = useState<Family | null>(null);
+  useEffect(() => {
+    if (!accessToken) return;
+    const applyFamilyUpdate = (event: Event) => {
+      const updated = (event as CustomEvent<Family>).detail;
+      setFamily((current) => current && updated?.id === current.id ? updated : current);
+    };
+    window.addEventListener("stovo:family-updated", applyFamilyUpdate);
+    return () => window.removeEventListener("stovo:family-updated", applyFamilyUpdate);
+  }, [accessToken]);
+
   const [members, setMembers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
