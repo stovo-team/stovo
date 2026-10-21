@@ -7,6 +7,7 @@ const rule = (selector: string) => {
 };
 it("fits detail tabs and members in the narrow panel with larger media tiles", () => {
   expect(rule(".chat-info-tab")).toContain("font-size: var(--font-size-caption);");
+  expect(rule(".chat-info-tab")).toContain("min-height: 36px;");
   expect(rule(".chat-info-media-grid.details-media-grid")).toContain("repeat(3, minmax(0, 1fr))");
   expect(rule(".chat-info-member-row")).toContain("min-height: 44px;");
   expect(rule(".chat-info-member-row")).toContain("padding: 6px 12px;");
