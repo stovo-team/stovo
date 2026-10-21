@@ -29,6 +29,11 @@ describe("CallSettingsDialog", () => {
     expect(panel).toMatch(/overflow:\s*auto/);
   });
 
+  it("anchors the shared close button to the settings dialog", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(dialog).toMatch(/position:\s*relative/);
+  });
   it("starts on General and switches between General, Audio and Camera tabs", () => {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);
