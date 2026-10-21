@@ -68,7 +68,13 @@ jobs:
           npm --prefix frontend ci
           npm --prefix e2e ci
           cd e2e
-          npx playwright install --with-deps chromium
+          for attempt in 1 2 3; do
+            if npx playwright install --with-deps chromium; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep "$attempt"
+          done
       - name: Capture all twelve head scenarios against reviewed references
         env:
           STOVO_VISUAL_COMPARE: 'true'
