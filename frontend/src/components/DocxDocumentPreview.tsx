@@ -72,7 +72,7 @@ export function DocxDocumentPreview({ blob, fitToWidth = false }: { blob: Blob; 
       try {
         const docx = await import("docx-preview");
         await docx.renderAsync(blob, stagingHost, stagingHost, {
-          className: "stovo-docx",
+          className: "docx",
           useBase64URL: true,
           renderAltChunks: false,
         });
