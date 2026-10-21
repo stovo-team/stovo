@@ -32493,19 +32493,19 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 
 /* Fit whole voice rows, including their 12px gaps, inside the stage budget. */
-.shared-call-stage .voice-room-grid.voice-grid--2 {
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--2 {
   width: min(100%, 1120px, calc((100dvh - 232px) * 8 / 9)) !important;
   aspect-ratio: auto;
 }
-.shared-call-stage .voice-room-grid.voice-grid--4 {
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--4 {
   width: min(100%, 1120px, calc((100dvh - 232px) * 16 / 9 + 12px)) !important;
   aspect-ratio: auto;
 }
-.shared-call-stage .voice-room-grid.voice-grid--6 {
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--6 {
   width: min(100%, 1120px, calc((100dvh - 244px) * 32 / 27 + 12px)) !important;
   aspect-ratio: auto;
 }
-.shared-call-stage .voice-room-grid.voice-grid--9 {
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--9 {
   width: min(100%, 1120px, calc((100dvh - 244px) * 16 / 9 + 24px)) !important;
   aspect-ratio: auto;
 }

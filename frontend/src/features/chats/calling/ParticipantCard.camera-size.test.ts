@@ -14,3 +14,11 @@ it("fits the two-row voice layout within the same stage height budget", () => {
   expect(rule).toContain("calc((100dvh - 232px) * 8 / 9)");
   expect(rule).toContain("aspect-ratio: auto;");
 });
+
+it("scopes vertical voice-row fitting to voice rooms, preserving two-column group-call galleries", () => {
+  const styles=readFileSync("src/styles.css","utf8");
+  const fitting=styles.slice(styles.indexOf("/* Fit whole voice rows"));
+  const selectors=[...fitting.matchAll(/^([^{}]+)\{/gm)].map(match=>match[1].trim());
+  expect(selectors).toHaveLength(4);
+  expect(selectors.every(selector=>selector.startsWith(".voice-channel-room "))).toBe(true);
+});
