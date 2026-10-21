@@ -86,6 +86,7 @@ export function CallSettingsDialog({
         aria-modal="true"
         aria-label={copy.callSettings}
         onKeyDown={handleDialogKeyDown}
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="call-settings-dialog-header">
