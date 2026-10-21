@@ -32584,6 +32584,9 @@ button.minimized-call-button--end:active:not(:disabled) {
 .app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > span:not(.ms-icon) {
   color: var(--danger);
 }
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > svg {
+  color: var(--danger);
+}
 .app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before {
   background: color-mix(in oklab, var(--danger) 16%, transparent);
 }
