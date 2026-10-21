@@ -2985,23 +2985,38 @@ h2 {
 }
 
 .thread-open-button {
-  align-self: flex-start;
+  align-self: stretch;
+  align-items: center;
   background: transparent;
   border: 0;
-  color: var(--color-palette-f2074b6cef37);
+  color: inherit;
+  display: flex;
   font-size: var(--font-size-small);
-  font-weight: var(--font-weight-bold);
-  justify-content: flex-start;
-  min-height: 24px;
-  padding: 0;
+  font-weight: var(--font-weight-semibold);
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 0;
+  width: 100%;
 }
-
-.thread-open-button:hover:not(:disabled) {
-  background: transparent;
-  border: 0;
-  color: var(--color-palette-f2074b6cef37);
-  text-decoration: underline;
+.thread-open-button:hover:not(:disabled) { background: transparent; color: inherit; }
+.thread-summary-avatars { align-items: center; display: inline-flex; }
+.thread-summary-avatars .thread-summary-avatar, .thread-summary-overflow {
+  --avatar-size: 22px;
+  align-items: center;
+  border: 2px solid var(--surface-card);
+  border-radius: var(--radius-circle);
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 22px;
+  height: 22px;
+  justify-content: center;
+  margin-left: -4px;
+  overflow: hidden;
+  width: 22px;
 }
+.thread-summary-overflow { background: var(--surface-raised); }
+.thread-summary-action { margin-left: auto; }
+.thread-open-button > svg { flex-shrink: 0; }
 
 .avatar {
   align-items: center;
@@ -32508,6 +32523,25 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+@media (min-width: 721px) and (max-height: 800px) {
+  .guest-prejoin-preview {
+    aspect-ratio: 16 / 9;
+    max-height: min(320px, 40dvh);
+    width: min(100%, calc(40dvh * 16 / 9));
+    justify-self: center;
+  }
+  .group-call-prejoin-card {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+  .group-call-prejoin-preview {
+    flex: 0 0 auto;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    max-height: min(220px, 36dvh);
+  }
+}
 
 /* Logout is a destructive action in both navigation layouts. */
 .app-frame .logout-row:is(:hover, :focus-visible) {
@@ -32522,6 +32556,24 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 .app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before {
   background: color-mix(in oklab, var(--danger) 16%, transparent);
+@media (min-width: 721px) and (max-height: 800px) {
+  .guest-prejoin-preview {
+    aspect-ratio: 16 / 9;
+    max-height: min(320px, 40dvh);
+    width: min(100%, calc(40dvh * 16 / 9));
+    justify-self: center;
+  }
+  .group-call-prejoin-card {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+  .group-call-prejoin-preview {
+    flex: 0 0 auto;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    max-height: min(220px, 36dvh);
+  }
 }
 /* Preserve source-list widths while keeping wide-screen main panes readable. */
 @media (min-width: 1600px) {
