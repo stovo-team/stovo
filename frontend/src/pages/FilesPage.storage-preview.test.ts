@@ -31,7 +31,7 @@ describe("storage video preview sizing", () => {
     const documentRule = rule(".storage-page .storage-preview-media:has(.document-preview-card--inline)");
     expect(documentRule).toContain("width: var(--storage-document-width);");
     expect(documentRule).toContain("height: var(--storage-preview-height);");
-    expect(documentRule).toContain("padding: 68px 16px 16px;");
+    expect(rule(".storage-page .storage-preview-frame:has(.document-preview-card--inline)")).toContain("padding: 68px 16px 16px;");
   });
 
   it("reserves room for controls on audio and unsupported file previews", () => {
