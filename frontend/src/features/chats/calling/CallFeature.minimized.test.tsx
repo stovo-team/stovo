@@ -93,3 +93,16 @@ it("restores from another page through the cached chat navigation", () => {
   expect(document.querySelector('[aria-label="Minimized call"]')).toBeNull();
   expect(document.querySelector<HTMLElement>('.call-popup')?.hidden).toBe(false);
 });
+
+it.each(["direct", "group", "voice"])("shows missing-camera failures as a viewport toast for %s calls", (type) => {
+  const session = {
+    callPhase: "in-call", callType: "audio", isCallMinimized: true, callNotice: "No camera device found",
+    activeCallChatId: "camera-chat", activeGroupCalls: {}, callAudioSettings: DEFAULT_CALL_SETTINGS,
+    callRemoteMedia: [], callParticipantIds: [], speakingUserIds: [], localScreenStream: null,
+  } as unknown as CallSessionApi;
+  const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  act(() => root.render(<MemoryRouter><CallFeatureProvider session={session} isMobileViewport={false} members={[]} currentUser={null} chats={[{ id: "camera-chat", type, members: [] } as Chat]}><CallFeature /></CallFeatureProvider></MemoryRouter>));
+  const toast = document.querySelector('[role="alert"].call-device-error-toast');
+  expect(toast?.textContent).toContain("No camera device found");
+  expect(document.querySelector(".call-popup-header .call-popup-notice")).toBeNull();
+});
