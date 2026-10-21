@@ -1,5 +1,5 @@
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 
 export function SendMessageIcon() {
-  return <Send aria-hidden="true" className="composer-send-icon" size={20} strokeWidth={2.25} />;
+  return <ArrowUp aria-hidden="true" className="composer-send-icon" size={20} strokeWidth={2.25} />;
 }

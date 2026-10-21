@@ -77,3 +77,20 @@ describe("StorageCollections localization", () => {
     expect(host.querySelector('[data-chat-group="Shared folders"]')?.textContent).toContain("Shared notes");
   });
 });
+
+it("opens a folder file through the preview callback with keyboard and pointer access", async () => {
+  const { getCollectionItems } = await import("../api/collections");
+  const folder = { id: "folder-preview", familyId: "family", ownerId: "user", title: "Documents", displayKind: "folder", contentType: "mixed", customFileTypes: "", coverFileId: null, itemCount: 1, accessLevel: "viewer", createdAt: "2026-10-20", updatedAt: "2026-10-20" } as StorageCollection;
+  const file = { id: "private-document", originalName: "Private notes.md", mimeType: "text/markdown", sizeBytes: 100 } as FamilyFile;
+  vi.mocked(getCollections).mockResolvedValue([folder]);
+  vi.mocked(getCollectionItems).mockResolvedValue([file]);
+  const onPreviewFile = vi.fn();
+  const host = document.createElement("div"); document.body.appendChild(host);
+  const root = createRoot(host); roots.push(root);
+  await act(async () => { root.render(<MemoryRouter><StorageCollections accessToken="token" files={[]} filter="all" onPreviewFile={onPreviewFile} /></MemoryRouter>); });
+  await act(async () => { host.querySelector<HTMLButtonElement>(".storage-collection-open")!.click(); });
+  const openFile = host.querySelector<HTMLButtonElement>('button[aria-label="Private notes.md"]');
+  expect(openFile).not.toBeNull();
+  await act(async () => { openFile!.click(); });
+  expect(onPreviewFile).toHaveBeenCalledWith(file);
+});
