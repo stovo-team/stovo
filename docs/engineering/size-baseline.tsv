@@ -51,7 +51,7 @@ frontend/src/features/chats/outbox/messageOutboxProcessor.ts	482
 frontend/src/features/chats/outbox/messageOutboxStore.ts	403
 frontend/src/features/chats/shared/messagePresentation.ts	473
 frontend/src/features/chats/sidebar/ChatList.tsx	838
-frontend/src/features/chats/sidebar/useChatDataLoader.ts	591
+frontend/src/features/chats/sidebar/useChatDataLoader.ts	599
 frontend/src/features/chats/useChatsPageController.ts	430
 frontend/src/messageMarkdown.tsx	726
 frontend/src/pages/ChatsPage.tsx	451

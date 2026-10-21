@@ -20537,7 +20537,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   max-height: 64px;
   min-height: 48px;
   overflow: hidden;
-  margin: 10px var(--message-gutter-x) 0;
+  margin: 4px var(--message-gutter-x) 0;
   padding: 0;
   position: relative;
   transition:
@@ -30639,6 +30639,7 @@ button.checklist-add-item-btn:hover,
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; position: relative; z-index: 2; }
 .quick-access-panel-tabs--archive-controls { align-self: flex-start; left: var(--active-chat-message-inset-x, 10px); margin-left: 0; margin-top: calc(var(--chat-floating-header-overlap, 52px) + 12px); pointer-events: auto; position: absolute; top: 0; width: max-content; z-index: 11; }
+.messenger-shell.has-active-chat .chat-detail:has(.quick-access-panel-tabs--archive-controls):has(.pinned-banner) .quick-access-panel-tabs--archive-controls { top: 72px; }
 .messenger-shell.has-active-chat .chat-detail:has(.quick-access-panel-tabs--archive-controls) .messages-panel { margin-top: 0; padding-top: calc(var(--chat-floating-header-overlap, 52px) + 54px); }
 .quick-access-panel-tabs--archive-grouped { margin-left: 0; margin-top: 0; position: relative; z-index: 2; }
 .quick-access-panel-tabs button {
