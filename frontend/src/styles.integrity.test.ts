@@ -11,6 +11,7 @@ it("parses global styles and keeps independent call, settings and storage rules 
     ".storage-page:has(.storage-collection-full-page) .storage-source-collapse",
     ".voice-grid--9 > .voice-participant-card:last-child:nth-child(3n + 2)",
     ".storage-page .storage-preview-media:has(.document-preview-card--inline)",
+    ".chat-info-member-row .avatar",
     ".call-popup.call-popup-group-call > .shared-call-stage",
     ".messenger-shell.has-active-chat .pinned-banner",
     ".guest-device-menu-trigger:focus-visible",

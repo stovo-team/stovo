@@ -18961,7 +18961,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-radius: var(--radius-pill);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--font-size-button);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
   min-height: 36px;
   min-width: 0;
@@ -19036,7 +19036,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-media-grid.details-media-grid {
   gap: 2px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-radius: var(--radius-surface);
   overflow: hidden;
 }
@@ -19196,8 +19196,8 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: grid;
   gap: 12px;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: 56px;
-  padding: 8px 16px;
+  min-height: 44px;
+  padding: 6px 12px;
 }
 
 .chat-info-member-list li + li .chat-info-member-row {
@@ -19229,12 +19229,13 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-member-copy {
   display: grid;
-  gap: 2px;
+  gap: 1px;
+  line-height: 1.2;
   min-width: 0;
 }
 
 .chat-info-member-copy strong {
-  font-size: var(--font-size-body);
+  font-size: var(--font-size-small);
   font-weight: var(--font-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -19244,7 +19245,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 .chat-info-member-copy span,
 .chat-info-member-row small {
   color: var(--text-secondary);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-caption);
   overflow: hidden;
   text-overflow: ellipsis;
   text-transform: capitalize;
@@ -32728,11 +32729,15 @@ button.minimized-call-button--end:active:not(:disabled) {
   isolation: isolate;
 }
 
+.chat-info-member-row .avatar {
+  height: 32px;
+  width: 32px;
+}
+
 /* Keep document actions on the page and expose more of each document. */
 .storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
   padding: 0;
 }
-/* Keep document actions on the page and expose more of each document. */
 .storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
   --storage-preview-height: min(78dvh, 960px);
 }
