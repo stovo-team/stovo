@@ -18915,7 +18915,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-radius: var(--radius-pill);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--font-size-caption);
+  font-size: var(--font-size-button);
   font-weight: var(--font-weight-semibold);
   min-height: 36px;
   min-width: 0;
