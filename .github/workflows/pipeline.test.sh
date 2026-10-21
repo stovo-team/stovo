@@ -155,6 +155,25 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
+if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
+  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.ps1." >&2
+  exit 1
+fi
+solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+  if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
+    echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq 'bash scripts/check-solid-boundaries.sh' "$trusted_pr_workflow"; then
+  echo "Trusted PR SOLID boundary checks must not invoke the Bash checker." >&2
+  exit 1
+fi
+if [[ $(grep -Fc "'scripts/check-solid-boundaries.ps1'" "$trusted_pr_workflow") -ne 2 ]]; then
+  echo "Frontend and backend path filters must trigger the Windows SOLID boundary job for checker changes." >&2
+  exit 1
+fi
 grep -Fq '  pull_request:' "$trusted_pr_workflow" || {
   echo "Trusted PR tests must use pull_request so GitHub can require approval before external PR workflows run." >&2
   exit 1
@@ -163,6 +182,29 @@ grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   echo "PR checkout must not persist a write-capable GitHub token." >&2
   exit 1
 }
+awk '
+  /^  [[:alnum:]_-]+:$/ {
+    job = $0
+    sub(/^  /, "", job)
+    sub(/:$/, "", job)
+  }
+  /^    runs-on:/ {
+    runner = $0
+    sub(/^    runs-on:[[:space:]]*/, "", runner)
+    job_runner[job] = runner
+  }
+  END {
+    if (job_runner["frontend-ci"] != "ubuntu-latest") {
+      print "Trusted PR frontend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+      failed = 1
+    }
+    if (job_runner["backend-ci"] != "ubuntu-latest") {
+      print "Trusted PR backend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+      failed = 1
+    }
+    if (failed) exit 1
+  }
+' "$trusted_pr_workflow"
 awk '
   /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
   /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
