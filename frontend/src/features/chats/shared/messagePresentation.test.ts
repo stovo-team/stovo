@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { messageDeliveryLabel } from "./messagePresentation";
+import { messageActionSummary, messageDeliveryLabel } from "./messagePresentation";
 
 describe("messageDeliveryLabel", () => {
   it("omits the scheduled calendar date when it is today", () => {
@@ -35,5 +35,17 @@ describe("messageDeliveryLabel", () => {
         year: "numeric"
       })} at ${scheduledDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     );
+  });
+});
+
+
+describe("messageActionSummary reference titles", () => {
+  it.each(["canvas", "checklist"] as const)("uses the human %s title in action previews", (type) => {
+    const message = { type, content: `${type}:opaque-id`, attachments: [], [type]: { title: "Weekend plans" } } as unknown as Parameters<typeof messageActionSummary>[0];
+    expect(messageActionSummary(message)).toBe(`${type === "canvas" ? "Canvas" : "Checklist"}: Weekend plans`);
+  });
+  it("does not expose an internal canvas reference when its title is unavailable", () => {
+    const message = { type: "canvas", content: "canvas:opaque-id", attachments: [] } as unknown as Parameters<typeof messageActionSummary>[0];
+    expect(messageActionSummary(message)).toBe("Canvas");
   });
 });
