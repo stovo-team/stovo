@@ -23,7 +23,15 @@ it.each(["me", "other"])("closes forwarding and caches a %s message in archive b
     act(() => { operation = thread.handleForwardMessage(target.id, [chat, target]); });
     expect(thread.forwardTarget).toBeNull();
     expect(thread.messageCacheRef.current.archive).toEqual([expect.objectContaining({ content: "Hello", chatId: "archive", deliveryState: "sending" })]);
+    const unrelated = { ...source, id: "unrelated", chatId: "other-chat" };
+    act(() => {
+      params.chatId = "other-chat";
+      params.selectedChat = { ...chat, id: "other-chat" };
+      root.render(<Harness />);
+      thread.setMessages([unrelated]);
+    });
     await act(async () => { resolve({ ...source, id: "confirmed", chatId: "archive" }); await operation; });
+    expect(thread.messages.map((message) => message.id)).toEqual(["unrelated"]);
     expect(thread.messageCacheRef.current.archive.map((message) => message.id)).toEqual(["confirmed"]);
   } finally { act(() => root.unmount()); container.remove(); }
 });
