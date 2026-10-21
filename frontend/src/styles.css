@@ -32491,3 +32491,17 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: calc(100dvh - var(--float-outer-gap));
   }
 }
+
+/* Participant media must not cover the group-call chrome. */
+.call-popup-group-call:not(.call-popup-fullscreen) > .call-popup-header {
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+}
+.call-popup.call-popup-group-call > .shared-call-control-panel {
+  z-index: 50;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.call-popup.call-popup-group-call > .shared-call-stage {
+  isolation: isolate;
+}
