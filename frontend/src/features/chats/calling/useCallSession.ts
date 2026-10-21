@@ -560,6 +560,7 @@ export function useCallSession({
   });
 
   async function acceptIncomingCall() {
+    locallyLeftRoomsRef.current.delete(callRoomIdRef.current ?? "");
     if (mockCallSession.acceptIncomingCall()) return;
     const socket = socketRef.current;
     if (!socket || !activeCallChatId || !callPeerUserId) {
@@ -622,6 +623,7 @@ export function useCallSession({
     activeCall: Record<string, any>,
     settings: { micMuted: boolean; cameraEnabled: boolean }
   ) {
+    locallyLeftRoomsRef.current.delete(activeCall.roomId);
     if (mockCallSession.joinOngoingGroupCall(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
@@ -696,6 +698,7 @@ export function useCallSession({
     targetChat: Chat,
     settings: { micMuted?: boolean; cameraEnabled?: boolean } = { micMuted: false, cameraEnabled: false }
   ) {
+    locallyLeftRoomsRef.current.delete(targetChat.activeCall?.roomId ?? activeGroupCalls[targetChat.id]?.roomId ?? "");
     if (mockCallSession.joinVoiceChannel(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
