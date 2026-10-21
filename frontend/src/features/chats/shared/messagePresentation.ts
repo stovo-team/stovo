@@ -404,6 +404,7 @@ export function extractMessageLinks(content: string | null): string[] {
 }
 
 export function messageActionSummary(message: Message) {
+  if (message.type === "canvas" || message.type === "checklist" || /^(canvas|checklist):/i.test(message.content?.trim() ?? "")) return messagePreviewText(message);
   if (message.content?.trim()) {
     return message.content.trim();
   }
@@ -415,7 +416,6 @@ export function messageActionSummary(message: Message) {
   }
   return "Message";
 }
-
 export function firstImageAttachment(message: Message): FamilyFile | null {
   return message.attachments.find((file) => file.mimeType.startsWith("image/")) ?? null;
 }

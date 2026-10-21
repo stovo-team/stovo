@@ -5,6 +5,7 @@ import type { FamilyFile } from "../api/files";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import { sendMessage } from "../api/chats";
+import { appendCanvasDocumentUpdate, createCanvas, getCanvas, getCanvasDocument, getStorageCanvases, renameCanvas } from "../api/canvas";
 import { deleteFile, downloadFileBlob, getFile, getFiles, uploadFile, updateFilePreferences } from "../api/files";
 import { resetMockFileStore } from "./mockFileStore";
 import { installMockApi, resetMockData } from "./mockApi";
@@ -35,6 +36,50 @@ afterEach(() => {
 });
 
 describe("local mock chat API", () => {
+  it("lists a seeded canvas and returns its document", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const canvases = await getStorageCanvases("local-mock-access-token");
+
+    expect(canvases).toEqual([expect.objectContaining({
+      id: "mock-canvas-planning",
+      familyId: expect.any(String),
+      originChatId: FIRST_CHAT_ID,
+      title: "Planning Notes",
+      linkedChatIds: [],
+      canManage: true,
+    })]);
+    await expect(getCanvasDocument("local-mock-access-token", "mock-canvas-planning")).resolves.toEqual({ updates: [] });
+  });
+
+  it("creates a canvas and appends document updates in sequence", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const created = await createCanvas("local-mock-access-token", FIRST_CHAT_ID, "Test Canvas", "initial-update");
+    const loaded = await getCanvas("local-mock-access-token", created.id);
+    const appended = await appendCanvasDocumentUpdate("local-mock-access-token", created.id, "second-update");
+    const document = await getCanvasDocument("local-mock-access-token", created.id);
+
+    expect(loaded).toMatchObject({ id: created.id, originChatId: FIRST_CHAT_ID, title: "Test Canvas" });
+    expect(appended).toMatchObject({ sequence: 2, update: "second-update" });
+    expect(document.updates.map(({ sequence, update }) => ({ sequence, update }))).toEqual([
+      { sequence: 1, update: "initial-update" },
+      { sequence: 2, update: "second-update" },
+    ]);
+  });
+
+  it("renames a canvas and reset restores the seeded canvas", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const created = await createCanvas("local-mock-access-token", FIRST_CHAT_ID, "Temporary Canvas");
+    const renamed = await renameCanvas("local-mock-access-token", created.id, "Renamed Canvas");
+
+    expect(renamed.title).toBe("Renamed Canvas");
+    resetMockData();
+
+    await expect(getCanvas("local-mock-access-token", created.id)).rejects.toMatchObject({ status: 404 });
+    await expect(getStorageCanvases("local-mock-access-token")).resolves.toEqual([
+      expect.objectContaining({ id: "mock-canvas-planning", title: "Planning Notes" }),
+    ]);
+  });
+
   it("returns an empty plans collection so the mock Plans page renders without an API error", async () => {
     const { response, body } = await request<unknown[]>("/api/plans?start=2026-10-17T00%3A00%3A00.000Z&end=2026-10-18T00%3A00%3A00.000Z");
     expect(response.status).toBe(200);

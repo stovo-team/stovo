@@ -43,4 +43,19 @@ describe("chat visual consistency", () => {
     expect(avatarInitials("ivan")).toBe("IV");
     expect(avatarInitials("Иван Иванов")).toBe("ИИ");
   });
+
+  it("scales generated avatar initials with the avatar circle diameter", () => {
+    const avatarRule = styles.match(/\.avatar \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    const initialsRule = styles.match(/\.avatar-initials \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    const realAvatar = readFileSync(resolve(process.cwd(), "src/features/chats/sidebar/RealAvatar.tsx"), "utf8");
+    const callTile = readFileSync(resolve(process.cwd(), "src/components/CallParticipantTile.tsx"), "utf8");
+    const callCircleRule = [...styles.matchAll(/\.call-grid__avatar-circle \{([\s\S]*?)\n\}/g)]
+      .find(([, rule]) => rule.includes("width: 64px"))?.[1] ?? "";
+
+    expect(avatarRule).toContain("container-type: size;");
+    expect(initialsRule).toContain("font-size: var(--font-size-avatar-initials);");
+    expect(realAvatar).toContain('<span className="avatar-initials">{chatInitials(label)}</span>');
+    expect(callCircleRule).toContain("container-type: size;");
+    expect(callTile).toContain('fontSize: "var(--font-size-avatar-initials)"');
+  });
 });

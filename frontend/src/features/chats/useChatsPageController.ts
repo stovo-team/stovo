@@ -102,7 +102,7 @@ export function useChatsPageController({
   const requiresThreadToSend = canCommentInSelectedChannel;
   const focusComposerInput = useCallback(() => composerInputRef.current?.focus(), []);
   const thread = useMessageThread({
-    chatId, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
+    chatId, chatsRef, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
     channelCommentsDisabledForViewer, onChatsUpdate: setChats, onSelectedChatUpdate: setSelectedChat,
     onError: setError, focusComposerInput
   });
@@ -218,7 +218,7 @@ export function useChatsPageController({
 
   const callSession = useCallSession({
     accessToken, currentUser, selectedChat, chats, members, chatId, navigate, prefersReducedMotion,
-    setError, chatsRef, activeChatIdRef, messageCacheRef, setSelectedChat, setMessages, setIsDetailsOpen,
+    onChatsUpdate: setChats, chatMutationVersionRef, setError, chatsRef, activeChatIdRef, messageCacheRef, setSelectedChat, setMessages, setIsDetailsOpen,
     socketRef, restoreActiveVideoSurface: videoPipBridge.restoreActiveVideoSurface,
     setIsVideoPictureInPictureActive: videoPipBridge.setIsVideoPictureInPictureActive,
     videoPictureInPictureActiveRef: videoPipBridge.videoPictureInPictureActiveRef,
@@ -244,7 +244,7 @@ export function useChatsPageController({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 768px)");
+    const media = window.matchMedia("(max-width: 1024px)");
     const update = () => setIsMobileViewport(isMobileCallViewport());
     update();
     media.addEventListener("change", update);

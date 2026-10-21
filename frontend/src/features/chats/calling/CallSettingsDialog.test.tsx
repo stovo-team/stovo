@@ -29,6 +29,11 @@ describe("CallSettingsDialog", () => {
     expect(panel).toMatch(/overflow:\s*auto/);
   });
 
+  it("anchors the shared close button to the settings dialog", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(dialog).toMatch(/position:\s*relative/);
+  });
   it("starts on General and switches between General, Audio and Camera tabs", () => {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);
@@ -60,6 +65,22 @@ describe("CallSettingsDialog", () => {
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     expect(onPatch).toHaveBeenCalledWith({ inputDeviceId: "mic-1" });
+  });
+  it("contains pointer presses so the chat outside-click handler cannot dismiss settings", () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); roots.push(root);
+    const outsideMouseDown = vi.fn();
+    document.addEventListener("mousedown", outsideMouseDown);
+    try {
+      act(() => root.render(<CallSettingsDialog initialTab="general" preferences={{ autoHideControls: false, cameraFit: "fit" }} settings={settings} capabilities={capabilities} devices={devices} warning={null} onPatch={() => undefined} onPreferencePatch={() => undefined} onClose={() => undefined} isMobile={false} />));
+      const audioTab = host.querySelector<HTMLButtonElement>('[role="tab"][id$="audio"]')!;
+      act(() => audioTab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+      act(() => audioTab.click());
+      expect(outsideMouseDown).not.toHaveBeenCalled();
+      expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe("Audio");
+    } finally {
+      document.removeEventListener("mousedown", outsideMouseDown);
+    }
   });
   it("supports arrow-key navigation across the settings tabs", () => {
     const host = document.createElement("div"); document.body.append(host);

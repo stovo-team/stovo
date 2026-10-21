@@ -4,8 +4,6 @@ import {
   Download,
   Archive,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   FileAudio,
   FileSpreadsheet,
   FileText,
@@ -53,6 +51,7 @@ import {
 } from "../components/DocumentAttachmentPreview";
 import ImageLightbox from "../components/ImageLightbox";
 import { VideoPlayer } from "../components/VideoPlayer";
+import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { storagePreviewVideoStyle } from "../components/video-player/storagePreviewStyle";
 import AppNav from "./AppNav";
@@ -180,7 +179,7 @@ function StorageSourceAvatar({
   if (kind === "family") return <Home aria-hidden="true" size={20} />;
   if (kind === "group") return <Users aria-hidden="true" size={20} />;
   if (kind === "channel") return <Megaphone aria-hidden="true" size={20} />;
-  return <span aria-hidden="true">{chatInitials(label)}</span>;
+  return <span className="avatar-initials" aria-hidden="true">{chatInitials(label)}</span>;
 }
 
 function StorageTile({
@@ -230,7 +229,7 @@ function StorageTile({
       onClick={() => {
         if (selectionLocked) return;
         onSelect();
-        const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
+        const isMobileViewport = window.matchMedia("(max-width: 1024px)").matches;
         if (!suppressPreview && shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
@@ -500,7 +499,8 @@ export default function FilesPage() {
 
   const collectionPickerFiles = useMemo(() => collectionPicker ? filteredFiles.filter((file) => collectionPicker.allowedFileIds.includes(file.id) || collectionPicker.lockedFileIds.includes(file.id)) : filteredFiles, [collectionPicker, filteredFiles]);
 
-  const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? null;
+  const [collectionPreviewFile, setCollectionPreviewFile] = useState<FamilyFile | null>(null);
+  const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? (collectionPreviewFile?.id === selectedFileId ? collectionPreviewFile : null);
   const selectedFilePreviewUrl = useFilePreviewUrl(accessToken, selectedFile);
   const selectedDocumentKind = selectedFile ? detectDocumentPreviewKind(selectedFile) : "unsupported";
 
@@ -530,7 +530,7 @@ export default function FilesPage() {
       suppressPreview={Boolean(collectionPicker)}
       key={file.id}
       onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
-      onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 960px)").matches, file.id))}
+      onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 1024px)").matches, file.id))}
     />
   );
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -599,15 +599,13 @@ export default function FilesPage() {
       <AppNav />
       <section className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`} aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
-          <button
-            type="button"
+          <SidebarCollapseButton
+            expanded={!isSourceSidebarCollapsed}
+            expandLabel={strings.auditUi.expandStorageSources}
+            collapseLabel={strings.auditUi.collapseStorageSources}
+            onToggle={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
             className="storage-source-collapse"
-            aria-label={isSourceSidebarCollapsed ? strings.auditUi.expandStorageSources : strings.auditUi.collapseStorageSources}
-            aria-expanded={!isSourceSidebarCollapsed}
-            onClick={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
-          >
-            {isSourceSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
+          />
           <div className="storage-source-scroll">
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
             <button
@@ -763,7 +761,7 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-            {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} groupByChat={groupFoldersByChat} groupFallbackLabel={strings.files.sharedFolderGroup} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
+            {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections onPreviewFile={(file) => { setCollectionPreviewFile(file); dispatchSelection({ type: "open", fileId: file.id }); }} accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} groupByChat={groupFoldersByChat} groupFallbackLabel={strings.files.sharedFolderGroup} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
             {filter !== "canvases" && filter !== "checklists" && (![".canvas", "*.canvas", "type:canvas", "ext:canvas", ".checklist", "*.checklist", "type:checklist", "ext:checklist"].includes(search.trim().toLowerCase()) || collectionPickerFiles.length > 0) && <>
             <div className="storage-files-heading">
               <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : strings.files.title}</h2>{collectionPicker && <p className="storage-picker-hint">{strings.files.pickerDescription}</p>}</div>

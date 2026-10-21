@@ -47,11 +47,10 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
   const [isCreating, setIsCreating] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedQr, setCopiedQr] = useState(false);
-  const createdForOpenRef = useRef(false);
+  const pendingInviteRef = useRef<{ accessToken: string; request: ReturnType<typeof createInvite> } | null>(null);
 
   useEffect(() => {
     if (!open) {
-      createdForOpenRef.current = false;
       setInviteUrl(null);
       setQrDataUrl(null);
       setError(null);
@@ -61,21 +60,18 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       return;
     }
 
-    if (createdForOpenRef.current) {
-      return;
-    }
-    createdForOpenRef.current = true;
-
     let cancelled = false;
     setIsCreating(true);
     setError(null);
     setStatus(null);
 
-    void createInvite(accessToken, {
-      role: "member",
-      expiresInHours: 168,
-      maxUses: 10
-    })
+    if (pendingInviteRef.current?.accessToken !== accessToken) {
+      pendingInviteRef.current = { accessToken, request: createInvite(accessToken, {
+        role: "member", expiresInHours: 168, maxUses: 10
+      }) };
+    }
+    const request = pendingInviteRef.current.request;
+    void request
       .then(async (response) => {
         if (cancelled) return;
         const currentServerInviteUrl = inviteUrlForServer(response.inviteUrl, getApiUrl());
@@ -93,6 +89,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         setError(err instanceof ApiError ? String(err.message) : "Could not create invite");
       })
       .finally(() => {
+        if (pendingInviteRef.current?.request === request) pendingInviteRef.current = null;
         if (!cancelled) setIsCreating(false);
       });
 

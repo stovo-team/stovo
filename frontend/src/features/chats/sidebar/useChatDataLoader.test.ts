@@ -311,3 +311,37 @@ it.each(['overview', 'history'] as const)('retries the failed %s operation even 
     expect(requests.filter(x => x === target).length).toBeGreaterThan(before);
   } finally { act(() => root.unmount()); }
 });
+
+it("renders cached archive-group history while its next network refresh is pending", async () => {
+  const cached = [makeMessage("saved", "2026-01-01T10:00:00.000Z")];
+  let pendingRefresh = false;
+  const authRequest = vi.fn((url: string) => {
+    if (url.includes("/messages?")) return pendingRefresh ? new Promise(() => {}) : Promise.resolve({ messages: cached, hasMore: false, nextBefore: "" });
+    if (url.includes("/pins")) return Promise.resolve([]);
+    return Promise.resolve({ id: "chat-1", type: "archive" });
+  });
+  const cache = { current: {} as Record<string, Message[]> };
+  const setMessages = vi.fn();
+  const setIsChatLoading = vi.fn();
+  const applyMessagesForChat = (_id: string, update: unknown) => { cache.current["chat-1"] = typeof update === "function" ? update(cache.current["chat-1"] ?? []) : update as Message[]; };
+  let loader!: ReturnType<typeof useChatDataLoader>;
+  function Harness() {
+    loader = useChatDataLoader({
+      accessTokenRef: { current: "token" }, authRequest: authRequest as any, currentUser: { id: "user" } as any, chatId: "chat-1", archiveGroup: "origin-chat",
+      onError: vi.fn(), setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+      setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading, activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [] },
+      chatMutationVersionRef: { current: {} }, messageCacheRef: cache, historyCursorRef: { current: {} }, setMessages, setPinnedMessages: vi.fn(),
+      setPinIndex: vi.fn(), applyMessagesForChat, markChatRead: vi.fn(() => Promise.resolve())
+    });
+    return null;
+  }
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => { root.render(createElement(Harness)); });
+    await act(async () => { await loader.loadSelectedChat("chat-1"); });
+    pendingRefresh = true; setMessages.mockClear(); setIsChatLoading.mockClear();
+    act(() => { void loader.loadSelectedChat("chat-1"); });
+    expect(setMessages).toHaveBeenCalledWith(cached);
+    expect(setIsChatLoading).toHaveBeenCalledWith(false);
+  } finally { act(() => root.unmount()); host.remove(); }
+});

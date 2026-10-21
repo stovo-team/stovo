@@ -91,6 +91,6 @@ describe("web composer pickers", () => {
 
   it("keeps the emoji picker as a compact popover on the web", () => {
     expect(chatsControllerSource).toContain("const isDockedEmojiPicker = Capacitor.isNativePlatform();");
-    expect(composerEmojiPickerSource).toContain('width={docked ? "100%" : 360}');
+    expect(composerEmojiPickerSource).toContain('width={docked ? "100%" : 300}');
   });
 });
