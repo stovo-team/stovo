@@ -8,4 +8,5 @@ it("renders reaction profile pictures without a border", () => {
   expect(avatar).toMatch(/border-radius:\s*var\(--radius-circle\)/);
   const overflowCount = css.match(/\.reaction-avatar-more\s*\{([^}]*)\}/)?.[1] ?? "";
   expect(overflowCount).toContain("font-size: var(--font-size-micro);");
+  expect(overflowCount).not.toMatch(/font-size:\s*9px;/);
 });
