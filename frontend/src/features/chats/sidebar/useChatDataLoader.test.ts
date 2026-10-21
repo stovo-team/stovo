@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, createElement } from "react";
+import { act, createElement, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { useChatDataLoader } from "./useChatDataLoader";
@@ -35,6 +35,50 @@ function makeMessage(id: string, createdAt: string): Message {
 }
 
 describe("useChatDataLoader", () => {
+  it("clears the previous chat pins as soon as another chat starts loading", async () => {
+    const pending = new Promise<never>(() => {});
+    const authRequest = vi.fn((url: string) => {
+      if (url.includes("/messages?")) return pending;
+      if (url.includes("/pins")) return pending;
+      return Promise.resolve(null);
+    });
+    let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
+    let updatePins: (pins: any[]) => void = () => undefined;
+
+    function TestComponent() {
+      const [pins, setPins] = useState<any[]>([]);
+      updatePins = setPins;
+      loaderRef = useChatDataLoader({
+        accessTokenRef: { current: "test-token" }, authRequest: authRequest as any,
+        currentUser: { id: "user-1" } as any, chatId: "old-chat", onError: vi.fn(),
+        setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+        setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(),
+        activeChatIdRef: { current: "old-chat" }, chatsRef: { current: [] },
+        chatMutationVersionRef: { current: {} }, messageCacheRef: { current: {} },
+        historyCursorRef: { current: {} }, setMessages: vi.fn(), setPinnedMessages: setPins,
+        setPinIndex: vi.fn(), applyMessagesForChat: vi.fn(), markChatRead: vi.fn(() => Promise.resolve())
+      });
+      return createElement("output", null, String(pins.length));
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT;
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    try {
+      act(() => root.render(createElement(TestComponent)));
+      act(() => updatePins([{ messageId: "old-pin" }]));
+      expect(container.querySelector("output")?.textContent).toBe("1");
+      act(() => { void loaderRef?.loadSelectedChat("archive-chat"); });
+      expect(container.querySelector("output")?.textContent).toBe("0");
+      act(() => root.unmount());
+    } finally {
+      (globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      container.remove();
+    }
+  });
+
   it("rejects chat metadata responses that began before a local setting change", async () => {
     const { isCurrentChatMetadataRefresh } = await import("./useChatDataLoader");
 

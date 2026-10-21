@@ -194,6 +194,7 @@ export function useChatDataLoader({
   const hasLoadedOverviewRef = useRef(false);
   const deltaSyncInFlightRef = useRef(false);
   const archiveGroupByChatRef = useRef<Record<string, string | undefined>>({});
+  const pinnedChatIdRef = useRef<string | undefined>(undefined);
 
   const authRequestRef = useRef(authRequest);
   const onErrorRef = useRef(onError);
@@ -306,8 +307,15 @@ export function useChatDataLoader({
         setMessages([]);
         setPinnedMessages([]);
         setPinIndex(0);
+        pinnedChatIdRef.current = undefined;
         setIsChatLoading(false);
         return;
+      }
+
+      if (pinnedChatIdRef.current !== requestedChatId) {
+        setPinnedMessages([]);
+        setPinIndex(0);
+        pinnedChatIdRef.current = requestedChatId;
       }
 
       const fallbackChat = chatsRef.current.find((chat) => chat.id === requestedChatId) ?? null;
