@@ -1,0 +1,25 @@
+import { readFileSync } from "node:fs";
+import { expect, it } from "vitest";
+
+it("lets the pinned-message action cover the full banner for hover and click", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const banner = css.match(/^\.pinned-banner\s*\{([^}]*)\}/m)?.[1] ?? "";
+  const action = css.match(/\.pinned-banner-click-area\s*\{([^}]*)\}/)?.[1] ?? "";
+  expect(banner).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+  expect(banner).toMatch(/padding:\s*0;/);
+  expect(action).toMatch(/min-height:\s*0/);
+  expect(action).toMatch(/border-radius:\s*inherit/);
+});
+
+it("matches the pinned preview font and active chat header dimensions", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const preview = css.match(/\.pinned-banner-preview\s*\{([^}]*)\}/)?.[1] ?? "";
+  const bannerRules = [...css.matchAll(/\.messenger-shell\.has-active-chat \.pinned-banner\s*\{([^}]*)\}/g)];
+  const banner = bannerRules.at(-1)?.[1] ?? "";
+  expect(preview).toMatch(/font-size:\s*calc\(var\(--font-size-body\) \* var\(--message-scale\)\)/);
+  expect(preview).toMatch(/font-weight:\s*var\(--font-weight-regular\)/);
+  expect(banner).toMatch(/height:\s*var\(--chat-floating-header-height\)/);
+  expect(banner).toMatch(/max-height:\s*var\(--chat-floating-header-height\)/);
+  expect(banner).toMatch(/min-height:\s*var\(--chat-floating-header-height\)/);
+  expect(banner).toMatch(/margin-inline:\s*var\(--active-chat-message-inset-x\)/);
+});
