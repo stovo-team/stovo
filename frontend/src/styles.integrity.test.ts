@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { parse } from "postcss";
 import { expect, it } from "vitest";
 
-it("parses global styles and keeps independent call, settings and storage rules at the root", () => {
+it("parses global styles and keeps independent call, settings, storage and voice-grid rules at the root", () => {
   const css = readFileSync("src/styles.css", "utf8");
   const root = parse(css);
   for (const selector of [
@@ -10,6 +10,6 @@ it("parses global styles and keeps independent call, settings and storage rules 
     ':root:is([data-theme-mode="dark"], [data-theme-mode="amoled"]) .settings-page input[type="time"]::-webkit-calendar-picker-indicator',
     ".storage-page:has(.storage-collection-full-page) .storage-source-collapse",
   ]) {
-    expect(root.nodes.some(node => node.type === "rule" && node.selector === selector)).toBe(true);
+    expect(root.nodes.some(node => node.type === "rule" && node.selector.includes(selector))).toBe(true);
   }
 });

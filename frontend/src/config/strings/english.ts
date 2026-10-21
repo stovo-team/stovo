@@ -1184,7 +1184,7 @@ export const strings = {
     uploadFiles: "Upload files", folderFileSelection: "Folder file selection", cancelSelection: "Cancel", addSelected: "Add selected",
     selectFilesToAdd: "Select files to add", closeDetails: "Close file details", details: "File details",
     openFullScreen: (name: string) => `Open ${name} full screen`, fullScreen: "Full screen", size: "Size", saved: "Saved", source: "Source",
-    collections: {
+    collections: { removeFile: (name: string) => `Remove ${name} from this collection`,
       chooseAccess: "Choose who gets access", members: "Members", roles: "Roles", roleMembers: (count: number) => `${count} member${count === 1 ? "" : "s"}`,
       allowedTypes: "Allowed file types", chooseTypesHelp: "Choose what can be added to this collection.", custom: "Custom", customPatternsHelp: "Set your own file patterns",
       allowedPatterns: "Allowed patterns", commaPatterns: "Use comma-separated patterns, for example", patternPlaceholder: "*.png, *.jpg, *.pdf", patternExamples: "*.png, *.webp, *.pdf", applyCustomTypes: "Apply custom types",

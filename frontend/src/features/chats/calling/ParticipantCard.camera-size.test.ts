@@ -20,7 +20,7 @@ it("scopes vertical voice-row fitting to voice rooms, preserving two-column grou
   const start=styles.indexOf("/* Fit whole voice rows");
   const end=styles.indexOf("/* Preserve source-list widths", start);
   const fitting=styles.slice(styles.indexOf("\n", start) + 1, end);
-  const selectors=[...fitting.matchAll(/^([^{}]+)\{/gm)].map(match=>match[1].trim());
+  const selectors=[...fitting.matchAll(/(?:^|\n)([^{}\n]+)\s*\{/g)].map(match=>match[1].trim());
   expect(selectors).toHaveLength(4);
   expect(selectors.every(selector=>selector.startsWith(".voice-channel-room "))).toBe(true);
   expect(fitting).not.toContain(".call-popup-group-call");
