@@ -32518,6 +32518,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 .storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
   --storage-preview-height: min(78dvh, 960px);
+}
 /* Preserve source-list widths while keeping wide-screen main panes readable. */
 @media (min-width: 1600px) {
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,
