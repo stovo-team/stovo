@@ -32510,8 +32510,10 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-width: 1200px;
     width: 100%;
   }
+}
 .pinned-banner-click-area:is(:hover, :focus-visible) {
   background: var(--surface-hover);
+}
 .storage-collection-file-grid .collection-file-tile > .collection-file-open {
   position: absolute;
   inset: 0;
@@ -32551,9 +32553,22 @@ button.minimized-call-button--end:active:not(:disabled) {
 .guest-device-menu-trigger:hover,
 .guest-device-menu-trigger[aria-expanded="true"],
 .guest-device-menu-trigger:focus,
-.guest-device-menu-trigger:focus-visible,
 .guest-device-menu-trigger:active {
+  background: transparent !important;
   border: 0 !important;
+  border-radius: 0;
   box-shadow: none !important;
-  outline: none !important;
+}
+
+.guest-device-select:has(> .guest-device-menu-trigger) {
+  border-left: 0;
+}
+
+.guest-device-menu-trigger:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.guest-device-menu-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
 }
