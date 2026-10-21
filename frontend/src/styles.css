@@ -7426,6 +7426,10 @@ span.message-spoiler.is-revealed {
   animation: replyPreviewEnter var(--motion-fast, 180ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
+.reply-composer-preview {
+  margin-bottom: 10px;
+}
+
 .reply-composer-preview--no-thumb,
 .editing-indicator {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -13228,7 +13232,7 @@ span.message-spoiler.is-revealed {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  padding-top: 8px;
+  padding-top: 0;
 }
 .plans-sidebar-header {
   flex-shrink: 0;
@@ -25857,11 +25861,11 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-stage .voice-participant-card.is-speaking,
 .shared-call-stage .call-grid__tile.is-speaking {
   border-color: var(--color-palette-8b8f7c3d4541);
-  box-shadow: 0 0 0 1px var(--color-palette-449c31647178), 0 0 20px var(--color-palette-cddf534fc780);
+  box-shadow: 0 0 0 1px var(--color-palette-449c31647178);
 }
 .shared-call-stage .voice-participant-card.is-speaking:not(.has-video) .voice-participant-avatar,
 .shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) .call-grid__avatar-circle {
-  box-shadow: 0 0 0 3px var(--color-palette-449c31647178), 0 0 18px var(--color-palette-7aee2b5cc120);
+  box-shadow: 0 0 0 3px var(--color-palette-449c31647178);
 }
 
 .shared-call-controls {
@@ -31418,7 +31422,7 @@ button.checklist-add-item-btn:hover,
   padding: 0;
 }
 .guest-call-room .voice-participant-card.is-speaking .guest-call-avatar-placeholder {
-  box-shadow: 0 0 0 3px var(--color-palette-449c31647178), 0 0 18px var(--color-palette-7aee2b5cc120);
+  box-shadow: 0 0 0 3px var(--color-palette-449c31647178);
 }
 
 .guest-call-camera-tile:not(.has-video) .voice-participant-video-feed {
