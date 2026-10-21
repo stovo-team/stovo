@@ -32521,6 +32521,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 .call-popup.call-popup-group-call > .shared-call-stage {
   isolation: isolate;
+}
 /* Preserve source-list widths while keeping wide-screen main panes readable. */
 @media (min-width: 1600px) {
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,
