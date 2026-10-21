@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -68,7 +69,13 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
   };
 }
 
-function renderBubble(message: Message, currentUserId = "user-1", chat = createMockChat(), replies: Message[] = []): HTMLDivElement {
+function renderBubble(
+  message: Message,
+  currentUserId = "user-1",
+  chat = createMockChat(),
+  messages: Message[] = [message],
+  threadReplyCount = 0
+): HTMLDivElement {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -82,7 +89,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         currentUserId={currentUserId}
         selectedChat={chat}
         chats={[chat]}
-        messages={[message, ...replies]}
+        messages={messages}
         memberLookup={new Map([["user-1", { displayName: "Self" }]])}
         accessToken="token-123"
         videoAutoplay={false}
@@ -91,7 +98,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         isMessageSelectionMode={false}
         isSelected={false}
         swipeReplyState={null}
-        threadReplyCount={replies.length}
+        threadReplyCount={threadReplyCount}
         onBubbleClick={vi.fn()}
         onContextMenu={vi.fn()}
         onSwipePointerDown={vi.fn()}
@@ -114,15 +121,49 @@ describe("MessageBubble receipt status", () => {
   it("shows comment count, two commenter avatars, overflow and a trailing comment action", () => {
     const message = createMockMessage();
     const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
-    const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), replies);
+    const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), [message, ...replies], replies.length);
     const action = host.querySelector(".thread-open-button")!;
     expect(action.getAttribute("aria-label")).toBe("3 comments");
     expect(action.querySelector(".lucide-message-circle")).not.toBeNull();
-    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
     expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
     expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
-    expect(action.textContent).toContain("Comment");
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
     expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+  });
+
+  it("renders reaction users through the standard round avatar component", () => {
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 1, userIds: ["user-1"], reacted: true }] }));
+    expect(host.querySelector(".reaction-avatar.avatar .avatar-initials")?.textContent).toBe("SE");
+  });
+
+  it("shows two reaction avatars and a remainder badge when more than three people reacted", () => {
+    const userIds = ["user-1", "user-2", "user-3", "user-4", "user-5"];
+    const chat = createMockChat({
+      type: "group",
+      members: userIds.map((id) => ({ id, displayName: id, role: "member", joinedAt: "2026-08-17T10:00:00.000Z" }))
+    });
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 5, userIds, reacted: true }] }), "user-1", chat);
+
+    expect(host.querySelectorAll(".avatar.reaction-avatar")).toHaveLength(2);
+    expect(host.querySelector(".reaction-avatar-more")?.textContent).toBe("+3");
+  });
+
+  it("keeps profile-photo reaction avatars transparent and compact", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const photoAvatar = css.match(/\.reaction-avatar:has\(img\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(photoAvatar).toMatch(/background:\s*transparent/);
+    expect(photoAvatar).toMatch(/padding:\s*0/);
+  });
+
+  it("keeps reaction avatars small and round without composer layout styles", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const stack = css.match(/\.reaction-avatar-stack\s*\{([^}]*)\}/)?.[1] ?? "";
+    const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(stack).not.toContain("--composer-action");
+    expect(avatar).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+    expect(avatar).toMatch(/width:\s*20px/);
+    expect(avatar).toMatch(/height:\s*20px/);
   });
 
   it("labels an imported message with its source author and provider", () => {
@@ -254,6 +295,7 @@ describe("MessageBubble receipt status", () => {
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("1 comment");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("1 comment");
 
     act(() => {
       threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -305,6 +347,7 @@ describe("MessageBubble receipt status", () => {
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("3 comments");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("3 comments");
   });
 
   it("does not render a comments button when threadReplyCount is 0", () => {
