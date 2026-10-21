@@ -13,6 +13,7 @@ import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { PollBubble } from "./PollBubble";
 import { ChecklistCardBubble } from "./ChecklistCardBubble";
+import { ThreadSummaryButton } from "./ThreadSummaryButton";
 import { CanvasCardBubble } from "./CanvasCardBubble";
 import type { Poll } from "../../../api/polls";
 import type { ChecklistCard } from "../../../api/checklist";
@@ -628,15 +629,8 @@ export function MessageBubble({
       )}
       {showThreadButton && threadReplyCount > 0 && message.messageKind === "chat" && message.type !== "call" && selectedChat.type !== "archive" &&
         (selectedChat.type !== "channel" || selectedChat.commentsEnabled) && (
-        <button
-          type="button"
-          className="thread-open-button"
-          onClick={() => {
-            onOpenThread(message);
-          }}
-        >
-          {strings.comments.count(threadReplyCount)}
-        </button>
+        <ThreadSummaryButton message={message} messages={messages} chat={selectedChat} count={threadReplyCount}
+          currentUserId={currentUserId} accessToken={accessToken} onOpen={() => onOpenThread(message)} />
       )}
     </article>
   );

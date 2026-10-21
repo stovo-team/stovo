@@ -112,6 +112,20 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("shows comment count, two commenter avatars, overflow and a trailing comment action", () => {
+    const message = createMockMessage();
+    const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
+    const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), replies);
+    const action = host.querySelector(".thread-open-button")!;
+    expect(action.getAttribute("aria-label")).toBe("3 comments");
+    expect(action.querySelector(".lucide-message-circle")).not.toBeNull();
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
+    expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
+    expect(action.textContent).toContain("Comment");
+    expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+  });
+
   it("renders reaction users through the standard round avatar component", () => {
     const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 1, userIds: ["user-1"], reacted: true }] }));
     expect(host.querySelector(".reaction-avatar.avatar .avatar-initials")?.textContent).toBe("SE");

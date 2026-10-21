@@ -1,3 +1,4 @@
+import { useArchiveSelectionSync } from "../features/chats/useArchiveSelectionSync";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
@@ -18,7 +19,7 @@ import AppNav from "./AppNav";
 import { CallFeature, CallFeatureProvider } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass, displayChatName } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
-import { createCanvas } from "../api/canvas";
+import { createCanvasAndOpen } from "../features/chats/canvasCreation";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
@@ -101,11 +102,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     }
   }, [archiveGroup]);
 
-  useEffect(() => {
-    if (selectedChat?.type === "archive") {
-      setIsMessageArchiveOpen(true);
-    }
-  }, [selectedChat?.id, selectedChat?.type]);
+  useArchiveSelectionSync(selectedChat, setIsMessageArchiveOpen);
 
   useEffect(() => {
     if (!isDraftsAndScheduledOpen) return;
@@ -325,8 +322,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               onOpenNewChat={openNewChatScreen}
               onCreateCanvas={() => {
                 if (!accessToken || !selectedChat) return;
-                void createCanvas(accessToken, selectedChat.id)
-                  .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
+                createCanvasAndOpen(accessToken, selectedChat, currentUser?.id ?? "", navigate);
               }}
               onCreateChecklist={async (payload) => {
                 if (!accessToken || !selectedChat) return;

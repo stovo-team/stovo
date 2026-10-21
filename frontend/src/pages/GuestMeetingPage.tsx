@@ -1,3 +1,4 @@
+import { CallDeviceErrorToast } from "../features/chats/calling/CallDeviceErrorToast";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
@@ -707,7 +708,7 @@ export default function GuestMeetingPage() {
             {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={remoteMutedUserIds.includes(remote.id)} speaking={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id)} avatar={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
           </div>}
         </SharedCallStage>
-        {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
+        <CallDeviceErrorToast message={deviceIssue} />
         <div className="voice-room-bottom-bar">
           <SharedCallControlPanel autoHide={callUIPreferences.autoHideControls}>
           <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label={text.controls}>
@@ -806,7 +807,7 @@ export default function GuestMeetingPage() {
           <CallControlButton action="audio-output" state="idle" className="guest-preview-action guest-mobile-output-control" aria-label={text.audioOutput} label={text.audioOutput} onClick={cycleAudioOutput} />
           <CallControlButton action="flip-camera" state="idle" className="guest-preview-action guest-mobile-flip-control" aria-label={text.flipCamera} label={text.flipCamera} onClick={() => void flipCamera()} />
         </div>
-        {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
+        <CallDeviceErrorToast message={deviceIssue} />
       </section>
       <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || text.join}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString(language)}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>{text.yourName}<input autoFocus required minLength={2} maxLength={80} value={name} placeholder={text.enterYourName} onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">{text.join}</button><small>{text.linkExpires} {preview ? new Date(preview.expiresAt).toLocaleString(language) : text.soon}</small></form>
     </div>}

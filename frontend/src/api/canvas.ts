@@ -45,11 +45,12 @@ function createCanvasBlockId(): string {
   return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
 }
 
-export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas", initialUpdate?: string) {
+export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas", initialUpdate?: string, canvasId?: string, apiBaseUrl?: string) {
   return apiRequest<Canvas>(`${root}/canvases`, {
     method: "POST",
     accessToken,
-    body: { chatId, title, ...(initialUpdate ? { initialUpdate } : {}) },
+    apiBaseUrl,
+    body: { chatId, title, ...(initialUpdate ? { initialUpdate } : {}), ...(canvasId ? { canvasId } : {}) },
   });
 }
 
@@ -76,8 +77,8 @@ export function getCanvas(accessToken: string, canvasId: string) {
 export function getCanvasDocument(accessToken: string, canvasId: string) {
   return apiRequest<{ updates: CanvasUpdate[] }>(`${root}/canvases/${encodeURIComponent(canvasId)}/document`, { accessToken });
 }
-export function appendCanvasDocumentUpdate(accessToken: string, canvasId: string, update: string) {
-  return apiRequest<CanvasUpdate>(`${root}/canvases/${encodeURIComponent(canvasId)}/document`, { method: "POST", accessToken, body: { update } });
+export function appendCanvasDocumentUpdate(accessToken: string, canvasId: string, update: string, apiBaseUrl?: string) {
+  return apiRequest<CanvasUpdate>(`${root}/canvases/${encodeURIComponent(canvasId)}/document`, { method: "POST", accessToken, apiBaseUrl, body: { update } });
 }
 export function renameCanvas(accessToken: string, canvasId: string, title: string) {
   return apiRequest<Canvas>(`${root}/canvases/${encodeURIComponent(canvasId)}`, { method: "PATCH", accessToken, body: { title } });

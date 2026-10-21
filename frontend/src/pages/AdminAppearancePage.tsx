@@ -43,6 +43,7 @@ export default function AdminAppearancePage() {
         body: { minimizedChatLayout }
       });
       setFamily(updated);
+      window.dispatchEvent(new CustomEvent("stovo:family-updated", { detail: updated }));
       setNotice(strings.admin.appearance.saved);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save chat layout");
