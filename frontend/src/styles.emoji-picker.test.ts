@@ -35,15 +35,15 @@ const lastRule = (selector: string) => {
 };
 const desktopRule = (selector: string) => {
   const desktopMedia = styles.indexOf(
-    "@media (min-width: 961px) {",
+    "@media (min-width: 1025px) {",
     styles.indexOf("/* Desktop conversation chrome")
   );
   const start = styles.indexOf(`${selector} {`, desktopMedia);
   return styles.slice(start, styles.indexOf("}", start));
 };
 const mobileChatRule = (selector: string) => {
-  const firstMobileMedia = styles.indexOf("@media (max-width: 960px) {");
-  const chatMobileMedia = styles.indexOf("@media (max-width: 960px) {", firstMobileMedia + 1);
+  const firstMobileMedia = styles.indexOf("@media (max-width: 1024px) {");
+  const chatMobileMedia = styles.indexOf("@media (max-width: 1024px) {", firstMobileMedia + 1);
   const start = styles.indexOf(`${selector} {`, chatMobileMedia);
   return styles.slice(start, styles.indexOf("}", start));
 };
