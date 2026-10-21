@@ -32510,8 +32510,10 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-width: 1200px;
     width: 100%;
   }
+}
 .pinned-banner-click-area:is(:hover, :focus-visible) {
   background: var(--surface-hover);
+}
 .storage-collection-file-grid .collection-file-tile > .collection-file-open {
   position: absolute;
   inset: 0;
