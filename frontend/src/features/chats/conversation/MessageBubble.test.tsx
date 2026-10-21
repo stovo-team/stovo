@@ -68,7 +68,7 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
   };
 }
 
-function renderBubble(message: Message, currentUserId = "user-1", chat = createMockChat()): HTMLDivElement {
+function renderBubble(message: Message, currentUserId = "user-1", chat = createMockChat(), replies: Message[] = []): HTMLDivElement {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -82,7 +82,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         currentUserId={currentUserId}
         selectedChat={chat}
         chats={[chat]}
-        messages={[message]}
+        messages={[message, ...replies]}
         memberLookup={new Map([["user-1", { displayName: "Self" }]])}
         accessToken="token-123"
         videoAutoplay={false}
@@ -91,7 +91,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         isMessageSelectionMode={false}
         isSelected={false}
         swipeReplyState={null}
-        threadReplyCount={0}
+        threadReplyCount={replies.length}
         onBubbleClick={vi.fn()}
         onContextMenu={vi.fn()}
         onSwipePointerDown={vi.fn()}
@@ -111,6 +111,20 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("shows comment count, two commenter avatars, overflow and a trailing comment action", () => {
+    const message = createMockMessage();
+    const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
+    const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), replies);
+    const action = host.querySelector(".thread-open-button")!;
+    expect(action.getAttribute("aria-label")).toBe("3 comments");
+    expect(action.querySelector(".lucide-message-circle")).not.toBeNull();
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
+    expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
+    expect(action.textContent).toContain("Comment");
+    expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+  });
+
   it("labels an imported message with its source author and provider", () => {
     const message = createMockMessage({
       importAttribution: {
@@ -239,7 +253,7 @@ describe("MessageBubble receipt status", () => {
 
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
-    expect(threadButton?.textContent?.trim()).toBe("1 comment");
+    expect(threadButton?.getAttribute("aria-label")).toBe("1 comment");
 
     act(() => {
       threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -290,7 +304,7 @@ describe("MessageBubble receipt status", () => {
 
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
-    expect(threadButton?.textContent?.trim()).toBe("3 comments");
+    expect(threadButton?.getAttribute("aria-label")).toBe("3 comments");
   });
 
   it("does not render a comments button when threadReplyCount is 0", () => {
