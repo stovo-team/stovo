@@ -26849,6 +26849,9 @@ button.voice-dock-btn--disconnect:active:not(:disabled) {
 .storage-collection-forward:hover, .storage-collection-forward:focus-visible { background: transparent; border: 0; color: var(--text-secondary); }
 .storage-collection-forward svg { height: 20px; width: 20px; }
 .storage-collection-full-page { background: var(--canvas-amoled, var(--color-palette-7b2817bf9b80)); box-sizing: border-box; inset: 0; min-height: 100dvh; overflow: auto; padding: 28px max(32px, calc((100vw - 1120px) / 2)); position: fixed; z-index: 85; }
+.storage-page:has(.storage-collection-full-page) .storage-source-collapse {
+  display: none;
+}
 .storage-collection-full-header { align-items: center; border-bottom: 1px solid var(--color-palette-479a75c723fe); display: flex; gap: 18px; margin: 0 auto 24px; max-width: 1120px; padding: 0 0 18px; }
 .storage-collection-back { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; font: inherit; gap: 5px; padding: 6px 0; }
 .storage-collection-back:hover { color: var(--text-primary); }
