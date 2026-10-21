@@ -11001,7 +11001,8 @@ span.message-spoiler.is-revealed {
   display: flex;
   gap: 16px;
   inset: 0;
-  padding: 18px 10px 18px 126px;
+  justify-content: flex-start;
+  padding: 18px 22px 18px 126px;
   position: absolute;
   text-align: left;
   width: 100%;
@@ -11018,6 +11019,10 @@ span.message-spoiler.is-revealed {
   color: var(--color-palette-f2074b6cef37);
   flex-shrink: 0;
   margin-left: auto;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .settings-profile-tile .profile-photo-control {
