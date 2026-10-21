@@ -71,7 +71,7 @@ describe("guest meeting responsive device-control source contract", () => {
   });
 
   it("keeps live camera errors outside the horizontally scrolling controls row", () => {
-    const liveError = guestMeeting.indexOf('className="guest-device-issue guest-device-issue--visible" role="status"', guestMeeting.indexOf("async function flipCamera()"));
+    const liveError = guestMeeting.indexOf('<CallDeviceErrorToast message={deviceIssue}', guestMeeting.indexOf("async function flipCamera()"));
     const bottomBar = guestMeeting.indexOf('<div className="voice-room-bottom-bar">');
     const toolbar = guestMeeting.indexOf('className="voice-room-in-call-controls guest-call-controls shared-call-controls"');
 

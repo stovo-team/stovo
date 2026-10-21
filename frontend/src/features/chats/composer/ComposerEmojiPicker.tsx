@@ -17,7 +17,7 @@ type ComposerEmojiPickerProps = {
 };
 
 function Picker({ theme, onEmojiPick, docked = false }: Pick<ComposerEmojiPickerProps, "theme" | "onEmojiPick"> & { docked?: boolean }) {
-  return <CspSafeEmojiPicker onEmojiClick={onEmojiPick} autoFocusSearch={false} lazyLoadEmojis previewConfig={{ showPreview: false }} searchDisabled skinTonesDisabled categoryIcons={EMOJI_CATEGORY_ICONS} theme={theme === "light" ? Theme.LIGHT : Theme.DARK} width={docked ? "100%" : 360} height={380} />;
+  return <CspSafeEmojiPicker onEmojiClick={onEmojiPick} autoFocusSearch={false} lazyLoadEmojis previewConfig={{ showPreview: false }} searchDisabled skinTonesDisabled categoryIcons={EMOJI_CATEGORY_ICONS} theme={theme === "light" ? Theme.LIGHT : Theme.DARK} width={docked ? "100%" : 300} height={380} />;
 }
 
 export function ComposerEmojiPicker({ open, showDocked, theme, disabled, pickerRef, onToggle, onEmojiPick }: ComposerEmojiPickerProps) {

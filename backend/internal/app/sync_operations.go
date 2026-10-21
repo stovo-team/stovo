@@ -67,8 +67,8 @@ func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic,
 
 // createRESTMessageWithSyncImmediately is reserved for an explicit user action
 // whose generated chat card should not be held by message slow mode.
-func (s *Server) createRESTMessageWithSyncImmediately(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, bool, error) {
-	return s.createRESTMessageWithSyncDelayPolicy(ctx, user, chatID, payload, "", true)
+func (s *Server) createRESTMessageWithSyncImmediately(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, operationID string) (messagePublic, bool, error) {
+	return s.createRESTMessageWithSyncDelayPolicy(ctx, user, chatID, payload, operationID, true)
 }
 
 func (s *Server) createRESTMessageWithSyncDelayPolicy(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, operationID string, bypassMessageDelay bool) (messagePublic, bool, error) {
