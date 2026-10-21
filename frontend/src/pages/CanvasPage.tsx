@@ -1,13 +1,11 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
 import { ChevronDown, Forward, Pencil, Plus } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
-import { getSocketConfigForUrl } from "../api/serverRegistry";
-import { getApiUrl } from "../api/client";
-import { appendCanvasDocumentUpdate, getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
+import { linkCanvas, renameCanvas } from "../api/canvas";
+import { useCanvasDocumentSession, canvasRemoteOrigin as remoteOrigin } from "../features/canvas/useCanvasDocumentSession";
 import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
@@ -16,22 +14,10 @@ import { useStrings } from "../i18n/LanguageContext";
 
 const Excalidraw = lazy(() => import("../components/CanvasWhiteboardEditor"));
 
-const remoteOrigin = Symbol("canvas-remote");
 
 type BlockKind = "markdown" | "whiteboard";
 type CanvasBlock = { id: string; kind: BlockKind; record: Y.Map<unknown> };
 type ExcalidrawAPI = { updateScene: (scene: { elements: unknown[] }) => void };
-
-function bytesToBase64(value: Uint8Array) {
-  let binary = "";
-  value.forEach((byte) => { binary += String.fromCharCode(byte); });
-  return btoa(binary);
-}
-
-function base64ToBytes(value: string) {
-  const binary = atob(value);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
 
 function documentBlocks(doc: Y.Doc): CanvasBlock[] {
   const blocks = doc.getArray<Y.Map<unknown>>("blocks");
@@ -215,108 +201,18 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
 }
 
 export default function CanvasPage() {
-  const copy = useStrings().auditUi;
+  const strings = useStrings();
+  const copy = strings.auditUi;
   const { canvasId = "" } = useParams();
   const navigate = useNavigate();
   const { accessToken, currentUser } = useAuth();
-  const [canvas, setCanvas] = useState<Canvas | null>(null);
-  const [document, setDocument] = useState<Y.Doc | null>(null);
-  const [blocksRevision, setBlocksRevision] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const { canvas, setCanvas, document, blocksRevision, error, setError, draftError, retryDraft } = useCanvasDocumentSession(canvasId, accessToken, currentUser?.id, navigate);
   const [shareOpen, setShareOpen] = useState(false);
   const [forwardChatIds, setForwardChatIds] = useState<string[]>([]);
   const [insertOpen, setInsertOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [chats, setChats] = useState<Chat[]>([]);
-  const socketRef = useRef<Socket | null>(null);
-  const saveQueueRef = useRef<string[]>([]);
-  const pendingUpdatesRef = useRef<Uint8Array[]>([]);
-  const isSavingRef = useRef(false);
-  const saveTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!accessToken || !canvasId) return;
-    let cancelled = false;
-    setCanvas(null);
-    setDocument(null);
-    setError(null);
-    saveQueueRef.current = [];
-    pendingUpdatesRef.current = [];
-    isSavingRef.current = false;
-    const doc = new Y.Doc();
-    const blocks = doc.getArray<Y.Map<unknown>>("blocks");
-    const connect = async () => {
-      try {
-        const canvasRequest = getCanvas(accessToken, canvasId).then((metadata) => {
-          if (!cancelled) setCanvas(metadata);
-          return metadata;
-        });
-        const [loadedCanvas, loadedDocument] = await Promise.all([canvasRequest, getCanvasDocument(accessToken, canvasId)]);
-        if (cancelled) return;
-        loadedDocument.updates.forEach(({ update }) => Y.applyUpdate(doc, base64ToBytes(update), remoteOrigin));
-        setCanvas(loadedCanvas);
-        setDocument(doc);
-        const socketConfig = getSocketConfigForUrl(getApiUrl());
-        const socket = io(socketConfig.origin, { path: socketConfig.path, auth: { token: accessToken }, query: { token: accessToken }, transports: ["websocket", "polling"] });
-        socketRef.current = socket;
-        socket.on("connect", () => socket.emit("canvas:join", { canvasId }));
-        socket.on("canvas:update", (payload: { canvasId?: string; update?: string }) => {
-          if (payload.canvasId === canvasId && payload.update) Y.applyUpdate(doc, base64ToBytes(payload.update), remoteOrigin);
-        });
-        socket.on("canvas:error", (payload: { canvasId?: string; message?: string }) => {
-          if (payload.canvasId === canvasId) setError(payload.message ?? "Canvas is unavailable");
-        });
-        const flushSaveQueue = async () => {
-          if (isSavingRef.current || !accessToken) return;
-          isSavingRef.current = true;
-          try {
-            while (saveQueueRef.current.length > 0) {
-              const update = saveQueueRef.current[0];
-              await appendCanvasDocumentUpdate(accessToken, canvasId, update);
-              saveQueueRef.current.shift();
-            }
-          } catch (cause) {
-            if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not save Canvas changes");
-          } finally {
-            isSavingRef.current = false;
-          }
-        };
-        const scheduleSave = () => {
-          if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
-          saveTimerRef.current = window.setTimeout(() => {
-            saveTimerRef.current = null;
-            const updates = pendingUpdatesRef.current.splice(0);
-            if (updates.length === 0) return;
-            saveQueueRef.current.push(bytesToBase64(Y.mergeUpdates(updates)));
-            void flushSaveQueue();
-          }, 180);
-        };
-        doc.on("update", (update, origin) => {
-          if (origin === remoteOrigin) return;
-          pendingUpdatesRef.current.push(update);
-          scheduleSave();
-        });
-        blocks.observe(() => setBlocksRevision((current) => current + 1));
-        if (blocks.length === 0) doc.transact(() => blocks.push([createBlock("markdown", `# ${loadedCanvas.title}\n\n`)]));
-      } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not open Canvas");
-      }
-    };
-    void connect();
-    return () => {
-      cancelled = true;
-      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
-      const unsaved = pendingUpdatesRef.current.splice(0);
-      if (unsaved.length > 0) {
-        void appendCanvasDocumentUpdate(accessToken, canvasId, bytesToBase64(Y.mergeUpdates(unsaved)));
-      }
-      socketRef.current?.disconnect();
-      socketRef.current = null;
-      doc.destroy();
-    };
-  }, [accessToken, canvasId]);
-
   useEffect(() => {
     if (!accessToken || !shareOpen) return;
     void getChats(accessToken).then(setChats).catch(() => undefined);
@@ -352,7 +248,7 @@ export default function CanvasPage() {
     }
   };
 
-  if (error) return <main className="canvas-page canvas-page--error"><h1>{copy.canvasUnavailable}</h1><p>{error}</p><BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} /></main>;
+  if (error && !document) return <main className="canvas-page canvas-page--error"><h1>{copy.canvasUnavailable}</h1><p>{error}</p><BackButton ariaLabel={copy.back} title={copy.back} onClick={() => navigate(-1)} /></main>;
   if (!canvas) return <main className="canvas-page canvas-page--loading">{copy.openingCanvas}</main>;
 
   return (
@@ -373,6 +269,7 @@ export default function CanvasPage() {
       </header>
       {shareOpen && canvas.canManage && <ForwardChatDialog title={copy.forwardCanvas} accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => void forwardCanvas()} onClose={() => { setForwardChatIds([]); setShareOpen(false); }} />}
       <div className="canvas-workspace">
+        {(draftError || error) && <p role="alert">{draftError || error} {draftError && retryDraft && <button type="button" data-canvas-retry onClick={retryDraft}>{strings.audioPlayer.retry}</button>}</p>}
         {!document && <p role="status">{copy.openingCanvas}</p>}
         {blocks.map((block) => block.kind === "markdown" ? <MarkdownBlock key={block.id} record={block.record} /> : <WhiteboardBlock key={block.id} record={block.record} />)}
       </div>
