@@ -10,6 +10,7 @@ it("parses global styles and keeps independent call, settings and storage rules 
     ':root:is([data-theme-mode="dark"], [data-theme-mode="amoled"]) .settings-page input[type="time"]::-webkit-calendar-picker-indicator',
     ".storage-page:has(.storage-collection-full-page) .storage-source-collapse",
     ".voice-grid--9 > .voice-participant-card:last-child:nth-child(3n + 2)",
+    ".chat-info-member-row .avatar",
     ".call-popup.call-popup-group-call > .shared-call-stage",
     ".messenger-shell.has-active-chat .pinned-banner",
     ".guest-device-menu-trigger:focus-visible",
