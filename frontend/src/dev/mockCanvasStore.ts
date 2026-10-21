@@ -88,8 +88,11 @@ export async function handleMockCanvasRequest(
     const chatId = typeof body.chatId === "string" ? body.chatId : "";
     const chat = context.chats.find((item) => item.id === chatId);
     if (!chat) return errorResponse(404, "Mock chat not found.");
+    const replay = typeof body.canvasId === "string" ? mockCanvases.find((canvas) => canvas.id === body.canvasId) : null;
+    if (replay) return replay.createdBy === context.userId && replay.familyId === context.familyId && replay.originChatId === chatId
+      ? jsonResponse(replay, 201) : errorResponse(409, "Mock Canvas identity is already in use.");
     const now = new Date().toISOString();
-    const id = `mock-canvas-local-${nextLocalCanvasId++}`;
+    const id = typeof body.canvasId === "string" ? body.canvasId : `mock-canvas-local-${nextLocalCanvasId++}`;
     const canvas: Canvas = {
       id,
       familyId: context.familyId,
