@@ -32445,6 +32445,13 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-page .storage-preview-media > .video-player .video-player-controls { grid-template-columns: 44px minmax(0, 1fr) auto 44px; }
 .storage-page .storage-preview-media > .video-player .video-player-controls [data-control="fullscreen"] { display: none; }
 .storage-page .storage-preview-media:has(.document-preview-card--inline) { align-items: stretch; background: transparent; display: block; height: var(--storage-preview-height); max-height: none; overflow: visible; padding: 0; width: var(--storage-document-width); }
+/* Keep document actions on the page and expose more of each document. */
+.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  padding: 0;
+}
+.storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  --storage-preview-height: min(78dvh, 960px);
+}
 .storage-page .storage-preview-media:not(:has(> img, > .video-player, .document-preview-card--inline)) { box-sizing: border-box; height: min(320px, var(--storage-preview-height)); padding: 68px 24px 24px; width: var(--storage-document-width); }
 .storage-page .storage-preview-dialog.is-expanded .storage-preview-media:not(:has(> img, > .video-player, .document-preview-card--inline)) { height: var(--storage-preview-height); }
 .storage-page .storage-preview-media > .video-player { height: auto; margin: 0; max-height: 100%; max-width: 100%; width: auto; }
