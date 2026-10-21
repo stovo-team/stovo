@@ -32581,6 +32581,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .guest-device-menu-trigger:focus-visible {
   outline: 2px solid var(--focus-ring) !important;
   outline-offset: 2px;
+}
 .messenger-shell.has-active-chat .pinned-banner {
   box-sizing: border-box;
   height: var(--chat-floating-header-height);
