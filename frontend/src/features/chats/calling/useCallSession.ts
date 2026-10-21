@@ -1,3 +1,5 @@
+import { saveRecentChatHistory, saveRecentChatHistoryToLocalStorage } from "../../../chatHistoryCache";
+import { applyCallEndToChat, maskLocalCallEnd, projectLocalCallEnd } from "./localCallEndProjection";
 import {
   Dispatch,
   RefObject,
@@ -39,6 +41,8 @@ import { useMockCallSession } from "./useMockCallSession";
 import { useCallSessionSurface } from "./useCallSessionSurface";
 
 export type UseCallSessionParams = {
+  onChatsUpdate?: Dispatch<SetStateAction<Chat[]>>;
+  chatMutationVersionRef?: RefObject<Record<string, number>>;
   accessToken: string | null;
   currentUser: User | null;
   selectedChat: Chat | null;
@@ -73,7 +77,7 @@ export type UseCallSessionParams = {
  * `useChatRealtime`.
  */
 export function useCallSession({
-  accessToken,
+  onChatsUpdate, chatMutationVersionRef, accessToken,
   currentUser,
   selectedChat,
   chats,
@@ -153,11 +157,18 @@ export function useCallSession({
   const [activeGroupCalls, setActiveGroupCalls] = useState<Record<string, Record<string, any>>>({});
   const [preJoinChatId, setPreJoinChatId] = useState<string | null>(null);
 
+  const locallyEndedRoomsRef = useRef(new Set<string>());
+  const locallyLeftRoomsRef = useRef(new Map<string, string>());
   useEffect(() => {
+    onChatsUpdate?.((current) => {
+      const masked = current.map((chat) => maskLocalCallEnd(chat, locallyEndedRoomsRef.current, locallyLeftRoomsRef.current));
+      return masked.some((chat, index) => chat !== current[index]) ? masked : current;
+    });
     setActiveGroupCalls((prev) => {
       let changed = false;
       const next: Record<string, Record<string, any>> = {};
-      for (const c of chats) {
+      for (const snapshot of chats) {
+        const c = maskLocalCallEnd(snapshot, locallyEndedRoomsRef.current, locallyLeftRoomsRef.current);
         if (c.activeCall) {
           next[c.id] = c.activeCall;
         }
@@ -761,11 +772,28 @@ export function useCallSession({
   }
 
   async function endActiveCall() {
-    if (mockCallSession.endActiveCall()) return;
     const endingChatId = activeCallChatId ?? activeCallChatIdRef.current;
     if (!endingChatId) {
       return;
     }
+    const endingChat = chatsRef.current.find((chat) => chat.id === endingChatId) ?? selectedChat;
+    if (endingChat?.id === endingChatId && currentUser) {
+      const endingRoomId = callRoomIdRef.current ?? activeGroupCalls[endingChatId]?.roomId ?? endingChat.activeCall?.roomId ?? null;
+      const projection = projectLocalCallEnd({ chat: endingChat, user: currentUser, phase: callPhaseRef.current, callType: callTypeRef.current, roomId: endingRoomId, peerId: callPeerUserId, duration: callTimer, activeCall: activeGroupCalls[endingChatId] ?? endingChat.activeCall });
+      if (endingRoomId) { if (projection.activeCall) locallyLeftRoomsRef.current.set(endingRoomId, currentUser.id); else locallyEndedRoomsRef.current.add(endingRoomId); }
+      if (projection.message) {
+        const next = [...(messageCacheRef.current[endingChatId] ?? []).filter((message) => message.id !== projection.message!.id), projection.message];
+        messageCacheRef.current[endingChatId] = next;
+        saveRecentChatHistoryToLocalStorage(currentUser.id, endingChatId, next);
+        void saveRecentChatHistory(currentUser.id, endingChatId, next);
+        if (activeChatIdRef.current === endingChatId) setMessages(next);
+      }
+      if (chatMutationVersionRef) chatMutationVersionRef.current[endingChatId] = (chatMutationVersionRef.current[endingChatId] ?? 0) + 1;
+      onChatsUpdate?.((current) => current.map((chat) => chat.id === endingChatId ? applyCallEndToChat(chat, projection) : chat));
+      setSelectedChat((current) => current?.id === endingChatId ? applyCallEndToChat(current, projection) : current);
+      setActiveGroupCalls((current) => { const next = { ...current }; if (projection.activeCall) next[endingChatId] = projection.activeCall; else delete next[endingChatId]; return next; });
+    }
+    if (mockCallSession.endActiveCall()) return;
     const terminationEvent = callTerminationEvent(callPhaseRef.current);
     socketRef.current?.emit(terminationEvent, { chatId: endingChatId });
     // resetCallState publishes idle locally before awaiting controller cleanup.

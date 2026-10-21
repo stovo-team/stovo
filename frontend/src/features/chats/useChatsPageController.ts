@@ -216,7 +216,7 @@ export function useChatsPageController({
 
   const callSession = useCallSession({
     accessToken, currentUser, selectedChat, chats, members, chatId, navigate, prefersReducedMotion,
-    setError, chatsRef, activeChatIdRef, messageCacheRef, setSelectedChat, setMessages, setIsDetailsOpen,
+    onChatsUpdate: setChats, chatMutationVersionRef, setError, chatsRef, activeChatIdRef, messageCacheRef, setSelectedChat, setMessages, setIsDetailsOpen,
     socketRef, restoreActiveVideoSurface: videoPipBridge.restoreActiveVideoSurface,
     setIsVideoPictureInPictureActive: videoPipBridge.setIsVideoPictureInPictureActive,
     videoPictureInPictureActiveRef: videoPipBridge.videoPictureInPictureActiveRef,
