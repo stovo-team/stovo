@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 it("rounds the pinned banner completely at all heights", () => {
   const styles = readFileSync("src/styles.css", "utf8");
-  expect(styles.match(/\n\.pinned-banner\s*\{([^}]+)\}/)?.[1]).toContain("border-radius: 999px;");
+  expect(styles.match(/\n\.pinned-banner\s*\{([^}]+)\}/)?.[1]).toContain("border-radius: var(--radius-pill);");
 });
 it("places the full pinned pill below the floating chat header", () => {
   const styles = readFileSync("src/styles.css", "utf8");
