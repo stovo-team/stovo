@@ -229,7 +229,7 @@ function StorageTile({
       onClick={() => {
         if (selectionLocked) return;
         onSelect();
-        const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
+        const isMobileViewport = window.matchMedia("(max-width: 1024px)").matches;
         if (!suppressPreview && shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
@@ -529,7 +529,7 @@ export default function FilesPage() {
       suppressPreview={Boolean(collectionPicker)}
       key={file.id}
       onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
-      onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 960px)").matches, file.id))}
+      onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 1024px)").matches, file.id))}
     />
   );
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {

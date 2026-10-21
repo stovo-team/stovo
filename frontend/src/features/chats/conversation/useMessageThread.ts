@@ -1,3 +1,4 @@
+import { saveMessagesToArchive } from "./saveMessagesToArchive";
 import {
   Dispatch,
   RefObject,
@@ -17,7 +18,6 @@ import {
   Message,
   MessageHistoryPage,
   PinnedMessage,
-  archiveMessage,
   deleteMessage,
   editMessage,
   forwardMessage,
@@ -61,6 +61,7 @@ import { useMessageGestures } from "./useMessageGestures";
 
 export type UseMessageThreadParams = {
   chatId: string | undefined;
+  chatsRef?: RefObject<Chat[]>;
   archiveGroup?: string;
   accessToken: string | null;
   currentUser: User | null;
@@ -76,7 +77,7 @@ export type UseMessageThreadParams = {
 };
 
 export function useMessageThread({
-  chatId,
+  chatId, chatsRef,
   archiveGroup,
   accessToken,
   currentUser,
@@ -706,25 +707,15 @@ export function useMessageThread({
 
   async function handleArchiveMessage(message: Message) {
     if (!accessToken) return;
-    try {
-      await archiveMessage(accessToken, message.id);
-      setMessageContextMenu(null);
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not save message");
-    }
+    setMessageContextMenu(null);
+    await saveMessagesToArchive({ accessToken, targets: [message], archive: chatsRef?.current.find((chat) => chat.type === "archive"), applyMessagesForChat, onChatsUpdate, onError });
   }
 
   async function handleArchiveSelectedMessages() {
     if (!accessToken || selectedMessageIds.length === 0) return;
     const targets = messages.filter((message) => selectedMessageIds.includes(message.id));
-    try {
-      for (const message of targets) {
-        await archiveMessage(accessToken, message.id);
-      }
-      clearSelectedMessages();
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not save message");
-    }
+    clearSelectedMessages();
+    await saveMessagesToArchive({ accessToken, targets, archive: chatsRef?.current.find((chat) => chat.type === "archive"), applyMessagesForChat, onChatsUpdate, onError });
   }
 
   function handleCopySelectedMessages() {
