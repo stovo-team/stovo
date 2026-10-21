@@ -3015,7 +3015,6 @@ h2 {
   width: 22px;
 }
 .thread-summary-overflow { background: var(--surface-raised); }
-.thread-summary-action { margin-left: auto; }
 .thread-open-button > svg { flex-shrink: 0; }
 
 .avatar {
@@ -6789,17 +6788,39 @@ span.message-spoiler.is-revealed {
 
 .reaction-avatar-stack {
   display: inline-flex;
+  align-items: center;
   padding-left: 3px;
-  --composer-action-inset: 0px;
-  --composer-action-bottom: 0px;
-  align-items: stretch;
-  background: var(--surface-card);
-  border-top: 1px solid var(--border-default);
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(0, 1fr);
-  padding: 12px 16px;
-  position: relative;
+}
+
+.reaction-avatar {
+  --avatar-size: 20px;
+  align-items: center;
+  background: var(--accent-primary);
+  border: 0;
+  border-radius: var(--radius-circle);
+  box-sizing: border-box;
+  color: var(--text-on-accent);
+  display: inline-flex;
+  flex: 0 0 20px;
+  height: 20px;
+  justify-content: center;
+  margin-left: -3px;
+  overflow: hidden;
+  width: 20px;
+}
+
+.reaction-avatar:has(img) {
+  background: transparent;
+  padding: 0;
+}
+
+.reaction-avatar-more {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  font-size: var(--font-size-micro);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  padding: 0;
 }
 
 .message-composer-row {
@@ -32445,13 +32466,6 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-page .storage-preview-media > .video-player .video-player-controls { grid-template-columns: 44px minmax(0, 1fr) auto 44px; }
 .storage-page .storage-preview-media > .video-player .video-player-controls [data-control="fullscreen"] { display: none; }
 .storage-page .storage-preview-media:has(.document-preview-card--inline) { align-items: stretch; background: transparent; display: block; height: var(--storage-preview-height); max-height: none; overflow: visible; padding: 0; width: var(--storage-document-width); }
-/* Keep document actions on the page and expose more of each document. */
-.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
-  padding: 0;
-}
-.storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
-  --storage-preview-height: min(78dvh, 960px);
-}
 .storage-page .storage-preview-media:not(:has(> img, > .video-player, .document-preview-card--inline)) { box-sizing: border-box; height: min(320px, var(--storage-preview-height)); padding: 68px 24px 24px; width: var(--storage-document-width); }
 .storage-page .storage-preview-dialog.is-expanded .storage-preview-media:not(:has(> img, > .video-player, .document-preview-card--inline)) { height: var(--storage-preview-height); }
 .storage-page .storage-preview-media > .video-player { height: auto; margin: 0; max-height: 100%; max-width: 100%; width: auto; }
@@ -32557,6 +32571,20 @@ button.minimized-call-button--end:active:not(:disabled) {
   }
 }
 
+/* Logout is a destructive action in both navigation layouts. */
+.app-frame .logout-row:is(:hover, :focus-visible) {
+  background: color-mix(in oklab, var(--danger) 22%, var(--surface-card));
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible),
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) .ms-icon,
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > span:not(.ms-icon) {
+  color: var(--danger);
+}
+.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before {
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+}
 @media (min-width: 721px) and (max-height: 800px) {
   .guest-prejoin-preview {
     aspect-ratio: 16 / 9;
@@ -32660,6 +32688,49 @@ button.minimized-call-button--end:active:not(:disabled) {
 
 .forward-dialog .popup-field {
   margin-bottom: 8px;
+}
+/* Device-menu chevrons stay undecorated in every interaction state. */
+.guest-device-menu-trigger,
+.guest-device-menu-trigger:hover,
+.guest-device-menu-trigger[aria-expanded="true"],
+.guest-device-menu-trigger:focus,
+.guest-device-menu-trigger:active {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.guest-device-select:has(> .guest-device-menu-trigger) {
+  border-left: 0;
+}
+
+.guest-device-menu-trigger:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.guest-device-menu-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
+}
+
+/* Participant media must not cover the group-call chrome. */
+.call-popup-group-call:not(.call-popup-fullscreen) > .call-popup-header {
+  position: relative;
+  z-index: 40;
+  flex-shrink: 0;
+}
+.call-popup.call-popup-group-call > .shared-call-control-panel {
+  z-index: 50;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+}
+.call-popup.call-popup-group-call > .shared-call-stage {
+  isolation: isolate;
+}
+
+/* Keep document actions on the page and expose more of each document. */
+.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
+  padding: 0;
 }
 /* Keep document actions on the page and expose more of each document. */
 .storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
