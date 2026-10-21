@@ -100,7 +100,7 @@ export function useChatsPageController({
   const requiresThreadToSend = canCommentInSelectedChannel;
   const focusComposerInput = useCallback(() => composerInputRef.current?.focus(), []);
   const thread = useMessageThread({
-    chatId, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
+    chatId, chatsRef, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
     channelCommentsDisabledForViewer, onChatsUpdate: setChats, onSelectedChatUpdate: setSelectedChat,
     onError: setError, focusComposerInput
   });
