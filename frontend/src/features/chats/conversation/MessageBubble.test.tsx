@@ -117,12 +117,31 @@ describe("MessageBubble receipt status", () => {
     expect(host.querySelector(".reaction-avatar.avatar .avatar-initials")?.textContent).toBe("SE");
   });
 
+  it("shows two reaction avatars and a remainder badge when more than three people reacted", () => {
+    const userIds = ["user-1", "user-2", "user-3", "user-4", "user-5"];
+    const chat = createMockChat({
+      type: "group",
+      members: userIds.map((id) => ({ id, displayName: id, role: "member", joinedAt: "2026-08-17T10:00:00.000Z" }))
+    });
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 5, userIds, reacted: true }] }), "user-1", chat);
+
+    expect(host.querySelectorAll(".avatar.reaction-avatar")).toHaveLength(2);
+    expect(host.querySelector(".reaction-avatar-more")?.textContent).toBe("+3");
+  });
+
+  it("keeps profile-photo reaction avatars transparent and compact", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const photoAvatar = css.match(/\.reaction-avatar:has\(img\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(photoAvatar).toMatch(/background:\s*transparent/);
+    expect(photoAvatar).toMatch(/padding:\s*0/);
+  });
+
   it("keeps reaction avatars small and round without composer layout styles", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const stack = css.match(/\.reaction-avatar-stack\s*\{([^}]*)\}/)?.[1] ?? "";
     const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(stack).not.toContain("--composer-action");
-    expect(avatar).toMatch(/border-radius:\s*50%/);
+    expect(avatar).toMatch(/border-radius:\s*var\(--radius-circle\)/);
     expect(avatar).toMatch(/width:\s*20px/);
     expect(avatar).toMatch(/height:\s*20px/);
   });
