@@ -32509,6 +32509,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .voice-grid--9 > .voice-participant-card:nth-last-child(2):nth-child(3n + 1),
 .voice-grid--9 > .voice-participant-card:last-child:nth-child(3n + 2) {
   transform: translateX(calc(50% + 6px));
+}
 /* Folder views occupy the source sidebar's space. */
 .storage-page:has(.storage-collection-full-page) .storage-source-collapse {
   display: none;
