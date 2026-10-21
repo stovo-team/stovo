@@ -3,6 +3,7 @@ import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
+import { handleMockCanvasRequest, resetMockCanvases } from "./mockCanvasStore";
 import {
   associateMockFileWithMessage,
   completeMockFileUpload,
@@ -31,16 +32,15 @@ const mockGlobal = globalThis as GlobalWithMockApi;
 let mockData: MockData = createMockData();
 let nextLocalMessageId = 1;
 
+resetMockCanvases(mockData.family.id, mockData.users[0]?.id);
+
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
-
-function errorResponse(status: number, detail: string): Response {
-  return jsonResponse({ detail }, status);
-}
+const errorResponse = (status: number, detail: string): Response => jsonResponse({ detail }, status);
 
 function findMessage(messageId: string): Message | undefined {
   return Object.values(mockData.messages).flat().find((message) => message.id === messageId);
@@ -71,11 +71,7 @@ async function requestBlob(input: FetchInput, init?: RequestInit): Promise<Blob 
   const body = init?.body ?? (typeof Request !== "undefined" && input instanceof Request ? input.body : null);
   if (typeof Blob !== "undefined" && body instanceof Blob) return body;
   if (typeof Request !== "undefined" && input instanceof Request) {
-    try {
-      return await input.clone().blob();
-    } catch {
-      return null;
-    }
+    try { return await input.clone().blob(); } catch { return null; }
   }
   return null;
 }
@@ -91,26 +87,28 @@ async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Pr
 
 async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit): Promise<Response> {
   const path = decodeURI(url.pathname);
-  if (method === "POST" && path === "/api/auth/refresh") {
-    return jsonResponse(responseForRefresh());
-  }
+  if (method === "POST" && path === "/api/auth/refresh") return jsonResponse(responseForRefresh());
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
-  if (method === "GET" && path === "/api/family") {
-    return jsonResponse(mockData.family);
-  }
-  if (method === "GET" && path === "/api/family/members") {
-    return jsonResponse(mockData.users);
-  }
+  if (method === "GET" && path === "/api/family") return jsonResponse(mockData.family);
+  if (method === "GET" && path === "/api/family/members") return jsonResponse(mockData.users);
   if (method === "GET" && path === "/api/plans") return jsonResponse([]);
   if (method === "GET" && path === "/api/family/roles") return jsonResponse([]);
-  if (method === "GET" && path === "/api/v1/config/manifest") {
-    return jsonResponse(createMockManifest());
-  }
-  if (method === "GET" && path === "/api/chats") {
-    return jsonResponse(mockData.chats);
-  }
+  if (method === "GET" && path === "/api/v1/config/manifest") return jsonResponse(createMockManifest());
+  if (method === "GET" && path === "/api/chats") return jsonResponse(mockData.chats);
+  const canvasResponse = await handleMockCanvasRequest(
+    path,
+    method,
+    () => requestBody(input, init),
+    {
+      chats: mockData.chats,
+      familyId: mockData.family.id,
+      userId: getMockUserId(),
+    }
+  );
+  if (canvasResponse) return canvasResponse;
+
   if (method === "GET" && path === "/api/collections") return jsonResponse([]);
   if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
 
@@ -263,18 +261,11 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
         type: body.type === "mixed" || attachments.length ? "mixed" : "text",
         content,
         encryptionProtocol: "legacy_plaintext",
-        ciphertext: null,
-        nonce: null,
-        keyVersion: null,
-        encryptionMetadata: null,
+        ciphertext: null, nonce: null, keyVersion: null, encryptionMetadata: null,
         replyToMessageId: typeof body.replyToMessageId === "string" ? body.replyToMessageId : null,
         threadRootMessageId: typeof body.threadRootMessageId === "string" ? body.threadRootMessageId : null,
         messageKind: body.threadRootMessageId ? "thread" : "chat",
-        createdAt: sentAt,
-        updatedAt: sentAt,
-        deletedAt: null,
-        isEdited: false,
-        forwardedFrom: null,
+        createdAt: sentAt, updatedAt: sentAt, deletedAt: null, isEdited: false, forwardedFrom: null,
         statuses: [{ userId: currentUserId, status: "sent", createdAt: sentAt }],
         reactions: [],
         attachments,
@@ -357,6 +348,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
+  resetMockCanvases(mockData.family.id, mockData.users[0]?.id, false);
   nextLocalMessageId = 1;
 }
 
