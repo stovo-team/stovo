@@ -319,7 +319,7 @@ export function CallFeature() {
           capabilities={callAudioCapabilities}
           devices={callAudioDevices}
           localStream={audioCallRef.current?.getLocalStream() ?? localVideoStream}
-          warning={callAudioWarning}
+          warning={deviceError ? null : callAudioWarning}
           onPatch={(patch) => void applyCallAudioPatch(patch)}
           onPreferencePatch={patchPreferences}
           onClose={() => { setIsCallAudioPopupOpen(false); setIsCallVideoPopupOpen(false); }}
