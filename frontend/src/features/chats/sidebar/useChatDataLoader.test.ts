@@ -279,26 +279,36 @@ describe("useChatDataLoader", () => {
   });
 });
 
-it("keeps newly sent local comments and fresh root counts when delayed disk history arrives", async () => {
-  const { loadRecentChatHistory } = await import("../../../chatHistoryCache");
-  let resolveDisk!: (messages: Message[]) => void;
-  vi.mocked(loadRecentChatHistory).mockReturnValueOnce(new Promise((resolve) => { resolveDisk = resolve; }));
-  const rootMessage = { ...makeMessage("root", "2026-01-01T10:00:00.000Z"), messageKind: "chat", commentCount: 2 } as Message;
-  const localComment = { ...makeMessage("pending:comment", "2026-01-01T10:01:00.000Z"), messageKind: "thread", threadRootMessageId: "root", deliveryState: "sending", clientMessageId: "comment" } as Message;
-  const cache = { current: { "chat-1": [rootMessage] } as Record<string, Message[]> };
-  const authRequest = vi.fn((url: string) => url.includes("/messages?") ? new Promise(() => {}) : Promise.resolve(url.includes("/pins") ? [] : { id: "chat-1" }));
-  const refs = { accessTokenRef: { current: "token" }, activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [] }, chatMutationVersionRef: { current: {} }, historyCursorRef: { current: {} } };
-  const applyMessagesForChat = (_id: string, update: unknown) => { cache.current["chat-1"] = typeof update === "function" ? update(cache.current["chat-1"]) : update as Message[]; };
+it("renders cached archive-group history while its next network refresh is pending", async () => {
+  const cached = [makeMessage("saved", "2026-01-01T10:00:00.000Z")];
+  let pendingRefresh = false;
+  const authRequest = vi.fn((url: string) => {
+    if (url.includes("/messages?")) return pendingRefresh ? new Promise(() => {}) : Promise.resolve({ messages: cached, hasMore: false, nextBefore: "" });
+    if (url.includes("/pins")) return Promise.resolve([]);
+    return Promise.resolve({ id: "chat-1", type: "archive" });
+  });
+  const cache = { current: {} as Record<string, Message[]> };
+  const setMessages = vi.fn();
+  const setIsChatLoading = vi.fn();
+  const applyMessagesForChat = (_id: string, update: unknown) => { cache.current["chat-1"] = typeof update === "function" ? update(cache.current["chat-1"] ?? []) : update as Message[]; };
+  let loader!: ReturnType<typeof useChatDataLoader>;
   function Harness() {
-    useChatDataLoader({ ...refs, authRequest: authRequest as any, currentUser: { id: "user" } as any, chatId: "chat-1", onError: vi.fn(), setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(), setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(), messageCacheRef: cache, setMessages: vi.fn(), setPinnedMessages: vi.fn(), setPinIndex: vi.fn(), applyMessagesForChat, markChatRead: vi.fn(() => Promise.resolve()) });
+    loader = useChatDataLoader({
+      accessTokenRef: { current: "token" }, authRequest: authRequest as any, currentUser: { id: "user" } as any, chatId: "chat-1", archiveGroup: "origin-chat",
+      onError: vi.fn(), setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+      setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading, activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [] },
+      chatMutationVersionRef: { current: {} }, messageCacheRef: cache, historyCursorRef: { current: {} }, setMessages, setPinnedMessages: vi.fn(),
+      setPinIndex: vi.fn(), applyMessagesForChat, markChatRead: vi.fn(() => Promise.resolve())
+    });
     return null;
   }
   const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
   try {
     await act(async () => { root.render(createElement(Harness)); });
-    cache.current["chat-1"].push(localComment);
-    await act(async () => { resolveDisk([{ ...rootMessage, commentCount: 0 }]); });
-    expect(cache.current["chat-1"]).toEqual([rootMessage, localComment]);
-    expect(cache.current["chat-1"][1].deliveryState).toBe("sending");
-  } finally { act(() => root.unmount()); host.remove(); vi.mocked(loadRecentChatHistory).mockReset(); }
+    await act(async () => { await loader.loadSelectedChat("chat-1"); });
+    pendingRefresh = true; setMessages.mockClear(); setIsChatLoading.mockClear();
+    act(() => { void loader.loadSelectedChat("chat-1"); });
+    expect(setMessages).toHaveBeenCalledWith(cached);
+    expect(setIsChatLoading).toHaveBeenCalledWith(false);
+  } finally { act(() => root.unmount()); host.remove(); }
 });
