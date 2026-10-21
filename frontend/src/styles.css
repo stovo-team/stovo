@@ -4663,6 +4663,7 @@ h2 {
 
 .messenger-shell.has-active-chat {
   --active-chat-message-inset-x: 10px;
+  --chat-floating-header-height: 48px;
   --chat-messages-top-gap: 18px;
 }
 
@@ -20501,7 +20502,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: none;
-  border-radius: var(--radius-surface);
+  border-radius: var(--radius-pill);
   box-shadow: var(--float-shadow-soft);
   display: grid;
   gap: 10px;
@@ -20542,11 +20543,11 @@ button.chat-info-title-edit:active:not(:disabled) {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  min-height: 48px;
+  min-height: 0;
   border-radius: inherit;
-  padding: 8px 14px 8px 24px;
+  padding: 2px 14px 2px 24px;
   text-align: left;
   width: 100%;
 }
@@ -20555,6 +20556,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   color: color-mix(in oklab, var(--text-secondary) 82%, var(--color-palette-f2074b6cef37));
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-bold);
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -20564,8 +20566,9 @@ button.chat-info-title-edit:active:not(:disabled) {
 .pinned-banner-preview {
   color: var(--text-primary);
   display: block;
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
+  font-size: calc(var(--font-size-body) * var(--message-scale));
+  font-weight: var(--font-weight-regular);
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -21109,6 +21112,10 @@ button.chat-info-title-edit:active:not(:disabled) {
     margin-inline: var(--mobile-edge-inset-x);
     -webkit-backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
     backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat {
+    --chat-floating-header-height: 42px;
   }
 
   :root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail {
@@ -27554,8 +27561,9 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
 /* Canvas card bubble (chat messages) */
 .message-bubble:has(.canvas-card-bubble) {
   box-sizing: border-box;
-  max-width: min(560px, 92%);
-  width: 100%;
+  max-width: min(560px, calc(100vw - 48px));
+  padding-inline: 6px;
+  width: min(560px, calc(100vw - 48px));
 }
 .canvas-card-bubble {
   border: 1px solid var(--color-palette-b749cc259197);
@@ -27566,7 +27574,8 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 540px;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: border-color 0.18s, box-shadow 0.18s;
   box-shadow: 0 4px 18px var(--color-palette-0bf61dd701cd);
 }
@@ -27649,8 +27658,9 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
 }
 .canvas-card-bubble-preview {
   position: relative;
-  min-height: 180px;
-  max-height: 270px;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  max-height: none;
   overflow: hidden;
   background: var(--color-palette-8d6f5252e02c);
 }
@@ -27659,8 +27669,8 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   inset: unset;
   width: 100%;
   height: 100%;
-  min-height: 180px;
-  max-height: 270px;
+  min-height: 0;
+  max-height: none;
   border-radius: 0;
   padding: 16px 18px 26px;
   background: var(--color-palette-8d6f5252e02c);
@@ -32524,8 +32534,10 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-width: 1200px;
     width: 100%;
   }
+}
 .pinned-banner-click-area:is(:hover, :focus-visible) {
   background: var(--surface-hover);
+}
 .storage-collection-file-grid .collection-file-tile > .collection-file-open {
   position: absolute;
   inset: 0;
@@ -32561,4 +32573,14 @@ button.minimized-call-button--end:active:not(:disabled) {
 /* Folder views occupy the source sidebar's space. */
 .storage-page:has(.storage-collection-full-page) .storage-source-collapse {
   display: none;
+}
+
+.messenger-shell.has-active-chat .pinned-banner {
+  box-sizing: border-box;
+  height: var(--chat-floating-header-height);
+  max-height: var(--chat-floating-header-height);
+  min-height: var(--chat-floating-header-height);
+  margin-top: calc(var(--chat-floating-header-overlap) + 8px);
+  margin-inline: var(--active-chat-message-inset-x);
+  flex-shrink: 0;
 }
