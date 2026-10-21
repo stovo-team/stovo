@@ -25893,8 +25893,9 @@ button.chat-info-title-edit:active:not(:disabled) {
   max-height: 100%;
   aspect-ratio: auto;
 }
-.shared-call-stage .voice-participant-card.has-video,
+.shared-call-stage .voice-participant-card,
 .shared-call-stage .call-grid__tile { aspect-ratio: 16 / 9; }
+.shared-call-stage .voice-participant-card { aspect-ratio: 16 / 9; }
 .shared-call-stage .call-grid__tile--screen { aspect-ratio: auto; }
 
 .shared-call-stage .voice-participant-card,
@@ -32740,4 +32741,22 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 .storage-page .storage-preview-dialog:not(.is-expanded):has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"])) {
   --storage-preview-height: min(78dvh, 960px);
+}
+
+/* Fit whole voice rows, including their 12px gaps, inside the stage budget. */
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--2 {
+  width: min(100%, 1120px, calc((100dvh - 232px) * 8 / 9)) !important;
+  aspect-ratio: auto;
+}
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--4 {
+  width: min(100%, 1120px, calc((100dvh - 232px) * 16 / 9 + 12px)) !important;
+  aspect-ratio: auto;
+}
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--6 {
+  width: min(100%, 1120px, calc((100dvh - 244px) * 32 / 27 + 12px)) !important;
+  aspect-ratio: auto;
+}
+.voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--9 {
+  width: min(100%, 1120px, calc((100dvh - 244px) * 16 / 9 + 24px)) !important;
+  aspect-ratio: auto;
 }
