@@ -25857,11 +25857,11 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-stage .voice-participant-card.is-speaking,
 .shared-call-stage .call-grid__tile.is-speaking {
   border-color: var(--color-palette-8b8f7c3d4541);
-  box-shadow: 0 0 0 1px var(--color-palette-449c31647178), 0 0 20px var(--color-palette-cddf534fc780);
+  box-shadow: 0 0 0 1px var(--color-palette-449c31647178);
 }
 .shared-call-stage .voice-participant-card.is-speaking:not(.has-video) .voice-participant-avatar,
 .shared-call-stage .call-grid__tile.is-speaking:has(.call-grid__avatar-wrap) .call-grid__avatar-circle {
-  box-shadow: 0 0 0 3px var(--color-palette-449c31647178), 0 0 18px var(--color-palette-7aee2b5cc120);
+  box-shadow: 0 0 0 3px var(--color-palette-449c31647178);
 }
 
 .shared-call-controls {
@@ -31418,7 +31418,7 @@ button.checklist-add-item-btn:hover,
   padding: 0;
 }
 .guest-call-room .voice-participant-card.is-speaking .guest-call-avatar-placeholder {
-  box-shadow: 0 0 0 3px var(--color-palette-449c31647178), 0 0 18px var(--color-palette-7aee2b5cc120);
+  box-shadow: 0 0 0 3px var(--color-palette-449c31647178);
 }
 
 .guest-call-camera-tile:not(.has-video) .voice-participant-video-feed {
