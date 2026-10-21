@@ -32669,6 +32669,31 @@ button.minimized-call-button--end:active:not(:disabled) {
 .forward-dialog .popup-field {
   margin-bottom: 8px;
 }
+/* Device-menu chevrons stay undecorated in every interaction state. */
+.guest-device-menu-trigger,
+.guest-device-menu-trigger:hover,
+.guest-device-menu-trigger[aria-expanded="true"],
+.guest-device-menu-trigger:focus,
+.guest-device-menu-trigger:active {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+.guest-device-select:has(> .guest-device-menu-trigger) {
+  border-left: 0;
+}
+
+.guest-device-menu-trigger:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.guest-device-menu-trigger:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
+}
+
 .chat-info-member-row .avatar {
   height: 32px;
   width: 32px;
