@@ -49,6 +49,6 @@ export function supportsSwipeReplyGesture(): boolean {
   }
   return (
     window.matchMedia("(pointer: coarse)").matches &&
-    window.matchMedia("(max-width: 960px)").matches
+    window.matchMedia("(max-width: 1024px)").matches
   );
 }
