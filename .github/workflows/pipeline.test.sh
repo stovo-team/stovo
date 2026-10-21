@@ -164,6 +164,29 @@ grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   exit 1
 }
 awk '
+  /^  [[:alnum:]_-]+:$/ {
+    job = $0
+    sub(/^  /, "", job)
+    sub(/:$/, "", job)
+  }
+  /^    runs-on:/ {
+    runner = $0
+    sub(/^    runs-on:[[:space:]]*/, "", runner)
+    job_runner[job] = runner
+  }
+  END {
+    if (job_runner["frontend-ci"] != "ubuntu-latest") {
+      print "Trusted PR frontend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+      failed = 1
+    }
+    if (job_runner["backend-ci"] != "ubuntu-latest") {
+      print "Trusted PR backend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+      failed = 1
+    }
+    if (failed) exit 1
+  }
+' "$trusted_pr_workflow"
+awk '
   /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
   /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
   in_pipeline_contract && /^    runs-on: ubuntu-latest$/ { pipeline_contract_uses_hosted_runner = 1 }
