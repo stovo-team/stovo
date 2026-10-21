@@ -20490,12 +20490,12 @@ button.chat-info-title-edit:active:not(:disabled) {
   box-shadow: var(--float-shadow-soft);
   display: grid;
   gap: 10px;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   max-height: 64px;
   min-height: 48px;
   overflow: hidden;
   margin: 10px var(--message-gutter-x) 0;
-  padding: 8px 14px;
+  padding: 0;
   position: relative;
   transition:
     opacity var(--motion-surface-duration) var(--motion-route-ease),
@@ -20516,6 +20516,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   position: absolute;
   top: 9px;
   width: 4px;
+  pointer-events: none;
 }
 
 .pinned-banner-click-area {
@@ -20528,7 +20529,9 @@ button.chat-info-title-edit:active:not(:disabled) {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  padding: 0 0 0 10px;
+  min-height: 48px;
+  border-radius: inherit;
+  padding: 8px 14px 8px 24px;
   text-align: left;
   width: 100%;
 }
@@ -32496,6 +32499,8 @@ button.minimized-call-button--end:active:not(:disabled) {
   }
 }
 
+.pinned-banner-click-area:is(:hover, :focus-visible) {
+  background: var(--surface-hover);
 .storage-collection-file-grid .collection-file-tile > .collection-file-open {
   position: absolute;
   inset: 0;
