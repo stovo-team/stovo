@@ -2985,23 +2985,38 @@ h2 {
 }
 
 .thread-open-button {
-  align-self: flex-start;
+  align-self: stretch;
+  align-items: center;
   background: transparent;
   border: 0;
-  color: var(--color-palette-f2074b6cef37);
+  color: inherit;
+  display: flex;
   font-size: var(--font-size-small);
-  font-weight: var(--font-weight-bold);
-  justify-content: flex-start;
-  min-height: 24px;
-  padding: 0;
+  font-weight: var(--font-weight-semibold);
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 0;
+  width: 100%;
 }
-
-.thread-open-button:hover:not(:disabled) {
-  background: transparent;
-  border: 0;
-  color: var(--color-palette-f2074b6cef37);
-  text-decoration: underline;
+.thread-open-button:hover:not(:disabled) { background: transparent; color: inherit; }
+.thread-summary-avatars { align-items: center; display: inline-flex; }
+.thread-summary-avatars .thread-summary-avatar, .thread-summary-overflow {
+  --avatar-size: 22px;
+  align-items: center;
+  border: 2px solid var(--surface-card);
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 22px;
+  height: 22px;
+  justify-content: center;
+  margin-left: -4px;
+  overflow: hidden;
+  width: 22px;
 }
+.thread-summary-overflow { background: var(--surface-raised); }
+.thread-summary-action { margin-left: auto; }
+.thread-open-button > svg { flex-shrink: 0; }
 
 .avatar {
   align-items: center;
