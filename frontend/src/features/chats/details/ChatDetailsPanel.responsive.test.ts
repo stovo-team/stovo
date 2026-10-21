@@ -5,7 +5,7 @@ const styles = readFileSync("src/styles.css", "utf8");
 
 function mobileChatDetailsStyles() {
   const avatarRule = styles.lastIndexOf(".chat-info-screen .chat-info-avatar-wrap {");
-  const mediaStart = styles.lastIndexOf("@media (max-width: 960px)", avatarRule);
+  const mediaStart = styles.lastIndexOf("@media (max-width: 1024px)", avatarRule);
   if (mediaStart < 0) return "";
 
   let depth = 0;
