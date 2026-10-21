@@ -14125,7 +14125,7 @@ span.message-spoiler.is-revealed {
   }
 
   .chat-layout.details-open::before {
-    background: rgb(0 0 0 / 42%);
+    background: var(--popup-backdrop-color);
     content: "";
     inset: 0;
     pointer-events: none;
@@ -19278,10 +19278,10 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen.chat-details-panel {
-    border: 1px solid color-mix(in oklab, #ffffff 8%, #1c1c1e);
-    border-radius: var(--float-radius-panel);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
     bottom: 12px;
-    box-shadow: 0 16px 56px rgb(0 0 0 / 48%);
+    box-shadow: var(--popup-dialog-shadow);
     left: auto;
     max-width: none;
     position: fixed;
