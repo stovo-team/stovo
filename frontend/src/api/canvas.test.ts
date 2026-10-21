@@ -40,3 +40,14 @@ describe("Canvas creation API", () => {
     });
   });
 });
+
+describe("Canvas create retry identity", () => {
+  it("includes a stable canvas ID so a retried draft cannot create a duplicate", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ id: "stable-canvas" }), { status: 201, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", request);
+    try {
+      await createCanvas("token", "chat", "Draft", "initial-state", "11111111-1111-4111-8111-111111111111");
+      expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toHaveProperty("canvasId", "11111111-1111-4111-8111-111111111111");
+    } finally { vi.unstubAllGlobals(); }
+  });
+});

@@ -373,7 +373,8 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
       await Promise.resolve();
     });
 
-    expect(host?.querySelector('[role="status"]')?.textContent).toContain("Could not switch cameras");
+    const cameraError = document.body.querySelector<HTMLElement>('.call-device-error-toast[role="alert"]');
+    expect(cameraError?.textContent).toContain("Could not switch cameras");
     expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
   });
 
