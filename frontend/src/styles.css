@@ -3016,6 +3016,8 @@ h2 {
 }
 .thread-summary-overflow { background: var(--surface-raised); }
 .thread-open-button > svg { flex-shrink: 0; }
+.thread-open-button > .lucide-chevron-right { margin-left: auto; }
+.thread-summary-avatars .thread-summary-avatar { border: 0; }
 
 .avatar {
   align-items: center;
