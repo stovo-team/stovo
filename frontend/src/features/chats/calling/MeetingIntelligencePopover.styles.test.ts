@@ -14,11 +14,14 @@ describe("meeting intelligence popover design", () => {
   it("renders a filled record circle for both start actions", () => {
     expect(component.match(/<Circle size=\{17\} fill="currentColor"/g)).toHaveLength(2);
   });
-  it("slightly enlarges only the video recording control dot", () => {
-    expect(component).toContain("meeting-intel-toggle-btn--recording");
-    const recordDot = ruleFor(".meeting-intel-toggle-btn--recording > svg.lucide-circle");
-    expect(recordDot).toMatch(/width:\s*12px/);
-    expect(recordDot).toMatch(/height:\s*12px/);
+  it("uses equally sized dots and a visible circular outline for both actions", () => {
+    const actionDot = ruleFor(".meeting-intel-toggle-btn > svg.lucide-circle");
+    expect(actionDot).toMatch(/width:\s*12px/);
+    expect(actionDot).toMatch(/height:\s*12px/);
+    expect(actionDot).toMatch(/flex:\s*0 0 12px/);
+    const actionButton = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
+    expect(actionButton).toMatch(/border:\s*1px solid color-mix/);
+    expect(actionButton).toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
   it("removes the subtitle and card descriptions and tightens header-to-content spacing", () => {
     expect(component).not.toContain("meeting-intel-subtitle");
