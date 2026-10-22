@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const stylesheet = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const storageGridRules = Array.from(stylesheet.matchAll(/\.storage-page \.storage-grid\s*\{[^}]+\}/g)).map((match) => match[0]);
 const removalButtonRule = Array.from(stylesheet.matchAll(/\.storage-collection-file-grid \.collection-file-tile > button:not\(\.collection-file-open\) \{[^}]+\}/g))
   .map((match) => match[0])
   .find((rule) => rule.includes("height: 28px !important"));
@@ -38,5 +39,12 @@ describe("folder file removal control", () => {
     expect(style.height).toBe("28px");
     expect(style.width).toBe("28px");
     expect(style.minHeight).toBe("28px");
+  });
+});
+
+describe("storage file tile sizing", () => {
+  it("keeps fixed 180px file tiles in desktop and tablet layouts", () => {
+    expect(storageGridRules.length).toBeGreaterThan(0);
+    expect(storageGridRules.every((rule) => rule.includes("repeat(auto-fill, 180px)"))).toBe(true);
   });
 });
