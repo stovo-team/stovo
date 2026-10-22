@@ -13271,7 +13271,6 @@ span.message-spoiler.is-revealed {
   position: relative;
 }
 .plans-layout.plans-layout--sidebar-collapsed { grid-template-columns: 36px 12px minmax(0, 1fr); }
-.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; position: relative; }
 .plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
 .plans-sidebar-collapse { flex-basis: 28px; height: 28px; width: 28px; }
 .plans-layout--sidebar-collapsed .plans-sidebar-collapse {
@@ -13292,6 +13291,7 @@ span.message-spoiler.is-revealed {
   overflow: hidden;
   padding-top: 0;
 }
+.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; position: relative; }
 .plans-sidebar-header {
   flex-shrink: 0;
 }
