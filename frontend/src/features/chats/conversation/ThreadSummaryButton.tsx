@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { getMessages, type Chat, type Message } from "../../../api/chats";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { RealAvatar } from "../sidebar/RealAvatar";
@@ -37,14 +37,15 @@ export function ThreadSummaryButton({ message, messages, chat, count, currentUse
     }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [accessToken, chat.id, count, key, message.id, messages]);
+  const commentCountLabel = strings.comments.count(count);
   return <button type="button" className="thread-open-button" aria-label={strings.comments.count(count)} onClick={onOpen}>
-    <MessageCircle size={16} aria-hidden="true" />
-    <span className="thread-summary-count">{count}</span>
     <span className="thread-summary-avatars" aria-hidden="true">
       {users.slice(0, 2).map((user) => <RealAvatar key={user.id} accessToken={accessToken} className="avatar thread-summary-avatar"
         file={chat.members.find((member) => member.id === user.id)?.profilePhoto} label={user.name} />)}
       {users.length > 2 && <span className="thread-summary-overflow">+</span>}
     </span>
+    <span className="thread-summary-count">{count}</span>
+    <span className="thread-summary-label">{commentCountLabel.slice(String(count).length).trim()}</span>
     <ChevronRight size={16} aria-hidden="true" />
   </button>;
 }

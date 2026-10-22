@@ -4,6 +4,7 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageBubble } from "./MessageBubble";
 import type { Chat, Message } from "../../../api/chats";
+import { englishStrings, russianStrings } from "../../../config/strings";
 
 const mountedRoots: Root[] = [];
 
@@ -118,23 +119,44 @@ function renderBubble(
 }
 
 describe("MessageBubble receipt status", () => {
-  it("shows a numeric comment summary with left content and a right-aligned arrow", () => {
+  it("uses singular, plural, and Russian comment words", () => {
+    expect(englishStrings.comments.count(1)).toBe("1 comment");
+    expect(englishStrings.comments.count(2)).toBe("2 comments");
+    expect(russianStrings.comments.count(1)).toBe("1 комментарий");
+    expect(russianStrings.comments.count(2)).toBe("2 комментария");
+    expect(russianStrings.comments.count(5)).toBe("5 комментариев");
+    expect(russianStrings.comments.count(11)).toBe("11 комментариев");
+    expect(russianStrings.comments.count(21)).toBe("21 комментарий");
+  });
+
+  it("shows commenter avatars at the left, a text comment count, and a right-aligned arrow", () => {
     const message = createMockMessage();
     const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
     const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), [message, ...replies], replies.length);
     const action = host.querySelector(".thread-open-button")!;
     expect(action.getAttribute("aria-label")).toBe("3 comments");
-    expect(action.querySelector(".lucide-message-circle")).not.toBeNull();
+    expect(action.querySelector(".lucide-message-circle")).toBeNull();
     expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(action.querySelector(".thread-summary-label")?.textContent).toBe("comments");
     expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
     expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
     expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+    expect(Array.from(action.children).map((child) => child.classList[0])).toEqual([
+      "thread-summary-avatars",
+      "thread-summary-count",
+      "thread-summary-label",
+      "lucide"
+    ]);
 
     const css = readFileSync("src/styles.css", "utf8");
     const arrow = css.match(/\.thread-open-button\s*>\s*\.lucide-chevron-right\s*\{([^}]*)\}/)?.[1] ?? "";
     const avatar = css.match(/\.thread-summary-avatars\s+\.thread-summary-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    const button = css.match(/\.thread-open-button\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(arrow).toMatch(/margin-left:\s*auto/);
     expect(avatar).toMatch(/border:\s*0/);
+    expect(button).toMatch(/font-size:\s*inherit/);
+    expect(button).toMatch(/font-family:\s*inherit/);
+    expect(button).toMatch(/font-weight:\s*inherit/);
   });
 
   it("renders reaction users through the standard round avatar component", () => {
@@ -301,6 +323,7 @@ describe("MessageBubble receipt status", () => {
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("1 comment");
     expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("1");
+    expect(threadButton?.querySelector(".thread-summary-label")?.textContent).toBe("comment");
 
     act(() => {
       threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -308,7 +331,7 @@ describe("MessageBubble receipt status", () => {
     expect(onOpenThread).toHaveBeenCalledWith(message);
   });
 
-  it("keeps the accessible plural label while displaying only the count", () => {
+  it("renders the visible plural comment label", () => {
     const message = createMockMessage();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -353,6 +376,7 @@ describe("MessageBubble receipt status", () => {
     expect(threadButton).not.toBeNull();
     expect(threadButton?.getAttribute("aria-label")).toBe("3 comments");
     expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(threadButton?.querySelector(".thread-summary-label")?.textContent).toBe("comments");
   });
 
   it("does not render a comments button when threadReplyCount is 0", () => {
