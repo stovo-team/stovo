@@ -13900,7 +13900,7 @@ span.message-spoiler.is-revealed {
   padding: 6px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
   .app-frame {
     display: block;
   }
@@ -19217,6 +19217,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-member-invite {
   align-items: center;
+  font-size: var(--font-size-small);
   background: transparent;
   border: 0;
   border-top: 1px solid color-mix(in oklab, var(--color-palette-f2074b6cef37) 6%, transparent);
@@ -19269,7 +19270,13 @@ button.chat-info-title-edit:active:not(:disabled) {
   text-transform: capitalize;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 769px) and (max-width: 1200px) {
+  .chat-layout.details-open {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
   .messenger-shell.messenger-shell--new-chat > .app-nav,
   .messenger-shell.messenger-shell--chat-info > .app-nav {
     display: none !important;
@@ -19278,7 +19285,9 @@ button.chat-info-title-edit:active:not(:disabled) {
   .messenger-shell.messenger-shell--new-chat .compose-fab {
     display: none !important;
   }
+}
 
+@media (max-width: 1200px) {
   .chat-info-screen.chat-details-panel {
     border: 1px solid var(--border-default);
     border-radius: var(--radius-panel);
