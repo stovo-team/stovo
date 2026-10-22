@@ -61,6 +61,12 @@ awk '
     sub(/^    runs-on:[[:space:]]*/, "", runner)
     job_runner[job] = runner
   }
+  job == "changes" && /^      - name: Verify PowerShell Core version on Windows$/ { pwsh_version_step = 1 }
+  job == "changes" && pwsh_version_step && /^        if: runner\.os == '\''Windows'\''$/ { pwsh_windows_only = 1 }
+  job == "changes" && pwsh_version_step && /^        shell: pwsh$/ { pwsh_version_shell = 1 }
+  job == "changes" && pwsh_version_step && /PSVersionTable\.PSVersion\.Major -ne 7/ { pwsh_v7_check = 1 }
+  job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
+  job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
   job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
   (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
@@ -88,6 +94,12 @@ awk '
     }
     if (job_runner["backend-ci"] != "[self-hosted, tests]") {
       fail("Backend CI must stay on the backend CI runner labeled tests.")
+    }
+    if (!pwsh_version_step || !pwsh_windows_only || !pwsh_version_shell || !pwsh_v7_check) {
+      fail("The changes job must activate PowerShell Core 7 on Windows runners.")
+    }
+    if (!pipeline_contract_step || !pipeline_contract_shell) {
+      fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
     }
     if (job_runner["deploy-android"] != "[self-hosted, e2e]") {
       fail("Android release must stay on the frontend runner labeled e2e.")
