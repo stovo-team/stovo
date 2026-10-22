@@ -34,6 +34,14 @@ describe("Storage and Plans collapsible layout styles", () => {
     expect(styles).toContain(".plans-layout--sidebar-collapsed .sidebar-collapse-button { left: 0; right: auto; }");
   });
 
+  it("keeps the collapsed Storage page full width and its toggle clear of section headings", () => {
+    expect(styles).toContain(".storage-page .storage-layout.storage-layout--source-collapsed { max-width: none;");
+    expect(styles).toMatch(/\.storage-page \.storage-layout\.storage-layout--source-collapsed \.sidebar-collapse-button\s*\{[^}]*top:\s*18px;[^}]*transform:\s*none;/);
+    expect(styles).toMatch(/@media \(max-width:\s*1024px\)[\s\S]*\.storage-page \.storage-layout\.storage-layout--source-collapsed \.sidebar-collapse-button\s*\{[^}]*top:\s*0;[^}]*transform:\s*none;/);
+    expect(rule(".storage-page .sidebar-collapse-button")).toContain("opacity: 1;");
+    expect(styles).toContain(".storage-page .sidebar-collapse-button:hover { opacity: 1; }");
+  });
+
   it("lets the Storage search fill its toolbar and carries the page to the viewport bottom", () => {
     expect(rule(".storage-page .storage-search-tools")).toContain("max-width: none;");
     expect(rule(".storage-page .storage-search")).toContain("max-width: none;");
