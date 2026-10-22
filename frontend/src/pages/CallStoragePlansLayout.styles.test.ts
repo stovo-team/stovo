@@ -56,7 +56,7 @@ describe("Storage collapse and Plans resize layout styles", () => {
   });
 
   it("keeps Storage cards fixed-size and the page full-width", () => {
-    expect(styles).toMatch(/\.storage-page \.storage-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(164px,\s*268px\)\)/);
+    expect(styles).toMatch(/\.storage-page \.storage-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*180px\)/);
     expect(styles).toMatch(/\.storage-page \.storage-layout:not\(\.storage-layout--source-collapsed\)\s*\{[^}]*max-width:\s*none/);
   });
 
