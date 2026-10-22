@@ -6,6 +6,7 @@ interface SidebarCollapseButtonProps {
   collapseLabel: string;
   onToggle: () => void;
   className?: string;
+  hidden?: boolean;
 }
 
 export function SidebarCollapseButton({
@@ -14,11 +15,13 @@ export function SidebarCollapseButton({
   collapseLabel,
   onToggle,
   className = "",
+  hidden = false,
 }: SidebarCollapseButtonProps) {
   return (
     <button
       type="button"
       className={`sidebar-collapse-button${className ? ` ${className}` : ""}`}
+      hidden={hidden}
       aria-label={expanded ? collapseLabel : expandLabel}
       aria-expanded={expanded}
       onClick={onToggle}
