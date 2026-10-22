@@ -46,12 +46,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Detect available shell
-        shell: pwsh
+        shell: powershell
         run: |
-          if ($PSVersionTable.PSVersion.Major -ne 7) {
-            throw "PowerShell Core 7 is required; found PowerShell $($PSVersionTable.PSVersion)."
-          fi
-
           $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
           $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
           $gitBash = Join-Path $gitRoot 'bin\bash.exe'
@@ -60,7 +56,7 @@ jobs:
           }
 
           $gitBashDirectory = Split-Path $gitBash -Parent
-          Write-Host "PowerShell Core 7 is available. Using Git for Windows Bash at $gitBash."
+          Write-Host "Using Git for Windows Bash at $gitBash."
           Add-Content -Path $env:GITHUB_PATH -Value $gitBashDirectory
       - name: Verify pipeline workflow contract
         shell: bash
