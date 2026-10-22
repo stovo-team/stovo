@@ -37,9 +37,11 @@ jobs:
     name: Detect Changes
     runs-on: [self-hosted, Windows]
     env:
-      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_COUNT: 2
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: http.version
+      GIT_CONFIG_VALUE_1: HTTP/1.1
     permissions:
       contents: read
     outputs:
@@ -49,6 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          filter: blob:none
       - name: Detect available shell
         shell: powershell
         run: |
