@@ -22,6 +22,9 @@ describe("meeting intelligence popover design", () => {
     const actionButton = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
     expect(actionButton).toMatch(/width:\s*24px/);
     expect(actionButton).toMatch(/height:\s*24px/);
+    expect(actionButton).toMatch(/display:\s*inline-flex/);
+    expect(actionButton).toMatch(/align-items:\s*center/);
+    expect(actionButton).toMatch(/justify-content:\s*center/);
     const sharedActionRing = styles.match(/(?:^|\n)\.meeting-intel-toggle-btn::before\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(sharedActionRing).toMatch(/inset:\s*2px/);
     expect(sharedActionRing).toMatch(/border:\s*1px solid color-mix/);
