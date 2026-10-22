@@ -14,7 +14,8 @@
     "check:i18n": "node ../scripts/check-ui-localization.cjs --check",
     "lint": "node ../scripts/check-solid.cjs frontend",
     "lint:all": "node ../scripts/check-solid.cjs all",
-    "baseline:update": "node ../scripts/check-solid.cjs --update"
+    "baseline:update": "node ../scripts/check-solid.cjs --update",
+    "check:css-size": "node ../scripts/check-frontend-css-size.cjs"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.2.1",
