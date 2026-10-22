@@ -45,7 +45,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - name: Verify PowerShell Core version on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = $PSVersionTable.PSVersion
+          Write-Host "PowerShell Core version: $version"
+          if ($PSVersionTable.PSVersion.Major -ne 7) {
+            throw "The changes job requires PowerShell Core 7; found $version."
+          }
       - name: Verify pipeline workflow contract
+        shell: bash
         run: bash .github/workflows/pipeline.test.sh
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
