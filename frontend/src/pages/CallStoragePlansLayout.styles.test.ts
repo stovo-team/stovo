@@ -10,7 +10,7 @@ function rule(selector: string) {
   return matches.map((match) => match[1]).join("\n");
 }
 
-describe("Storage and Plans collapsible layout styles", () => {
+describe("Storage collapse and Plans resize layout styles", () => {
   it("allows Storage's source picker to collapse while keeping the content column flexible", () => {
     expect(styles.includes(".storage-page .storage-layout.storage-layout--source-collapsed")).toBe(true);
     expect(styles).toMatch(/\.storage-page \.storage-layout\.storage-layout--source-collapsed\s*\{[^}]*grid-template-columns:\s*36px\s+minmax\(0,\s*1fr\);/);
@@ -19,19 +19,24 @@ describe("Storage and Plans collapsible layout styles", () => {
     expect(rule(".storage-source-sidebar")).toMatch(/min-width:\s*0/);
   });
 
-  it("narrows the Plans event list and reduces the date header height", () => {
-    expect(styles.includes(".plans-layout { grid-template-columns: 300px minmax(0, 1fr); }")).toBe(true);
-    expect(styles).toContain(".plans-layout--sidebar-collapsed { column-gap: 16px; grid-template-columns: 36px minmax(0, 1fr); }");
+  it("sets a resizable Plans event list and a 12px divider", () => {
+    expect(styles).toMatch(/\.plans-layout\s*\{[^}]*grid-template-columns:\s*minmax\(220px, var\(--plans-sidebar-width, 300px\)\) 12px minmax\(0, 1fr\)/);
     expect(styles.includes(".plans-layout .plans-header { min-height: 48px; }")).toBe(true);
   });
 
-  it("shares one vertically centered divider control across both pages", () => {
+  it("keeps the Plans resize handle invisible and styles its collapsed expand button brightly", () => {
+    const plansSource = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
     const button = rule(".sidebar-collapse-button");
     expect(button).toContain("left: 100%;");
     expect(button).toContain("top: 50%;");
     expect(button).toContain("transform: translateY(-50%);");
     expect(styles).toContain(".storage-page .storage-layout.storage-layout--source-collapsed .sidebar-collapse-button { left: 0; right: auto; }");
-    expect(styles).toContain(".plans-layout--sidebar-collapsed .sidebar-collapse-button { left: 0; right: auto; }");
+    expect(styles).toMatch(/\.plans-sidebar-resizer\s*\{[^}]*cursor:\s*col-resize;[^}]*touch-action:\s*none/);
+    expect(plansSource).toContain('role="separator"');
+    expect(plansSource).toContain("SidebarCollapseButton");
+    expect(styles).toMatch(/\.plans-layout\.plans-layout--sidebar-collapsed\s*\{[^}]*grid-template-columns:\s*36px 12px minmax\(0,\s*1fr\)/);
+    expect(styles).toMatch(/\.plans-layout--sidebar-collapsed \.plans-sidebar-collapse\s*\{[^}]*background:\s*var\(--accent-primary\);[^}]*opacity:\s*1;/);
+    expect(styles).toContain(".plans-layout--sidebar-collapsed > .plans-sidebar-resizer { cursor: default; pointer-events: none; }");
   });
 
   it("keeps the collapsed Storage page full width and its toggle clear of section headings", () => {

@@ -13263,9 +13263,9 @@ span.message-spoiler.is-revealed {
 }
 .plans-layout {
   display: grid;
-  column-gap: 36px;
+  column-gap: 0;
   row-gap: 16px;
-  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-columns: minmax(220px, var(--plans-sidebar-width, 300px)) 12px minmax(0, 1fr);
   height: calc(100dvh - 2 * var(--float-outer-gap));
   max-height: calc(100dvh - 2 * var(--float-outer-gap));
   min-height: 0;
@@ -13273,6 +13273,19 @@ span.message-spoiler.is-revealed {
   padding: 8px 12px;
   position: relative;
 }
+.plans-layout.plans-layout--sidebar-collapsed { grid-template-columns: 36px 12px minmax(0, 1fr); }
+.plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
+.plans-sidebar-collapse { flex-basis: 28px; height: 28px; width: 28px; }
+.plans-layout--sidebar-collapsed .plans-sidebar-collapse {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37));
+  left: 4px;
+  opacity: 1;
+  right: auto;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 24%, transparent);
+}
+.plans-layout--sidebar-collapsed > .plans-sidebar-resizer { cursor: default; pointer-events: none; }
 .plans-sidebar {
   display: flex;
   flex-direction: column;
@@ -13281,6 +13294,7 @@ span.message-spoiler.is-revealed {
   overflow: hidden;
   padding-top: 0;
 }
+.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; position: relative; }
 .plans-sidebar-header {
   flex-shrink: 0;
 }
@@ -32229,7 +32243,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   color: var(--text-primary, var(--color-palette-f2074b6cef37)) !important;
 }
 
-/* Storage and Plans share one divider control for their collapsible sidebars. */
+/* Storage uses a button to collapse its source list. */
 .sidebar-collapse-button {
   align-items: center;
   background: var(--surface-card);
@@ -32254,7 +32268,14 @@ button.minimized-call-button--end:active:not(:disabled) {
 .sidebar-collapse-button:hover { opacity: .58; }
 .sidebar-collapse-button:focus-visible { opacity: 1; outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .storage-source-sidebar { overflow: visible; position: relative; }
-.plans-sidebar { overflow: visible; position: relative; }
+.plans-sidebar-resizer {
+  align-self: stretch;
+  cursor: col-resize;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+.plans-sidebar-resizer:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .storage-page .storage-layout.storage-layout--source-collapsed { column-gap: 16px; grid-template-columns: 36px minmax(0, 1fr); }
 .storage-page:has(.storage-tile.selected) .storage-layout.storage-layout--source-collapsed { column-gap: 16px; grid-template-columns: 36px minmax(0, 1fr); }
 .storage-page .storage-layout.storage-layout--source-collapsed { max-width: none; }
@@ -32267,22 +32288,7 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-page .sidebar-collapse-button { color: var(--text-primary); opacity: 1; }
 .storage-page .sidebar-collapse-button:hover { opacity: 1; }
 .storage-page .storage-layout.storage-layout--source-collapsed .sidebar-collapse-button { top: 18px; transform: none; }
-.plans-layout { grid-template-columns: 300px minmax(0, 1fr); }
-.plans-layout--sidebar-collapsed { column-gap: 16px; grid-template-columns: 36px minmax(0, 1fr); }
-.plans-layout--sidebar-collapsed .plans-sidebar > :not(.plans-sidebar-collapse) { display: none; }
-.plans-layout--sidebar-collapsed .plans-sidebar { align-items: center; overflow: visible; }
-.plans-layout--sidebar-collapsed .sidebar-collapse-button { left: 0; right: auto; }
 .plans-layout .plans-header { min-height: 48px; }
-.plans-header-tabs { display: none; }
-.plans-layout--sidebar-collapsed .plans-header-tabs {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
-  margin: 8px 0 4px;
-  overflow-x: auto;
-  width: 100%;
-}
-.plans-header-tabs button { background: color-mix(in srgb, var(--surface-card) 90%, transparent); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-weight: var(--font-weight-bold); padding: 7px 12px; white-space: nowrap; }
 .plans-mobile-tabs button { flex: 0 0 auto; white-space: nowrap; }
 .plans-mobile-tabs .plans-view-tab-label { display: block; white-space: nowrap; width: max-content; }
 .plans-header-tabs button.active { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
@@ -32314,7 +32320,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   .storage-page .storage-layout.storage-layout--source-collapsed .storage-source-sidebar { display: block; height: 36px; padding: 0; }
   .storage-page .storage-layout.storage-layout--source-collapsed .sidebar-collapse-button { top: 0; transform: none; }
   .plans-layout { grid-template-columns: minmax(0, 1fr); }
-  .plans-layout--sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .plans-sidebar-resizer { display: none; }
 }
 
 .popup-backdrop.wrapped-overlay { background: var(--popup-backdrop-color); backdrop-filter: none; display: grid; place-items: center; z-index: 1000; }
