@@ -1,0 +1,389 @@
+
+.copy-sheet-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.copy-sheet-actions button {
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  min-height: 40px;
+  padding: 0 20px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.copy-sheet-actions .copy-sheet-copy-btn {
+  background: var(--stovo-primary);
+  border: 0;
+  color: var(--color-palette-f2074b6cef37);
+}
+
+.copy-sheet-actions .copy-sheet-copy-btn:hover {
+  filter: brightness(1.08);
+}
+
+.copy-sheet-actions .copy-sheet-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.copy-sheet-actions .copy-sheet-cancel-btn:hover {
+  background: var(--surface-hover, var(--color-palette-c34f5a2a4d80));
+}
+
+/* Message edit/delete */
+
+.message-edited-label {
+  display: inline;
+  font-size: var(--font-size-caption);
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+.delete-message-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 16px;
+}
+
+.delete-message-options label {
+  align-items: center;
+  border-radius: var(--radius-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  gap: 12px;
+  padding: 8px 12px;
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.delete-message-options label:hover {
+  background: var(--surface-hover, var(--color-palette-3748776e48d5));
+}
+
+.delete-message-options input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface-raised, var(--color-palette-0c501f182ba9));
+  border: 1.5px solid var(--border-default, var(--color-palette-66341b70b395));
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  flex: 0 0 20px;
+  height: 20px;
+  margin: 0;
+  position: relative;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 20px;
+}
+
+.delete-message-options input[type="checkbox"]:hover {
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  background: var(--surface-hover, var(--color-palette-c34f5a2a4d80));
+}
+
+.delete-message-options input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline-offset: 2px;
+}
+
+.delete-message-options input[type="checkbox"]:checked {
+  background: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+}
+
+.delete-message-options input[type="checkbox"]:checked::after {
+  border: solid var(--color-palette-f2074b6cef37);
+  border-width: 0 2px 2px 0;
+  content: "";
+  height: 10px;
+  left: 6px;
+  position: absolute;
+  top: 2px;
+  transform: rotate(45deg);
+  width: 5px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.button-danger {
+  align-items: center;
+  background: var(--danger, var(--color-palette-c36d4cdccdc9));
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 2px 8px var(--color-palette-e353e99353d3);
+  color: var(--color-palette-f2074b6cef37);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  justify-content: center;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  padding: 10px 22px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--color-palette-3871da342003);
+  box-shadow: 0 4px 12px var(--color-palette-b381cb72ac90);
+  transform: translateY(-1px);
+}
+
+.button-danger:active:not(:disabled) {
+  box-shadow: 0 1px 4px var(--color-palette-5f744274a428);
+  transform: translateY(0);
+}
+
+.button-danger:focus-visible {
+  outline: 2px solid var(--danger, var(--color-palette-c36d4cdccdc9));
+  outline-offset: 2px;
+}
+
+.button-danger:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.button-secondary {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-default, var(--color-palette-5089217ef21a));
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  justify-content: center;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  padding: 10px 22px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: var(--surface-hover, var(--color-palette-c34f5a2a4d80));
+  border-color: var(--border-hover, var(--color-palette-aacf6e2b68c8));
+  transform: translateY(-1px);
+}
+
+.button-secondary:active:not(:disabled) {
+  background: var(--surface-active, var(--color-palette-3748776e48d5));
+  transform: translateY(0);
+}
+
+.button-secondary:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline-offset: 2px;
+}
+
+.button-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+/* Pinned message banner */
+
+.pinned-banner {
+  align-items: center;
+  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--float-shadow-soft);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  max-height: 64px;
+  min-height: 48px;
+  overflow: hidden;
+  margin: 10px var(--message-gutter-x) 0;
+  padding: 0;
+  position: relative;
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
+  z-index: 4;
+}
+
+.pinned-banner::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-primary) 24%, transparent),
+    transparent
+  );
+  border-radius: var(--radius-control);
+  content: "";
+  height: calc(100% - 18px);
+  left: 8px;
+  position: absolute;
+  top: 9px;
+  width: 4px;
+  pointer-events: none;
+}
+
+.pinned-banner-click-area {
+  align-items: flex-start;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: inherit;
+  padding: 2px 14px 2px 24px;
+  text-align: left;
+  width: 100%;
+}
+
+.pinned-banner-eyebrow {
+  color: color-mix(in oklab, var(--text-secondary) 82%, var(--color-palette-f2074b6cef37));
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.pinned-banner-preview {
+  color: var(--text-primary);
+  display: block;
+  font-size: calc(var(--font-size-body) * var(--message-scale));
+  font-weight: var(--font-weight-regular);
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+@keyframes message-pin-flash {
+  0% {
+    background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 16%, transparent);
+  }
+
+  55% {
+    background: color-mix(in oklab, var(--accent-soft) 52%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 12%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes message-context-flash {
+  0% {
+    background: color-mix(in oklab, var(--surface-card) 48%, var(--accent-soft));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+  }
+
+  55% {
+    background: color-mix(in oklab, var(--surface-card) 72%, var(--accent-soft));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 12%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.message-pin-flash {
+  animation: message-pin-flash 680ms var(--motion-route-ease) forwards;
+}
+
+.message-context-flash {
+  animation: message-context-flash 680ms var(--motion-route-ease) forwards;
+}
+
+/* Compact Telegram-style audio row — no floating now-playing chrome. */
+.message-audio-attachment,
+.audio-player {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--surface-card) 88%, var(--accent-primary) 12%),
+      color-mix(in oklab, var(--surface-card) 96%, transparent)
+    );
+  border: 1px solid color-mix(in oklab, var(--border-default) 78%, var(--accent-primary) 22%);
+  border-radius: var(--radius-surface);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  position: relative;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    box-shadow 180ms ease-out,
+    color 150ms ease-out;
+  width: 100%;
+}
+
+/* Outgoing bubble: blend into purple — no nested dark card. */
+.message-bubble.mine .audio-player {
+  background: var(--color-palette-8f59e80b6a29);
+  border: 0;
+  border-radius: var(--radius-surface);
+  box-shadow: none;
+  color: var(--color-palette-f2074b6cef37);
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.message-bubble.mine .audio-player.is-session-active,
+.message-bubble.mine .audio-player[data-session-active="true"],
+.message-bubble.mine .audio-player.is-playing {
+  border: 0;
+  box-shadow: none;
+}
+
+.message-bubble.mine .audio-player-play-pause {
+  background: var(--color-palette-f2074b6cef37);
+  color: var(--accent-primary);
+}
+
+.group-call-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-circle);
+  background-color: var(--color-palette-8b8f7c3d4541);
+  box-shadow: 0 0 0 0 var(--color-palette-deb9630dd5a3);
+  animation: group-call-pulse-ring 1.8s infinite;
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* Browser header is edge-to-edge at every viewport width; native owns its mobile inset. */
+:root[data-platform="web"] .chat-sidebar-header {
+  padding: 0 !important;
+}
+
+/* Desktop conversation chrome: keep the sidebar header fixed over its own list. */
