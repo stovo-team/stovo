@@ -1,6 +1,6 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyFile } from "../api/files";
@@ -408,7 +408,7 @@ describe("VideoPlayer", () => {
   });
 
   it("keeps the expanded viewer centered with controls visible when the in-app PiP surface is active", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     const relevantRules = [
       styles.match(/\.video-player\.is-expanded\s*\{[^}]*\}/)?.[0],
       styles.match(/\.messenger-shell--video-pip \.video-player\.is-session-active:not\(\.is-expanded\)\s*\{[^}]*\}/)?.[0],
@@ -435,7 +435,7 @@ describe("VideoPlayer", () => {
   });
 
   it("applies compact controls inside a narrow message video", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     const compactMediaQuery = styles.slice(styles.lastIndexOf("@media (max-width: 420px) {"));
     const innerRules = compactMediaQuery.slice(compactMediaQuery.indexOf("{") + 1, compactMediaQuery.lastIndexOf("}"));
     expect(innerRules).toContain(".message-video-attachment");
@@ -466,7 +466,7 @@ describe("VideoPlayer", () => {
   });
 
   it("gives document previews video-width and rounds every message video corner", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     const documentBubble = styles.match(/\.message-bubble:has\(\.document-preview-card\)\s*\{[^}]*\}/)?.[0];
     const messageDocumentCard = styles.match(/\.message-bubble:has\(\.document-preview-card\) \.document-preview-card\s*\{[^}]*\}/)?.[0];
     const videoCornerStart = styles.indexOf(".message-bubble.mine.has-photo-attachments .video-player,");

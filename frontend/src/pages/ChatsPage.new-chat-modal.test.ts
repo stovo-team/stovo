@@ -1,9 +1,10 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const chatOverlays = readFileSync("src/features/chats/ChatOverlays.tsx", "utf8");
 const newChatDialog = readFileSync("src/features/chats/sidebar/NewChatDialog.tsx", "utf8");
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 
 describe("new message dialog on web", () => {
   it("places the new-chat flow inside a dismissible desktop modal backdrop", () => {

@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../../../test/cssSource";
 import { expect, it } from "vitest";
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 const rule = (selector: string) => { const start=styles.lastIndexOf(`${selector} {`); return start < 0 ? "" : styles.slice(start,styles.indexOf("}",start)); };
 it("keeps regular group-call header buttons above participant cards", () => {
   const header=rule('.call-popup-group-call:not(.call-popup-fullscreen) > .call-popup-header');

@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { expect, it } from "vitest";
 
 it("gives PDFs and Word documents a taller preview with controls over the document", () => {
-  const styles = readFileSync("src/styles.css", "utf8");
+  const styles = readCssSource("src/styles.css");
   const selector = '.storage-page .storage-preview-media:has(.document-preview-card--inline:is([data-preview-kind="pdf"], [data-preview-kind="docx"]))';
   const start = styles.indexOf(`${selector} {`);
   expect(start).toBeGreaterThan(-1);

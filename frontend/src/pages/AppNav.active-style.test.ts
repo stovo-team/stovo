@@ -1,8 +1,9 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const appNav = readFileSync(resolve(process.cwd(), "src/pages/AppNav.tsx"), "utf8");
 const desktopNavigationStyles = styles.slice(
   styles.indexOf("/* Desktop conversation chrome"),

@@ -1,3 +1,4 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -68,7 +69,7 @@ describe("shared call control button", () => {
   });
 
   it("keeps disabled microphone and speaker controls neutral while the speaker icon reflects its state", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const micMuted = renderControl({ action: "microphone", label: "Unmute", state: "muted", onClick: vi.fn() });
     const speakerOn = renderControl({ action: "audio-output", label: "Mute speaker", state: "active", onClick: vi.fn(), toggle: true });
     const speakerOff = renderControl({ action: "audio-output", label: "Unmute speaker", state: "muted", onClick: vi.fn(), toggle: true });
@@ -120,7 +121,7 @@ describe("shared call control button", () => {
   });
 
   it("keeps end-call controls visually static while hovered or pressed", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const endCallRules = css.match(/(?:\.call-ctrl-btn\.end-btn|\.mobile-active-ctrl-btn\.end|\.voice-dock-btn--disconnect|\.minimized-call-button--end)(?::hover|:active)[^{]*\{[^}]*\}/g)?.join("\n") ?? "";
 
     expect(endCallRules).toContain(":hover");
@@ -131,7 +132,7 @@ describe("shared call control button", () => {
   });
 
   it("keeps end-call red while other controls use a neutral surface", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
     const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
     expect(endRules).toMatch(/background(?:-color)?:\s*var\(--color-palette-3871da342003\)/i);
@@ -140,13 +141,13 @@ describe("shared call control button", () => {
   });
 
   it("outlines the grouped microphone, speaker, and camera controls", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const rules = Array.from(css.matchAll(/\.guest-call-controls \.guest-device-control\s*\{([^}]*)\}/g), (match) => match[1]);
     expect(rules.some((rule) => /border:\s*1px solid var\(--border-default/.test(rule))).toBe(true);
   });
 
   it("removes the mouse activation halo while retaining a visible keyboard focus ring", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(css.includes(".shared-call-controls .call-ctrl-btn:focus-visible")).toBe(true);
     expect(css.includes(".shared-call-controls .call-ctrl-btn:focus:not(:focus-visible)")).toBe(true);
     expect(css).toMatch(/\.shared-call-controls \.call-ctrl-btn:focus-visible,?[^}]*\{[^}]*outline:\s*2px solid var\(--focus-ring\)/s);

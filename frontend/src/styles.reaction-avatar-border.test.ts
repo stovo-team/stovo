@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { expect, it } from "vitest";
 
 it("renders reaction profile pictures without a border", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
   expect(avatar).toMatch(/border:\s*0/);
   expect(avatar).toMatch(/border-radius:\s*var\(--radius-circle\)/);

@@ -1,10 +1,10 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 const mocks = vi.hoisted(() => ({
   authRequest: vi.fn(),

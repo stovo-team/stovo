@@ -1,5 +1,5 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SharedCallControlPanel } from "./SharedCallControlPanel";
@@ -64,14 +64,14 @@ describe("SharedCallControlPanel", () => {
   });
 
   it("keeps hidden controls from blocking clicks and disables motion when requested", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     expect(styles).toMatch(/\.shared-call-control-panel\[data-auto-hide="true"\]\[data-visible="false"\]\s*\{[^}]*pointer-events:\s*none/);
     expect(styles).toMatch(/\.shared-call-control-panel\[data-auto-hide="true"\]:focus-within\s*\{[^}]*pointer-events:\s*auto/);
     expect(styles).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.shared-call-control-panel\s*\{\s*transition:\s*none/);
   });
 
   it("keeps the floating control box padded, rounded, and translucent over the shared stage", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*var\(--color-palette-a82b3cba7aa1\);[^}]*border-radius:\s*var\(--radius-panel\);[^}]*padding:\s*8px 12px/);
     expect(styles).toMatch(/\.call-popup\.call-popup-fullscreen \.shared-call-control-panel > \.call-popup-ctrl-row\s*\{[^}]*background:\s*transparent !important;[^}]*padding:\s*0 !important/);
   });

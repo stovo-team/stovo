@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,7 +7,7 @@ const messageBubble = readFileSync(
   resolve(process.cwd(), "src/features/chats/conversation/MessageBubble.tsx"),
   "utf8"
 );
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("message swipe reply affordance", () => {
   it("renders the reply arrow with CSS rather than an SVG icon", () => {

@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,7 +9,7 @@ const chatSidebar = readFileSync(
 );
 const chatOverlays = readFileSync(resolve(process.cwd(), "src/features/chats/ChatOverlays.tsx"), "utf8");
 const inviteModal = readFileSync(resolve(process.cwd(), "src/components/InviteModal.tsx"), "utf8");
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("chats page family invitation", () => {
   it("shows an invite button in the chats list header for admins", () => {

@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 function rule(selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

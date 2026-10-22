@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 
 describe("Android button interactions", () => {
   it("does not show browser tap highlights or apply desktop hover feedback", () => {

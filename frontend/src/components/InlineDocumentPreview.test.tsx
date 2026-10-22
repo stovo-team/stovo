@@ -1,6 +1,6 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as filesApi from "../api/files";
@@ -13,7 +13,7 @@ import type { TablePreview } from "./DocumentAttachmentPreview";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const roots: Root[] = [];
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 
 function makeFile(id: string, name = `${id}.pdf`, mimeType = "application/pdf"): FamilyFile {
   return {

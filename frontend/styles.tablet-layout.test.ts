@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./src/test/cssSource";
 import { describe, expect, it, vi } from "vitest";
 import { isMobileCallViewport } from "./src/features/chats/shared/callLifecycle";
 
@@ -11,7 +11,7 @@ describe("tablet app layout", () => {
   });
 
   it("starts desktop layout after the tablet boundary with no overlapping range", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     expect(styles.includes("@media (max-width: 1024px)")).toBe(true);
     expect(styles.includes("@media (min-width: 1025px)")).toBe(true);
     expect(/(?:max-width:\s*960px|min-width:\s*961px)/.test(styles)).toBe(false);

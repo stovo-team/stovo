@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { expect, it } from "vitest";
 
 it("lets the pinned-message action cover the full banner for hover and click", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const banner = css.match(/^\.pinned-banner\s*\{([^}]*)\}/m)?.[1] ?? "";
   const action = css.match(/\.pinned-banner-click-area\s*\{([^}]*)\}/)?.[1] ?? "";
   expect(banner).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
@@ -12,7 +12,7 @@ it("lets the pinned-message action cover the full banner for hover and click", (
 });
 
 it("matches the pinned preview font and active chat header dimensions", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const preview = css.match(/\.pinned-banner-preview\s*\{([^}]*)\}/)?.[1] ?? "";
   const bannerRules = [...css.matchAll(/\.messenger-shell\.has-active-chat \.pinned-banner\s*\{([^}]*)\}/g)];
   const banner = bannerRules.at(-1)?.[1] ?? "";

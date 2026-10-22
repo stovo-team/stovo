@@ -1,3 +1,4 @@
+import { readCssSource } from "./test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -39,7 +40,7 @@ describe("media and storage popup shared composition", () => {
 
   it("keeps the attachment picker mobile sheet and fullscreen state", () => {
     const picker = source("src/components/AttachmentPickerSheet.tsx");
-    const styles = source("src/styles.css");
+    const styles = readCssSource("src/styles.css");
 
     expect(picker).toContain("attachment-picker-sheet tg-style");
     expect(picker).toContain("is-fullscreen");
@@ -50,7 +51,7 @@ describe("media and storage popup shared composition", () => {
   it("keeps the message composer and image editor fullscreen geometry", () => {
     const composer = source("src/components/MessageEnlargeModal.tsx");
     const imageEditor = source("src/components/ImageEditorModal.tsx");
-    const styles = source("src/styles.css");
+    const styles = readCssSource("src/styles.css");
 
     expect(composer).toContain("message-enlarge-modal--fullscreen");
     expect(imageEditor).toContain("image-editor-modal");

@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { describe, expect, it } from "vitest";
 import { getPlanTitle, normalizePlanDateRange } from "./PlansPage";
 
@@ -83,7 +84,7 @@ describe("PlansPage week range logic", () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(source).toContain('className="plans-timeline"');
     expect(source).toContain('className="plans-timeline-slot"');
@@ -101,7 +102,7 @@ describe("PlansPage week range logic", () => {
   it("styles the plan description textarea like the dialog fields", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(styles).toContain(".plans-dialog textarea {");
     expect(styles).toContain(".plans-dialog textarea:focus-visible {");
@@ -111,7 +112,7 @@ describe("PlansPage week range logic", () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(source).toContain('className={`plans-calendar plans-calendar--${days.length}`}');
     expect(source).toContain("renderTimedCalendar(view === \"threeDays\" ? threeDayRange : weekDays)");
@@ -137,7 +138,7 @@ describe("PlansPage week range logic", () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(source).not.toContain('className="plan-actions"');
     expect(source).toContain('className="plan-notes plan-notes--preview"');
@@ -153,7 +154,7 @@ describe("PlansPage week range logic", () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(source).toContain("goingMembers.slice(0, expanded ? goingMembers.length : 3)");
     expect(source).toContain('className="plan-attendee-more"');
@@ -166,7 +167,7 @@ describe("PlansPage week range logic", () => {
   it("keeps attendee avatars inside the RSVP row without allowing either control to overlap", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
     expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*max-content auto;[^}]*justify-content:\s*start/);
     expect(styles).toMatch(/\.plan-attendee-list\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1/);
@@ -176,7 +177,7 @@ describe("PlansPage week range logic", () => {
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const storageSource = readFileSync(resolve(process.cwd(), "src/pages/FilesPage.tsx"), "utf8");
 
     expect(storageSource).toContain('className="storage-main-header"');

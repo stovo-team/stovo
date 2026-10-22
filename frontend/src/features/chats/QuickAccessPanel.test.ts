@@ -1,3 +1,4 @@
+import { readCssSource } from "../../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -37,12 +38,12 @@ describe("message archive grouped view", () => {
   });
 
   it("aligns Drafts & scheduled tabs with the archive controls", () => {
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(styles).toMatch(/\.quick-access-panel--outbox \.quick-access-panel-tabs\s*\{[^}]*margin-left:\s*0;[^}]*margin-top:\s*0;/);
   });
 
   it("keeps quick-access sidebar hover on the shared chat-row surface", () => {
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(styles).toMatch(/\.chat-list-item:hover:not\(:disabled\)\s*\{[^}]*background:\s*color-mix\(in oklab, var\(--background-panel-accent\) 60%, transparent\);/);
   });
 
@@ -70,7 +71,7 @@ describe("message archive grouped view", () => {
   });
 
   it("styles quick access buttons with a dark header-like surface and clear non-accent active text", () => {
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(styles).toContain("background: color-mix(in oklab, var(--island-surface) 94%, transparent);");
     expect(styles).toContain(".quick-access-panel-tabs button.active");
     expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--color-palette-f2074b6cef37\);/);
@@ -78,7 +79,7 @@ describe("message archive grouped view", () => {
   });
 
   it("elevates quick access panels and grouped tabs above chat-detail edge shadows", () => {
-    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(styles).toMatch(/\.messenger-shell\.has-active-chat \.chat-detail > \.quick-access-panel\s*\{[^}]*z-index:\s*2;/);
     expect(styles).toMatch(/\.chat-detail:has\(\.quick-access-panel\)::after\s*\{[^}]*display:\s*none;/);
     expect(styles).toMatch(/\.quick-access-panel-tabs button\s*\{[^}]*box-shadow:\s*0 2px 8px/);

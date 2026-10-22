@@ -1,10 +1,11 @@
+import { readCssSource } from "../../../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(resolve(process.cwd(), "src/features/chats/sidebar/ChatList.tsx"), "utf8");
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("ChatList quick access selection", () => {
   it("does not highlight a regular chat while Drafts & scheduled is active", () => {

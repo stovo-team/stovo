@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { expect, it } from "vitest";
 
 it("keeps shared speaking borders and avatar rings sharp without a blurred glow", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const speakingRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .filter(([, selectors]) => selectors.includes(".shared-call-stage") && selectors.includes(".is-speaking"));
   expect(speakingRules.length).toBeGreaterThan(0);

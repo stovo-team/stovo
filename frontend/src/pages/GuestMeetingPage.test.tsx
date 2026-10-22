@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
@@ -168,7 +169,7 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
     expect(page?.querySelector('[role="status"]')?.textContent).toBe("Joining meeting…");
     expect(page?.querySelector(".guest-connecting-spinner")).not.toBeNull();
     expect(page?.querySelector(".guest-stovo-marketing")?.parentElement).toBe(page);
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const connectingPageRule = css.match(/\.guest-meeting-page--connecting\s*\{([^}]*)\}/)?.[1] ?? "";
     const connectingLinkRule = css.match(/\.guest-meeting-page--connecting \.guest-stovo-marketing\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(connectingPageRule).toContain("background: var(--color-palette-7b2817bf9b80)");
@@ -177,7 +178,7 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
   });
 
   it("keeps the screen presentation 16:9 and supports a participant row below it", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const pageSource = readFileSync("src/pages/GuestMeetingPage.tsx", "utf8");
     const stageSource = readFileSync("src/features/chats/calling/CallParticipantStage.tsx", "utf8");
     const spotlight = Array.from(css.matchAll(/\.guest-call-room \.guest-call-spotlight\s*\{([^}]*)\}/g), (match) => match[1]).at(-1);
@@ -444,7 +445,7 @@ describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
     expect(camera).not.toBeNull();
     expect(camera?.closest(".guest-device-control")).not.toBeNull();
 
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const rule = css.match(/\.guest-call-controls \.guest-device-control > button\s*\{([^}]*)\}/s)?.[1] ?? "";
     expect(rule).toMatch(/border-radius:\s*var\(--radius-pill\)\s+0\s+0\s+var\(--radius-pill\)/);
     expect(rule).not.toMatch(/border-radius:\s*var\(--radius-circle\)/);

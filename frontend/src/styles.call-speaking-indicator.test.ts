@@ -1,8 +1,9 @@
+import { readCssSource } from "./test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8").replace(/\r\n/g, "\n");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css")).replace(/\r\n/g, "\n");
 const callSurfaceSources = [
   readFileSync(resolve(process.cwd(), "src/features/chats/calling/DesktopCallControls.tsx"), "utf8"),
   readFileSync(resolve(process.cwd(), "src/features/chats/calling/MobileActiveScreen.tsx"), "utf8"),

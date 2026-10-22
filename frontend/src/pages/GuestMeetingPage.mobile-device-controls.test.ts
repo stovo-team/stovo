@@ -1,10 +1,11 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const guestMeeting = readFileSync(resolve(process.cwd(), "src/pages/GuestMeetingPage.tsx"), "utf8");
 const cameraReplacement = readFileSync(resolve(process.cwd(), "src/pages/guestMeetingCameraTrackReplacement.ts"), "utf8");
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8").replace(/\r\n/g, "\n");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css")).replace(/\r\n/g, "\n");
 
 describe("guest meeting responsive device-control source contract", () => {
   it("keeps the guest prejoin preview at 16:9 with fully fitted video and opaque controls", () => {

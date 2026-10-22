@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./src/test/cssSource";
 import { expect, it } from "vitest";
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 const rule = (selector: string) => {
   const start = styles.indexOf(`${selector} {`);
   return start < 0 ? "" : styles.slice(start, styles.indexOf("}", start));

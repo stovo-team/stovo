@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,7 @@ const useMessageThreadSource = readFileSync(
   resolve(process.cwd(), "src/features/chats/conversation/useMessageThread.ts"),
   "utf8"
 );
-const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const stylesSource = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("ChatsPage message search controls", () => {
   it("uses a direct header search button instead of the overflow menu", () => {

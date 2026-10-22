@@ -1,9 +1,10 @@
+import { readCssSource } from "./test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { avatarInitials } from "./utils/avatarInitials";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const attachmentPicker = readFileSync(resolve(process.cwd(), "src/components/AttachmentPickerSheet.tsx"), "utf8");
 const settingsAvatar = readFileSync(resolve(process.cwd(), "src/pages/settings/SettingsAvatar.tsx"), "utf8");
 const appearanceEditor = readFileSync(resolve(process.cwd(), "src/pages/settings/AppearanceEditor.tsx"), "utf8");

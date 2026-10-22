@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../../../test/cssSource";
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -150,14 +150,14 @@ describe("MessageBubble receipt status", () => {
   });
 
   it("keeps profile-photo reaction avatars transparent and compact", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const photoAvatar = css.match(/\.reaction-avatar:has\(img\)\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(photoAvatar).toMatch(/background:\s*transparent/);
     expect(photoAvatar).toMatch(/padding:\s*0/);
   });
 
   it("keeps reaction avatars small and round without composer layout styles", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const stack = css.match(/\.reaction-avatar-stack\s*\{([^}]*)\}/)?.[1] ?? "";
     const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(stack).not.toContain("--composer-action");
