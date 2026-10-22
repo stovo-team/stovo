@@ -1,12 +1,12 @@
 # Frontend Stylesheet Modularization
 
-**Status:** Awaiting written spec review  
+**Status:** Approved for implementation  
 **Date:** 2026-10-22  
 **Repository scope:** `stovo-messenger`, frontend CSS only
 
 ## User problem
 
-`frontend/src/styles.css` is 31,808 lines (about 887 KB), combining global foundations, chat and call interfaces, page styles, and late refinements. This makes changes difficult to locate and increases the chance that unrelated styles are changed accidentally.
+`frontend/src/styles.css` on the required `master` base is 32,762 lines (about 1.02 MB), combining global foundations, chat and call interfaces, page styles, and late refinements. This makes changes difficult to locate and increases the chance that unrelated styles are changed accidentally.
 
 ## Goal and constraints
 
@@ -16,39 +16,40 @@ Keep `frontend/src/styles.css` as the entry point imported from `main.tsx` and l
 
 ## Proposed ordered stylesheet modules
 
-The line ranges are anchors from the current stylesheet, not hard-coded extraction boundaries. Extraction must end at CSS rule boundaries, and the concatenated imports must preserve the original text and rule order.
+The line ranges are anchors from the current `master` stylesheet. Extraction must end at CSS top-level rule boundaries, not merely at the nearest comment. The imported files must concatenate to the original source without changing its text or rule order.
 
 | Order | Module | Current source area |
 |---:|---|---|
 | 1 | `foundation.css` | 1–181: shared variables and base styles |
 | 2 | `call-popup.css` | 182–1,587: popup, controls, and audio settings |
-| 3 | `theme.css` | 1,588–1,982: accents, theme modes, and wallpapers |
-| 4 | `app-shell.css` | 1,983–4,013: application layout and navigation |
-| 5 | `shared-interactions.css` | 4,014–4,409: scrollbars and shared interaction rules |
+| 3 | `theme.css` | 1,588–1,976: accents, theme modes, and wallpapers |
+| 4 | `app-shell.css` | 1,977–4,004: application layout and navigation |
+| 5 | `shared-interactions.css` | 4,005–4,409: responsive layout and shared interactions |
 | 6 | `conversation.css` | 4,410–5,030: conversation surface and header |
-| 7 | `composer-and-message-editing.css` | 5,031–6,447: editing and compose surfaces |
-| 8 | `message-rendering.css` | 6,448–8,022: bubbles, reactions, and link previews |
-| 9 | `media-attachments.css` | 8,023–8,820: video and document attachments |
-| 10 | `image-editors.css` | 8,821–10,236: image and avatar editors |
-| 11 | `appearance-and-settings.css` | 10,237–12,912: appearance, settings, help, and legal pages |
-| 12 | `storage-and-plans.css` | 12,913–14,690: storage and plans |
-| 13 | `call-stage-and-captions.css` | 14,691–15,644: call screens, intelligence, and captions |
-| 14 | `attachment-picker.css` | 15,645–16,990: attachment picker |
-| 15 | `chat-details.css` | 16,991–18,615: chat details and related surfaces |
-| 16 | `secondary-settings.css` | 18,616–20,322: notification settings and secondary screens |
-| 17 | `message-actions.css` | 20,323–20,737: message actions and pinned-message styles |
-| 18 | `chat-responsive.css` | 20,738–21,640: web and mobile chat layout |
-| 19 | `audio-and-document-previews.css` | 21,641–22,526: transcription and audio/document previews |
-| 20 | `storage-and-admin.css` | 22,527–24,632: storage refinements, admin, and native shell |
-| 21 | `scheduled-messages.css` | 24,633–25,381: scheduled messages and reminder modals |
-| 22 | `voice-channels.css` | 25,382–26,653: voice-channel layouts and controls |
-| 23 | `storage-canvas-and-checklist-previews.css` | 26,654–27,656: collections, canvas, and checklist previews |
-| 24 | `plugins-and-stats.css` | 27,657–27,738: plugin and statistics styles |
-| 25 | `quick-switcher-and-shortcuts.css` | 27,739–28,488: quick switcher and keyboard shortcuts |
-| 26 | `checklists.css` | 28,489–30,397: checklist components and page |
-| 27 | `guest-meetings.css` | 30,398–31,808: guest meetings and related final styles |
+| 7 | `composer-and-message-editing.css` | 5,031–6,445: editing and compose surfaces |
+| 8 | `message-rendering.css` | 6,446–8,022: bubbles, reactions, and link previews |
+| 9 | `media-attachments.css` | 8,023–8,815: video and document attachments |
+| 10 | `image-editors.css` | 8,816–10,236: image and avatar editors |
+| 11 | `appearance-editor.css` | 10,237–10,917: appearance editor |
+| 12 | `appearance-and-settings.css` | 10,918–12,895: settings, help, and legal pages |
+| 13 | `storage-and-plans.css` | 12,896–14,544: storage and plans |
+| 14 | `responsive-and-call-stage.css` | 14,545–15,644: responsive rules, call screens, and captions |
+| 15 | `attachment-picker.css` | 15,645–16,988: attachment picker |
+| 16 | `chat-details.css` | 16,989–18,615: chat details and related surfaces |
+| 17 | `secondary-settings.css` | 18,616–20,325: notification settings and secondary screens |
+| 18 | `message-actions.css` | 20,326–20,714: message actions and pinned-message styles |
+| 19 | `chat-responsive.css` | 20,715–21,641: web and mobile chat layout |
+| 20 | `audio-and-document-previews.css` | 21,642–22,523: transcription and audio/document previews |
+| 21 | `storage-and-admin.css` | 22,524–24,625: storage refinements, admin, and native shell |
+| 22 | `scheduled-messages.css` | 24,626–25,382: scheduled messages and reminder modals |
+| 23 | `voice-channels.css` | 25,383–26,653: voice-channel layouts and controls |
+| 24 | `storage-canvas-and-checklist-previews.css` | 26,654–27,653: collections, canvas, and checklist previews |
+| 25 | `plugins-and-stats.css` | 27,654–27,734: plugin and statistics styles |
+| 26 | `quick-switcher-and-shortcuts.css` | 27,735–28,488: quick switcher and keyboard shortcuts |
+| 27 | `checklists.css` | 28,489–30,396: checklist components and page |
+| 28 | `guest-meetings-and-final-overrides.css` | 30,397–32,762: guest meetings and final related refinements |
 
-The source has accumulated late refinements. They remain at their current cascade positions, even when that means a module contains overrides. Consolidating or reordering overrides is outside this change.
+Late refinements remain at their current cascade positions, even when that means a module contains overrides. The extra appearance-editor module keeps every new partial under the 2,500-line limit. Consolidating or reordering overrides is outside this change.
 
 ## CSS source tests
 

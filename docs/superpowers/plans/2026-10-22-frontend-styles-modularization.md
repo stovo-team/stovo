@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Split the 31,808-line frontend stylesheet into ordered, feature-focused CSS files while preserving its exact cascade and current behavior.
+**Goal:** Split the 32,762-line frontend stylesheet into ordered, feature-focused CSS files while preserving its exact cascade and current behavior.
 
-**Architecture:** Keep `frontend/src/styles.css` as the app and preview entry point, containing ordered local CSS imports. Extract contiguous source sections into the 27 partials listed in the design spec, and migrate tests to a shared helper that expands those imports in order. Add a CI CSS-size ratchet for partials without changing runtime CSS.
+**Architecture:** Keep `frontend/src/styles.css` as the app and preview entry point, containing ordered local CSS imports. Extract contiguous source sections into the 28 partials listed in the design spec, and migrate tests to a shared helper that expands those imports in order. Add a CI CSS-size ratchet for partials without changing runtime CSS.
 
 **Tech Stack:** Plain CSS, TypeScript/Vitest test helper, Node.js CJS size-check script, existing Vite and GitHub Actions workflows.
 
@@ -33,7 +33,7 @@
 ## File Structure
 
 - `frontend/src/styles.css`: stable entry point; only ordered imports after extraction.
-- `frontend/src/styles/`: 27 focused partials named in the spec, kept in original source order.
+- `frontend/src/styles/`: 28 focused partials named in the spec, kept in original source order.
 - `frontend/src/test/cssSource.ts`: shared `readCssSource(entryPath: string): string` helper that recursively expands quoted local CSS imports relative to the importing file.
 - `frontend/src/test/cssSource.test.ts`: fixture-based tests for the helper's order, nested imports, duplicate imports, cycles, and unsupported/missing paths.
 - Existing CSS-reading tests under `frontend/`: use `readCssSource` rather than reading the entry point as raw text.
@@ -56,7 +56,7 @@
 
 ## Task 2: Extract the stylesheet in original order
 
-**Files:** Modify `frontend/src/styles.css`; create the 27 partials under `frontend/src/styles/` as named in the design spec; update tests only if a migration missed a stylesheet read.
+**Files:** Modify `frontend/src/styles.css`; create the 28 partials under `frontend/src/styles/` as named in the design spec; update tests only if a migration missed a stylesheet read.
 
 - [ ] Save the original `frontend/src/styles.css` contents to a temporary file outside the repository for a byte-for-byte comparison during this task.
 - [ ] Extract each contiguous source section once into its corresponding partial. Keep every rule and comment in its original relative position; do not move late refinements beside earlier component rules.
