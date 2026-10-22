@@ -3,9 +3,28 @@ import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
 
+function mediaRuleContaining(selector: string, maxWidth: number) {
+  const selectorIndex = styles.indexOf(selector);
+  if (selectorIndex < 0) return "";
+
+  const mediaStart = styles.lastIndexOf(`@media (max-width: ${maxWidth}px)`, selectorIndex);
+  if (mediaStart < 0) return "";
+
+  let depth = 0;
+  for (let index = styles.indexOf("{", mediaStart); index < styles.length; index += 1) {
+    if (styles[index] === "{") depth += 1;
+    if (styles[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return styles.slice(mediaStart, index + 1);
+    }
+  }
+
+  return "";
+}
+
 function mobileChatDetailsStyles() {
   const avatarRule = styles.lastIndexOf(".chat-info-screen .chat-info-avatar-wrap {");
-  const mediaStart = styles.lastIndexOf("@media (max-width: 1024px)", avatarRule);
+  const mediaStart = styles.lastIndexOf("@media (max-width: 1200px)", avatarRule);
   if (mediaStart < 0) return "";
 
   let depth = 0;
@@ -42,6 +61,17 @@ describe("mobile chat details sizing", () => {
     expect(mobileStyles).toContain("border-radius: var(--radius-panel);");
     expect(styles).toContain(".chat-layout.details-open::before");
     expect(styles).toContain("background: var(--popup-backdrop-color);");
+  });
+
+  it("opens chat details as a popup until the layout has room for a side column", () => {
+    const mobileLayout = mediaRuleContaining(".chat-layout.details-open::before", 1200);
+    const popupDetails = mediaRuleContaining(".messenger-shell.messenger-shell--chat-info > .app-nav", 1200);
+
+    expect(mobileLayout).toContain(".chat-layout.details-open");
+    expect(mobileLayout).toContain("grid-template-columns: 1fr;");
+    expect(popupDetails).toContain(".chat-info-screen.chat-details-panel");
+    expect(popupDetails).toContain("position: fixed;");
+    expect(popupDetails).toContain("width: min(400px, calc(100vw - 32px));");
   });
 
   it("keeps desktop chat details in a compact grid column beside the message pane", () => {

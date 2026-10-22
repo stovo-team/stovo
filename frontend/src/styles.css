@@ -13900,7 +13900,7 @@ span.message-spoiler.is-revealed {
   padding: 6px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .app-frame {
     display: block;
   }
@@ -19269,7 +19269,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   text-transform: capitalize;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .messenger-shell.messenger-shell--new-chat > .app-nav,
   .messenger-shell.messenger-shell--chat-info > .app-nav {
     display: none !important;
