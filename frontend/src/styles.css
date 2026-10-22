@@ -13260,7 +13260,7 @@ span.message-spoiler.is-revealed {
 }
 .plans-layout {
   display: grid;
-  column-gap: 36px;
+  column-gap: 16px;
   row-gap: 16px;
   grid-template-columns: 360px minmax(0, 1fr);
   height: calc(100dvh - 2 * var(--float-outer-gap));
