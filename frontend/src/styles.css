@@ -14126,6 +14126,15 @@ span.message-spoiler.is-revealed {
     position: relative;
   }
 
+  .chat-layout.details-open::before {
+    background: var(--popup-backdrop-color);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 5;
+  }
+
   .chat-sidebar {
     border-bottom: 0;
     border-right: 0;
@@ -19271,17 +19280,16 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .chat-info-screen.chat-details-panel {
-    border: none;
-    border-radius: 0;
-    bottom: 0;
-    box-shadow: none;
-    inset: 0;
-    left: 0;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
+    bottom: 12px;
+    box-shadow: var(--popup-dialog-shadow);
+    left: auto;
     max-width: none;
     position: fixed;
-    right: 0;
-    top: 0;
-    width: 100%;
+    right: 12px;
+    top: 12px;
+    width: min(400px, calc(100vw - 32px));
     z-index: 240;
   }
 

@@ -35,8 +35,13 @@ describe("mobile chat details sizing", () => {
     expect(mobileStyles).toContain("min-height: 44px;");
     expect(mobileStyles).toContain("padding: 6px 4px;");
     expect(mobileStyles).toContain("position: fixed;");
-    expect(mobileStyles).toContain("inset: 0;");
-    expect(mobileStyles).toContain("width: 100%;");
+    expect(mobileStyles).toContain("right: 12px;");
+    expect(mobileStyles).toContain("top: 12px;");
+    expect(mobileStyles).toContain("bottom: 12px;");
+    expect(mobileStyles).toContain("width: min(400px, calc(100vw - 32px));");
+    expect(mobileStyles).toContain("border-radius: var(--radius-panel);");
+    expect(styles).toContain(".chat-layout.details-open::before");
+    expect(styles).toContain("background: var(--popup-backdrop-color);");
   });
 
   it("keeps desktop chat details in a compact grid column beside the message pane", () => {
