@@ -106,6 +106,14 @@ describe("PlansPage week range logic", () => {
     expect(styles).toMatch(/\.plans-layout\s*\{[^}]*column-gap:\s*16px/);
   });
 
+  it("keeps the PlansPage sidebar arrow button small", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(styles).toMatch(/\.plans-sidebar-collapse\s*\{[^}]*height:\s*28px;[^}]*width:\s*28px/);
+  });
+
   it("styles the plan description textarea like the dialog fields", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
