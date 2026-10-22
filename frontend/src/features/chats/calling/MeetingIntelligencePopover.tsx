@@ -270,7 +270,7 @@ export function MeetingIntelligencePopover({
               {isRecordingAllowed ? (
                 <button
                   type="button"
-                  className={`meeting-intel-toggle-btn ${
+                  className={`meeting-intel-toggle-btn meeting-intel-toggle-btn--recording ${
                     isRecActive ? "is-recording" : isRecStopping ? "is-processing" : ""
                   }`}
                   onClick={handleToggleRecording}

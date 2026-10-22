@@ -32662,6 +32662,11 @@ button.minimized-call-button--end:active:not(:disabled) {
   height: 10px;
   flex: 0 0 10px;
 }
+.meeting-intel-toggle-btn--recording > svg.lucide-circle {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
 /* Keep the native time picker, with a legible clock in dark settings. */
 :root:is([data-theme-mode="dark"], [data-theme-mode="amoled"]) .settings-page input[type="time"] {
   color-scheme: dark;
