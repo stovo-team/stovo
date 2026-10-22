@@ -22,10 +22,10 @@ describe("meeting intelligence popover design", () => {
     const actionButton = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
     expect(actionButton).toMatch(/width:\s*24px/);
     expect(actionButton).toMatch(/height:\s*24px/);
-    const actionRing = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn::before");
-    expect(actionRing).toMatch(/inset:\s*2px/);
-    expect(actionRing).toMatch(/border:\s*1px solid color-mix/);
-    expect(actionRing).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+    const sharedActionRing = styles.match(/(?:^|\n)\.meeting-intel-toggle-btn::before\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(sharedActionRing).toMatch(/inset:\s*2px/);
+    expect(sharedActionRing).toMatch(/border:\s*1px solid color-mix/);
+    expect(sharedActionRing).toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
   it("removes the subtitle and card descriptions and tightens header-to-content spacing", () => {
     expect(component).not.toContain("meeting-intel-subtitle");

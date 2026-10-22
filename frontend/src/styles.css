@@ -15545,10 +15545,11 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
   min-height: 24px;
   padding: 0;
   border-radius: var(--radius-circle);
+  position: relative;
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-semibold);
-  background: color-mix(in oklab, var(--surface-card) 78%, var(--text-primary) 10%);
-  border: 1px solid var(--border-default);
+  background: transparent;
+  border: 0;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
@@ -15556,6 +15557,15 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
   justify-content: center;
   flex: 0 0 24px;
   transition: all 0.15s ease;
+}
+
+.meeting-intel-toggle-btn::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, var(--border-default));
+  border-radius: var(--radius-circle);
+  pointer-events: none;
 }
 
 .meeting-intel-toggle-btn:hover:not(:disabled) {
@@ -31103,10 +31113,6 @@ button.checklist-add-item-btn:hover,
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn {
   box-sizing: border-box; position: relative; width: 24px; min-width: 24px; height: 24px; min-height: 24px; flex: 0 0 24px;
   padding: 0; border: 0; border-radius: var(--radius-circle); background: transparent; font: inherit;
-}
-.meeting-intel-popover--inline-menu .meeting-intel-toggle-btn::before {
-  content: ""; position: absolute; inset: 2px; border: 1px solid color-mix(in srgb, var(--text-primary) 30%, var(--border-default));
-  border-radius: var(--radius-circle); pointer-events: none;
 }
 .meeting-intel-popover--inline-menu .meeting-intel-toggle-btn svg { display: block; width: 17px; height: 17px; flex: 0 0 auto; }
 .meeting-intel-restricted-badge {
