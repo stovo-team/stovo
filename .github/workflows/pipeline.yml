@@ -646,6 +646,7 @@ jobs:
                           -e "GROQ_STT_MODEL=${groq_stt_model}" \
                           -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                           -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                           -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                           -e "LIVEKIT_URL=${livekit_url}" \
                           -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -686,6 +687,7 @@ jobs:
                             -e "GROQ_STT_MODEL=${groq_stt_model}" \
                             -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                             -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                             -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                             -e "LIVEKIT_URL=${livekit_url}" \
                             -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -693,6 +695,7 @@ jobs:
                             --label "stovo-server=${server_slug}" \
                             stovo-backend
                         fi
+                        bash deploy/scripts/ensure-tenant-proxy-network.sh "stovo-backend-${server_slug}" "stovo-backend-${server_slug}-proxy"
                     fi
                 done
             fi
