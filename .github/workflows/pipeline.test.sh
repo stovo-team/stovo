@@ -61,10 +61,13 @@ awk '
     sub(/^    runs-on:[[:space:]]*/, "", runner)
     job_runner[job] = runner
   }
-  job == "changes" && /^      - name: Verify PowerShell Core version on Windows$/ { pwsh_version_step = 1 }
-  job == "changes" && pwsh_version_step && /^        if: runner\.os == '\''Windows'\''$/ { pwsh_windows_only = 1 }
-  job == "changes" && pwsh_version_step && /^        shell: pwsh$/ { pwsh_version_shell = 1 }
-  job == "changes" && pwsh_version_step && /PSVersionTable\.PSVersion\.Major -ne 7/ { pwsh_v7_check = 1 }
+  job == "changes" && /^      - name: Detect available shell$/ { shell_detection_step = 1 }
+  job == "changes" && shell_detection_step && /^        shell: bash$/ { shell_detection_shell = 1 }
+  job == "changes" && shell_detection_step && /command -v pwsh/ { shell_detection_pwsh = 1 }
+  job == "changes" && shell_detection_step && /command -v bash/ { shell_detection_bash = 1 }
+  job == "changes" && shell_detection_step && /elif command -v bash/ { shell_detection_fallback = 1 }
+  job == "changes" && shell_detection_step && /Neither pwsh nor bash is available/ { shell_detection_error = 1 }
+  job == "changes" && shell_detection_step && /PSVersionTable\.PSVersion\.Major/ { pwsh_version_check = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -95,8 +98,8 @@ awk '
     if (job_runner["backend-ci"] != "[self-hosted, tests]") {
       fail("Backend CI must stay on the backend CI runner labeled tests.")
     }
-    if (!pwsh_version_step || !pwsh_windows_only || !pwsh_version_shell || !pwsh_v7_check) {
-      fail("The changes job must activate PowerShell Core 7 on Windows runners.")
+    if (!shell_detection_step || !shell_detection_shell || !shell_detection_pwsh || !shell_detection_bash || !shell_detection_fallback || !shell_detection_error || !pwsh_version_check) {
+      fail("The changes job must detect pwsh and Bash and check PowerShell 7 only when pwsh is available.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")

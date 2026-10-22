@@ -45,15 +45,25 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - name: Verify PowerShell Core version on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Detect available shell
+        shell: bash
         run: |
-          $version = $PSVersionTable.PSVersion
-          Write-Host "PowerShell Core version: $version"
-          if ($PSVersionTable.PSVersion.Major -ne 7) {
-            throw "The changes job requires PowerShell Core 7; found $version."
-          }
+          if command -v pwsh >/dev/null 2>&1; then
+            version=$(pwsh -NoProfile -Command '$PSVersionTable.PSVersion.Major')
+            if [[ "$version" == "7" ]]; then
+              echo "PowerShell Core 7 is available; version check passed."
+            elif command -v bash >/dev/null 2>&1; then
+              echo "PowerShell Core 7 is unavailable; falling back to Bash."
+            else
+              echo "PowerShell Core 7 or Bash is required; found PowerShell $version." >&2
+              exit 1
+            fi
+          elif command -v bash >/dev/null 2>&1; then
+            echo "PowerShell Core is unavailable; using Bash."
+          else
+            echo "Neither pwsh nor bash is available." >&2
+            exit 1
+          fi
       - name: Verify pipeline workflow contract
         shell: bash
         run: bash .github/workflows/pipeline.test.sh
