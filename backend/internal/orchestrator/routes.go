@@ -677,7 +677,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
 		fmt.Sprintf("CHAT_TYPES=%s", chatTypes),
-		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.33.0.2/32")),
+		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.34.0.2/32")),
 	}
 }
 

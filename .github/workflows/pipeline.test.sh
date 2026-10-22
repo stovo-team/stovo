@@ -3,6 +3,7 @@ set -euo pipefail
 
 bash .github/workflows/backend-dockerfiles.test.sh
 node .github/workflows/multiserver-routing.test.mjs
+bash deploy/scripts/ensure-tenant-proxy-network.test.sh
 
 awk '
   function fail(message) {
