@@ -26,8 +26,8 @@ export function readCssSource(entryPath: string): string {
         throw new Error(`Unsupported CSS import in ${absolutePath}: @import ${atRule.params}`);
       }
 
-      const start = atRule.source?.start.offset;
-      const ruleEnd = atRule.source?.end.offset;
+      const start = atRule.source?.start?.offset;
+      const ruleEnd = atRule.source?.end?.offset;
       if (start === undefined || ruleEnd === undefined) {
         throw new Error(`CSS import has no source location in ${absolutePath}`);
       }
