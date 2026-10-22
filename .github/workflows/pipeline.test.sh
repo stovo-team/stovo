@@ -62,11 +62,14 @@ awk '
     job_runner[job] = runner
   }
   job == "changes" && /^      - name: Detect available shell$/ { shell_detection_step = 1 }
-  job == "changes" && shell_detection_step && /^        shell: pwsh$/ { shell_detection_shell = 1 }
+  job == "changes" && shell_detection_step && /^        shell: powershell$/ { shell_detection_shell = 1 }
   job == "changes" && shell_detection_step && /Get-Command git/ { git_command_lookup = 1 }
   job == "changes" && shell_detection_step && /bin\\bash\.exe/ { git_bash_path = 1 }
   job == "changes" && shell_detection_step && /Add-Content.*GITHUB_PATH/ { git_bash_added_to_path = 1 }
-  job == "changes" && shell_detection_step && /PSVersionTable\.PSVersion\.Major/ { pwsh_version_check = 1 }
+  job == "changes" && shell_detection_step && /^[[:space:]]+fi[[:space:]]*$/ { shell_uses_bash_fi = 1 }
+  job == "changes" && /GIT_CONFIG_COUNT: 1/ { checkout_git_config_count = 1 }
+  job == "changes" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { checkout_autocrlf_key = 1 }
+  job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -100,8 +103,12 @@ awk '
     if (job_runner["backend-ci"] != "[self-hosted, tests]") {
       fail("Backend CI must stay on the backend CI runner labeled tests.")
     }
-    if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path || !pwsh_version_check) {
-      fail("The changes job must start in PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
+    if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
+      fail("The changes job must use built-in Windows PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
+    }
+    if (shell_uses_bash_fi) fail("The PowerShell shell bootstrap must not contain Bash control syntax.")
+    if (!checkout_git_config_count || !checkout_autocrlf_key || !checkout_autocrlf_disabled) {
+      fail("The Windows checkout must preserve LF line endings for the Bash and Node workflow contract tests.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
