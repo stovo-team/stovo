@@ -10,10 +10,36 @@ function countLines(content) {
   return lines.at(-1) === '' ? lines.length - 1 : lines.length;
 }
 
-function isAuthoredPartial(name) {
-  return name.endsWith('.css')
-    && !/^(?:generated|vendor)(?:[-.]|$)/i.test(name)
-    && !/\.(?:generated|min)\.css$/i.test(name);
+function normalizeRelativePath(relativePath) {
+  return relativePath.split(path.sep).join('/');
+}
+
+function isIgnoredPath(relativePath) {
+  const normalizedPath = normalizeRelativePath(relativePath);
+  return /(^|\/)(?:node_modules|dist|build|generated|vendor|test|tests|fixtures|__tests__|__fixtures__)(\/|$)/i.test(normalizedPath)
+    || /(^|\/)(?:generated|vendor)(?:[-.]|$)/i.test(normalizedPath)
+    || /\.(?:generated|min)\.css$/i.test(normalizedPath);
+}
+
+function isAuthoredPartial(relativePath) {
+  return normalizeRelativePath(relativePath).endsWith('.css') && !isIgnoredPath(relativePath);
+}
+
+function findAuthoredPartials(stylesDir) {
+  const files = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      const relativePath = path.relative(stylesDir, absolutePath);
+      if (entry.isDirectory()) {
+        if (!isIgnoredPath(relativePath)) visit(absolutePath);
+      } else if (entry.isFile() && isAuthoredPartial(relativePath)) {
+        files.push(relativePath);
+      }
+    }
+  }
+  visit(stylesDir);
+  return files.sort();
 }
 
 function checkCssSizes({
@@ -46,10 +72,7 @@ function checkCssSizes({
 
   let names;
   try {
-    names = fs.readdirSync(stylesDir, { withFileTypes: true })
-      .filter(entry => entry.isFile() && isAuthoredPartial(entry.name))
-      .map(entry => entry.name)
-      .sort();
+    names = findAuthoredPartials(stylesDir);
   } catch (error) {
     return { errors: [`Cannot read authored CSS directory: ${error.message}`], warnings };
   }

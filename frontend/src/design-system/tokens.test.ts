@@ -39,7 +39,7 @@ describe("shared design tokens", () => {
 
   it("routes discrete production font sizes through the shared scale", () => {
     const offenders = cssFiles.flatMap((path) => {
-      const css = read(path);
+      const css = readCssSource(path);
       return [...css.matchAll(/font-size\s*:\s*([^;]+);/g)]
         .map((match) => match[1].trim())
         .filter((value) => !value.includes("var(--font-size-") && !/^(inherit|initial|unset|revert)$/.test(value));
@@ -50,7 +50,7 @@ describe("shared design tokens", () => {
 
   it("routes numeric production font weights through the shared scale", () => {
     const offenders = cssFiles.flatMap((path) => {
-      const css = read(path);
+      const css = readCssSource(path);
       return [...css.matchAll(/font-weight\s*:\s*([^;]+);/g)]
         .map((match) => match[1].trim())
         .filter((value) => !value.startsWith("var(--font-weight-") && !/^(inherit|initial|unset|revert|normal|bold|bolder|lighter)$/.test(value));
@@ -61,7 +61,7 @@ describe("shared design tokens", () => {
 
   it("routes production font stacks through shared family tokens", () => {
     const offenders = cssFiles.flatMap((path) => {
-      const css = read(path);
+      const css = readCssSource(path);
       return [...css.matchAll(/(?<![-\w])font-family\s*:\s*([^;]+);/g)]
         .map((match) => match[1].trim())
         .filter((value) => !value.startsWith("var(--font-family-") && !value.startsWith("var(--message-font-family") && !/^(inherit|initial|unset|revert|"Material Symbols Outlined")$/.test(value));
@@ -73,7 +73,7 @@ describe("shared design tokens", () => {
   it("routes production corner radii through the shared scale", () => {
     const radiusProperty = /(?:border-radius|border-(?:top|bottom)-(?:left|right)-radius)\s*:\s*([^;]+);/g;
     const offenders = cssFiles.flatMap((path) => {
-      const css = read(path);
+      const css = readCssSource(path);
       return [...css.matchAll(radiusProperty)]
         .map((match) => match[1].trim())
         .filter((value) => !value.includes("var(--radius-") && !/^(?:0(?:px)?|inherit|initial|unset|revert)(?:\s*!important)?$/.test(value));
@@ -104,7 +104,7 @@ describe("shared design tokens", () => {
 
   it("routes authored production CSS colors through the shared palette", () => {
     const offenders = cssFiles.flatMap((path) => {
-      const stylesheet = postcss.parse(read(path), { from: path });
+      const stylesheet = postcss.parse(readCssSource(path), { from: path });
       const found: string[] = [];
       stylesheet.walkDecls((declaration) => {
         if (!colorStyleProperty.test(declaration.prop) || /data:image\/svg\+xml/i.test(declaration.value)) return;
@@ -160,7 +160,7 @@ describe("shared design tokens", () => {
   it("defines every literal palette token used by authored styles", () => {
     const tokens = read("src/design-system/tokens.css");
     const defined = new Set([...tokens.matchAll(/(--color-palette-[a-f0-9]+)\s*:/g)].map((match) => match[1]));
-    const styles = [...cssFiles.map(read), ...sourceFiles("src").map(read)].join("\n");
+    const styles = [...cssFiles.map(readCssSource), ...sourceFiles("src").map(read)].join("\n");
     const used = new Set([...styles.matchAll(/var\((--color-palette-[a-f0-9]+)/g)].map((match) => match[1]));
 
     expect([...used].filter((token) => !defined.has(token))).toEqual([]);

@@ -37,6 +37,11 @@ test('rejects a new CSS partial above 2,500 lines', () => {
   assert.match(result.errors.join('\n'), /new\.css.*2501.*2500/);
 });
 
+test('checks authored CSS partials in nested feature directories', () => {
+  const result = checkCssSizes(fixture({ files: { 'components/large.css': cssLines(2501) } }));
+  assert.match(result.errors.join('\n'), /components\/large\.css.*2501.*2500/);
+});
+
 test('warns when a CSS partial exceeds 1,500 lines', () => {
   const result = checkCssSizes(fixture({ files: { 'large.css': cssLines(1501) } }));
   assert.match(result.warnings.join('\n'), /large\.css.*1501.*1500/);
