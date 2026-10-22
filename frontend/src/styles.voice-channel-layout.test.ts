@@ -25,7 +25,7 @@ describe("voice channel layout styles", () => {
     expect(styleRules(".voice-channel-room .voice-room-stage")).toMatch(/padding:\s*calc\([^;]*\)\s+16px\s+16px/);
     expect(styleRules(".voice-room-bottom-bar:has\(.shared-call-control-panel\)")).toMatch(/position:\s*absolute/);
     expect(styleRules(".voice-room-bottom-bar:has\(.shared-call-control-panel\)")).toMatch(/bottom:\s*0/);
-    expect(styleRules(".voice-room-participant-content")).toMatch(/justify-content:\s*flex-start/);
+    expect(styleRules(".voice-room-participant-content")).toMatch(/justify-content:\s*center/);
     expect(styleRules(".call-grid--screen-share-bottom .call-grid__participant-rail")).toMatch(/grid-row:\s*1/);
     expect(styleRules(".shared-call-stage .call-grid--presenting.call-grid--screen-share")).toMatch(/max-width:\s*100%/);
     expect(styleRules(".shared-call-stage .call-grid--presenting.call-grid--screen-share")).toMatch(/max-height:\s*100%/);

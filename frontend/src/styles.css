@@ -32038,7 +32038,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   position: absolute;
   z-index: 0;
 }
-.voice-room-participant-content { justify-content: flex-start; padding-top: 4px; }
+.voice-room-participant-content { justify-content: center; }
 .voice-channel-room:not(.is-connected):not(.guest-call-room) .voice-room-bottom-bar {
   bottom: 0;
   inset-inline: 0;
