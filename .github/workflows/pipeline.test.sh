@@ -125,8 +125,8 @@ awk '
       fail("Android release must use tags already fetched by checkout instead of fetching them again.")
     }
 
-    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
-    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
+    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\'' && needs.solid-boundaries.result == '\''success'\''"
+    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.solid-boundaries.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
       fail("Frontend deploy must require a master push and the frontend path filter.")
     }
@@ -313,3 +313,28 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
   echo "The backend Makefile must provide config validation locally." >&2
   exit 1
 }
+
+solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+  if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
+    echo "Master SOLID boundaries must run once in a dedicated Windows job ($required)." >&2
+    exit 1
+  fi
+done
+if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
+   ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
+  echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
+  exit 1
+fi
+frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' .github/workflows/pipeline.yml)
+if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
+  echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
+  exit 1
+fi
+for deployment in deploy-frontend-web deploy-backend-web deploy-android; do
+  deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
+  if ! grep -Fq 'solid-boundaries' <<< "$deployment_contract"; then
+    echo "$deployment must depend on the master SOLID boundary phase." >&2
+    exit 1
+  fi
+done

@@ -73,6 +73,7 @@ jobs:
               - 'frontend/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/check-solid-boundaries.ps1'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
             backend:
@@ -85,6 +86,7 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/check-solid-boundaries.ps1'
               - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
@@ -102,14 +104,27 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      - name: SOLID architecture boundaries
-        run: bash scripts/check-solid-boundaries.sh frontend
       - name: Test
         working-directory: frontend
         run: npm test
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  solid-boundaries:
+    name: SOLID architecture boundaries
+    needs: changes
+    if: >-
+      !inputs.backend_deploy_only &&
+      (needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.backend == 'true')
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: SOLID architecture boundaries
+        shell: pwsh
+        run: ./scripts/check-solid-boundaries.ps1 all
 
   backend-ci:
     name: Backend CI
@@ -269,8 +284,8 @@ jobs:
 
   deploy-frontend-web:
     name: Deploy Frontend Web
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -371,8 +386,8 @@ jobs:
 
   deploy-backend-web:
     name: Deploy Backend Web
-    needs: [changes, backend-ci]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    needs: [changes, backend-ci, solid-boundaries]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -720,8 +735,8 @@ jobs:
 
   deploy-android:
     name: Android Release
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, e2e]
     permissions:
       contents: write
