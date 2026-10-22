@@ -3000,6 +3000,7 @@ h2 {
   width: 100%;
 }
 .thread-open-button:hover:not(:disabled) { background: transparent; color: inherit; }
+.thread-summary-count + .thread-summary-label { margin-left: -3px; }
 .thread-summary-avatars { align-items: center; display: inline-flex; }
 .thread-summary-avatars .thread-summary-avatar, .thread-summary-overflow {
   --avatar-size: 22px;

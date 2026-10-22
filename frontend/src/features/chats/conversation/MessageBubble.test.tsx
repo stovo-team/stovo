@@ -152,11 +152,13 @@ describe("MessageBubble receipt status", () => {
     const arrow = css.match(/\.thread-open-button\s*>\s*\.lucide-chevron-right\s*\{([^}]*)\}/)?.[1] ?? "";
     const avatar = css.match(/\.thread-summary-avatars\s+\.thread-summary-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
     const button = css.match(/\.thread-open-button\s*\{([^}]*)\}/)?.[1] ?? "";
+    const countLabel = css.match(/\.thread-summary-count\s*\+\s*\.thread-summary-label\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(arrow).toMatch(/margin-left:\s*auto/);
     expect(avatar).toMatch(/border:\s*0/);
     expect(button).toMatch(/font-size:\s*inherit/);
     expect(button).toMatch(/font-family:\s*inherit/);
     expect(button).toMatch(/font-weight:\s*inherit/);
+    expect(countLabel).toMatch(/margin-left:\s*-3px/);
   });
 
   it("renders reaction users through the standard round avatar component", () => {
