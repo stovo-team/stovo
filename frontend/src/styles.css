@@ -2991,14 +2991,16 @@ h2 {
   border: 0;
   color: inherit;
   display: flex;
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
   gap: 7px;
   min-height: 32px;
   padding: 4px 0;
   width: 100%;
 }
 .thread-open-button:hover:not(:disabled) { background: transparent; color: inherit; }
+.thread-summary-count + .thread-summary-label { margin-left: -3px; }
 .thread-summary-avatars { align-items: center; display: inline-flex; }
 .thread-summary-avatars .thread-summary-avatar, .thread-summary-overflow {
   --avatar-size: 22px;
@@ -3018,6 +3020,7 @@ h2 {
 .thread-open-button > svg { flex-shrink: 0; }
 .thread-open-button > .lucide-chevron-right { margin-left: auto; }
 .thread-summary-avatars .thread-summary-avatar { border: 0; }
+.thread-summary-avatars .thread-summary-avatar:first-child { margin-left: 0; }
 
 .avatar {
   align-items: center;
