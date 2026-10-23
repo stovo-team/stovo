@@ -6,7 +6,8 @@ import { prefetchFiles } from "../../../api/files";
 import type { Family } from "../../../api/family";
 import { decryptMessage, decryptMessages } from "../../../api/messageCrypto";
 import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
-import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
+import { applyPinnedMessagesRefresh, restoreCachedPinnedMessages } from "../shared/pinnedMessageState";
+import { applyMessagePreviewToChat } from "../shared/chatPresentation";
 import { mergeMessageLists } from "../shared/messageState";
 import type { MessageStateUpdate } from "../shared/types";
 import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
@@ -310,6 +311,8 @@ export function useChatDataLoader({
         return;
       }
 
+      restoreCachedPinnedMessages(currentUserIdRef.current, requestedChatId, setPinnedMessages, setPinIndex);
+
       const fallbackChat = chatsRef.current.find((chat) => chat.id === requestedChatId) ?? null;
       if (fallbackChat) {
         setSelectedChat((current) =>
@@ -374,8 +377,7 @@ export function useChatDataLoader({
         const mutationVersionAtChatRequest = chatMutationVersionRef.current[requestedChatId] ?? 0;
         const chatRequest = authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`)
           .catch(() => null as Chat | null);
-        const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
-          .catch(() => [] as PinnedMessage[]);
+        const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => null as PinnedMessage[] | null);
         const archiveGroupQuery = archiveGroup ? `&archiveGroup=${encodeURIComponent(archiveGroup)}` : "";
         const initialMessageLimit = cachedMessages ? Math.min(Math.max(cachedMessages.length, 10), 100) : 10;
         const messageResult = await authRequestRef.current<MessageHistoryPage>(
@@ -439,9 +441,7 @@ export function useChatDataLoader({
               current?.id === requestedChatId ? { ...current, ...chat } : chat
             );
           }
-          const sortedPins = sortPinsByPosition(pinsResult);
-          setPinnedMessages(sortedPins);
-          setPinIndex(Math.max(0, sortedPins.length - 1));
+          applyPinnedMessagesRefresh(currentUserIdRef.current, requestedChatId, pinsResult, setPinnedMessages, setPinIndex);
         }).catch(() => undefined);
 
         const latestMessage = decryptedMessages.at(-1);

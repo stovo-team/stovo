@@ -13,6 +13,7 @@ import type { Socket } from "socket.io-client";
 
 import type { User } from "../../../api/auth";
 import {
+  addMessageReaction,
   Chat,
   Message,
   MessageHistoryPage,
@@ -23,6 +24,7 @@ import {
   forwardMessage,
   getMessageHistoryPage,
   getMessages,
+  removeMessageReaction,
   pinMessage,
   sendMessage,
   unpinMessage
@@ -31,7 +33,6 @@ import { prefetchFiles } from "../../../api/files";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { ApiError } from "../../../api/client";
 import { decryptMessage, decryptMessages, encryptMessageContent } from "../../../api/messageCrypto";
-import { addMessageReaction, removeMessageReaction } from "../../../api/chats";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { messageMatchesSearch } from "../../../messageSearch";
 import {
@@ -56,6 +57,7 @@ import type {
   PendingMessageFocus,
   SharedContentTab,
 } from "../shared/types";
+import { usePersistPinnedMessages } from "../shared/pinnedMessageState";
 import type { MessageContextMenuState } from "./MessageContextMenu";
 import { useMessageGestures } from "./useMessageGestures";
 
@@ -110,6 +112,7 @@ export function useMessageThread({
   const [deleteForMe, setDeleteForMe] = useState(true);
   const [deleteForEveryone, setDeleteForEveryone] = useState(true);
   const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenuState | null>(null);
+  usePersistPinnedMessages(chatId, currentUser, selectedChat?.id, pinnedMessages);
 
   const draftBeforeEditRef = useRef<string>("");
   const editInFlightRef = useRef(false);
