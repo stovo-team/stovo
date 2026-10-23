@@ -189,27 +189,23 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
-if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
-  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.ps1." >&2
-  exit 1
-fi
-if grep -Fq '[System.IO.Path]::GetRelativePath' scripts/check-solid-boundaries.ps1; then
-  echo "The SOLID boundary script must support Windows PowerShell 5.1 on the self-hosted Windows runners." >&2
+if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
+  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
+    echo "Trusted PR SOLID boundaries must run with Bash ($required)." >&2
     exit 1
   fi
 done
-if grep -Fq 'bash scripts/check-solid-boundaries.sh' "$trusted_pr_workflow"; then
-  echo "Trusted PR SOLID boundary checks must not invoke the Bash checker." >&2
+if grep -Fq 'check-solid-boundaries.ps1' "$trusted_pr_workflow"; then
+  echo "Trusted PR SOLID boundaries must use the cross-platform Bash checker." >&2
   exit 1
 fi
-if [[ $(grep -Fc "'scripts/check-solid-boundaries.ps1'" "$trusted_pr_workflow") -ne 2 ]]; then
-  echo "Frontend and backend path filters must trigger the Windows SOLID boundary job for checker changes." >&2
+if [[ $(grep -Fc "'scripts/check-solid-boundaries.sh'" "$trusted_pr_workflow") -ne 2 ]]; then
+  echo "Frontend and backend path filters must trigger the Linux SOLID boundary job for checker changes." >&2
   exit 1
 fi
 grep -Fq '  pull_request_target:' "$trusted_pr_workflow" || {
@@ -256,7 +252,12 @@ require_trusted_pr_runner changes Windows ubuntu-latest
 require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
 require_trusted_pr_runner backend-ci tests ubuntu-latest
-require_trusted_pr_runner solid-boundaries Windows windows-latest
+solid_runner=$(trusted_pr_job_runner solid-boundaries)
+expected_solid_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"Linux\",\"tests\"]') || fromJSON('[\"ubuntu-latest\"]') }}"
+if [[ "$solid_runner" != "$expected_solid_runner" ]]; then
+  echo "Trusted PR SOLID boundaries must use the Linux tests runner for collaborators and ubuntu-latest for community PRs." >&2
+  exit 1
+fi
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
@@ -344,9 +345,9 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
 }
 
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, Windows, e2e]' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'runs-on: [self-hosted, Linux, tests]' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Master SOLID boundaries must run once in a dedicated Windows job ($required)." >&2
+    echo "Master SOLID boundaries must run once in a dedicated Linux job ($required)." >&2
     exit 1
   fi
 done
@@ -372,7 +373,7 @@ if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_co
   echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
   exit 1
 fi
-frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' .github/workflows/pipeline.yml)
+frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  solid-boundaries:/p' .github/workflows/pipeline.yml)
 if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
   echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
   exit 1
