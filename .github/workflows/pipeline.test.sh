@@ -188,6 +188,10 @@ if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
   echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.ps1." >&2
   exit 1
 fi
+if grep -Fq '[System.IO.Path]::GetRelativePath' scripts/check-solid-boundaries.ps1; then
+  echo "The SOLID boundary script must support Windows PowerShell 5.1 on the self-hosted Windows runners." >&2
+  exit 1
+fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
 for required in 'github.event.pull_request.head.repo.full_name == github.repository' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
