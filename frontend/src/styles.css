@@ -32809,6 +32809,15 @@ button.minimized-call-button--end:active:not(:disabled) {
   border-right: 0;
 }
 
+.shared-call-controls .guest-device-menu-trigger,
+.shared-call-controls .guest-device-menu-trigger:hover,
+.shared-call-controls .guest-device-menu-trigger[aria-expanded="true"],
+.shared-call-controls .guest-device-menu-trigger:focus,
+.shared-call-controls .guest-device-menu-trigger:active {
+  background: var(--surface-raised) !important;
+  border: 0 !important;
+}
+
 .guest-device-menu-trigger:focus:not(:focus-visible) {
   outline: none;
 }

@@ -13,11 +13,17 @@ const lastBlockStartingWith = (selector: string) => {
 };
 
 it("keeps device chevrons plain in idle, expanded and pointer interaction states", () => {
-  const rule = lastBlockStartingWith(".guest-device-menu-trigger,");
+  const rule = lastBlockStartingWith(".guest-device-menu-trigger,\n.guest-device-menu-trigger:hover,");
   expect(rule).toMatch(/background:\s*transparent\s*!important/);
   expect(rule).toMatch(/border:\s*0\s*!important/);
   expect(rule).toMatch(/box-shadow:\s*none\s*!important/);
   expect(rule).not.toMatch(/outline:\s*none\s*!important/);
+});
+
+it("matches shared device dropdowns to the device button surface", () => {
+  const rule = lastBlockStartingWith(".shared-call-controls .guest-device-menu-trigger,");
+  expect(rule).toMatch(/background:\s*var\(--surface-raised\)\s*!important/);
+  expect(rule).toMatch(/border:\s*0\s*!important/);
 });
 
 it("removes the divider beside plain device-menu chevrons", () => {
