@@ -67,6 +67,32 @@ describe("messageState", () => {
     expect(merged[0].clientMessageId).toBeUndefined();
   });
 
+  it("keeps one call history event when multiple server events share a room", () => {
+    const local = baseMessage({
+      id: "local-call:room-1",
+      type: "call",
+      call: { roomId: "room-1", status: "completed", durationSeconds: 314 }
+    });
+    const firstServerEvent = baseMessage({
+      id: "server-call-1",
+      type: "call",
+      call: { roomId: "room-1", status: "completed", durationSeconds: 314 }
+    });
+    const secondServerEvent = baseMessage({
+      id: "server-call-2",
+      type: "call",
+      call: { roomId: "room-1", status: "completed", durationSeconds: 315 }
+    });
+
+    const merged = mergeIncomingMessage(
+      mergeIncomingMessage([local], firstServerEvent),
+      secondServerEvent
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({ id: "server-call-2", call: { durationSeconds: 315 } });
+  });
+
   it("keeps attachment messages sending until the attachment broadcast arrives", () => {
     const pending = baseMessage({
       id: "temp",

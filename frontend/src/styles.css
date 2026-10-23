@@ -501,6 +501,10 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.call-popup-group-call .call-popup-status {
+  font-size: var(--font-size-body);
+}
+
 .call-popup-notice {
   font-size: var(--font-size-caption);
   color: var(--text-secondary);
@@ -25455,6 +25459,17 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .voice-grid--1 .voice-participant-state {
   font-size: var(--font-size-small);
+}
+
+.guest-call-room .voice-grid--1 .voice-participant-avatar-wrapper.voice-avatar-wrapper--xl,
+.guest-call-room .voice-grid--1 .guest-call-avatar-halo {
+  width: 120px;
+  height: 120px;
+}
+
+.guest-call-room .voice-grid--1 .voice-participant-avatar.voice-avatar--xl {
+  width: 120px !important;
+  height: 120px !important;
 }
 
 /* 2 participants: Height decreased 2x (1 column, 2 rows) */
