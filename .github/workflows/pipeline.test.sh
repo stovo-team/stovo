@@ -189,7 +189,7 @@ if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'github.event.pull_request.head.repo.full_name == github.repository' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'github.event.pull_request.head.repo.full_name == github.repository' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
     exit 1
@@ -331,7 +331,7 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
 }
 
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, Windows, e2e]' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'runs-on: [self-hosted, Windows, e2e]' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Master SOLID boundaries must run once in a dedicated Windows job ($required)." >&2
     exit 1
@@ -342,6 +342,12 @@ docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:a
 for required in 'github.event.pull_request.head.repo.full_name != github.repository' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
   if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
     echo "Docs validation must use the tests runner for same-repository PRs and GitHub-hosted Ubuntu for forks ($required)." >&2
+    exit 1
+  fi
+done
+for required in 'Ensure Docker Compose CLI plugin is available' 'docker-compose-linux-x86_64' 'docker compose version'; do
+  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
+    echo "Docs validation must provision the Compose CLI plugin on self-hosted runners ($required)." >&2
     exit 1
   fi
 done

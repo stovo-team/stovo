@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: SOLID architecture boundaries
-        shell: pwsh
+        shell: powershell
         run: ./scripts/check-solid-boundaries.ps1 all
 
   backend-ci:

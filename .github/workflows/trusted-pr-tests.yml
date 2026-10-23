@@ -70,7 +70,7 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
       - name: SOLID architecture boundaries
-        shell: pwsh
+        shell: powershell
         run: ./scripts/check-solid-boundaries.ps1 all
 
   frontend-ci:
