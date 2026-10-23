@@ -277,11 +277,44 @@ jobs:
             git diff -- ent
             exit 1
           fi
+      - name: Cache golangci-lint binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/golangci-lint/v2.14.0
+          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
+      - name: Install golangci-lint binary
+        shell: powershell
+        run: |
+          $version = '2.14.0'
+          $toolDirectory = Join-Path $env:RUNNER_TEMP 'golangci-lint\v2.14.0'
+          $binaryPath = Join-Path $toolDirectory 'golangci-lint.exe'
+          if (-not (Test-Path $binaryPath)) {
+            New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+            $archivePath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-windows-amd64.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-extract"
+            $downloadUrl = "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-windows-amd64.zip"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+            Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
+            $downloadedBinary = Join-Path $extractPath "golangci-lint-$version-windows-amd64\golangci-lint.exe"
+            if (-not (Test-Path $downloadedBinary)) {
+              throw "The golangci-lint archive did not contain '$downloadedBinary'."
+            }
+
+            Copy-Item -LiteralPath $downloadedBinary -Destination $binaryPath -Force
+            Remove-Item -LiteralPath $archivePath, $extractPath -Force -Recurse
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $toolDirectory
+          & $binaryPath version
+          if ($LASTEXITCODE -ne 0) {
+            throw "golangci-lint $version could not start."
+          }
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
-          install-mode: binary
+          install-mode: none
           working-directory: backend
           verify: true
           skip-cache: false
