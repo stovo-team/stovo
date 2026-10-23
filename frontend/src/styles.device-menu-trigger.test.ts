@@ -37,6 +37,16 @@ it("removes the outline around guest device selectors", () => {
   expect(rule).toMatch(/box-shadow:\s*none/);
 });
 
+it("removes the shadow-like shell around shared call controls", () => {
+  const rule = css.match(/^\.shared-call-control-panel\s*\{([^}]*)\}/m)?.[1] ?? "";
+  expect(rule).toMatch(/background:\s*transparent/);
+  expect(rule).toMatch(/border:\s*0/);
+  expect(rule).toMatch(/box-shadow:\s*none/);
+  expect(rule).toMatch(/backdrop-filter:\s*none/);
+  expect(rule).toMatch(/-webkit-backdrop-filter:\s*none/);
+  expect(rule).toMatch(/padding:\s*0/);
+});
+
 it("keeps keyboard focus visible on device-menu chevrons", () => {
   const rule = ruleFor(String.raw`\.guest-device-menu-trigger:focus-visible`);
   expect(rule).toMatch(/outline:\s*2px solid var\(--focus-ring\)/);
