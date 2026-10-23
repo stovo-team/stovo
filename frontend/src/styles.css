@@ -32805,6 +32805,10 @@ button.minimized-call-button--end:active:not(:disabled) {
   border-left: 0;
 }
 
+.guest-call-controls .guest-device-control {
+  border-right: 0;
+}
+
 .guest-device-menu-trigger:focus:not(:focus-visible) {
   outline: none;
 }
