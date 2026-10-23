@@ -25992,17 +25992,18 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .shared-call-control-panel {
   align-items: center;
-  background: var(--color-palette-a82b3cba7aa1);
-  backdrop-filter: blur(18px) saturate(1.1);
-  -webkit-backdrop-filter: blur(18px) saturate(1.1);
-  border: 1px solid var(--color-palette-b749cc259197);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
   border-radius: var(--radius-panel);
   bottom: 16px;
   display: flex;
   justify-content: center;
   left: 50%;
   max-width: calc(100% - 24px);
-  padding: 8px 12px;
+  padding: 0;
   position: absolute;
   transform: translateX(-50%);
   transition: opacity .18s ease, translate .18s ease;
@@ -32818,6 +32819,20 @@ button.minimized-call-button--end:active:not(:disabled) {
 
 .guest-device-select:has(> .guest-device-menu-trigger) {
   border-left: 0;
+}
+
+.guest-call-controls .guest-device-control {
+  border: 0;
+  box-shadow: none;
+}
+
+.shared-call-controls .guest-device-menu-trigger,
+.shared-call-controls .guest-device-menu-trigger:hover,
+.shared-call-controls .guest-device-menu-trigger[aria-expanded="true"],
+.shared-call-controls .guest-device-menu-trigger:focus,
+.shared-call-controls .guest-device-menu-trigger:active {
+  background: var(--surface-raised) !important;
+  border: 0 !important;
 }
 
 .guest-device-menu-trigger:focus:not(:focus-visible) {
