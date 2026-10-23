@@ -369,7 +369,7 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
 done
 
 backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable' 'ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
     exit 1
