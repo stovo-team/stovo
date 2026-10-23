@@ -20680,7 +20680,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   min-height: 48px;
   overflow: hidden;
   margin: 10px var(--message-gutter-x) 0;
-  padding: 8px 14px;
+  padding: 0 14px;
   position: relative;
   transition:
     opacity var(--motion-surface-duration) var(--motion-route-ease),
