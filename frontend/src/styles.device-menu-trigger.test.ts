@@ -31,9 +31,10 @@ it("removes the divider beside plain device-menu chevrons", () => {
   expect(rule).toMatch(/border-left:\s*0/);
 });
 
-it("removes the right edge beside guest device selectors", () => {
+it("removes the outline around guest device selectors", () => {
   const rule = ruleFor(String.raw`\.guest-call-controls \.guest-device-control`);
-  expect(rule).toMatch(/border-right:\s*0/);
+  expect(rule).toMatch(/border:\s*0/);
+  expect(rule).toMatch(/box-shadow:\s*none/);
 });
 
 it("keeps keyboard focus visible on device-menu chevrons", () => {
