@@ -129,8 +129,8 @@ awk '
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
     }
-    if (job_runner["deploy-android"] != "[self-hosted, e2e]") {
-      fail("Android release must stay on the frontend runner labeled e2e.")
+    if (job_runner["deploy-android"] != "[self-hosted, e2e, Windows]") {
+      fail("Android release must target the Windows frontend runner labeled e2e.")
     }
     if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
     if (npm_remote_cache_enabled) fail("Frontend and Android jobs must use the runner-local npm cache, not restore the oversized remote archive.")
@@ -402,6 +402,27 @@ for deployment in deploy-frontend-web deploy-backend-web deploy-android; do
   deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
   if ! grep -Fq 'solid-boundaries' <<< "$deployment_contract"; then
     echo "$deployment must depend on the master SOLID boundary phase." >&2
+    exit 1
+  fi
+  for required in 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)'; do
+    if ! grep -Fq "$required" <<< "$deployment_contract"; then
+      echo "$deployment must put Git for Windows Bash ahead of the WSL shim before running deployment steps ($required)." >&2
+      exit 1
+    fi
+  done
+done
+
+for deployment in deploy-frontend-web deploy-backend-web; do
+  deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
+  if ! grep -Fq 'runs-on: [self-hosted, tests, Windows]' <<< "$deployment_contract"; then
+    echo "$deployment must target the Windows tests runners." >&2
+    exit 1
+  fi
+done
+android_deploy_contract=$(sed -n '/^  deploy-android:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'; do
+  if ! grep -Fq "$required" <<< "$android_deploy_contract"; then
+    echo "Android release must run with Git Bash on a Windows e2e runner ($required)." >&2
     exit 1
   fi
 done
