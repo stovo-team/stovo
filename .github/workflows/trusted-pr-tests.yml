@@ -267,9 +267,10 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
+          install-mode: binary
           working-directory: backend
           verify: true
-          skip-cache: true
+          skip-cache: false
           args: --timeout=5m
       - name: Unit and integration tests
         run: go test -count=1 ./...

@@ -277,25 +277,14 @@ jobs:
             git diff -- ent
             exit 1
           fi
-      - name: Add runner tools to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Verify preinstalled golangci-lint
-        env:
-          GOLANGCI_LINT_VERSION: 2.14.0
-        run: |
-          version="$(golangci-lint --version)"
-          echo "$version"
-          if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then
-            echo "Expected golangci-lint ${GOLANGCI_LINT_VERSION}, got: ${version}" >&2
-            exit 1
-          fi
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          install-mode: none
+          version: v2.14.0
+          install-mode: binary
           working-directory: backend
           verify: true
-          skip-cache: true
+          skip-cache: false
           args: --timeout=5m
       - name: Unit and integration tests with coverage
         run: |
@@ -393,10 +382,21 @@ jobs:
     name: Deploy Frontend Web
     needs: [changes, frontend-ci, solid-boundaries]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
-    runs-on: [self-hosted, tests]
+    runs-on: [self-hosted, tests, Windows]
     environment: production
 
     steps:
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Deploy Frontend via SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
@@ -495,10 +495,21 @@ jobs:
     name: Deploy Backend Web
     needs: [changes, backend-ci, solid-boundaries]
     if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
-    runs-on: [self-hosted, tests]
+    runs-on: [self-hosted, tests, Windows]
     environment: production
 
     steps:
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Deploy Backend via SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
@@ -847,15 +858,29 @@ jobs:
     name: Android Release
     needs: [changes, frontend-ci, solid-boundaries]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
-    runs-on: [self-hosted, e2e]
+    runs-on: [self-hosted, e2e, Windows]
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
