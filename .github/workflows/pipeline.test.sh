@@ -351,6 +351,14 @@ for required in 'Ensure Docker Compose CLI plugin is available' 'docker-compose-
     exit 1
   fi
 done
+
+codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
+for required in 'github.event.pull_request.head.repo.full_name != github.repository' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+  if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
+    echo "CodeQL must run serially on the tests runner except for fork PRs, which stay on hosted Ubuntu ($required)." >&2
+    exit 1
+  fi
+done
 if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
    ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
   echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
