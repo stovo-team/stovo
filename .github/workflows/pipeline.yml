@@ -76,7 +76,6 @@ jobs:
               - 'frontend/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/check-solid-boundaries.ps1'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
             backend:
@@ -89,7 +88,6 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/check-solid-boundaries.ps1'
               - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
@@ -99,6 +97,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: [self-hosted, e2e]
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -121,13 +123,13 @@ jobs:
       !inputs.backend_deploy_only &&
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
-    runs-on: windows-latest
+    runs-on: [self-hosted, Linux, tests]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: SOLID architecture boundaries
-        shell: pwsh
-        run: ./scripts/check-solid-boundaries.ps1 all
+        shell: bash
+        run: bash scripts/check-solid-boundaries.sh all
 
   backend-ci:
     name: Backend CI

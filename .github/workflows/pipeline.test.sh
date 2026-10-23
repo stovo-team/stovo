@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+grep -Fq 'frontend/** text eol=lf' .gitattributes || {
+  echo "Frontend sources must keep LF line endings on every runner OS." >&2
+  exit 1
+}
+
 bash .github/workflows/backend-dockerfiles.test.sh
 node .github/workflows/multiserver-routing.test.mjs
 bash deploy/scripts/ensure-tenant-proxy-network.test.sh
@@ -73,6 +78,9 @@ awk '
   job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
   job == "changes" && /GIT_CONFIG_KEY_1: http\.version/ { checkout_http_version_key = 1 }
   job == "changes" && /GIT_CONFIG_VALUE_1: HTTP\/1\.1/ { checkout_http_version_http1 = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -114,6 +122,9 @@ awk '
     if (shell_uses_bash_fi) fail("The PowerShell shell bootstrap must not contain Bash control syntax.")
     if (!checkout_git_config_count || !checkout_autocrlf_key || !checkout_autocrlf_disabled || !checkout_http_version_key || !checkout_http_version_http1) {
       fail("The Windows checkout must preserve LF line endings and use HTTP/1.1 for reliable GitHub fetches.")
+    }
+    if (!frontend_git_config_count || !frontend_autocrlf_key || !frontend_autocrlf_disabled) {
+      fail("Frontend CI must disable the Windows autocrlf conversion before checkout.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
@@ -184,23 +195,23 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
-if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
-  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.ps1." >&2
+if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
+  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
+    echo "Trusted PR SOLID boundaries must run with Bash ($required)." >&2
     exit 1
   fi
 done
-if grep -Fq 'bash scripts/check-solid-boundaries.sh' "$trusted_pr_workflow"; then
-  echo "Trusted PR SOLID boundary checks must not invoke the Bash checker." >&2
+if grep -Fq 'check-solid-boundaries.ps1' "$trusted_pr_workflow"; then
+  echo "Trusted PR SOLID boundaries must use the cross-platform Bash checker." >&2
   exit 1
 fi
-if [[ $(grep -Fc "'scripts/check-solid-boundaries.ps1'" "$trusted_pr_workflow") -ne 2 ]]; then
-  echo "Frontend and backend path filters must trigger the Windows SOLID boundary job for checker changes." >&2
+if [[ $(grep -Fc "'scripts/check-solid-boundaries.sh'" "$trusted_pr_workflow") -ne 2 ]]; then
+  echo "Frontend and backend path filters must trigger the Linux SOLID boundary job for checker changes." >&2
   exit 1
 fi
 grep -Fq '  pull_request_target:' "$trusted_pr_workflow" || {
@@ -247,7 +258,12 @@ require_trusted_pr_runner changes Windows ubuntu-latest
 require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
 require_trusted_pr_runner backend-ci tests ubuntu-latest
-require_trusted_pr_runner solid-boundaries Windows windows-latest
+solid_runner=$(trusted_pr_job_runner solid-boundaries)
+expected_solid_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"Linux\",\"tests\"]') || fromJSON('[\"ubuntu-latest\"]') }}"
+if [[ "$solid_runner" != "$expected_solid_runner" ]]; then
+  echo "Trusted PR SOLID boundaries must use the Linux tests runner for collaborators and ubuntu-latest for community PRs." >&2
+  exit 1
+fi
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
@@ -258,6 +274,14 @@ grep -Fq "github.event.pull_request.author_association" "$trusted_pr_workflow" |
   echo "PR workflow must route based on the pull request author's repository association." >&2
   exit 1
 }
+
+frontend_ci_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' 'run: npm ci' 'run: npm test' 'run: npm run build'; do
+  if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
+    echo "Trusted PR frontend checks must run on Linux and Windows e2e runners with a working Bash shell ($required)." >&2
+    exit 1
+  fi
+done
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
@@ -327,18 +351,35 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
 }
 
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'runs-on: [self-hosted, Linux, tests]' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Master SOLID boundaries must run once in a dedicated Windows job ($required)." >&2
+    echo "Master SOLID boundaries must run once in a dedicated Linux job ($required)." >&2
     exit 1
   fi
 done
+
+docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
+  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
+    echo "Docs validation must use the tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs ($required)." >&2
+    exit 1
+  fi
+done
+
+codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+  if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
+    echo "CodeQL must run serially on the tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
+    exit 1
+  fi
+done
+
 if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
    ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
   echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
   exit 1
 fi
-frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' .github/workflows/pipeline.yml)
+frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  solid-boundaries:/p' .github/workflows/pipeline.yml)
 if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
   echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
   exit 1

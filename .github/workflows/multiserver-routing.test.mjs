@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const read = (file) => readFileSync(file, 'utf8');
+const normalizeLineEndings = (contents) => contents.replace(/\r\n/g, '\n');
+const read = (file) => normalizeLineEndings(readFileSync(file, 'utf8'));
+
+test('workflow text normalizes Windows CRLF line endings before assertions', () => {
+  assert.equal(
+    normalizeLineEndings('workflow_dispatch:\r\n    inputs:\r\n'),
+    'workflow_dispatch:\n    inputs:\n',
+  );
+});
 
 // Probe both the runner user and the sudo context used by deployment. Some
 // self-hosted runners expose neither Compose plugin, so the config check skips there.

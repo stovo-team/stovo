@@ -29,7 +29,7 @@ on:
 
 jobs:
   docs-and-deployment:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Linux","tests"]') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -38,6 +38,21 @@ jobs:
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
           version: v3.18.4
+      - name: Ensure Docker Compose CLI plugin is available
+        shell: bash
+        run: |
+          if docker compose version >/dev/null 2>&1; then
+            docker compose version
+            exit 0
+          fi
+
+          compose_dir="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
+          mkdir -p "$compose_dir"
+          curl --fail --location --retry 3 \
+            https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64 \
+            --output "$compose_dir/docker-compose"
+          chmod +x "$compose_dir/docker-compose"
+          docker compose version
       - name: Validate docs, Compose, and Helm chart
         run: node --test .github/docs-validation.test.mjs
       - name: Validate rendered Helm manifests against Kubernetes 1.30 schemas

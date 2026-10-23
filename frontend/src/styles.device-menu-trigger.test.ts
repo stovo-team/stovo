@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
+import { readTextFile } from "./testUtils/readTextFile";
 
-const css = readFileSync("src/styles.css", "utf8");
+const css = readTextFile("src/styles.css");
 const ruleFor = (selector: string) => {
   const matches = [...css.matchAll(new RegExp(`${selector}\\s*\\{([^}]*)\\}`, "g"))];
   return matches.at(-1)?.[1] ?? "";
