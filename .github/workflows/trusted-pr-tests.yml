@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.full_name == github.repository && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
@@ -45,7 +45,7 @@ jobs:
   pipeline-contract:
     name: Pipeline Contract
     if: github.event.pull_request.draft == false
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.full_name == github.repository && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -62,7 +62,7 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.full_name == github.repository && '["self-hosted","Windows","e2e"]' || '["windows-latest"]') }}
+    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Windows","e2e"]' || '["windows-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -79,7 +79,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.full_name == github.repository && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -105,7 +105,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: ${{ fromJSON(github.event.pull_request.head.repo.full_name == github.repository && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
     timeout-minutes: 45
     services:
       postgres:

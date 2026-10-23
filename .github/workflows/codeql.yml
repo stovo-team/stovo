@@ -21,7 +21,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '["ubuntu-latest"]' || '["self-hosted","Linux","tests"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Linux","tests"]') }}
     timeout-minutes: 120
     strategy:
       fail-fast: false

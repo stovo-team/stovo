@@ -193,7 +193,7 @@ if grep -Fq '[System.IO.Path]::GetRelativePath' scripts/check-solid-boundaries.p
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'github.event.pull_request.head.repo.full_name == github.repository' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'contains(fromJSON(' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
     exit 1
@@ -227,22 +227,22 @@ awk '
     job_runner[job] = runner
   }
   END {
-    if (job_runner["changes"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+    if (job_runner["changes"] !~ /contains\(fromJSON\(/ || job_runner["changes"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
         job_runner["changes"] !~ /self-hosted/ || job_runner["changes"] !~ /tests/ ||
         job_runner["changes"] !~ /ubuntu-latest/) {
-      print "Trusted same-repository change detection must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
+      print "Trusted collaborator change detection must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
       failed = 1
     }
-    if (job_runner["frontend-ci"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+    if (job_runner["frontend-ci"] !~ /contains\(fromJSON\(/ || job_runner["frontend-ci"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
         job_runner["frontend-ci"] !~ /self-hosted/ || job_runner["frontend-ci"] !~ /tests/ ||
         job_runner["frontend-ci"] !~ /ubuntu-latest/) {
-      print "Trusted same-repository frontend PRs must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
+      print "Trusted collaborator frontend PRs must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
       failed = 1
     }
-    if (job_runner["backend-ci"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+    if (job_runner["backend-ci"] !~ /contains\(fromJSON\(/ || job_runner["backend-ci"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
         job_runner["backend-ci"] !~ /self-hosted/ || job_runner["backend-ci"] !~ /tests/ ||
         job_runner["backend-ci"] !~ /ubuntu-latest/) {
-      print "Trusted same-repository backend PRs must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
+      print "Trusted collaborator backend PRs must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
       failed = 1
     }
     if (failed) exit 1
@@ -251,12 +251,12 @@ awk '
 awk '
   /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
   /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
-  in_pipeline_contract && /github.event.pull_request.head.repo.full_name == github.repository/ &&
+  in_pipeline_contract && /contains\(fromJSON\(/ && /OWNER.*MEMBER.*COLLABORATOR/ &&
     /self-hosted/ && /tests/ && /ubuntu-latest/ { pipeline_contract_routes_by_trust = 1 }
   in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
   END {
     if (!pipeline_contract_routes_by_trust) {
-      print "Pipeline contract tests must use the tests runner for same-repository PRs and GitHub-hosted Ubuntu for forks." > "/dev/stderr"
+      print "Pipeline contract tests must use the tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs." > "/dev/stderr"
       failed = 1
     }
     if (!pipeline_contract_runs_tests) {
@@ -343,9 +343,9 @@ for required in 'runs-on: [self-hosted, Windows, e2e]' 'shell: powershell' 'scri
 done
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
-for required in 'github.event.pull_request.head.repo.full_name != github.repository' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
   if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
-    echo "Docs validation must use the tests runner for same-repository PRs and GitHub-hosted Ubuntu for forks ($required)." >&2
+    echo "Docs validation must use the tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs ($required)." >&2
     exit 1
   fi
 done
@@ -357,9 +357,9 @@ for required in 'Ensure Docker Compose CLI plugin is available' 'docker-compose-
 done
 
 codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
-for required in 'github.event.pull_request.head.repo.full_name != github.repository' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
   if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
-    echo "CodeQL must run serially on the tests runner except for fork PRs, which stay on hosted Ubuntu ($required)." >&2
+    echo "CodeQL must run serially on the tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
     exit 1
   fi
 done
