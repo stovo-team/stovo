@@ -243,29 +243,20 @@ trusted_pr_job_runner() {
 
 require_trusted_pr_runner() {
   job="$1"
-  self_hosted_label="$2"
+  self_hosted_labels="$2"
   hosted_label="$3"
   runner=$(trusted_pr_job_runner "$job")
-  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"$self_hosted_label\"]') || fromJSON('[\"$hosted_label\"]') }}"
+  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('$self_hosted_labels') || fromJSON('[\"$hosted_label\"]') }}"
 
   if [[ "$runner" != "$expected_runner" ]]; then
-    echo "Trusted PR $job must use the $self_hosted_label self-hosted runner for collaborators and $hosted_label for community PRs." >&2
+    echo "Trusted PR $job must use the $self_hosted_labels self-hosted runner for collaborators and $hosted_label for community PRs." >&2
     exit 1
   fi
 }
 
-require_hosted_windows_pr_runner() {
-  job="$1"
-  runner=$(trusted_pr_job_runner "$job")
-  if [[ "$runner" != "windows-latest" ]]; then
-    echo "Trusted PR $job must use the GitHub-hosted Windows runner." >&2
-    exit 1
-  fi
-}
-
-require_hosted_windows_pr_runner changes
-require_hosted_windows_pr_runner pipeline-contract
-require_trusted_pr_runner frontend-ci e2e ubuntu-latest
+require_trusted_pr_runner changes '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner pipeline-contract '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner frontend-ci '["self-hosted","e2e"]' ubuntu-latest
 backend_runner=$(trusted_pr_job_runner backend-ci)
 if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
@@ -282,11 +273,7 @@ if grep -Fq '    services:' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
-solid_runner=$(trusted_pr_job_runner solid-boundaries)
-if [[ "$solid_runner" != "ubuntu-latest" ]]; then
-  echo "Trusted PR SOLID boundaries must use ubuntu-latest so they do not queue on an unavailable self-hosted runner." >&2
-  exit 1
-fi
+require_trusted_pr_runner solid-boundaries '["self-hosted","tests","Windows"]' ubuntu-latest
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
