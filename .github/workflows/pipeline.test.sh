@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+grep -Fq 'frontend/** text eol=lf' .gitattributes || {
+  echo "Frontend sources must keep LF line endings on every runner OS." >&2
+  exit 1
+}
+
 bash .github/workflows/backend-dockerfiles.test.sh
 node .github/workflows/multiserver-routing.test.mjs
 bash deploy/scripts/ensure-tenant-proxy-network.test.sh
