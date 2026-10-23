@@ -189,7 +189,7 @@ if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'github.event.pull_request.head.repo.full_name == github.repository' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
     exit 1
@@ -223,12 +223,22 @@ awk '
     job_runner[job] = runner
   }
   END {
-    if (job_runner["frontend-ci"] != "ubuntu-latest") {
-      print "Trusted PR frontend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+    if (job_runner["changes"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+        job_runner["changes"] !~ /self-hosted/ || job_runner["changes"] !~ /tests/ ||
+        job_runner["changes"] !~ /ubuntu-latest/) {
+      print "Trusted same-repository change detection must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
       failed = 1
     }
-    if (job_runner["backend-ci"] != "ubuntu-latest") {
-      print "Trusted PR backend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
+    if (job_runner["frontend-ci"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+        job_runner["frontend-ci"] !~ /self-hosted/ || job_runner["frontend-ci"] !~ /tests/ ||
+        job_runner["frontend-ci"] !~ /ubuntu-latest/) {
+      print "Trusted same-repository frontend PRs must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
+      failed = 1
+    }
+    if (job_runner["backend-ci"] !~ /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/ ||
+        job_runner["backend-ci"] !~ /self-hosted/ || job_runner["backend-ci"] !~ /tests/ ||
+        job_runner["backend-ci"] !~ /ubuntu-latest/) {
+      print "Trusted same-repository backend PRs must use the tests runner; fork PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
       failed = 1
     }
     if (failed) exit 1
@@ -237,11 +247,12 @@ awk '
 awk '
   /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
   /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
-  in_pipeline_contract && /^    runs-on: ubuntu-latest$/ { pipeline_contract_uses_hosted_runner = 1 }
+  in_pipeline_contract && /github.event.pull_request.head.repo.full_name == github.repository/ &&
+    /self-hosted/ && /tests/ && /ubuntu-latest/ { pipeline_contract_routes_by_trust = 1 }
   in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
   END {
-    if (!pipeline_contract_uses_hosted_runner) {
-      print "Pipeline contract tests must run on the GitHub-hosted PR runner." > "/dev/stderr"
+    if (!pipeline_contract_routes_by_trust) {
+      print "Pipeline contract tests must use the tests runner for same-repository PRs and GitHub-hosted Ubuntu for forks." > "/dev/stderr"
       failed = 1
     }
     if (!pipeline_contract_runs_tests) {
@@ -320,9 +331,17 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
 }
 
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'runs-on: [self-hosted, Windows, e2e]' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Master SOLID boundaries must run once in a dedicated Windows job ($required)." >&2
+    exit 1
+  fi
+done
+
+docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
+for required in 'github.event.pull_request.head.repo.full_name != github.repository' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
+  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
+    echo "Docs validation must use the tests runner for same-repository PRs and GitHub-hosted Ubuntu for forks ($required)." >&2
     exit 1
   fi
 done
