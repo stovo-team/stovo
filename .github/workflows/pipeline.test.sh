@@ -263,7 +263,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
     exit 1
