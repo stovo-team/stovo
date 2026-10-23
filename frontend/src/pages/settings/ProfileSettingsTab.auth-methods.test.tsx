@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Capacitor } from "@capacitor/core";
 import QRCode from "qrcode";
 import * as client from "../../api/client";
-import { russianStrings, strings } from "../../config/strings";
+import { getSystemLanguage, russianStrings, strings } from "../../config/strings";
 import { ProfileSettingsTab } from "./ProfileSettingsTab";
 
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));

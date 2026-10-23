@@ -21,12 +21,12 @@ const colorStyleProperty = /(?:^|[-_])(?:color|background|border|shadow|outline|
 const sourceFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   const path = normalizeSourcePath(join(directory, entry.name));
   if (entry.isDirectory()) return sourceFiles(path);
-  return entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx") ? [path] : [];
+  return entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx") ? [portablePath(path)] : [];
 });
 const sourceCodeFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   const path = normalizeSourcePath(join(directory, entry.name));
   if (entry.isDirectory()) return sourceCodeFiles(path);
-  return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
+  return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [portablePath(path)] : [];
 });
 
 describe("shared design tokens", () => {
