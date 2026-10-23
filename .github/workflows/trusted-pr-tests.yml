@@ -1,7 +1,7 @@
 name: CI/CD Pipeline
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [master]
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows"]') || fromJSON('["ubuntu-latest"]') }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
@@ -45,14 +45,30 @@ jobs:
   pipeline-contract:
     name: Pipeline Contract
     if: github.event.pull_request.draft == false
-    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
+      - name: Detect available shell
+        if: contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       - name: Verify pipeline workflow contract
+        shell: bash
         run: bash .github/workflows/pipeline.test.sh
 
   solid-boundaries:
@@ -62,7 +78,7 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
-    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Windows","e2e"]' || '["windows-latest"]') }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows"]') || fromJSON('["windows-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -79,23 +95,38 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
+      - name: Ensure Git Bash is available on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Install dependencies
+        shell: bash
         working-directory: frontend
         run: npm ci
       - name: Test
+        shell: bash
         working-directory: frontend
         run: npm test
       - name: Build
+        shell: bash
         working-directory: frontend
         run: npm run build
 
@@ -105,7 +136,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: ${{ fromJSON(contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["self-hosted","Linux","tests"]' || '["ubuntu-latest"]') }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","tests"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 45
     services:
       postgres:

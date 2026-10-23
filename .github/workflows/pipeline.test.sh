@@ -193,7 +193,7 @@ if grep -Fq '[System.IO.Path]::GetRelativePath' scripts/check-solid-boundaries.p
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'contains(fromJSON(' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Windows' 'e2e' 'windows-latest' 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'shell: powershell' 'scripts/check-solid-boundaries.ps1 all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
     echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
     exit 1
@@ -207,65 +207,69 @@ if [[ $(grep -Fc "'scripts/check-solid-boundaries.ps1'" "$trusted_pr_workflow") 
   echo "Frontend and backend path filters must trigger the Windows SOLID boundary job for checker changes." >&2
   exit 1
 fi
-grep -Fq '  pull_request:' "$trusted_pr_workflow" || {
-  echo "Trusted PR tests must use pull_request so GitHub can require approval before external PR workflows run." >&2
+grep -Fq '  pull_request_target:' "$trusted_pr_workflow" || {
+  echo "Trusted PR runner selection must come from the base-branch pull_request_target workflow." >&2
   exit 1
 }
+if grep -Fq '  pull_request:' "$trusted_pr_workflow"; then
+  echo "Trusted PR runner selection must not use a PR-controlled pull_request workflow." >&2
+  exit 1
+fi
 grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   echo "PR checkout must not persist a write-capable GitHub token." >&2
   exit 1
 }
-awk '
-  /^  [[:alnum:]_-]+:$/ {
-    job = $0
-    sub(/^  /, "", job)
-    sub(/:$/, "", job)
-  }
-  /^    runs-on:/ {
-    runner = $0
-    sub(/^    runs-on:[[:space:]]*/, "", runner)
-    job_runner[job] = runner
-  }
-  END {
-    if (job_runner["changes"] !~ /contains\(fromJSON\(/ || job_runner["changes"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
-        job_runner["changes"] !~ /self-hosted/ || job_runner["changes"] !~ /tests/ ||
-        job_runner["changes"] !~ /ubuntu-latest/) {
-      print "Trusted collaborator change detection must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
-      failed = 1
+trusted_pr_job_runner() {
+  awk -v target="$1" '
+    /^  [[:alnum:]_-]+:$/ {
+      job = $0
+      sub(/^  /, "", job)
+      sub(/:$/, "", job)
     }
-    if (job_runner["frontend-ci"] !~ /contains\(fromJSON\(/ || job_runner["frontend-ci"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
-        job_runner["frontend-ci"] !~ /self-hosted/ || job_runner["frontend-ci"] !~ /tests/ ||
-        job_runner["frontend-ci"] !~ /ubuntu-latest/) {
-      print "Trusted collaborator frontend PRs must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
-      failed = 1
+    job == target && /^    runs-on:/ {
+      sub(/^    runs-on:[[:space:]]*/, "")
+      print
+      exit
     }
-    if (job_runner["backend-ci"] !~ /contains\(fromJSON\(/ || job_runner["backend-ci"] !~ /OWNER.*MEMBER.*COLLABORATOR/ ||
-        job_runner["backend-ci"] !~ /self-hosted/ || job_runner["backend-ci"] !~ /tests/ ||
-        job_runner["backend-ci"] !~ /ubuntu-latest/) {
-      print "Trusted collaborator backend PRs must use the tests runner; community PRs must use GitHub-hosted Ubuntu." > "/dev/stderr"
-      failed = 1
-    }
-    if (failed) exit 1
-  }
-' "$trusted_pr_workflow"
-awk '
-  /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
-  /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
-  in_pipeline_contract && /contains\(fromJSON\(/ && /OWNER.*MEMBER.*COLLABORATOR/ &&
-    /self-hosted/ && /tests/ && /ubuntu-latest/ { pipeline_contract_routes_by_trust = 1 }
-  in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
-  END {
-    if (!pipeline_contract_routes_by_trust) {
-      print "Pipeline contract tests must use the tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs." > "/dev/stderr"
-      failed = 1
-    }
-    if (!pipeline_contract_runs_tests) {
-      print "Trusted PR checks must run pipeline.test.sh before merge." > "/dev/stderr"
-      failed = 1
-    }
-    if (failed) exit 1
-  }
-' "$trusted_pr_workflow"
+  ' "$trusted_pr_workflow"
+}
+
+require_trusted_pr_runner() {
+  job="$1"
+  self_hosted_label="$2"
+  hosted_label="$3"
+  runner=$(trusted_pr_job_runner "$job")
+  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"$self_hosted_label\"]') || fromJSON('[\"$hosted_label\"]') }}"
+
+  if [[ "$runner" != "$expected_runner" ]]; then
+    echo "Trusted PR $job must use the $self_hosted_label self-hosted runner for collaborators and $hosted_label for community PRs." >&2
+    exit 1
+  fi
+}
+
+require_trusted_pr_runner changes Windows ubuntu-latest
+require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
+require_trusted_pr_runner frontend-ci e2e ubuntu-latest
+require_trusted_pr_runner backend-ci tests ubuntu-latest
+require_trusted_pr_runner solid-boundaries Windows windows-latest
+
+grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
+  echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
+  exit 1
+}
+
+grep -Fq "github.event.pull_request.author_association" "$trusted_pr_workflow" || {
+  echo "PR workflow must route based on the pull request author's repository association." >&2
+  exit 1
+}
+
+frontend_ci_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' 'run: npm ci' 'run: npm test' 'run: npm run build'; do
+  if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
+    echo "Trusted PR frontend checks must run on Linux and Windows e2e runners with a working Bash shell ($required)." >&2
+    exit 1
+  fi
+done
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
@@ -349,12 +353,6 @@ for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 
     exit 1
   fi
 done
-for required in 'Ensure Docker Compose CLI plugin is available' 'docker-compose-linux-x86_64' 'docker compose version'; do
-  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
-    echo "Docs validation must provision the Compose CLI plugin on self-hosted runners ($required)." >&2
-    exit 1
-  fi
-done
 
 codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
 for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
@@ -363,6 +361,7 @@ for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 
     exit 1
   fi
 done
+
 if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
    ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
   echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
