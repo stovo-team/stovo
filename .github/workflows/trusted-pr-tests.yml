@@ -76,7 +76,7 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
-    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Linux","tests"]') || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -138,7 +138,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","tests"]') || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
       postgres:

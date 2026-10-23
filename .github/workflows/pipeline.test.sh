@@ -257,11 +257,14 @@ require_trusted_pr_runner() {
 require_trusted_pr_runner changes Windows ubuntu-latest
 require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
-require_trusted_pr_runner backend-ci tests ubuntu-latest
+backend_runner=$(trusted_pr_job_runner backend-ci)
+if [[ "$backend_runner" != "ubuntu-latest" ]]; then
+  echo "Trusted PR backend CI must use ubuntu-latest so its service containers run on Linux." >&2
+  exit 1
+fi
 solid_runner=$(trusted_pr_job_runner solid-boundaries)
-expected_solid_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"Linux\",\"tests\"]') || fromJSON('[\"ubuntu-latest\"]') }}"
-if [[ "$solid_runner" != "$expected_solid_runner" ]]; then
-  echo "Trusted PR SOLID boundaries must use the Linux tests runner for collaborators and ubuntu-latest for community PRs." >&2
+if [[ "$solid_runner" != "ubuntu-latest" ]]; then
+  echo "Trusted PR SOLID boundaries must use ubuntu-latest so they do not queue on an unavailable self-hosted runner." >&2
   exit 1
 fi
 
