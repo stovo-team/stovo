@@ -1,4 +1,5 @@
 import type { MutableRefObject } from "react";
+import { DESIGN_COLOR_VALUES } from "../../../design-system/palette";
 
 export type RecordingMediaSources = {
   localStream?: MediaStream | null;
@@ -72,7 +73,7 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
       }
     }
 
-    context.fillStyle = "#080c13";
+    context.fillStyle = DESIGN_COLOR_VALUES.native.meetingRecordingBackground;
     context.fillRect(0, 0, canvas.width, canvas.height);
     if (screen && screen.video.videoWidth > 0 && screen.video.videoHeight > 0) {
       hasVideoFrames = drawVideo(context, screen.video, 0, 0, canvas.width, canvas.height) || hasVideoFrames;
@@ -91,7 +92,7 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
         hasVideoFrames = drawVideo(context, source.video, (index % columns) * tileWidth, Math.floor(index / columns) * tileHeight, tileWidth, tileHeight) || hasVideoFrames;
       });
     } else {
-      context.fillStyle = "#e7edf8";
+      context.fillStyle = DESIGN_COLOR_VALUES.native.meetingRecordingForeground;
       context.font = "600 28px sans-serif";
       context.textAlign = "center";
       context.fillText("Waiting for meeting video", canvas.width / 2, canvas.height / 2);

@@ -1,3 +1,8 @@
+---
+title: "Plan: local mock multi-user calls and files"
+type: implementation-plan
+---
+
 # Plan: local mock multi-user calls and files
 
 Spec: docs/superpowers/specs/2026-10-09-mock-multiuser-calls-and-files-design.md

@@ -18,6 +18,7 @@ import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
 import { MobileActiveTopBar } from "./MobileActiveTopBar";
 import { hasScreenSharePresentation } from "./screenSharePresentation";
 import { useCallUIPreferences } from "./callUIPreferences";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function MobileActiveScreen({
   peerName,
@@ -96,6 +97,7 @@ export function MobileActiveScreen({
   isGroupCall?: boolean;
   participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
 }) {
+  const copy = useStrings().sharedUi;
   const { preferences: callUIPreferences } = useCallUIPreferences();
   const [isLandscapeView, setIsLandscapeView] = useState(false);
 
@@ -341,7 +343,7 @@ export function MobileActiveScreen({
           onPointerDown={(e) => e.stopPropagation()}
         >
           <span className="mobile-active-screenshare-dot" aria-hidden="true" />
-          <span>Sharing screen</span>
+          <span>{copy.sharingScreen}</span>
         </div>
       )}
       {notice && (
@@ -416,7 +418,7 @@ export function MobileActiveScreen({
                       playsInline
                       muted
                     />
-                    <span className="mobile-active-pip-label">Your screen</span>
+                    <span className="mobile-active-pip-label">{copy.yourScreen}</span>
                   </div>
                 )
               )}
@@ -503,7 +505,7 @@ export function MobileActiveScreen({
 
           {/* Case 3: No remote video, no screen share, but local camera is active */}
           {!showRemoteVideo && !isSharingLocalScreen && isCameraEnabled && (
-            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "#000", pointerEvents: "auto" }}>
+            <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "var(--color-palette-7b2817bf9b80)", pointerEvents: "auto" }}>
               <video
                 ref={mobileLocalRef}
                 autoPlay

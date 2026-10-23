@@ -128,16 +128,28 @@ func TestBackendContainerEnvIncludesSupervisorChatTypes(t *testing.T) {
 func TestBackendContainerEnvUsesExplicitTrustedProxyCIDR(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		if key == "TRUSTED_PROXY_CIDRS" {
-			return "172.33.0.2/32"
+			return "172.34.0.2/32"
 		}
 		return fallback
 	})
 	for _, value := range env {
-		if value == "TRUSTED_PROXY_CIDRS=172.33.0.2/32" {
+		if value == "TRUSTED_PROXY_CIDRS=172.34.0.2/32" {
 			return
 		}
 	}
 	t.Fatal("tenant backend did not receive the explicit Caddy proxy CIDR")
+}
+
+func TestBackendContainerEnvDefaultsTrustedProxyToReservedCaddyAddress(t *testing.T) {
+	env := backendContainerEnv("family", func(_, fallback string) string {
+		return fallback
+	})
+	for _, value := range env {
+		if value == "TRUSTED_PROXY_CIDRS=172.34.0.2/32" {
+			return
+		}
+	}
+	t.Fatal("tenant backend did not receive the reserved Caddy proxy CIDR by default")
 }
 
 func TestProxyEndpointSettingsUsesUniqueCaddyAlias(t *testing.T) {

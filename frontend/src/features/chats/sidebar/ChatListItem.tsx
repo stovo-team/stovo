@@ -57,6 +57,7 @@ export function ChatListItem({
   onContextMenu
 }: ChatListItemProps) {
   const strings = useStrings();
+  const copy = strings.chats.sidebar;
   const chatName = displayChatName(chat, currentUserId, strings);
   const preview = chatPreview(chat, strings);
   const voiceParticipantIds = chat.type === "voice"
@@ -83,14 +84,14 @@ export function ChatListItem({
   const voiceParticipants = (chat.activeCall?.participants as Array<{ userId?: string; state?: string; joinedAt?: string }> | undefined) ?? [];
 
   const voiceDuration = (joinedAt?: string) => {
-    if (!joinedAt) return "In voice channel";
+    if (!joinedAt) return copy.inVoiceChannel;
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(joinedAt).getTime()) / 60_000));
-    if (!Number.isFinite(elapsedMinutes)) return "In voice channel";
-    if (elapsedMinutes < 1) return "Joined just now";
-    if (elapsedMinutes < 60) return `In voice for ${elapsedMinutes}m`;
+    if (!Number.isFinite(elapsedMinutes)) return copy.inVoiceChannel;
+    if (elapsedMinutes < 1) return copy.joinedJustNow;
+    if (elapsedMinutes < 60) return copy.inVoiceFor(elapsedMinutes);
     const hours = Math.floor(elapsedMinutes / 60);
     const minutes = elapsedMinutes % 60;
-    return `In voice for ${hours}h${minutes ? ` ${minutes}m` : ""}`;
+    return copy.joinedHours(hours, minutes);
   };
 
   return (
@@ -168,11 +169,11 @@ export function ChatListItem({
           const draftText = window.localStorage.getItem(`stovo:draft:${chat.id}`);
           return draftText ? (
             <span className="chat-list-preview">
-              <span className="chat-list-draft-label">Draft:</span>{" "}
+              <span className="chat-list-draft-label">{copy.draft}</span>{" "}
               {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
             </span>
           ) : chat.type === "voice" && voiceParticipantIds.length > 0 ? (
-            <span className="chat-list-voice-participants" aria-label={`${voiceParticipantIds.length} active voice channel members`}>
+            <span className="chat-list-voice-participants" aria-label={copy.activeVoiceMembers(voiceParticipantIds.length)}>
               {voiceParticipantIds.slice(0, 4).map((userId) => {
                 const member = chat.members.find((item) => item.id === userId);
                 const memberPolicy = member as VoiceMember | undefined;
@@ -188,7 +189,7 @@ export function ChatListItem({
                     <button
                       type="button"
                       className="chat-list-voice-member-trigger"
-                      aria-label={`${member?.displayName ?? "Member"}${canMessage ? ", open direct message" : ""}`}
+                      aria-label={copy.memberLabel(member?.displayName ?? copy.member, canMessage)}
                       disabled={!canMessage || !onOpenMemberDm}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -200,14 +201,14 @@ export function ChatListItem({
                         accessToken={accessToken}
                         className="avatar chat-list-voice-avatar"
                         file={member?.profilePhoto}
-                        label={member?.displayName ?? "Member"}
+                        label={member?.displayName ?? copy.member}
                       />
                     </button>
                     <span className="chat-list-voice-member-tooltip" role="tooltip">
-                      <strong>{member?.displayName ?? "Member"}</strong>
+                      <strong>{member?.displayName ?? copy.member}</strong>
                       <small>{voiceDuration(joinedAt)}</small>
-                      {!canMessage && userId !== currentUserId && <small>Direct messages are restricted</small>}
-                      {userId === currentUserId && <small>You</small>}
+                      {!canMessage && userId !== currentUserId && <small>{copy.directMessagesRestricted}</small>}
+                      {userId === currentUserId && <small>{copy.you}</small>}
                     </span>
                   </span>
                 );
@@ -221,18 +222,16 @@ export function ChatListItem({
         {(chat.type === "group" || chat.type === "family") && chat.activeCall && (
           <span
             className="group-call-pulse-dot"
-            title="Group call in progress"
-            aria-label="Group call in progress"
+            title={copy.groupCallInProgress}
+            aria-label={copy.groupCallInProgress}
           />
         )}
-        {chat.isMuted && <BellOff aria-label="Muted" size={14} />}
-        {chat.isFavorite && <Star aria-label="Favorite" size={14} />}
+        {chat.isMuted && <BellOff aria-label={copy.muted} size={14} />}
+        {chat.isFavorite && <Star aria-label={copy.favorite} size={14} />}
         {hasUnread && (
           <span
             className="tiny-badge"
-            aria-label={`${chat.unreadCount} unread ${
-              chat.unreadCount === 1 ? "message" : "messages"
-            }`}
+            aria-label={copy.unreadMessages(chat.unreadCount)}
           >
             {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
           </span>

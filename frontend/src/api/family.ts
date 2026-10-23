@@ -1,5 +1,6 @@
 import { User, UserRole } from "./auth";
 import { apiRequest } from "./client";
+import { normalizePasskeyOptions } from "./passkeyOptions";
 
 export function inviteUrlForServer(inviteUrl: string, serverUrl: string): string {
   try {
@@ -100,7 +101,7 @@ export function beginInvitePasskeyRegistration(token: string, nickname: string) 
   return apiRequest<InvitePasskeyOptions>(`/api/invites/${encodeURIComponent(token)}/passkey/options`, {
     method: "POST",
     body: { nickname },
-  });
+  }).then(normalizePasskeyOptions);
 }
 
 export function acceptInviteWithPasskey(token: string, payload: { nickname: string; ceremonyId: string; response: object }) {

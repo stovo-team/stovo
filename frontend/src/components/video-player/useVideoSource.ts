@@ -21,6 +21,15 @@ export function useVideoSource(file: FamilyFile, accessToken: string, identity: 
     onLoading();
     const cached = peekCachedObjectUrl(file.id);
     if (cached) { setSourceUrl(cached); return () => { cancelled = true; }; }
+    if (import.meta.env.MODE === "mock") {
+      void downloadFileBlob(accessToken, file.id).then((blob) => {
+        if (cancelled) return;
+        const url = peekCachedObjectUrl(file.id);
+        if (!blob.size || !url) { onFailure("Video source is unavailable"); return; }
+        setSourceUrl(url);
+      }).catch(() => { if (!cancelled) onFailure("Video download failed"); });
+      return () => { cancelled = true; };
+    }
     void createStreamingMediaUrl(accessToken, file.id).then((url) => {
       if (cancelled) return;
       setSourceUrl(url);

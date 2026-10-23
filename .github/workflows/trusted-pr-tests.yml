@@ -28,17 +28,50 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/check-solid-boundaries.ps1'
               - 'docs/engineering/size-baseline.tsv'
               - '.github/workflows/trusted-pr-tests.yml'
               - '.github/workflows/pipeline.yml'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/**'
               - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/check-solid-boundaries.ps1'
               - 'docs/engineering/size-baseline.tsv'
               - '.github/workflows/trusted-pr-tests.yml'
               - '.github/workflows/pipeline.yml'
+
+  pipeline-contract:
+    name: Pipeline Contract
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: Verify pipeline workflow contract
+        run: bash .github/workflows/pipeline.test.sh
+
+  solid-boundaries:
+    name: SOLID architecture boundaries
+    needs: changes
+    if: >-
+      github.event.pull_request.draft == false &&
+      (needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.backend == 'true')
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: SOLID architecture boundaries
+        shell: pwsh
+        run: ./scripts/check-solid-boundaries.ps1 all
 
   frontend-ci:
     name: Frontend CI
@@ -46,7 +79,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, e2e]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -59,8 +92,6 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      - name: SOLID architecture boundaries
-        run: bash scripts/check-solid-boundaries.sh frontend
       - name: Test
         working-directory: frontend
         run: npm test
@@ -74,7 +105,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: [self-hosted, tests]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
       postgres:
@@ -127,6 +158,3 @@ jobs:
           args: --timeout=5m
       - name: Unit and integration tests
         run: go test -count=1 ./...
-      - name: SOLID architecture boundaries
-        working-directory: .
-        run: bash scripts/check-solid-boundaries.sh backend

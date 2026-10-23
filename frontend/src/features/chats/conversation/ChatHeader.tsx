@@ -119,6 +119,7 @@ export function ChatHeader({
   onToggleVoiceChat?: () => void;
 }) {
   const strings = useStrings();
+  const headerCopy = strings.chats.header;
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const isArchiveGroup = Boolean(archiveGroupName && onBackFromArchiveGroup);
   const isNotesArchiveGroup = archiveGroupKind === "notes";
@@ -142,9 +143,9 @@ export function ChatHeader({
   return (
     <div className="chat-detail-header chat-detail-header--floating" data-call-header-chat-id={selectedChat.id}>
       <BackButton
-        className={isArchiveGroup ? "archive-group-back-button" : "mobile-back-button"}
-        ariaLabel={isArchiveGroup ? "Back to grouped Message Archive" : threadRootMessage ? "Back to chat" : "Back to chats"}
-        title={isArchiveGroup ? "Back to grouped Message Archive" : undefined}
+        className={isArchiveGroup ? "archive-group-back-button" : threadRootMessage ? "thread-back-button" : "mobile-back-button"}
+        ariaLabel={isArchiveGroup ? headerCopy.backToGroupedArchive : threadRootMessage ? headerCopy.backToChat : headerCopy.backToChats}
+        title={isArchiveGroup ? headerCopy.backToGroupedArchive : undefined}
         onClick={handleBack}
       />
       {threadRootMessage ? (
@@ -170,12 +171,12 @@ export function ChatHeader({
         <div className="chat-title-group chat-title-group--selection" aria-live="polite">
           <span>
             <strong>
-              {selectedCount} selected
+              {headerCopy.selectedCount(selectedCount)}
             </strong>
           </span>
         </div>
       ) : isArchiveGroup ? (
-        <div className="chat-title-group chat-title-group--archive-group" aria-label={`Message Archive, ${archiveGroupName}`}>
+        <div className="chat-title-group chat-title-group--archive-group" aria-label={headerCopy.archiveLabel(archiveGroupName!)}>
           {isNotesArchiveGroup ? (
             <span className="avatar chat-avatar archive" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}><FileText size={20} /></span>
           ) : (
@@ -189,11 +190,11 @@ export function ChatHeader({
             />
           )}
           <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "title"))}>
-            <span>Message Archive</span><span className="archive-group-title-divider" aria-hidden="true">•</span><span>{archiveGroupName}</span>
+            <span>{strings.chats.types.messageArchive}</span><span className="archive-group-title-divider" aria-hidden="true">•</span><span>{archiveGroupName}</span>
           </span>
         </div>
       ) : (
-        <button type="button" className="chat-title-group" aria-label="Open chat details" onClick={onOpenDetails}>
+        <button type="button" className="chat-title-group" aria-label={strings.chats.details.title} onClick={onOpenDetails}>
           <RealAvatar
             accessToken={accessToken}
             className={`avatar chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
@@ -206,7 +207,7 @@ export function ChatHeader({
             <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
               <span>{chatName}</span>
               {typingNames.length > 0 && (
-                <span className="typing-dots" title={`${typingNames.join(", ")} typing`} aria-label="typing">
+                <span className="typing-dots" title={headerCopy.typingNames(typingNames.join(", "))} aria-label={headerCopy.typing}>
                   <span className="typing-dot" />
                   <span className="typing-dot" />
                   <span className="typing-dot" />
@@ -233,8 +234,8 @@ export function ChatHeader({
             <button
               type="button"
               className="icon-button subtle chat-header-selection-button"
-              aria-label="Copy selected messages"
-              title="Copy"
+              aria-label={headerCopy.copySelected}
+              title={headerCopy.copy}
               onClick={onSelectionCopy}
             >
               <Copy aria-hidden="true" size={18} />
@@ -243,8 +244,8 @@ export function ChatHeader({
               <button
                 type="button"
                 className="icon-button subtle chat-header-selection-button"
-                aria-label="Delete selected messages"
-                title="Delete"
+                aria-label={headerCopy.deleteSelected}
+                title={headerCopy.delete}
                 onClick={onSelectionDelete}
               >
                 <Trash2 aria-hidden="true" size={18} />
@@ -253,7 +254,7 @@ export function ChatHeader({
             <button
               type="button"
               className="icon-button subtle chat-header-selection-button"
-              aria-label="Archive selected messages"
+              aria-label={headerCopy.archiveSelected}
               title={strings.chats.details.saveToArchive}
               onClick={onSelectionArchive}
             >
@@ -263,8 +264,8 @@ export function ChatHeader({
               <button
                 type="button"
                 className="icon-button subtle chat-header-selection-button"
-                aria-label="Edit selected message"
-                title="Edit"
+                aria-label={headerCopy.editSelected}
+                title={headerCopy.edit}
                 onClick={onSelectionEdit}
               >
                 <Pencil aria-hidden="true" size={18} />
@@ -278,8 +279,8 @@ export function ChatHeader({
                 <button
                   type="button"
                   className="icon-button subtle chat-header-call-button chat-header-call-button--audio"
-                  aria-label="Audio call"
-                  title={callPhase !== "idle" ? "Another call is in progress" : "Audio call"}
+                  aria-label={headerCopy.audioCall}
+                  title={callPhase !== "idle" ? headerCopy.callInProgress : headerCopy.audioCall}
                   onClick={onStartAudioCall}
                   disabled={callPhase !== "idle"}
                 >
@@ -288,8 +289,8 @@ export function ChatHeader({
                 <button
                   type="button"
                   className="icon-button subtle chat-header-call-button"
-                  aria-label="Video call"
-                  title={callPhase !== "idle" ? "Another call is in progress" : "Video call"}
+                  aria-label={headerCopy.videoCall}
+                  title={callPhase !== "idle" ? headerCopy.callInProgress : headerCopy.videoCall}
                   onClick={onStartVideoCall}
                   disabled={callPhase !== "idle"}
                 >
@@ -301,8 +302,8 @@ export function ChatHeader({
               <button
                 type="button"
                 className="icon-button subtle chat-header-call-button chat-header-voice-chat-button"
-                aria-label={isVoiceTextChatOpen ? "Close chat" : "Open chat"}
-                title={isVoiceTextChatOpen ? "Close chat" : "Open chat"}
+                aria-label={isVoiceTextChatOpen ? headerCopy.closeChat : headerCopy.openChat}
+                title={isVoiceTextChatOpen ? headerCopy.closeChat : headerCopy.openChat}
                 onClick={onToggleVoiceChat}
               >
                 {isVoiceTextChatOpen ? (
@@ -315,9 +316,9 @@ export function ChatHeader({
               <button
                 type="button"
                 className="chat-header-search-button"
-                aria-label="Search messages"
+                aria-label={headerCopy.searchMessages}
                 aria-pressed={isMessageSearchOpen}
-                title="Search messages"
+                title={headerCopy.searchMessages}
                 onClick={onToggleMessageSearch}
               >
                 <Search aria-hidden="true" size={20} />
@@ -328,10 +329,10 @@ export function ChatHeader({
                 <button
                   type="button"
                   className="icon-button subtle icon-button--plain"
-                  aria-label="More actions"
+                  aria-label={headerCopy.moreActions}
                   aria-expanded={isChatMenuOpen}
                   aria-haspopup="menu"
-                  title="More actions"
+                  title={headerCopy.moreActions}
                   onClick={onToggleChatMenu}
                 >
                   <span className="ms-icon ms-icon--20" aria-hidden={true}>
@@ -344,19 +345,19 @@ export function ChatHeader({
                       <span className="ms-icon ms-icon--20" aria-hidden={true}>
                         search
                       </span>
-                      Search messages
+                      {headerCopy.searchMessages}
                     </button>
                     <button type="button" role="menuitem" onClick={onOpenDetails}>
                       <Info aria-hidden="true" size={16} />
-                      Chat details
+                      {strings.chats.details.title}
                     </button>
                     <button type="button" role="menuitem" onClick={onMarkRead}>
                       <CheckCheck aria-hidden="true" size={16} />
-                      Mark as read
+                      {strings.chats.details.markAsRead}
                     </button>
                     <button type="button" role="menuitem" onClick={onTogglePinned}>
                       <Pin aria-hidden="true" size={16} />
-                      {selectedChat.isPinned ? "Unpin chat" : "Pin chat"}
+                      {selectedChat.isPinned ? headerCopy.unpinChat : headerCopy.pinChat}
                     </button>
                     <button type="button" role="menuitem" onClick={onToggleMuted}>
                       {selectedChat.isMuted ? <Bell aria-hidden="true" size={16} /> : <BellOff aria-hidden="true" size={16} />}

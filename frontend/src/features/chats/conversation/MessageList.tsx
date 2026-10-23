@@ -183,7 +183,7 @@ export function MessageList({
         onScroll={onScroll}
       >
         {isChatLoading && messages.length === 0 ? (
-          <div className="message-list skeleton-message-list" aria-label="Loading chat messages">
+          <div className="message-list skeleton-message-list" aria-label={strings.sharedUi.loadingChatMessages}>
             <div className="chat-message-row message-incoming skeleton-message-row">
               <span className="skeleton-avatar" />
               <div className="message-bubble skeleton-bubble wide">
@@ -206,8 +206,8 @@ export function MessageList({
         ) : messages.length === 0 ? (
           <>
             <MessageCircle aria-hidden="true" size={36} />
-            <strong>No messages yet</strong>
-            <p>Send the first message to start the conversation.</p>
+            <strong>{strings.sharedUi.noMessages}</strong>
+            <p>{strings.sharedUi.firstMessagePrompt}</p>
           </>
         ) : visibleMessages.length === 0 && !(threadRootMessageId && threadRootMessage) ? (
           <div className="phase-empty-state compact-empty">
@@ -251,10 +251,10 @@ export function MessageList({
           className="scroll-to-bottom-fab"
           aria-label={
             pendingNewBelowCount > 0
-              ? `Scroll to bottom, ${pendingNewBelowCount} new ${pendingNewBelowCount === 1 ? "message" : "messages"}`
-              : "Scroll to bottom"
+              ? `${strings.sharedUi.scrollToBottom}, ${pendingNewBelowCount} new ${pendingNewBelowCount === 1 ? "message" : "messages"}`
+              : strings.sharedUi.scrollToBottom
           }
-          title="Scroll to bottom"
+          title={strings.sharedUi.scrollToBottom}
           onClick={onScrollToBottomClick}
         >
           {pendingNewBelowCount > 0 && (

@@ -13,6 +13,7 @@ import {
   type CachedCanvasPreview,
 } from "../fileLibraryCache";
 import { RichCanvasPreview } from "./RichCanvasPreview";
+import { useStrings } from "../i18n/LanguageContext";
 
 export function StorageCanvases({
   accessToken,
@@ -29,6 +30,7 @@ export function StorageCanvases({
   userId?: string;
   onCanvasesChange?: (canvases: Canvas[]) => void;
 }) {
+  const copy = useStrings().files.storageItems;
   const navigate = useNavigate();
   const [canvases, setCanvases] = useState<Canvas[]>(() =>
     userId ? loadCachedStorageItemsFromLocalStorage<Canvas>(userId, "canvases") ?? [] : []
@@ -126,7 +128,7 @@ export function StorageCanvases({
     }
     if (!rawQuery) return true;
     if (isExtensionOnly) return true;
-    const title = (canvas.title || "Untitled canvas").toLowerCase();
+    const title = (canvas.title || copy.untitledCanvas).toLowerCase();
     const virtualFileName = `${title}.canvas`;
     return (
       title.includes(rawQuery) ||
@@ -138,8 +140,8 @@ export function StorageCanvases({
   if (visible.length === 0 && filter !== "canvases" && !isExtensionOnly) return null;
 
   return (
-    <section className="storage-canvas-section" aria-label="Canvases">
-      <div className="storage-files-heading"><h2>Canvases</h2></div>
+    <section className="storage-canvas-section" aria-label={copy.canvases}>
+      <div className="storage-files-heading"><h2>{copy.canvases}</h2></div>
       {visible.length > 0 ? (
         <div className="storage-grid">
           {visible.map((canvas) => (
@@ -156,7 +158,7 @@ export function StorageCanvases({
               />
               <div className="storage-tile-info">
                 <strong>{canvas.title}</strong>
-                <small>Canvas</small>
+                <small>{copy.canvas}</small>
               </div>
             </button>
           ))}
@@ -164,7 +166,7 @@ export function StorageCanvases({
       ) : (
         <div className="empty-state storage-empty-state">
           <StickyNote size={30} />
-          <strong>No canvases yet</strong>
+          <strong>{copy.noCanvases}</strong>
         </div>
       )}
     </section>

@@ -34,7 +34,7 @@ describe("compact audio message styling", () => {
 
   it("resets min-height on audio player buttons and keeps transcribe button fully circular", () => {
     expect(styles).toMatch(/\.audio-player button \{[^}]*min-height: 0;/);
-    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*border-radius: 50%;/);
+    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*border-radius: var\(--radius-circle\);/);
     expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*min-height: 22px;/);
     expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*min-width: 22px;/);
     expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*aspect-ratio: 1 \/ 1;/);

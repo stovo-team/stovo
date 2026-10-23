@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { CheckSquare, Circle, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Trash2, Truck, X } from "lucide-react";
+import { CheckSquare, Circle, Mic, Plus, ShoppingCart, Trash2, Truck, X } from "lucide-react";
+import { useStrings } from "../../i18n/LanguageContext";
 
 export interface RichChecklistCreatorProps {
   onSubmit: (payload: {
@@ -16,23 +17,8 @@ interface ItemDraft {
   section?: string;
 }
 
-const GROCERY_TEMPLATE: ItemDraft[] = [
-  { text: "Apples & Bananas", section: "Produce" },
-  { text: "Spinach & Avocados", section: "Produce" },
-  { text: "Whole Milk & Butter", section: "Dairy" },
-  { text: "Free-range Eggs", section: "Dairy" },
-  { text: "Sourdough Bread", section: "Bakery" },
-  { text: "Olive Oil & Sea Salt", section: "Pantry" }
-];
-
-const ERRAND_TEMPLATE: ItemDraft[] = [
-  { text: "Pick up prescription", section: "Pharmacy" },
-  { text: "Drop off return package", section: "Post Office" },
-  { text: "Pick up dry cleaning", section: "Cleaners" },
-  { text: "Buy AA batteries & lightbulbs", section: "Hardware" }
-];
-
 export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel }: RichChecklistCreatorProps) {
+  const copy = useStrings().attachments.checklistCreator;
   const [category, setCategory] = useState<"grocery" | "errand" | "general">("grocery");
   const [title, setTitle] = useState("");
   const [items, setItems] = useState<ItemDraft[]>([]);
@@ -41,19 +27,15 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
 
   const handleSelectCategory = (newCat: "grocery" | "errand" | "general") => {
     setCategory(newCat);
-    if (!title || title === "Grocery list" || title === "Weekend Errands" || title === "To-Do List") {
+    if (!title || title === copy.groceryTitle || title === copy.errandTitle || title === copy.todoTitle) {
       if (newCat === "grocery") {
-        setTitle("Grocery list");
+        setTitle(copy.groceryTitle);
       } else if (newCat === "errand") {
-        setTitle("Weekend Errands");
+        setTitle(copy.errandTitle);
       } else {
-        setTitle("To-Do List");
+        setTitle(copy.todoTitle);
       }
     }
-  };
-
-  const handleApplyTemplate = (template: ItemDraft[]) => {
-    setItems([...template]);
   };
 
   const handleAddItem = () => {
@@ -77,11 +59,11 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
 
   const handleSubmit = async () => {
     setErrorMsg(null);
-    const defaultTitle = category === "grocery" ? "Grocery list" : category === "errand" ? "Weekend Errands" : "To-Do List";
+    const defaultTitle = category === "grocery" ? copy.groceryTitle : category === "errand" ? copy.errandTitle : copy.todoTitle;
     const trimmedTitle = title.trim() || defaultTitle;
     const validItems = items.filter((i) => i.text.trim().length > 0);
     if (validItems.length === 0) {
-      setErrorMsg("Please add at least one item to the checklist.");
+      setErrorMsg(copy.emptyItems);
       return;
     }
 
@@ -95,11 +77,11 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
         }))
       });
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to create checklist.");
+      setErrorMsg(err instanceof Error ? err.message : copy.createFailed);
     }
   };
 
-  const titlePlaceholder = category === "grocery" ? "e.g. Grocery list" : category === "errand" ? "e.g. Weekend Errands" : "e.g. To-Do List";
+  const titlePlaceholder = category === "grocery" ? `e.g. ${copy.groceryTitle}` : category === "errand" ? `e.g. ${copy.errandTitle}` : `e.g. ${copy.todoTitle}`;
 
   return (
     <div className="rich-checklist-creator">
@@ -107,14 +89,14 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
         <span className="checklist-creator-icon" aria-hidden="true">
           {category === "grocery" ? <ShoppingCart size={20} /> : category === "errand" ? <Truck size={20} /> : <CheckSquare size={20} />}
         </span>
-        <h3>Shared Checklist</h3>
+        <h3>{copy.shared}</h3>
       </div>
 
       {errorMsg && <div className="checklist-creator-error-banner" role="alert">{errorMsg}</div>}
 
       <div className="checklist-creator-section">
-        <label className="checklist-input-label">Checklist Type</label>
-        <div className="checklist-category-selector" role="radiogroup" aria-label="Checklist type">
+        <label className="checklist-input-label">{copy.type}</label>
+        <div className="checklist-category-selector" role="radiogroup" aria-label={copy.typeAria}>
           <button
             type="button"
             className={`checklist-cat-btn ${category === "grocery" ? "active" : ""}`}
@@ -122,7 +104,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
             aria-pressed={category === "grocery"}
           >
             <ShoppingCart size={16} />
-            <span>Groceries</span>
+            <span>{copy.groceries}</span>
           </button>
           <button
             type="button"
@@ -131,7 +113,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
             aria-pressed={category === "errand"}
           >
             <Truck size={16} />
-            <span>Errands</span>
+            <span>{copy.errands}</span>
           </button>
           <button
             type="button"
@@ -140,14 +122,14 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
             aria-pressed={category === "general"}
           >
             <CheckSquare size={16} />
-            <span>Task List</span>
+            <span>{copy.taskList}</span>
           </button>
         </div>
       </div>
 
       <div className="checklist-creator-section">
         <label className="checklist-input-label" htmlFor="checklist-title-input">
-          Title
+          {copy.title}
         </label>
         <input
           id="checklist-title-input"
@@ -162,17 +144,17 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
 
       <div className="checklist-creator-section">
         <div className="checklist-items-header">
-          <label className="checklist-input-label">Items ({items.length})</label>
+          <label className="checklist-input-label">{copy.items(items.length)}</label>
           <div className="checklist-items-header-actions">
             <button
               type="button"
               className="checklist-voice-btn"
               disabled
-              title="Voice checklist creation (Premium feature)"
-              aria-label="Voice checklist creation (Premium feature)"
+              title={copy.voiceFeature}
+              aria-label={copy.voiceFeature}
             >
               <Mic size={14} />
-              <span>Voice to List</span>
+              <span>{copy.voiceToList}</span>
               <span className="checklist-pro-badge">PRO</span>
             </button>
           </div>
@@ -186,7 +168,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
                 type="text"
                 className="checklist-item-input"
                 value={item.text}
-                placeholder="Item name"
+                placeholder={copy.itemName}
                 maxLength={280}
                 onChange={(e) => handleItemTextChange(index, e.target.value)}
               />
@@ -194,7 +176,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
               <button
                 type="button"
                 className="checklist-item-remove-btn"
-                aria-label="Remove item"
+                aria-label={copy.removeItem}
                 onClick={() => handleRemoveItem(index)}
               >
                 <Trash2 size={16} />
@@ -207,7 +189,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           <input
             type="text"
             className="checklist-text-input checklist-quick-add"
-            placeholder="+ Add an item and press Enter..."
+            placeholder={copy.addItemPlaceholder}
             value={newItemText}
             maxLength={280}
             onChange={(e) => setNewItemText(e.target.value)}
@@ -225,7 +207,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
             onClick={handleAddItem}
           >
             <Plus size={16} />
-            <span>Add</span>
+            <span>{copy.add}</span>
           </button>
         </div>
       </div>
@@ -234,7 +216,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
         {onCancel && (
           <button type="button" className="checklist-action-btn secondary" onClick={onCancel} disabled={isSubmitting}>
             <X size={16} />
-            <span>Cancel</span>
+            <span>{copy.cancel}</span>
           </button>
         )}
         <button
@@ -244,7 +226,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           disabled={isSubmitting || items.length === 0}
         >
           <Plus size={16} />
-          <span>{isSubmitting ? "Creating..." : "Create Checklist"}</span>
+          <span>{isSubmitting ? copy.creating : copy.create}</span>
         </button>
       </div>
     </div>

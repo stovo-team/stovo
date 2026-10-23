@@ -5,6 +5,7 @@ import { downloadFileBlob, type FamilyFile } from "../api/files";
 import { documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
 import type { TablePreview } from "./DocumentAttachmentPreview";
 import { RichCanvasPreview } from "./RichCanvasPreview";
+import { useStrings } from "../i18n/LanguageContext";
 
 type InlineDocumentPreviewProps = {
   accessToken: string;
@@ -34,6 +35,7 @@ export function InlineDocumentPreview({
   const [textPreview, setTextPreview] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
   const activeSheet = table?.sheets[table.activeSheet];
+  const copy = useStrings().sharedUi;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -91,15 +93,15 @@ export function InlineDocumentPreview({
   }, [accessToken, file.id, file.originalName, file.mimeType, kind, loadTablePreview, onResolvedSize, shouldLoadPreview]);
 
   return (
-    <div className="document-inline-preview" role="group" aria-label={`${documentKindLabel(kind)} preview`} ref={hostRef}>
+    <div className="document-inline-preview" role="group" aria-label={copy.documentPreview(documentKindLabel(kind))} ref={hostRef}>
       {loading && shouldLoadPreview && (
         <div className="document-preview-status" role="status">
           <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
-          Loading preview…
+          {copy.loadingPreview}
         </div>
       )}
       {loading && !shouldLoadPreview && <div className="document-inline-preview-placeholder" aria-hidden="true" />}
-      {error && <div className="document-preview-error" role="alert">Preview couldn’t load. Open the file to try again.</div>}
+      {error && <div className="document-preview-error" role="alert">{copy.previewFailed}</div>}
       {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
       {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
       {!loading && !error && kind === "text" && textPreview !== null && (

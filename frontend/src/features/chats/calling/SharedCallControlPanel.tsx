@@ -1,37 +1,33 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 export const CALL_CONTROLS_REVEAL_EVENT = "stovo:reveal-call-controls";
+export const CALL_CONTROLS_AUTO_HIDE_MS = 12_000;
 
 export function SharedCallControlPanel({ autoHide, children, onReveal }: { autoHide: boolean; children: ReactNode; onReveal?: () => void }) {
-  const [pointerInside, setPointerInside] = useState(false);
+  const [visible, setVisible] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reveal = useCallback(() => {
+    setVisible(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setVisible(false), CALL_CONTROLS_AUTO_HIDE_MS);
+    onReveal?.();
+  }, [onReveal]);
   useEffect(() => {
-    const reveal = () => {
-      setPointerInside(true);
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-      hideTimer.current = setTimeout(() => setPointerInside(false), 2200);
-    };
     window.addEventListener(CALL_CONTROLS_REVEAL_EVENT, reveal);
     return () => {
       window.removeEventListener(CALL_CONTROLS_REVEAL_EVENT, reveal);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, []);
-  const revealFromPanel = () => {
-    setPointerInside(true);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    onReveal?.();
-  };
+  }, [reveal]);
   return (
     <div
       className="shared-call-control-panel"
       data-auto-hide={autoHide ? "true" : "false"}
-      data-visible={!autoHide || pointerInside ? "true" : "false"}
-      onPointerEnter={revealFromPanel}
-      onPointerLeave={() => setPointerInside(false)}
-      onFocusCapture={revealFromPanel}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPointerInside(false); }}
-      onTouchStart={revealFromPanel}
+      data-visible={!autoHide || visible ? "true" : "false"}
+      onPointerEnter={reveal}
+      onPointerMove={reveal}
+      onFocusCapture={reveal}
+      onTouchStart={reveal}
     >
       {children}
     </div>

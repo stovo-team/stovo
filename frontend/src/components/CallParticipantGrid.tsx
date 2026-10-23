@@ -53,8 +53,8 @@ const gridStyle: CSSProperties = {
 
 const tileStyle: CSSProperties = {
   position: "relative",
-  background: "#080808",
-  borderRadius: "18px",
+  background: "var(--color-palette-7e9040f7e3a7)",
+  borderRadius: "var(--radius-bubble)",
   overflow: "hidden",
   minHeight: "120px",
   aspectRatio: "16 / 9",
@@ -248,6 +248,7 @@ export default function CallParticipantGrid({
       className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
         ...gridStyle,
+        ...(useBottomScreenShareRail || useMobilePresentationRow ? { alignContent: "start" } : {}),
         ...(gallerySize ? { "--gallery-width": `${gallerySize.width}px`, "--gallery-height": `${gallerySize.height}px` } as CSSProperties : {}),
         gridTemplateColumns: useScreenShareRail
           ? useBottomScreenShareRail

@@ -1,3 +1,4 @@
+import { mergeHydratedMessageHistory } from "./mergeHydratedMessageHistory";
 import { Dispatch, MutableRefObject, RefObject, SetStateAction, useCallback, useEffect, useRef } from "react";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../api/chats";
 import type { User } from "../../../api/auth";
@@ -35,7 +36,6 @@ export function mergeOutboxPendingMessages(
   currentUser: User | null
 ): Message[] {
   if (!outboxItems || outboxItems.length === 0) return current;
-
   for (const item of outboxItems) {
     for (const a of item.attachments) {
       const fileId = a.uploadedFileId ?? a.id;
@@ -195,6 +195,7 @@ export function useChatDataLoader({
   const hasLoadedOverviewRef = useRef(false);
   const deltaSyncInFlightRef = useRef(false);
   const archiveGroupByChatRef = useRef<Record<string, string | undefined>>({});
+  const pinnedChatIdRef = useRef<string | undefined>(undefined);
 
   const authRequestRef = useRef(authRequest);
   const onErrorRef = useRef(onError);
@@ -307,11 +308,15 @@ export function useChatDataLoader({
         setMessages([]);
         setPinnedMessages([]);
         setPinIndex(0);
+        pinnedChatIdRef.current = undefined;
         setIsChatLoading(false);
         return;
       }
 
-      restoreCachedPinnedMessages(currentUserIdRef.current, requestedChatId, setPinnedMessages, setPinIndex);
+      if (pinnedChatIdRef.current !== requestedChatId) {
+        restoreCachedPinnedMessages(currentUserIdRef.current, requestedChatId, setPinnedMessages, setPinIndex);
+        pinnedChatIdRef.current = requestedChatId;
+      }
 
       const fallbackChat = chatsRef.current.find((chat) => chat.id === requestedChatId) ?? null;
       if (fallbackChat) {
@@ -328,7 +333,7 @@ export function useChatDataLoader({
         historyCursorRef.current[requestedChatId] = null;
       }
 
-      let cachedMessages = archiveGroup ? undefined : messageCacheRef.current[requestedChatId];
+      let cachedMessages = messageCacheRef.current[requestedChatId];
       if (!cachedMessages && !archiveGroup && currentUserIdRef.current) {
         const localCached = loadRecentChatHistoryFromLocalStorage<Message>(
           currentUserIdRef.current,
@@ -356,7 +361,7 @@ export function useChatDataLoader({
           if (!cached || historyRequestResolved || !isCurrentRequest()) return;
           const decrypted = await decryptMessages(requestedChatId, cached, userId);
           if (!historyRequestResolved && isCurrentRequest()) {
-            applyMessagesForChatRef.current(requestedChatId, decrypted);
+            applyMessagesForChatRef.current(requestedChatId, (current) => mergeHydratedMessageHistory(current, decrypted));
             setIsChatLoading(false);
           }
         }).catch(() => undefined);
@@ -377,7 +382,8 @@ export function useChatDataLoader({
         const mutationVersionAtChatRequest = chatMutationVersionRef.current[requestedChatId] ?? 0;
         const chatRequest = authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`)
           .catch(() => null as Chat | null);
-        const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => null as PinnedMessage[] | null);
+        const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
+          .catch(() => null as PinnedMessage[] | null);
         const archiveGroupQuery = archiveGroup ? `&archiveGroup=${encodeURIComponent(archiveGroup)}` : "";
         const initialMessageLimit = cachedMessages ? Math.min(Math.max(cachedMessages.length, 10), 100) : 10;
         const messageResult = await authRequestRef.current<MessageHistoryPage>(

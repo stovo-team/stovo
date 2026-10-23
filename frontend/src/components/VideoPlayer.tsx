@@ -16,6 +16,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useStrings } from "../i18n/LanguageContext";
 
 import { type FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
@@ -27,13 +28,15 @@ import {
   type VideoPlaybackRegistration,
 } from "../videoPlaybackSession";
 import { useVideoSource } from "./video-player/useVideoSource";
+import { storagePreviewVideoStyle } from "./video-player/storagePreviewStyle";
 
 export interface VideoPlayerProps {
   file: FamilyFile;
   accessToken: string;
   identity: VideoIdentity;
   disabledReason?: string;
-  beforePlay?: () => void | Promise<void>;
+  beforePlay?: () => void | Promise<void>; fullViewRequest?: number;
+  previewExpanded?: boolean;
   /** Telegram-style muted inline autoplay. Defaults to true. */
   autoplay?: boolean;
 }
@@ -87,7 +90,7 @@ export function orientationStyle(width: number, height: number): CSSProperties {
     width: "100%",
     maxWidth: "100%",
     height: "auto",
-    maxHeight: "min(56vh, 420px)",
+    maxHeight: "min(68dvh, 700px)",
     ["--video-aspect-ratio" as string]: `${width} / ${height}`,
   };
 }
@@ -97,9 +100,10 @@ export function VideoPlayer({
   accessToken,
   identity,
   disabledReason,
-  beforePlay,
-  autoplay = true,
+  beforePlay, fullViewRequest = 0, autoplay = true, previewExpanded,
 }: VideoPlayerProps) {
+  const strings = useStrings();
+  const copy = strings.videoPlayer;
   const rootRef = useRef<HTMLDialogElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
@@ -173,14 +177,14 @@ export function VideoPlayer({
     updateSession({ status: "loading", error: null });
   }, [updateSession]);
   const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure, canLoad);
-
   useEffect(() => {
+    if (fullViewRequest > 0) setIsExpanded(true);
     if (!isExpanded) return;
     const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
     updateViewport();
     window.addEventListener("resize", updateViewport);
     return () => window.removeEventListener("resize", updateViewport);
-  }, [isExpanded]);
+  }, [fullViewRequest, isExpanded]);
 
   useEffect(() => {
     const dialog = rootRef.current;
@@ -316,9 +320,8 @@ export function VideoPlayer({
     return () => observer.disconnect();
   }, [autoplayEnabled, disabledReason, sourceUrl]);
 
-  const frameStyle = isExpanded
-    ? expandedVideoStyle(videoSize.width, videoSize.height, viewport.width, viewport.height)
-    : orientationStyle(videoSize.width, videoSize.height);
+  const frameStyle = isExpanded ? expandedVideoStyle(videoSize.width, videoSize.height, viewport.width, viewport.height)
+    : previewExpanded === undefined ? orientationStyle(videoSize.width, videoSize.height) : storagePreviewVideoStyle(videoSize.width, videoSize.height, window.innerWidth, window.innerHeight, previewExpanded);
   const videoNode = (
     <video
       ref={videoRef}
@@ -391,10 +394,10 @@ export function VideoPlayer({
         {videoNode}
 
         {!canLoad && !disabledReason && (
-          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>Download video</button>
+          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>{strings.sharedUi.downloadVideo}</button>
         )}
         {canLoad && isLoading && !error && !disabledReason && (
-          <div className="video-player-status" role="status" aria-live="polite">Loading video…</div>
+          <div className="video-player-status" role="status" aria-live="polite">{copy.loading}</div>
         )}
         {disabledReason && (
           <div className="video-player-status" role="status">{disabledReason}</div>
@@ -403,15 +406,15 @@ export function VideoPlayer({
 
         <div
           className="video-player-controls"
-          aria-label="Video controls"
+          aria-label={copy.controls}
           onClick={stopPropagation}
           onPointerDown={stopPropagation}
         >
             <button
               type="button"
               data-control="play-pause"
-              aria-label={isPlaying ? "Pause video" : "Play video"}
-              title={isPlaying ? "Pause video" : "Play video"}
+              aria-label={isPlaying ? copy.pause : copy.play}
+              title={isPlaying ? copy.pause : copy.play}
               disabled={Boolean(disabledReason) || !sourceUrl}
               onClick={() => { if (isPlaying) pause(); else void play({ unmuted: true }); }}
             >
@@ -422,7 +425,7 @@ export function VideoPlayer({
             <input
               type="range"
               data-control="seek"
-              aria-label="Seek video"
+              aria-label={copy.seek}
               min={0}
               max={duration > 0 ? duration : 0}
               step="any"
@@ -438,7 +441,7 @@ export function VideoPlayer({
                 }
               }}
             />
-            <output data-control="time" aria-label="Video time">
+            <output data-control="time" aria-label={copy.time}>
               {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
             </output>
             <button

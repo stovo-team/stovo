@@ -7,7 +7,34 @@ import {
   russianStrings
 } from "./index";
 
+function firstShapeDifference(en: unknown, ru: unknown, path = "strings"): string | null {
+  const enIsObject = typeof en === "object" && en !== null;
+  const ruIsObject = typeof ru === "object" && ru !== null;
+  if (enIsObject !== ruIsObject) return path;
+  if (!enIsObject || !ruIsObject) {
+    return typeof en === typeof ru ? null : path;
+  }
+  const enObject = en as Record<string, unknown>;
+  const ruObject = ru as Record<string, unknown>;
+  const keys = new Set([...Object.keys(enObject), ...Object.keys(ruObject)]);
+  for (const key of [...keys].sort()) {
+    if (!(key in enObject) || !(key in ruObject)) return `${path}.${key}`;
+    const difference = firstShapeDifference(enObject[key], ruObject[key], `${path}.${key}`);
+    if (difference) return difference;
+  }
+  return null;
+}
+
 describe("i18n strings and language resolution", () => {
+  it("keeps English and Russian catalogs in recursive key and value-kind parity", () => {
+    expect(firstShapeDifference(englishStrings, russianStrings)).toBeNull();
+  });
+
+  it("reports the first nested catalog mismatch", () => {
+    expect(firstShapeDifference({ auth: { profile: "text", count: () => "" } }, { auth: { profile: "текст" } }))
+      .toBe("strings.auth.count");
+  });
+
   it("resolves explicit languages correctly", () => {
     expect(resolveLanguage("en", "ru")).toBe("en");
     expect(resolveLanguage("ru", "en")).toBe("ru");
@@ -24,6 +51,10 @@ describe("i18n strings and language resolution", () => {
 
     expect(en.nav.chats).toBe("Chats");
     expect(ru.nav.chats).toBe("Чаты");
+    expect(en.auditUi.joinMeetingAction).toBe("Join");
+    expect(ru.auditUi.joinMeetingAction).toBe("Присоединиться");
+    expect(en.auditUi.plansAction).toBe("In Plans");
+    expect(ru.auditUi.plansAction).toBe("В планы");
     expect(en.nav.storage).toBe("Files");
     expect(ru.nav.storage).toBe("Файлы");
 
@@ -114,27 +145,7 @@ describe("i18n strings and language resolution", () => {
     expect(ru.chats.composer.messagePlaceholder).toBe("Сообщение");
   });
 
-  it("exports valid english and russian string dictionaries with matching keys", () => {
-    expect(Object.keys(russianStrings.brand)).toEqual(Object.keys(englishStrings.brand));
-    expect(Object.keys(russianStrings.nav)).toEqual(Object.keys(englishStrings.nav));
-    expect(Object.keys(russianStrings.auth)).toEqual(Object.keys(englishStrings.auth));
-    expect(Object.keys(russianStrings.settings)).toEqual(Object.keys(englishStrings.settings));
-    expect(Object.keys(russianStrings.appearance)).toEqual(Object.keys(englishStrings.appearance));
-    expect(Object.keys(russianStrings.appearance.themes)).toEqual(Object.keys(englishStrings.appearance.themes));
-    expect(Object.keys(russianStrings.appearance.accents)).toEqual(Object.keys(englishStrings.appearance.accents));
-    expect(Object.keys(russianStrings.appearance.wallpapers)).toEqual(Object.keys(englishStrings.appearance.wallpapers));
-    expect(Object.keys(russianStrings.appearance.bubbleShapes)).toEqual(Object.keys(englishStrings.appearance.bubbleShapes));
-    expect(Object.keys(russianStrings.appearance.messageFonts)).toEqual(Object.keys(englishStrings.appearance.messageFonts));
-    expect(Object.keys(russianStrings.appearance.densities)).toEqual(Object.keys(englishStrings.appearance.densities));
-    expect(Object.keys(russianStrings.notifications)).toEqual(Object.keys(englishStrings.notifications));
-    expect(Object.keys(russianStrings.privacy)).toEqual(Object.keys(englishStrings.privacy));
-    expect(Object.keys(russianStrings.errors)).toEqual(Object.keys(englishStrings.errors));
-    expect(Object.keys(russianStrings.callHistory)).toEqual(Object.keys(englishStrings.callHistory));
-    expect(Object.keys(russianStrings.shortcuts)).toEqual(Object.keys(englishStrings.shortcuts));
-    expect(Object.keys(russianStrings.shortcuts.categories)).toEqual(Object.keys(englishStrings.shortcuts.categories));
-    expect(Object.keys(russianStrings.shortcuts.actions)).toEqual(Object.keys(englishStrings.shortcuts.actions));
-    expect(Object.keys(russianStrings.quickSwitcher)).toEqual(Object.keys(englishStrings.quickSwitcher));
-    expect(Object.keys(russianStrings.audioPlayer)).toEqual(Object.keys(englishStrings.audioPlayer));
-    expect(Object.keys(russianStrings.chats.composer)).toEqual(Object.keys(englishStrings.chats.composer));
+  it("exports valid English and Russian dictionaries with matching recursive key and value-kind shape", () => {
+    expect(firstShapeDifference(englishStrings, russianStrings)).toBeNull();
   });
 });

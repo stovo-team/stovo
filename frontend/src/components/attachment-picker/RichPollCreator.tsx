@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BarChart3, Check, CircleHelp, ListChecks, Plus, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import type { CreatePollPayload } from "../../api/polls";
+import { useStrings } from "../../i18n/LanguageContext";
 
 export interface RichPollCreatorProps {
   onSubmit: (payload: CreatePollPayload) => Promise<void> | void;
@@ -9,6 +10,7 @@ export interface RichPollCreatorProps {
 }
 
 export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: RichPollCreatorProps) {
+  const copy = useStrings().attachments.pollCreator;
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -45,18 +47,18 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
     setErrorMsg(null);
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
-      setErrorMsg("Please enter a question.");
+      setErrorMsg(copy.emptyQuestion);
       return;
     }
 
     const trimmedOptions = options.map((opt) => opt.trim());
     if (trimmedOptions.some((opt) => !opt)) {
-      setErrorMsg("Please fill out all poll options.");
+      setErrorMsg(copy.emptyOptions);
       return;
     }
 
     if (isQuiz && (correctOptionIndex === null || correctOptionIndex < 0 || correctOptionIndex >= options.length)) {
-      setErrorMsg("Please select the correct answer for quiz mode.");
+      setErrorMsg(copy.missingAnswer);
       return;
     }
 
@@ -73,7 +75,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
     try {
       await onSubmit(payload);
     } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to create poll. Please try again.");
+      setErrorMsg(err?.message || copy.createFailed);
     }
   };
 
@@ -82,8 +84,8 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
       <div className="rich-poll-creator-header">
         <span className="poll-creator-title-icon" aria-hidden="true"><BarChart3 size={18} /></span>
         <div>
-          <h3>New poll</h3>
-          <p>Ask the chat a question</p>
+          <h3>{copy.title}</h3>
+          <p>{copy.subtitle}</p>
         </div>
       </div>
 
@@ -91,13 +93,13 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
 
       <div className="poll-creator-section">
         <label className="poll-input-label" htmlFor="poll-question-input">
-          Question
+          {copy.question}
         </label>
         <input
           id="poll-question-input"
           type="text"
           className="poll-text-input"
-          placeholder="Ask a question..."
+          placeholder={copy.questionPlaceholder}
           value={question}
           maxLength={255}
           onChange={(e) => setQuestion(e.target.value)}
@@ -107,7 +109,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
       </div>
 
       <div className="poll-creator-section">
-        <div className="poll-input-label poll-options-label">Options</div>
+        <div className="poll-input-label poll-options-label">{copy.options}</div>
         <div className="poll-options-list">
           {options.map((optText, index) => (
             <div key={index} className="poll-option-row">
@@ -115,8 +117,8 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
                 <button
                   type="button"
                   className={`quiz-correct-toggle ${correctOptionIndex === index ? "is-correct" : ""}`}
-                  title={correctOptionIndex === index ? "Correct answer" : "Mark as correct answer"}
-                  aria-label={`Mark option ${index + 1} as correct answer`}
+                  title={correctOptionIndex === index ? copy.correctAnswer : copy.markCorrect}
+                  aria-label={copy.markOptionCorrect(index + 1)}
                   onClick={() => setCorrectOptionIndex(index)}
                 >
                   <Check size={16} />
@@ -125,7 +127,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
               <input
                 type="text"
                 className="poll-text-input poll-option-input"
-                placeholder={`Option ${index + 1}`}
+                placeholder={copy.option(index + 1)}
                 value={optText}
                 maxLength={100}
                 onChange={(e) => handleOptionChange(index, e.target.value)}
@@ -135,7 +137,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
                 <button
                   type="button"
                   className="poll-remove-option-btn"
-                  aria-label={`Remove option ${index + 1}`}
+                  aria-label={copy.removeOption(index + 1)}
                   onClick={() => handleRemoveOption(index)}
                   disabled={isSubmitting}
                 >
@@ -154,7 +156,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
             disabled={isSubmitting}
           >
             <Plus size={18} />
-            <span>Add option</span>
+            <span>{copy.addOption}</span>
           </button>
         )}
       </div>
@@ -163,10 +165,10 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
         <div className="poll-setting-row">
           <span className="poll-setting-icon" aria-hidden="true"><ShieldCheck size={18} /></span>
           <div className="poll-setting-info">
-            <span className="poll-setting-title">Anonymous</span>
-            <span className="poll-setting-desc">Keep voters private</span>
+            <span className="poll-setting-title">{copy.anonymous}</span>
+            <span className="poll-setting-desc">{copy.keepPrivate}</span>
           </div>
-          <label className="poll-setting-toggle" aria-label="Anonymous voting">
+          <label className="poll-setting-toggle" aria-label={copy.anonymousVoting}>
             <input
               type="checkbox"
               checked={isAnonymous}
@@ -181,10 +183,10 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
           <div className="poll-setting-row">
             <span className="poll-setting-icon" aria-hidden="true"><ListChecks size={18} /></span>
             <div className="poll-setting-info">
-              <span className="poll-setting-title">Multiple answers</span>
-              <span className="poll-setting-desc">Let voters choose more than one</span>
+            <span className="poll-setting-title">{copy.multipleAnswers}</span>
+            <span className="poll-setting-desc">{copy.multipleAnswersHelp}</span>
             </div>
-            <label className="poll-setting-toggle" aria-label="Allow multiple answers">
+            <label className="poll-setting-toggle" aria-label={copy.allowMultipleAnswers}>
               <input
                 type="checkbox"
                 checked={allowMultiple}
@@ -199,10 +201,10 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
         <div className="poll-setting-row">
           <span className="poll-setting-icon" aria-hidden="true"><Sparkles size={18} /></span>
           <div className="poll-setting-info">
-            <span className="poll-setting-title">Quiz</span>
-            <span className="poll-setting-desc">Choose one correct answer</span>
+            <span className="poll-setting-title">{copy.quiz}</span>
+            <span className="poll-setting-desc">{copy.quizHelp}</span>
           </div>
-          <label className="poll-setting-toggle" aria-label="Quiz mode">
+          <label className="poll-setting-toggle" aria-label={copy.quizMode}>
             <input
               type="checkbox"
               checked={isQuiz}
@@ -223,13 +225,13 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
           <div className="poll-creator-section poll-explanation-section">
             <label className="poll-input-label" htmlFor="poll-explanation-input">
               <CircleHelp size={15} aria-hidden="true" />
-              Explanation <span>(optional)</span>
+              {copy.explanation} <span>({copy.optional})</span>
             </label>
             <input
               id="poll-explanation-input"
               type="text"
               className="poll-text-input"
-              placeholder="Explain why the answer is correct..."
+              placeholder={copy.explanationPlaceholder}
               value={explanation}
               maxLength={200}
               onChange={(e) => setExplanation(e.target.value)}
@@ -248,7 +250,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
             disabled={isSubmitting}
           >
             <X size={17} aria-hidden="true" />
-            Cancel
+            {copy.cancel}
           </button>
         )}
         <button
@@ -258,7 +260,7 @@ export function RichPollCreator({ onSubmit, isSubmitting = false, onCancel }: Ri
           disabled={isSubmitting}
         >
           <BarChart3 size={17} aria-hidden="true" />
-          {isSubmitting ? "Creating…" : "Create poll"}
+          {isSubmitting ? copy.creating : copy.create}
         </button>
       </div>
     </div>

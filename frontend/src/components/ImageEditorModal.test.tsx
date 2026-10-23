@@ -1,6 +1,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getAppStrings } from "../config/strings";
+
+vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru") }));
 
 import { PendingAttachmentCard } from "../features/chats/composer/PendingAttachmentCard";
 import { ImageEditorModal } from "./ImageEditorModal";
@@ -135,37 +138,37 @@ describe("ImageEditorModal", () => {
       );
     });
 
-    expect(document.body.textContent).toContain("Edit Image");
-    const adjustmentsTab = document.querySelector<HTMLButtonElement>('[aria-label="Adjust image"]');
+    expect(document.body.textContent).toContain("Изменить изображение");
+    const adjustmentsTab = document.querySelector<HTMLButtonElement>('[aria-label="Настроить изображение"]');
     expect(adjustmentsTab).not.toBeNull();
     act(() => {
       adjustmentsTab?.click();
     });
-    expect(document.body.textContent).toContain("Brightness");
-    expect(document.body.textContent).toContain("Contrast");
-    expect(document.body.textContent).toContain("Gamma");
+    expect(document.body.textContent).toContain("Яркость");
+    expect(document.body.textContent).toContain("Контрастность");
+    expect(document.body.textContent).toContain("Гамма");
 
     // Click Crop tab
-    const cropTab = document.querySelector<HTMLButtonElement>('[aria-label="Crop image"]');
+    const cropTab = document.querySelector<HTMLButtonElement>('[aria-label="Обрезать изображение"]');
     expect(cropTab).not.toBeNull();
 
     act(() => {
       cropTab?.click();
     });
 
-    expect(document.body.textContent).toContain("Aspect Ratio:");
+    expect(document.body.textContent).toContain("Соотношение сторон:");
 
     // Click Draw tab
-    const drawTab = document.querySelector<HTMLButtonElement>('[aria-label="Draw on image"]');
+    const drawTab = document.querySelector<HTMLButtonElement>('[aria-label="Рисовать на изображении"]');
     expect(drawTab).not.toBeNull();
 
     act(() => {
       drawTab?.click();
     });
 
-    expect(document.body.textContent).toContain("Color:");
-    expect(document.body.textContent).toContain("Pen:");
-    expect(document.body.textContent).toContain("Fine");
-    expect(document.body.textContent).toContain("Brush Size");
+    expect(document.body.textContent).toContain("Цвет:");
+    expect(document.body.textContent).toContain("Перо:");
+    expect(document.body.textContent).toContain("Тонкое");
+    expect(document.body.textContent).toContain("Размер кисти");
   });
 });

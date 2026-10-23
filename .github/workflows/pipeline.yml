@@ -7,7 +7,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'migrations/master/**'
+      - 'deploy/migrations/master/**'
       - 'deploy/caddy/Caddyfile'
       - 'deploy/caddy/Caddyfile.internal'
       - 'deploy/compose/production-multiserver.yml'
@@ -17,6 +17,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
+      - '.github/workflows/trusted-pr-tests.yml'
   workflow_dispatch:
     inputs:
       backend_deploy_only:
@@ -34,7 +35,13 @@ permissions:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows]
+    env:
+      GIT_CONFIG_COUNT: 2
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: http.version
+      GIT_CONFIG_VALUE_1: HTTP/1.1
     permissions:
       contents: read
     outputs:
@@ -42,7 +49,24 @@ jobs:
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          $gitBashDirectory = Split-Path $gitBash -Parent
+          Write-Host "Using Git for Windows Bash at $gitBash."
+          Add-Content -Path $env:GITHUB_PATH -Value $gitBashDirectory
       - name: Verify pipeline workflow contract
+        shell: bash
         run: bash .github/workflows/pipeline.test.sh
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
@@ -52,11 +76,12 @@ jobs:
               - 'frontend/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/check-solid-boundaries.ps1'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
-              - 'migrations/master/**'
+              - 'deploy/migrations/master/**'
               - 'deploy/caddy/Caddyfile'
               - 'deploy/caddy/Caddyfile.internal'
               - 'deploy/compose/production-multiserver.yml'
@@ -64,7 +89,8 @@ jobs:
               - 'deploy/**'
               - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/deploy-environment.sh'
+              - 'scripts/check-solid-boundaries.ps1'
+              - 'deploy/scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
 
@@ -81,14 +107,27 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      - name: SOLID architecture boundaries
-        run: bash scripts/check-solid-boundaries.sh frontend
       - name: Test
         working-directory: frontend
         run: npm test
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  solid-boundaries:
+    name: SOLID architecture boundaries
+    needs: changes
+    if: >-
+      !inputs.backend_deploy_only &&
+      (needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.backend == 'true')
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: SOLID architecture boundaries
+        shell: pwsh
+        run: ./scripts/check-solid-boundaries.ps1 all
 
   backend-ci:
     name: Backend CI
@@ -248,8 +287,8 @@ jobs:
 
   deploy-frontend-web:
     name: Deploy Frontend Web
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -324,7 +363,7 @@ jobs:
               "$@"
             }
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
@@ -350,8 +389,8 @@ jobs:
 
   deploy-backend-web:
     name: Deploy Backend Web
-    needs: [changes, backend-ci]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    needs: [changes, backend-ci, solid-boundaries]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -395,7 +434,7 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
-            bash scripts/ensure-docker-buildx.sh
+            bash deploy/scripts/ensure-docker-buildx.sh
             test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
@@ -464,7 +503,7 @@ jobs:
             for _ in $(seq 1 30); do if sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
-            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+            for migration in $(find deploy/migrations/master -maxdepth 1 -name '*.sql' | sort); do
               echo "Applying master migration: $migration"
               cat "$migration" | sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
             done
@@ -625,6 +664,7 @@ jobs:
                           -e "GROQ_STT_MODEL=${groq_stt_model}" \
                           -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                           -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                           -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                           -e "LIVEKIT_URL=${livekit_url}" \
                           -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -665,6 +705,7 @@ jobs:
                             -e "GROQ_STT_MODEL=${groq_stt_model}" \
                             -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                             -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                             -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                             -e "LIVEKIT_URL=${livekit_url}" \
                             -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -672,6 +713,7 @@ jobs:
                             --label "stovo-server=${server_slug}" \
                             stovo-backend
                         fi
+                        bash deploy/scripts/ensure-tenant-proxy-network.sh "stovo-backend-${server_slug}" "stovo-backend-${server_slug}-proxy"
                     fi
                 done
             fi
@@ -699,8 +741,8 @@ jobs:
 
   deploy-android:
     name: Android Release
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, e2e]
     permissions:
       contents: write

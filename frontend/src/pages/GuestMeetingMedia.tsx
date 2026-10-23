@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react";
 import { MicOff, Users } from "lucide-react";
+import { useStrings } from "../i18n/LanguageContext";
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 
 export function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children, className = "", style }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const copy = useStrings().sharedUi;
   return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}${speaking && !muted ? " is-speaking" : ""}${className ? ` ${className}` : ""}`} style={style}>
-    {hasVideo ? <div className="voice-participant-video-container">{children}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>{children}</>}
-    <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state" role="status">{muted ? "Muted" : speaking ? "Speaking" : "Connected"}</span></div>
+    {hasVideo ? <div className="voice-participant-video-container">{children}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label={copy.microphoneMutedLabel}><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label={copy.microphoneMutedLabel}><MicOff size={14} /></span>}</div>{children}</>}
+    <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state" role="status">{muted ? copy.muted : speaking ? copy.speaking : copy.connected}</span></div>
   </div>;
 }
 export function LocalStreamVideo({ stream, className, onVideoMetadata }: { stream: MediaStream; className?: string; onVideoMetadata?: (width: number, height: number) => void }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); return <video ref={ref} className={className} autoPlay muted playsInline onLoadedMetadata={(event) => onVideoMetadata?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight)} />; }

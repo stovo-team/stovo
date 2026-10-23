@@ -1,3 +1,8 @@
+---
+title: "Web authentication feature test plan"
+type: test-plan
+---
+
 # Web authentication feature test plan
 
 This document defines the acceptance and security test marker for adding passkeys and QR sign-in to Stovo web authentication, and passkey registration during guest-invite acceptance. It is a plan, not an implementation. The intended UI keeps username/password as the default login form, with passkey and QR as secondary options. Google sign-in is out of scope.

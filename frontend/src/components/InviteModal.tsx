@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Link2, QrCode, Share2, X } from "lucide-react";
+import { Check, Copy, Link2, QrCode, Share2 } from "lucide-react";
 import QRCode from "qrcode";
 
 import { createInvite, inviteUrlForServer } from "../api/family";
 import { ApiError, getApiUrl } from "../api/client";
 import { shareContent } from "../native/nativeSharePlugin";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { useStrings } from "../i18n/LanguageContext";
+import { PopupDialog } from "./ui/Popup";
+import { PopupButton } from "./ui/PopupButton";
 
 type InviteModalProps = {
   accessToken: string;
@@ -44,11 +47,10 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
   const [isCreating, setIsCreating] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedQr, setCopiedQr] = useState(false);
-  const createdForOpenRef = useRef(false);
+  const pendingInviteRef = useRef<{ accessToken: string; request: ReturnType<typeof createInvite> } | null>(null);
 
   useEffect(() => {
     if (!open) {
-      createdForOpenRef.current = false;
       setInviteUrl(null);
       setQrDataUrl(null);
       setError(null);
@@ -58,21 +60,18 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       return;
     }
 
-    if (createdForOpenRef.current) {
-      return;
-    }
-    createdForOpenRef.current = true;
-
     let cancelled = false;
     setIsCreating(true);
     setError(null);
     setStatus(null);
 
-    void createInvite(accessToken, {
-      role: "member",
-      expiresInHours: 168,
-      maxUses: 10
-    })
+    if (pendingInviteRef.current?.accessToken !== accessToken) {
+      pendingInviteRef.current = { accessToken, request: createInvite(accessToken, {
+        role: "member", expiresInHours: 168, maxUses: 10
+      }) };
+    }
+    const request = pendingInviteRef.current.request;
+    void request
       .then(async (response) => {
         if (cancelled) return;
         const currentServerInviteUrl = inviteUrlForServer(response.inviteUrl, getApiUrl());
@@ -80,7 +79,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         const dataUrl = await QRCode.toDataURL(currentServerInviteUrl, {
           margin: 2,
           width: 240,
-          color: { dark: "#111827", light: "#ffffff" }
+          color: DESIGN_COLOR_VALUES.inviteQr
         });
         if (cancelled) return;
         setQrDataUrl(dataUrl);
@@ -90,6 +89,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         setError(err instanceof ApiError ? String(err.message) : "Could not create invite");
       })
       .finally(() => {
+        if (pendingInviteRef.current?.request === request) pendingInviteRef.current = null;
         if (!cancelled) setIsCreating(false);
       });
 
@@ -97,17 +97,6 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       cancelled = true;
     };
   }, [accessToken, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -120,7 +109,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedLink(true);
       window.setTimeout(() => setCopiedLink(false), 1600);
     } catch {
-      setError("Could not copy invite link");
+      setError(strings.sharedUi.copyInviteLinkFailed);
     }
   }
 
@@ -151,7 +140,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedQr(true);
       window.setTimeout(() => setCopiedQr(false), 1600);
     } catch {
-      setError("Could not copy QR code");
+      setError(strings.sharedUi.copyQrFailed);
     }
   }
 
@@ -172,29 +161,9 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
   }
 
   return (
-    <div
-      className="modal-backdrop invite-modal-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        className="messenger-modal invite-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="invite-modal-title"
-      >
+    <PopupDialog className="invite-modal" ariaLabelledBy="invite-modal-title" onClose={onClose} closeOnBackdrop closeOnEscape backdropClassName="invite-modal-backdrop" size="md">
         <div className="modal-header">
           <h2 id="invite-modal-title">{strings.inviteModal.title(familyName)}</h2>
-          <button
-            type="button"
-            className="icon-button subtle icon-button--plain"
-            aria-label={strings.inviteModal.close}
-            onClick={onClose}
-          >
-            <X aria-hidden="true" size={20} />
-          </button>
         </div>
 
         {error && (
@@ -220,24 +189,22 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
                 )}
               </div>
               <div className="invite-modal-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
+                <PopupButton
+                  variant="secondary"
                   disabled={!qrDataUrl}
                   onClick={() => void handleCopyQr()}
+                  startIcon={copiedQr ? <Check size={16} /> : <Copy size={16} />}
                 >
-                  {copiedQr ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
                   {copiedQr ? strings.inviteModal.copied : strings.inviteModal.copy}
-                </button>
-                <button
-                  type="button"
-                  className="primary-button"
+                </PopupButton>
+                <PopupButton
+                  variant="primary"
                   disabled={!qrDataUrl}
                   onClick={() => void handleShareQr()}
+                  startIcon={<Share2 size={16} />}
                 >
-                  <Share2 aria-hidden="true" size={16} />
                   {strings.inviteModal.share}
-                </button>
+                </PopupButton>
               </div>
             </div>
 
@@ -248,20 +215,17 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
               </div>
               <code className="invite-modal-link">{inviteUrl}</code>
               <div className="invite-modal-actions">
-                <button type="button" className="secondary-button" onClick={() => void handleCopyLink()}>
-                  {copiedLink ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
+                <PopupButton variant="secondary" onClick={() => void handleCopyLink()} startIcon={copiedLink ? <Check size={16} /> : <Copy size={16} />}>
                   {copiedLink ? strings.inviteModal.copied : strings.inviteModal.copy}
-                </button>
-                <button type="button" className="primary-button" onClick={() => void handleShareLink()}>
-                  <Share2 aria-hidden="true" size={16} />
+                </PopupButton>
+                <PopupButton variant="primary" onClick={() => void handleShareLink()} startIcon={<Share2 size={16} />}>
                   {strings.inviteModal.share}
-                </button>
+                </PopupButton>
               </div>
             </div>
           </div>
         )}
-      </section>
-    </div>
+    </PopupDialog>
   );
 }
 

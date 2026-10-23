@@ -1,3 +1,4 @@
+import { useArchiveSelectionSync } from "../features/chats/useArchiveSelectionSync";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
@@ -18,11 +19,12 @@ import AppNav from "./AppNav";
 import { CallFeature, CallFeatureProvider } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass, displayChatName } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
-import { createCanvas } from "../api/canvas";
+import { createCanvasAndOpen } from "../features/chats/canvasCreation";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
 import { advanceVoiceCallLayoutSnapshot, type VoiceCallLayoutSnapshot } from "./voiceCallLayoutSnapshot";
+import { useStrings } from "../i18n/LanguageContext";
 
 function loadMessageArchiveView(userId?: string): MessageArchiveView {
   if (!userId || typeof window === "undefined") return "all";
@@ -34,6 +36,7 @@ function loadMessageArchiveView(userId?: string): MessageArchiveView {
 }
 
 export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}) {
+  const copy = useStrings().sharedUi;
   const routeParams = useParams();
   const chatId = routeChatId ?? routeParams.chatId;
   const location = useLocation();
@@ -99,11 +102,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
     }
   }, [archiveGroup]);
 
-  useEffect(() => {
-    if (selectedChat?.type === "archive") {
-      setIsMessageArchiveOpen(true);
-    }
-  }, [selectedChat?.id, selectedChat?.type]);
+  useArchiveSelectionSync(selectedChat, setIsMessageArchiveOpen);
 
   useEffect(() => {
     if (!isDraftsAndScheduledOpen) return;
@@ -246,7 +245,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
         {!isOnline && (
           <p className="offline-banner" role="status">
             <WifiOff aria-hidden="true" size={18} />
-            Offline. Messages will send when you are back online.
+            {copy.offlineQueue}
           </p>
         )}
 
@@ -323,8 +322,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               onOpenNewChat={openNewChatScreen}
               onCreateCanvas={() => {
                 if (!accessToken || !selectedChat) return;
-                void createCanvas(accessToken, selectedChat.id)
-                  .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
+                createCanvasAndOpen(accessToken, selectedChat, currentUser?.id ?? "", navigate);
               }}
               onCreateChecklist={async (payload) => {
                 if (!accessToken || !selectedChat) return;
@@ -391,6 +389,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               messageDelayStatus={detailsActions.messageDelayStatus}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
               onDescriptionChange={detailsActions.handleDescriptionChange}
+              onImported={() => { void chatOverview.refreshChats(); }}
               onTitleDraftChange={setChatTitleDraft}
             />
           )}

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupButton } from "../../../components/ui/PopupButton";
+import { PopupSelect } from "../../../components/ui/PopupSelect";
 import type { PendingLocalAttachment } from "../shared/types";
+import { useResolvedLanguage, useStrings } from "../../../i18n/LanguageContext";
 
 export interface ScheduleMessageModalProps {
   isOpen: boolean;
@@ -17,8 +21,6 @@ function toLocalDatetimeInputString(date?: Date | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 function dateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -27,8 +29,8 @@ function sameCalendarDay(left: Date, right: Date): boolean {
   return dateKey(left) === dateKey(right);
 }
 
-function formatScheduleDateTime(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
+function formatScheduleDateTime(date: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -42,6 +44,8 @@ export function ScheduleMessageModal({
   onClose,
   onConfirmSchedule
 }: ScheduleMessageModalProps) {
+  const copy = useStrings().auditUi;
+  const locale = useResolvedLanguage();
   const [selectedDatetimeStr, setSelectedDatetimeStr] = useState(() => {
     const d = new Date();
     d.setMinutes(d.getMinutes() + 60);
@@ -62,19 +66,6 @@ export function ScheduleMessageModal({
       setIsDatePickerOpen(false);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -127,84 +118,42 @@ export function ScheduleMessageModal({
   }
 
   const modalContent = (
-    <div
-      className="modal-backdrop schedule-modal-backdrop"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          e.stopPropagation();
-        }
-      }}
-    >
-      <section
-        className="messenger-modal schedule-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="schedule-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
+    <PopupDialog className="schedule-modal-card" ariaLabelledBy="schedule-modal-title" onClose={onClose} closeOnBackdrop closeOnEscape backdropClassName="schedule-modal-backdrop">
+      <div className="schedule-modal-content" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()}>
         <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <CalendarClock size={20} className="modal-card-header-icon" aria-hidden="true" />
-            <h2 id="schedule-modal-title" className="modal-card-title">
-              Schedule Message
-            </h2>
+            <h2 id="schedule-modal-title" className="modal-card-title">{copy.scheduleMessage}</h2>
           </div>
-          <button
-            type="button"
-            className="icon-button subtle icon-button--plain modal-card-close-btn"
-            onClick={onClose}
-            aria-label="Close schedule dialog"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
 
         <div className="modal-card-body">
-          <div className="schedule-presets-label">Quick Presets:</div>
+          <div className="schedule-presets-label">{copy.quickPresets}</div>
           <div className="schedule-presets-grid">
             <button
               type="button"
               className="schedule-preset-chip"
               onClick={() => applyPreset(30)}
-            >
-              In 30 mins
-            </button>
+            >{copy.inThirtyMinutes}</button>
             <button
               type="button"
               className="schedule-preset-chip"
               onClick={() => applyPreset(60)}
-            >
-              In 1 hour
-            </button>
+            >{copy.inOneHour}</button>
             <button
               type="button"
               className="schedule-preset-chip"
               onClick={() => applyPreset(0, 9, 0, 1)}
-            >
-              Tomorrow 09:00
-            </button>
+            >{copy.tomorrowNine}</button>
             <button
               type="button"
               className="schedule-preset-chip"
               onClick={() => applyPreset(0, 18, 0, 1)}
-            >
-              Tomorrow 18:00
-            </button>
+            >{copy.tomorrowEighteen}</button>
           </div>
 
           <div className="schedule-input-group">
-            <span className="schedule-input-label">
-              Send Date & Time:
-            </span>
+            <span className="schedule-input-label">{copy.sendDateTime}</span>
             <div className="schedule-date-picker-shell">
               <button
                 type="button"
@@ -213,34 +162,34 @@ export function ScheduleMessageModal({
                 aria-haspopup="dialog"
                 onClick={() => setIsDatePickerOpen((open) => !open)}
               >
-                <span>{formatScheduleDateTime(selectedDate)}</span>
+                <span>{formatScheduleDateTime(selectedDate, locale)}</span>
                 <CalendarDays size={17} aria-hidden="true" />
               </button>
 
               {isDatePickerOpen && (
-                <div className="schedule-date-picker" role="dialog" aria-label="Choose date and time">
+                <div className="schedule-date-picker" role="dialog" aria-label={copy.chooseDateTime}>
                   <div className="schedule-calendar-panel">
                     <div className="schedule-calendar-header">
                       <button
                         type="button"
                         className="schedule-calendar-nav"
-                        aria-label="Previous month"
+                        aria-label={copy.previousMonth}
                         onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}
                       >
                         <ChevronLeft size={18} aria-hidden="true" />
                       </button>
-                      <strong>{new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(visibleMonth)}</strong>
+                      <strong>{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(visibleMonth)}</strong>
                       <button
                         type="button"
                         className="schedule-calendar-nav"
-                        aria-label="Next month"
+                        aria-label={copy.nextMonth}
                         onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}
                       >
                         <ChevronRight size={18} aria-hidden="true" />
                       </button>
                     </div>
                     <div className="schedule-calendar-weekdays" aria-hidden="true">
-                      {WEEKDAY_LABELS.map((weekday) => <span key={weekday}>{weekday}</span>)}
+                      {copy.weekdaysShort.map((weekday) => <span key={weekday}>{weekday}</span>)}
                     </div>
                     <div className="schedule-calendar-days">
                       {calendarDays.map((day) => {
@@ -254,7 +203,7 @@ export function ScheduleMessageModal({
                             type="button"
                             className={`schedule-calendar-day${isOutsideMonth ? " is-outside" : ""}${isSelected ? " is-selected" : ""}${isToday ? " is-today" : ""}`}
                             disabled={isPast}
-                            aria-label={day.toLocaleDateString()}
+                            aria-label={day.toLocaleDateString(locale)}
                             aria-pressed={isSelected}
                             onClick={() => updateSelectedDate(day)}
                           >
@@ -270,32 +219,18 @@ export function ScheduleMessageModal({
                         setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
                         updateSelectedDate(today);
                       }}
-                    >
-                      Today
-                    </button>
+                    >{copy.today}</button>
                   </div>
                   <div className="schedule-time-panel">
-                    <span className="schedule-time-label"><Clock3 size={15} aria-hidden="true" /> Time</span>
+                    <span className="schedule-time-label"><Clock3 size={15} aria-hidden="true" />{copy.time}</span>
                     <div className="schedule-time-controls">
-                      <label>
-                        <span className="visually-hidden">Hour</span>
-                        <select value={String(selectedDate.getHours()).padStart(2, "0")} onChange={(event) => updateSelectedTime("hours", event.target.value)}>
-                          {Array.from({ length: 24 }, (_, hour) => {
-                            const value = String(hour).padStart(2, "0");
-                            return <option key={value} value={value}>{value}</option>;
-                          })}
-                        </select>
-                      </label>
+                      <div>
+                        <PopupSelect ariaLabel={copy.hour} value={String(selectedDate.getHours()).padStart(2, "0")} onChange={(value) => updateSelectedTime("hours", value)} options={Array.from({ length: 24 }, (_, hour) => ({ value: String(hour).padStart(2, "0"), label: String(hour).padStart(2, "0") }))} />
+                      </div>
                       <span className="schedule-time-separator" aria-hidden="true">:</span>
-                      <label>
-                        <span className="visually-hidden">Minute</span>
-                        <select value={String(selectedDate.getMinutes()).padStart(2, "0")} onChange={(event) => updateSelectedTime("minutes", event.target.value)}>
-                          {Array.from({ length: 60 }, (_, minute) => {
-                            const value = String(minute).padStart(2, "0");
-                            return <option key={value} value={value}>{value}</option>;
-                          })}
-                        </select>
-                      </label>
+                      <div>
+                        <PopupSelect ariaLabel={copy.minute} value={String(selectedDate.getMinutes()).padStart(2, "0")} onChange={(value) => updateSelectedTime("minutes", value)} options={Array.from({ length: 60 }, (_, minute) => ({ value: String(minute).padStart(2, "0"), label: String(minute).padStart(2, "0") }))} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -304,25 +239,20 @@ export function ScheduleMessageModal({
           </div>
 
           {!isValidFuture && (
-            <p className="schedule-error-hint">Please choose a future date and time.</p>
+            <p className="schedule-error-hint">{copy.futureDateRequired}</p>
           )}
         </div>
 
         <div className="modal-card-footer modal-card-actions modal-actions">
-          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="primary-button btn-primary"
-            disabled={!isValidFuture}
-            onClick={handleConfirm}
-          >
-            Schedule Message
-          </button>
+          <PopupButton variant="secondary" onClick={onClose}>
+            {copy.cancel}
+          </PopupButton>
+          <PopupButton variant="primary" disabled={!isValidFuture} onClick={handleConfirm}>
+            {copy.scheduleMessage}
+          </PopupButton>
         </div>
-      </section>
-    </div>
+      </div>
+    </PopupDialog>
   );
 
   if (typeof document === "undefined" || !document.body) {

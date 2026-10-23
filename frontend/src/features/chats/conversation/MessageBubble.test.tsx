@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageBubble } from "./MessageBubble";
 import type { Chat, Message } from "../../../api/chats";
+import { englishStrings, russianStrings } from "../../../config/strings";
 
 const mountedRoots: Root[] = [];
 
@@ -68,7 +70,13 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
   };
 }
 
-function renderBubble(message: Message, currentUserId = "user-1", chat = createMockChat()): HTMLDivElement {
+function renderBubble(
+  message: Message,
+  currentUserId = "user-1",
+  chat = createMockChat(),
+  messages: Message[] = [message],
+  threadReplyCount = 0
+): HTMLDivElement {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -82,7 +90,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         currentUserId={currentUserId}
         selectedChat={chat}
         chats={[chat]}
-        messages={[message]}
+        messages={messages}
         memberLookup={new Map([["user-1", { displayName: "Self" }]])}
         accessToken="token-123"
         videoAutoplay={false}
@@ -91,7 +99,7 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
         isMessageSelectionMode={false}
         isSelected={false}
         swipeReplyState={null}
-        threadReplyCount={0}
+        threadReplyCount={threadReplyCount}
         onBubbleClick={vi.fn()}
         onContextMenu={vi.fn()}
         onSwipePointerDown={vi.fn()}
@@ -111,6 +119,82 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("uses singular, plural, and Russian comment words", () => {
+    expect(englishStrings.comments.count(1)).toBe("1 comment");
+    expect(englishStrings.comments.count(2)).toBe("2 comments");
+    expect(russianStrings.comments.count(1)).toBe("1 комментарий");
+    expect(russianStrings.comments.count(2)).toBe("2 комментария");
+    expect(russianStrings.comments.count(5)).toBe("5 комментариев");
+    expect(russianStrings.comments.count(11)).toBe("11 комментариев");
+    expect(russianStrings.comments.count(21)).toBe("21 комментарий");
+  });
+
+  it("shows commenter avatars at the left, a text comment count, and a right-aligned arrow", () => {
+    const message = createMockMessage();
+    const replies = ["user-1", "user-2", "user-3"].map((senderId, index) => createMockMessage({ id: `reply-${index}`, senderId, messageKind: "thread", threadRootMessageId: message.id }));
+    const host = renderBubble(message, "user-1", createMockChat({ type: "group" }), [message, ...replies], replies.length);
+    const action = host.querySelector(".thread-open-button")!;
+    expect(action.getAttribute("aria-label")).toBe("3 comments");
+    expect(action.querySelector(".lucide-message-circle")).toBeNull();
+    expect(action.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(action.querySelector(".thread-summary-label")?.textContent).toBe("comments");
+    expect(action.querySelectorAll(".thread-summary-avatar")).toHaveLength(2);
+    expect(action.querySelector(".thread-summary-overflow")?.textContent).toBe("+");
+    expect(action.querySelector(".lucide-chevron-right")).not.toBeNull();
+    expect(Array.from(action.children).map((child) => child.classList[0])).toEqual([
+      "thread-summary-avatars",
+      "thread-summary-count",
+      "thread-summary-label",
+      "lucide"
+    ]);
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const arrow = css.match(/\.thread-open-button\s*>\s*\.lucide-chevron-right\s*\{([^}]*)\}/)?.[1] ?? "";
+    const avatar = css.match(/\.thread-summary-avatars\s+\.thread-summary-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    const button = css.match(/\.thread-open-button\s*\{([^}]*)\}/)?.[1] ?? "";
+    const countLabel = css.match(/\.thread-summary-count\s*\+\s*\.thread-summary-label\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(arrow).toMatch(/margin-left:\s*auto/);
+    expect(avatar).toMatch(/border:\s*0/);
+    expect(button).toMatch(/font-size:\s*inherit/);
+    expect(button).toMatch(/font-family:\s*inherit/);
+    expect(button).toMatch(/font-weight:\s*inherit/);
+    expect(countLabel).toMatch(/margin-left:\s*-3px/);
+  });
+
+  it("renders reaction users through the standard round avatar component", () => {
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 1, userIds: ["user-1"], reacted: true }] }));
+    expect(host.querySelector(".reaction-avatar.avatar .avatar-initials")?.textContent).toBe("SE");
+  });
+
+  it("shows two reaction avatars and a remainder badge when more than three people reacted", () => {
+    const userIds = ["user-1", "user-2", "user-3", "user-4", "user-5"];
+    const chat = createMockChat({
+      type: "group",
+      members: userIds.map((id) => ({ id, displayName: id, role: "member", joinedAt: "2026-08-17T10:00:00.000Z" }))
+    });
+    const host = renderBubble(createMockMessage({ reactions: [{ emoji: "👍", count: 5, userIds, reacted: true }] }), "user-1", chat);
+
+    expect(host.querySelectorAll(".avatar.reaction-avatar")).toHaveLength(2);
+    expect(host.querySelector(".reaction-avatar-more")?.textContent).toBe("+3");
+  });
+
+  it("keeps profile-photo reaction avatars transparent and compact", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const photoAvatar = css.match(/\.reaction-avatar:has\(img\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(photoAvatar).toMatch(/background:\s*transparent/);
+    expect(photoAvatar).toMatch(/padding:\s*0/);
+  });
+
+  it("keeps reaction avatars small and round without composer layout styles", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const stack = css.match(/\.reaction-avatar-stack\s*\{([^}]*)\}/)?.[1] ?? "";
+    const avatar = css.match(/\.reaction-avatar\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(stack).not.toContain("--composer-action");
+    expect(avatar).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+    expect(avatar).toMatch(/width:\s*20px/);
+    expect(avatar).toMatch(/height:\s*20px/);
+  });
+
   it("labels an imported message with its source author and provider", () => {
     const message = createMockMessage({
       importAttribution: {
@@ -134,6 +218,8 @@ describe("MessageBubble receipt status", () => {
 
     expect(container.querySelector(".guest-meeting-invitation")?.textContent).toContain("Some meetup");
     expect(container.querySelector(".guest-meeting-invitation-label")).toBeNull();
+    expect(container.querySelector(".guest-meeting-invitation-join")?.textContent?.trim()).toBe("Join");
+    expect(container.querySelector(".guest-meeting-invitation-plan")?.textContent?.trim()).toBe("In Plans");
   });
 
   it("renders a clock icon when message is in sending state", () => {
@@ -193,7 +279,7 @@ describe("MessageBubble receipt status", () => {
     expect(receipt).toBeNull();
   });
 
-  it("renders a persistent singular comment label when threadReplyCount is 1", () => {
+  it("keeps the accessible singular label while displaying only the count", () => {
     const onOpenThread = vi.fn();
     const message = createMockMessage();
     const container = document.createElement("div");
@@ -237,7 +323,9 @@ describe("MessageBubble receipt status", () => {
 
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
-    expect(threadButton?.textContent?.trim()).toBe("1 comment");
+    expect(threadButton?.getAttribute("aria-label")).toBe("1 comment");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("1");
+    expect(threadButton?.querySelector(".thread-summary-label")?.textContent).toBe("comment");
 
     act(() => {
       threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -245,7 +333,7 @@ describe("MessageBubble receipt status", () => {
     expect(onOpenThread).toHaveBeenCalledWith(message);
   });
 
-  it("renders plural comments label when threadReplyCount is > 1", () => {
+  it("renders the visible plural comment label", () => {
     const message = createMockMessage();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -288,7 +376,9 @@ describe("MessageBubble receipt status", () => {
 
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
-    expect(threadButton?.textContent?.trim()).toBe("3 comments");
+    expect(threadButton?.getAttribute("aria-label")).toBe("3 comments");
+    expect(threadButton?.querySelector(".thread-summary-count")?.textContent).toBe("3");
+    expect(threadButton?.querySelector(".thread-summary-label")?.textContent).toBe("comments");
   });
 
   it("does not render a comments button when threadReplyCount is 0", () => {

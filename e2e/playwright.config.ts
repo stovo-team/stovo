@@ -5,6 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Supports running inside LXC container, local machine, or CI pipeline.
  */
 const BASE_URL = process.env.E2E_BASE_URL || process.env.BASE_URL || 'http://localhost:8081';
+const MOCK_MODE = process.env.E2E_MODE === 'mock';
 
 export default defineConfig({
   testDir: './tests',
@@ -15,6 +16,11 @@ export default defineConfig({
   timeout: 30000,
   expect: {
     timeout: 5000,
+    toHaveScreenshot: {
+      animations: 'disabled',
+      caret: 'hide',
+      fullPage: true,
+    },
   },
   reporter: process.env.CI
     ? [
@@ -35,6 +41,12 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,
   },
+  webServer: MOCK_MODE ? {
+    command: 'npm run mock --prefix ../frontend',
+    url: BASE_URL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  } : undefined,
   projects: [
     {
       name: 'chromium',

@@ -3,8 +3,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useStrings } from "../i18n/LanguageContext";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { applyGammaCorrection, buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
-import { BackButton } from "./BackButton";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 type WallpaperAdjustments = {
   zoom: number;
@@ -102,7 +103,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
       const context = canvas.getContext("2d", { willReadFrequently: adjustments.gamma !== 1 });
       if (!context) throw new Error("Could not create image canvas");
 
-      context.fillStyle = "#111827";
+      context.fillStyle = DESIGN_COLOR_VALUES.wallpaperEditor.canvasBackground;
       context.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
       const baseScale = Math.max(OUTPUT_WIDTH / image.naturalWidth, OUTPUT_HEIGHT / image.naturalHeight);
       const scale = baseScale * adjustments.zoom;
@@ -126,8 +127,8 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
   }
 
   return createPortal(
-    <div className="wallpaper-editor-backdrop" role="dialog" aria-modal="true" aria-label={strings.wallpaperEditor.title}>
-      <div className="wallpaper-editor-modal">
+    <PopupBackdrop className="wallpaper-editor-backdrop">
+      <div className="wallpaper-editor-modal" role="dialog" aria-modal="true" aria-label={strings.wallpaperEditor.title}>
         <div className="wallpaper-editor-preview" aria-label={strings.wallpaperEditor.preview} data-drawing-enabled={WALLPAPER_EDITOR_FEATURES.drawing} onWheel={handlePreviewWheel} onPointerDown={handlePreviewPointerDown} onPointerMove={handlePreviewPointerMove} onPointerUp={handlePreviewPointerUp} onPointerCancel={handlePreviewPointerUp}>
           <svg className="wallpaper-editor-svg-filter" aria-hidden="true"><defs><filter id={gammaFilterId}><feComponentTransfer><feFuncR type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /><feFuncG type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /><feFuncB type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /></feComponentTransfer></filter></defs></svg>
           {previewUrl && <img src={previewUrl} alt="" className="wallpaper-editor-preview-image" style={{ filter: visualFilter, transform: `scale(${adjustments.zoom})` }} />}
@@ -136,7 +137,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
           <div className="wallpaper-editor-message wallpaper-editor-message--incoming">{strings.wallpaperEditor.previewIncoming}</div>
           <div className="wallpaper-editor-message wallpaper-editor-message--outgoing">{strings.wallpaperEditor.previewOutgoing}</div>
           <header className="wallpaper-editor-header">
-            <BackButton className="wallpaper-editor-icon-button" ariaLabel={strings.avatarEditor.cancel} title={strings.avatarEditor.cancel} onClick={onClose} />
+            <PopupCloseButton className="wallpaper-editor-icon-button" ariaLabel={strings.avatarEditor.cancel} onClick={onClose} />
             <div className="wallpaper-editor-header-actions">
               <button type="button" className="wallpaper-editor-icon-button" onClick={() => void handleApply()} disabled={isProcessing || !image} aria-label={strings.wallpaperEditor.apply} title={strings.wallpaperEditor.apply}><Check /></button>
               <button type="button" className="wallpaper-editor-icon-button" onClick={() => setAdjustments(DEFAULT_ADJUSTMENTS)} aria-label={strings.avatarEditor.reset} title={strings.avatarEditor.reset}><RotateCcw /></button>
@@ -160,7 +161,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
           </div>
         </div>
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body
   );
 }
