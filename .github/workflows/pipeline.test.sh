@@ -110,11 +110,11 @@ awk '
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
     }
-    if (job_runner["changes"] != "windows-latest") {
-      fail("The changes job must use the GitHub-hosted Windows runner so its checkout action uses a maintained Node.js runtime.")
+    if (job_runner["changes"] != "[self-hosted, Windows, tests]") {
+      fail("The changes job must use the Windows self-hosted tests runner instead of GitHub-hosted Windows.")
     }
-    if (job_runner["backend-ci"] != "[self-hosted, tests]") {
-      fail("Backend CI must stay on the backend CI runner labeled tests.")
+    if (job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
+      fail("Backend CI must use the Windows tests runner because its database services are initialized with Docker Desktop.")
     }
     if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
       fail("The changes job must use built-in Windows PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
@@ -243,29 +243,20 @@ trusted_pr_job_runner() {
 
 require_trusted_pr_runner() {
   job="$1"
-  self_hosted_label="$2"
+  self_hosted_labels="$2"
   hosted_label="$3"
   runner=$(trusted_pr_job_runner "$job")
-  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"$self_hosted_label\"]') || fromJSON('[\"$hosted_label\"]') }}"
+  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('$self_hosted_labels') || fromJSON('[\"$hosted_label\"]') }}"
 
   if [[ "$runner" != "$expected_runner" ]]; then
-    echo "Trusted PR $job must use the $self_hosted_label self-hosted runner for collaborators and $hosted_label for community PRs." >&2
+    echo "Trusted PR $job must use the $self_hosted_labels self-hosted runner for collaborators and $hosted_label for community PRs." >&2
     exit 1
   fi
 }
 
-require_hosted_windows_pr_runner() {
-  job="$1"
-  runner=$(trusted_pr_job_runner "$job")
-  if [[ "$runner" != "windows-latest" ]]; then
-    echo "Trusted PR $job must use the GitHub-hosted Windows runner." >&2
-    exit 1
-  fi
-}
-
-require_hosted_windows_pr_runner changes
-require_hosted_windows_pr_runner pipeline-contract
-require_trusted_pr_runner frontend-ci e2e ubuntu-latest
+require_trusted_pr_runner changes '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner pipeline-contract '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner frontend-ci '["self-hosted","e2e"]' ubuntu-latest
 backend_runner=$(trusted_pr_job_runner backend-ci)
 if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
@@ -282,11 +273,7 @@ if grep -Fq '    services:' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
-solid_runner=$(trusted_pr_job_runner solid-boundaries)
-if [[ "$solid_runner" != "ubuntu-latest" ]]; then
-  echo "Trusted PR SOLID boundaries must use ubuntu-latest so they do not queue on an unavailable self-hosted runner." >&2
-  exit 1
-fi
+require_trusted_pr_runner solid-boundaries '["self-hosted","tests","Windows"]' ubuntu-latest
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
@@ -374,12 +361,24 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
 }
 
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, Linux, tests]' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Master SOLID boundaries must run once in a dedicated Linux job ($required)." >&2
+    echo "Master SOLID boundaries must run on the self-hosted tests runner and bootstrap Git Bash on Windows ($required)." >&2
     exit 1
   fi
 done
+
+backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
+  if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
+    echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
+  echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
+  exit 1
+fi
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
 for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
