@@ -254,8 +254,17 @@ require_trusted_pr_runner() {
   fi
 }
 
-require_trusted_pr_runner changes Windows ubuntu-latest
-require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
+require_hosted_windows_pr_runner() {
+  job="$1"
+  runner=$(trusted_pr_job_runner "$job")
+  if [[ "$runner" != "windows-latest" ]]; then
+    echo "Trusted PR $job must use the GitHub-hosted Windows runner." >&2
+    exit 1
+  fi
+}
+
+require_hosted_windows_pr_runner changes
+require_hosted_windows_pr_runner pipeline-contract
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
 backend_runner=$(trusted_pr_job_runner backend-ci)
 if [[ "$backend_runner" != "ubuntu-latest" ]]; then
