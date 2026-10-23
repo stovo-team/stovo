@@ -110,8 +110,8 @@ awk '
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
     }
-    if (job_runner["changes"] != "[self-hosted, Windows]") {
-      fail("The changes job must use the Windows self-hosted runner because its shell bootstrap starts in PowerShell.")
+    if (job_runner["changes"] != "windows-latest") {
+      fail("The changes job must use the GitHub-hosted Windows runner so its checkout action uses a maintained Node.js runtime.")
     }
     if (job_runner["backend-ci"] != "[self-hosted, tests]") {
       fail("Backend CI must stay on the backend CI runner labeled tests.")
