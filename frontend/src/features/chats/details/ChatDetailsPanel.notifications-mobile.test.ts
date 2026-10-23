@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { readTextFile } from "../../../testUtils/readTextFile";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readTextFile("src/styles.css");
 
 describe("chat notification selector on small screens", () => {
   it("anchors its open dropdown to the bottom edge", () => {

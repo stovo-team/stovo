@@ -78,6 +78,9 @@ awk '
   job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
   job == "changes" && /GIT_CONFIG_KEY_1: http\.version/ { checkout_http_version_key = 1 }
   job == "changes" && /GIT_CONFIG_VALUE_1: HTTP\/1\.1/ { checkout_http_version_http1 = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -119,6 +122,9 @@ awk '
     if (shell_uses_bash_fi) fail("The PowerShell shell bootstrap must not contain Bash control syntax.")
     if (!checkout_git_config_count || !checkout_autocrlf_key || !checkout_autocrlf_disabled || !checkout_http_version_key || !checkout_http_version_http1) {
       fail("The Windows checkout must preserve LF line endings and use HTTP/1.1 for reliable GitHub fetches.")
+    }
+    if (!frontend_git_config_count || !frontend_autocrlf_key || !frontend_autocrlf_disabled) {
+      fail("Frontend CI must disable the Windows autocrlf conversion before checkout.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")

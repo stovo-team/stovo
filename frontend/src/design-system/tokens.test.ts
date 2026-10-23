@@ -1,9 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import postcss from "postcss";
+import { readTextFile } from "../testUtils/readTextFile";
 
 const cssFiles = [
   "src/styles.css",
@@ -13,7 +14,7 @@ const cssFiles = [
 ];
 const require = createRequire(import.meta.url);
 const cssNamedColors = Object.keys(require("color-name") as Record<string, unknown>).sort((a, b) => b.length - a.length).join("|");
-const read = (path: string) => readFileSync(path, "utf8");
+const read = readTextFile;
 const normalizeSourcePath = (path: string) => path.replace(/\\/g, "/");
 const colorLiteral = new RegExp(`#(?:[\\da-f]{3,8})\\b|\\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\\([^)]*\\)|\\b(?:${cssNamedColors})\\b`, "gi");
 const colorStyleProperty = /(?:^|[-_])(?:color|background|border|shadow|outline|fill|stroke|accent|caret|surface|text|overlay|scrim|ring|highlight|badge|gradient|avatar|focus|glass|status|alert|empty|premium|action|success|danger|warning|media|waveform|selection)(?:$|[-_])/i;
