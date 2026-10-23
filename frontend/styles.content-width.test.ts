@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
+import { readTextFile } from "./src/testUtils/readTextFile";
 
 it("caps only the main chat, storage, and plans panes on large screens", () => {
-  const styles = readFileSync("src/styles.css", "utf8");
+  const styles = readTextFile("src/styles.css");
   const selector = ".messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,\n  .storage-page .storage-main,\n  .plans-page .plans-content";
   const start = styles.indexOf(selector);
   const rule = start < 0 ? "" : styles.slice(start, styles.indexOf("}", start));

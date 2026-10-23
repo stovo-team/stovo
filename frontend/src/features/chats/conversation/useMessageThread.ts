@@ -29,10 +29,11 @@ import {
 import { prefetchFiles } from "../../../api/files";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { ApiError } from "../../../api/client";
-import { decryptMessage, decryptMessages } from "../../../api/messageCrypto";
+import { decryptMessage, decryptMessages, encryptMessageContent } from "../../../api/messageCrypto";
 import { addMessageReaction, removeMessageReaction } from "../../../api/chats";
 import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { messageMatchesSearch } from "../../../messageSearch";
+import { usePersistPinnedMessages } from "../shared/pinnedMessageState";
 import {
   applyMessagePreviewToChat,
   canPostToChannel,
@@ -106,6 +107,7 @@ export function useMessageThread({
   const [editTargetMessage, setEditTargetMessage] = useState<Message | null>(null);
   const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [pinIndex, setPinIndex] = useState<number>(0);
+  usePersistPinnedMessages(chatId, currentUser, selectedChat?.id, pinnedMessages);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const [deleteForMe, setDeleteForMe] = useState(true);
   const [deleteForEveryone, setDeleteForEveryone] = useState(true);

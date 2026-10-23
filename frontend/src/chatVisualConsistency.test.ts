@@ -1,13 +1,13 @@
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readTextFile } from "./testUtils/readTextFile";
 import { avatarInitials } from "./utils/avatarInitials";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
-const attachmentPicker = readFileSync(resolve(process.cwd(), "src/components/AttachmentPickerSheet.tsx"), "utf8");
-const settingsAvatar = readFileSync(resolve(process.cwd(), "src/pages/settings/SettingsAvatar.tsx"), "utf8");
-const appearanceEditor = readFileSync(resolve(process.cwd(), "src/pages/settings/AppearanceEditor.tsx"), "utf8");
-const settingsDashboard = readFileSync(resolve(process.cwd(), "src/pages/settings/SettingsDashboard.tsx"), "utf8");
+const styles = readTextFile(resolve(process.cwd(), "src/styles.css"));
+const attachmentPicker = readTextFile(resolve(process.cwd(), "src/components/AttachmentPickerSheet.tsx"));
+const settingsAvatar = readTextFile(resolve(process.cwd(), "src/pages/settings/SettingsAvatar.tsx"));
+const appearanceEditor = readTextFile(resolve(process.cwd(), "src/pages/settings/AppearanceEditor.tsx"));
+const settingsDashboard = readTextFile(resolve(process.cwd(), "src/pages/settings/SettingsDashboard.tsx"));
 
 describe("chat visual consistency", () => {
   it("opens desktop attachment choices above the file button and expands to its right", () => {
@@ -47,8 +47,8 @@ describe("chat visual consistency", () => {
   it("scales generated avatar initials with the avatar circle diameter", () => {
     const avatarRule = styles.match(/\.avatar \{([\s\S]*?)\n\}/)?.[1] ?? "";
     const initialsRule = styles.match(/\.avatar-initials \{([\s\S]*?)\n\}/)?.[1] ?? "";
-    const realAvatar = readFileSync(resolve(process.cwd(), "src/features/chats/sidebar/RealAvatar.tsx"), "utf8");
-    const callTile = readFileSync(resolve(process.cwd(), "src/components/CallParticipantTile.tsx"), "utf8");
+    const realAvatar = readTextFile(resolve(process.cwd(), "src/features/chats/sidebar/RealAvatar.tsx"));
+    const callTile = readTextFile(resolve(process.cwd(), "src/components/CallParticipantTile.tsx"));
     const callCircleRule = [...styles.matchAll(/\.call-grid__avatar-circle \{([\s\S]*?)\n\}/g)]
       .find(([, rule]) => rule.includes("width: 64px"))?.[1] ?? "";
 

@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { readTextFile } from "../../../testUtils/readTextFile";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readTextFile("src/styles.css");
 
 function mediaRuleContaining(selector: string, maxWidth: number) {
   const mediaQuery = `@media (max-width: ${maxWidth}px)`;

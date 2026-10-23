@@ -37,9 +37,11 @@ jobs:
     name: Detect Changes
     runs-on: [self-hosted, Windows]
     env:
-      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_COUNT: 2
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: http.version
+      GIT_CONFIG_VALUE_1: HTTP/1.1
     permissions:
       contents: read
     outputs:
@@ -49,6 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          filter: blob:none
       - name: Detect available shell
         shell: powershell
         run: |
@@ -94,6 +97,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: [self-hosted, e2e]
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -102,14 +109,27 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      - name: SOLID architecture boundaries
-        run: bash scripts/check-solid-boundaries.sh frontend
       - name: Test
         working-directory: frontend
         run: npm test
       - name: Build
         working-directory: frontend
         run: npm run build
+
+  solid-boundaries:
+    name: SOLID architecture boundaries
+    needs: changes
+    if: >-
+      !inputs.backend_deploy_only &&
+      (needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.backend == 'true')
+    runs-on: [self-hosted, Linux, tests]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: SOLID architecture boundaries
+        shell: bash
+        run: bash scripts/check-solid-boundaries.sh all
 
   backend-ci:
     name: Backend CI
@@ -269,8 +289,8 @@ jobs:
 
   deploy-frontend-web:
     name: Deploy Frontend Web
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -371,8 +391,8 @@ jobs:
 
   deploy-backend-web:
     name: Deploy Backend Web
-    needs: [changes, backend-ci]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    needs: [changes, backend-ci, solid-boundaries]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests]
     environment: production
 
@@ -646,6 +666,7 @@ jobs:
                           -e "GROQ_STT_MODEL=${groq_stt_model}" \
                           -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                           -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                           -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                           -e "LIVEKIT_URL=${livekit_url}" \
                           -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -686,6 +707,7 @@ jobs:
                             -e "GROQ_STT_MODEL=${groq_stt_model}" \
                             -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                             -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                             -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                             -e "LIVEKIT_URL=${livekit_url}" \
                             -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -693,6 +715,7 @@ jobs:
                             --label "stovo-server=${server_slug}" \
                             stovo-backend
                         fi
+                        bash deploy/scripts/ensure-tenant-proxy-network.sh "stovo-backend-${server_slug}" "stovo-backend-${server_slug}-proxy"
                     fi
                 done
             fi
@@ -720,8 +743,8 @@ jobs:
 
   deploy-android:
     name: Android Release
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, e2e]
     permissions:
       contents: write

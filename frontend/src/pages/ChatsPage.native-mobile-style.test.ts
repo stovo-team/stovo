@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("native mobile chat styling", () => {
+  it("removes vertical padding from the pinned message banner", () => {
+    expect(stylesSource).toMatch(/\.pinned-banner \{[^{}]*padding:\s*0(?:\s+14px)?;/);
+  });
+
   it("shares the mobile-web floating chat chrome on Android", () => {
     expect(stylesSource).toMatch(
       /:root\[data-platform="native"\] \.messenger-shell\.chat-list-view \.chat-sidebar-header[\s\S]*?position:\s*absolute;/

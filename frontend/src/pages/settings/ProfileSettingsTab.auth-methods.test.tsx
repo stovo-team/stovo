@@ -83,7 +83,7 @@ describe("Profile Settings Android sign-in", () => {
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.getAttribute("src")).toBe("data:image/png;base64,cXJjb2Rl");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.classList.contains("android-qr-code")).toBe(true);
     expect(container.querySelector("time")?.dateTime).toBe(expiresAt);
-    expect(container.querySelector("time")?.textContent).toBe(new Date(expiresAt).toLocaleString(getSystemLanguage()));
+    expect(container.querySelector("time")?.textContent).toBe(new Date(expiresAt).toLocaleString("en"));
     expect(localStorage.length).toBe(0);
   });
 

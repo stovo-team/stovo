@@ -14,7 +14,9 @@ vi.mock("../../../chatHistoryCache", () => ({
   loadCachedChatListFromLocalStorage: vi.fn(() => null),
   loadRecentChatHistory: vi.fn(() => Promise.resolve(null)),
   loadRecentChatHistoryFromLocalStorage: vi.fn(() => null),
+  loadPinnedMessagesFromLocalStorage: vi.fn(() => null),
   saveCachedChatList: vi.fn(),
+  savePinnedMessagesToLocalStorage: vi.fn(),
   saveRecentChatHistory: vi.fn()
 }));
 
@@ -35,6 +37,60 @@ function makeMessage(id: string, createdAt: string): Message {
 }
 
 describe("useChatDataLoader", () => {
+  it("restores cached pins and leaves them in place when the pin request fails", async () => {
+    const cachedPin = {
+      chatId: "chat-1",
+      messageId: "pinned-1",
+      pinnedBy: "user-1",
+      pinnedAt: "2026-01-01T10:00:00.000Z",
+      message: makeMessage("pinned-1", "2026-01-01T10:00:00.000Z")
+    };
+    const { loadPinnedMessagesFromLocalStorage } = await import("../../../chatHistoryCache");
+    vi.mocked(loadPinnedMessagesFromLocalStorage).mockReturnValue([cachedPin]);
+    const authRequest = vi.fn((url: string) => {
+      if (url.includes("/pins")) return Promise.reject(new Error("temporary network error"));
+      if (url.includes("/messages?")) return Promise.resolve({ messages: [], hasMore: false, nextBefore: "" });
+      return Promise.resolve({ id: "chat-1", name: "Chat 1" });
+    });
+    const setPinnedMessages = vi.fn();
+    let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
+
+    function TestComponent() {
+      loaderRef = useChatDataLoader({
+        accessTokenRef: { current: "test-token" }, authRequest: authRequest as any,
+        currentUser: { id: "user-1" } as any, chatId: undefined, onError: vi.fn(),
+        setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+        setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(),
+        activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [] },
+        chatMutationVersionRef: { current: {} }, messageCacheRef: { current: {} },
+        historyCursorRef: { current: {} }, setMessages: vi.fn(), setPinnedMessages,
+        setPinIndex: vi.fn(), applyMessagesForChat: vi.fn(), markChatRead: vi.fn(() => Promise.resolve())
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT;
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    try {
+      act(() => root.render(createElement(TestComponent)));
+      await act(async () => {
+        await loaderRef?.loadSelectedChat("chat-1");
+        await Promise.resolve();
+      });
+      const lastPinsUpdate = setPinnedMessages.mock.lastCall?.[0];
+      expect(lastPinsUpdate).toBeTypeOf("function");
+      expect(lastPinsUpdate([cachedPin])).toEqual([cachedPin]);
+      act(() => root.unmount());
+    } finally {
+      (globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      container.remove();
+      vi.mocked(loadPinnedMessagesFromLocalStorage).mockReturnValue(null);
+    }
+  });
+
   it("clears the previous chat pins as soon as another chat starts loading", async () => {
     const pending = new Promise<never>(() => {});
     const authRequest = vi.fn((url: string) => {
