@@ -110,8 +110,8 @@ awk '
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
     }
-    if (job_runner["changes"] != "[self-hosted, Windows]") {
-      fail("The changes job must use the Windows self-hosted runner because its shell bootstrap starts in PowerShell.")
+    if (job_runner["changes"] != "windows-latest") {
+      fail("The changes job must use the GitHub-hosted Windows runner so its checkout action uses a maintained Node.js runtime.")
     }
     if (job_runner["backend-ci"] != "[self-hosted, tests]") {
       fail("Backend CI must stay on the backend CI runner labeled tests.")
@@ -254,14 +254,37 @@ require_trusted_pr_runner() {
   fi
 }
 
-require_trusted_pr_runner changes Windows ubuntu-latest
-require_trusted_pr_runner pipeline-contract Windows ubuntu-latest
+require_hosted_windows_pr_runner() {
+  job="$1"
+  runner=$(trusted_pr_job_runner "$job")
+  if [[ "$runner" != "windows-latest" ]]; then
+    echo "Trusted PR $job must use the GitHub-hosted Windows runner." >&2
+    exit 1
+  fi
+}
+
+require_hosted_windows_pr_runner changes
+require_hosted_windows_pr_runner pipeline-contract
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
-require_trusted_pr_runner backend-ci tests ubuntu-latest
+backend_runner=$(trusted_pr_job_runner backend-ci)
+if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
+  echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
+  exit 1
+fi
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
+  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
+    echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq '    services:' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
+  exit 1
+fi
 solid_runner=$(trusted_pr_job_runner solid-boundaries)
-expected_solid_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('[\"self-hosted\",\"Linux\",\"tests\"]') || fromJSON('[\"ubuntu-latest\"]') }}"
-if [[ "$solid_runner" != "$expected_solid_runner" ]]; then
-  echo "Trusted PR SOLID boundaries must use the Linux tests runner for collaborators and ubuntu-latest for community PRs." >&2
+if [[ "$solid_runner" != "ubuntu-latest" ]]; then
+  echo "Trusted PR SOLID boundaries must use ubuntu-latest so they do not queue on an unavailable self-hosted runner." >&2
   exit 1
 fi
 

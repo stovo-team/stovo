@@ -21,17 +21,26 @@ const colorStyleProperty = /(?:^|[-_])(?:color|background|border|shadow|outline|
 const sourceFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   const path = normalizeSourcePath(join(directory, entry.name));
   if (entry.isDirectory()) return sourceFiles(path);
-  return entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx") ? [portablePath(path)] : [];
+  return entry.isFile() && entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx") ? [normalizeSourcePath(path)] : [];
 });
 const sourceCodeFiles = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   const path = normalizeSourcePath(join(directory, entry.name));
   if (entry.isDirectory()) return sourceCodeFiles(path);
-  return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [portablePath(path)] : [];
+  return entry.isFile() && /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [normalizeSourcePath(path)] : [];
 });
 
 describe("shared design tokens", () => {
   it("normalizes Windows paths before classifying source files", () => {
     expect(normalizeSourcePath("src\\config\\colors\\dark.ts")).toBe("src/config/colors/dark.ts");
+  });
+
+  it("collects normalized paths for production source files", () => {
+    const tsxPaths = sourceFiles("src");
+    const sourcePaths = sourceCodeFiles("src");
+
+    expect(tsxPaths.length).toBeGreaterThan(0);
+    expect(sourcePaths.length).toBeGreaterThan(tsxPaths.length);
+    expect([...tsxPaths, ...sourcePaths].every((path) => !path.includes("\\"))).toBe(true);
   });
 
   it("uses compact text for chat detail tabs and the configured control size for member invitation", () => {
