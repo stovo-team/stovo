@@ -263,7 +263,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: binary' 'skip-cache: false'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
     exit 1
@@ -323,26 +323,18 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-grep -Fq 'install-mode: none' .github/workflows/pipeline.yml || {
-  echo "Backend CI must use the golangci-lint binary preinstalled on its persistent runner." >&2
+backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'version: v2.14.0' 'install-mode: binary' 'skip-cache: false'; do
+  if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
+    echo "Backend CI must install the pinned golangci-lint binary with the action cache enabled ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq 'Verify preinstalled golangci-lint' <<< "$backend_workflow_contract" ||
+   grep -Fq 'install-mode: none' <<< "$backend_workflow_contract"; then
+  echo "Backend CI must not depend on a preinstalled golangci-lint binary." >&2
   exit 1
-}
-grep -Fq 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' .github/workflows/pipeline.yml || {
-  echo "Backend CI must add the runner-local golangci-lint installation directory to PATH." >&2
-  exit 1
-}
-grep -Fq 'GOLANGCI_LINT_VERSION: 2.14.0' .github/workflows/pipeline.yml || {
-  echo "Backend CI must pin and verify the preinstalled golangci-lint version." >&2
-  exit 1
-}
-grep -Fq 'version="$(golangci-lint --version)"' .github/workflows/pipeline.yml || {
-  echo "Backend CI must check the preinstalled golangci-lint version before running it." >&2
-  exit 1
-}
-grep -Fq 'if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then' .github/workflows/pipeline.yml || {
-  echo "Backend CI must fail when the preinstalled golangci-lint version does not match its pin." >&2
-  exit 1
-}
+fi
 grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {
   echo "The local installation instructions must use the CI golangci-lint version." >&2
   exit 1
