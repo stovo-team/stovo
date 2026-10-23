@@ -267,8 +267,19 @@ require_hosted_windows_pr_runner changes
 require_hosted_windows_pr_runner pipeline-contract
 require_trusted_pr_runner frontend-ci e2e ubuntu-latest
 backend_runner=$(trusted_pr_job_runner backend-ci)
-if [[ "$backend_runner" != "ubuntu-latest" ]]; then
-  echo "Trusted PR backend CI must use ubuntu-latest so its service containers run on Linux." >&2
+if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
+  echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
+  exit 1
+fi
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
+  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
+    echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq '    services:' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
 solid_runner=$(trusted_pr_job_runner solid-boundaries)
