@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"

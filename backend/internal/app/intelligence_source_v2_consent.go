@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"errors"
 	"net/http"
 	"time"
