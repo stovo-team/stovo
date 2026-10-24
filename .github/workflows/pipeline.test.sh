@@ -445,3 +445,11 @@ if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_
   echo "Android release must add PowerShell Core to PATH before setup-android." >&2
   exit 1
 fi
+
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  frontend-ci:/p' .github/workflows/pipeline.yml)
+for required in 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/' 'TEST_REDIS_URL: redis://127.0.0.1:6379/'; do
+  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
+    echo "Backend CI test services must use explicit IPv4 loopback addresses ($required)." >&2
+    exit 1
+  fi
+done
