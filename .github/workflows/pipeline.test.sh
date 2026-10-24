@@ -369,7 +369,7 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
 done
 
 backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
     exit 1
@@ -447,9 +447,15 @@ if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_
 fi
 
 backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  frontend-ci:/p' .github/workflows/pipeline.yml)
-for required in 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/' 'TEST_REDIS_URL: redis://127.0.0.1:6379/'; do
-  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
-    echo "Backend CI test services must use explicit IPv4 loopback addresses ($required)." >&2
+for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV' 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Backend CI must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+    exit 1
+  fi
+done
+for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Backend CI must use the dynamically allocated service ports in test and Atlas URLs ($required)." >&2
     exit 1
   fi
 done
