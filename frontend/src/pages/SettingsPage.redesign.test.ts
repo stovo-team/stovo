@@ -25,7 +25,7 @@ describe("SettingsPage redesign", () => {
   it("insets the profile arrow slightly from the right edge of its bar", () => {
     const arrowRule = styles.match(/\.settings-profile-open\s*>\s*svg\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(arrowRule).toMatch(/position:\s*absolute/);
-    expect(arrowRule).toMatch(/right:\s*20px/);
+    expect(arrowRule).toMatch(/right:\s*24px/);
   });
 
   it("shows a live theme preview inside the Appearance tile", () => {
