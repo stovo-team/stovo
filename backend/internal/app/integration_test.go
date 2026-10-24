@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -189,6 +190,9 @@ func TestChangePasswordUpdatesOnlyTheAuthenticatedUserAndRevokesOtherSessions(t 
 	_ = newLogin.Body.Close()
 }
 
+var testRuntimeSchemaOnce sync.Once
+var testRuntimeSchemaErr error
+
 func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	t.Helper()
 
@@ -197,17 +201,57 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 		t.Fatalf("open test database: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	if _, err := db.Exec(`DROP SCHEMA IF EXISTS public CASCADE`); err != nil {
-		t.Fatalf("drop public schema: %v", err)
+
+	testRuntimeSchemaOnce.Do(func() {
+		if _, err := db.Exec(`DROP SCHEMA IF EXISTS public CASCADE`); err != nil {
+			testRuntimeSchemaErr = fmt.Errorf("drop public schema: %w", err)
+			return
+		}
+		if _, err := db.Exec(`CREATE SCHEMA public`); err != nil {
+			testRuntimeSchemaErr = fmt.Errorf("create public schema: %w", err)
+			return
+		}
+		testRuntimeSchemaErr = applyTestSchema(db)
+	})
+	if testRuntimeSchemaErr != nil {
+		t.Fatalf("initialize test schema: %v", testRuntimeSchemaErr)
 	}
-	if _, err := db.Exec(`CREATE SCHEMA public`); err != nil {
-		t.Fatalf("create public schema: %v", err)
+
+	rows, err := db.Query(`
+		SELECT format('%I.%I', schemaname, tablename)
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		ORDER BY tablename
+	`)
+	if err != nil {
+		t.Fatalf("list public test tables: %v", err)
 	}
-	applyTestSchema(t, db)
+	var tableNames []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			_ = rows.Close()
+			t.Fatalf("scan public test table: %v", err)
+		}
+		tableNames = append(tableNames, tableName)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		t.Fatalf("read public test tables: %v", err)
+	}
+	if err := rows.Close(); err != nil {
+		t.Fatalf("close public test table list: %v", err)
+	}
+	if len(tableNames) > 0 {
+		query := "TRUNCATE TABLE " + strings.Join(tableNames, ", ") + " RESTART IDENTITY CASCADE"
+		if _, err := db.Exec(query); err != nil {
+			t.Fatalf("truncate public test tables: %v", err)
+		}
+	}
 
 	redisOptions, err := redis.ParseURL(redisURL)
 	if err != nil {
-		t.Fatalf("parse redis url: %v", err)
+		t.Fatalf("parse Redis URL: %v", err)
 	}
 	client := redis.NewClient(redisOptions)
 	defer func() { _ = client.Close() }()
@@ -216,11 +260,10 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	}
 }
 
-func applyTestSchema(t *testing.T, db *sql.DB) {
-	t.Helper()
+func applyTestSchema(db *sql.DB) error {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("runtime.Caller failed")
+		return fmt.Errorf("runtime.Caller failed")
 	}
 	backendRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	candidates := []string{
@@ -235,39 +278,41 @@ func applyTestSchema(t *testing.T, db *sql.DB) {
 		}
 	}
 	if schemaPath == "" {
-		t.Fatal("no schema fixture found (testdata/schema/current.sql or migrations baseline)")
+		return fmt.Errorf("no schema fixture found (testdata/schema/current.sql or migrations baseline)")
 	}
 	raw, err := os.ReadFile(schemaPath)
 	if err != nil {
-		t.Fatalf("read schema fixture %s: %v", schemaPath, err)
+		return fmt.Errorf("read schema fixture %s: %w", schemaPath, err)
 	}
 	if err := execSchemaSQL(db, string(raw)); err != nil {
-		t.Fatalf("apply schema from %s: %v", schemaPath, err)
+		return fmt.Errorf("apply schema from %s: %w", schemaPath, err)
 	}
 
 	migrationsDir := filepath.Join(backendRoot, "migrations")
 	entries, err := os.ReadDir(migrationsDir)
-	if err == nil {
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].Name() < entries[j].Name()
-		})
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-				continue
-			}
-			if entry.Name() == "20260804120000_baseline.sql" {
-				continue
-			}
-			migPath := filepath.Join(migrationsDir, entry.Name())
-			migRaw, err := os.ReadFile(migPath)
-			if err != nil {
-				t.Fatalf("read migration fixture %s: %v", migPath, err)
-			}
-			if err := execSchemaSQL(db, string(migRaw)); err != nil {
-				t.Fatalf("apply migration %s: %v", entry.Name(), err)
-			}
+	if err != nil {
+		return fmt.Errorf("read migrations directory %s: %w", migrationsDir, err)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		if entry.Name() == "20260804120000_baseline.sql" {
+			continue
+		}
+		migPath := filepath.Join(migrationsDir, entry.Name())
+		migRaw, err := os.ReadFile(migPath)
+		if err != nil {
+			return fmt.Errorf("read migration fixture %s: %w", migPath, err)
+		}
+		if err := execSchemaSQL(db, string(migRaw)); err != nil {
+			return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
 		}
 	}
+	return nil
 }
 
 func execSchemaSQL(db *sql.DB, raw string) error {
@@ -2148,5 +2193,76 @@ func TestMessageReactionsAreInlineAndIdempotent(t *testing.T) {
 	removed := decodeJSON[messagePublic](t, removeResp)
 	if len(removed.Reactions) != 1 || removed.Reactions[0].Count != 1 || removed.Reactions[0].Reacted {
 		t.Fatalf("unexpected removed reaction payload: %#v", removed.Reactions)
+	}
+}
+
+func TestResetTestRuntimeClearsDataWithoutDroppingSchema(t *testing.T) {
+	databaseURL := strings.TrimSpace(os.Getenv("TEST_DATABASE_URL"))
+	if databaseURL == "" {
+		databaseURL = strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	}
+	redisURL := strings.TrimSpace(os.Getenv("TEST_REDIS_URL"))
+	if redisURL == "" {
+		redisURL = strings.TrimSpace(os.Getenv("REDIS_URL"))
+	}
+	if databaseURL == "" || redisURL == "" {
+		t.Skip("runtime integration tests require TEST_DATABASE_URL and TEST_REDIS_URL")
+	}
+
+	db, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	resetTestRuntime(t, databaseURL, redisURL)
+
+	const probeTable = "public.test_runtime_reset_probe"
+	if _, err := db.Exec(`CREATE TABLE ` + probeTable + ` (id BIGSERIAL PRIMARY KEY)`); err != nil {
+		t.Fatalf("create probe table: %v", err)
+	}
+	t.Cleanup(func() { _, _ = db.Exec(`DROP TABLE IF EXISTS ` + probeTable) })
+	var firstID int64
+	if err := db.QueryRow(`INSERT INTO ` + probeTable + ` DEFAULT VALUES RETURNING id`).Scan(&firstID); err != nil {
+		t.Fatalf("insert first probe row: %v", err)
+	}
+	if firstID != 1 {
+		t.Fatalf("first probe id = %d, want 1", firstID)
+	}
+
+	redisOptions, err := redis.ParseURL(redisURL)
+	if err != nil {
+		t.Fatalf("parse Redis URL: %v", err)
+	}
+	redisClient := redis.NewClient(redisOptions)
+	t.Cleanup(func() { _ = redisClient.Close() })
+	if err := redisClient.Set(context.Background(), "test-runtime-reset-probe", "present", 0).Err(); err != nil {
+		t.Fatalf("set Redis probe key: %v", err)
+	}
+
+	resetTestRuntime(t, databaseURL, redisURL)
+
+	var tableExists bool
+	if err := db.QueryRow(`SELECT to_regclass($1) IS NOT NULL`, probeTable).Scan(&tableExists); err != nil {
+		t.Fatalf("check probe table: %v", err)
+	}
+	if !tableExists {
+		t.Fatal("reset removed the probe table schema")
+	}
+	var rowCount int
+	if err := db.QueryRow(`SELECT count(*) FROM ` + probeTable).Scan(&rowCount); err != nil {
+		t.Fatalf("count probe rows: %v", err)
+	}
+	if rowCount != 0 {
+		t.Fatalf("probe row count after reset = %d, want 0", rowCount)
+	}
+	var nextID int64
+	if err := db.QueryRow(`INSERT INTO ` + probeTable + ` DEFAULT VALUES RETURNING id`).Scan(&nextID); err != nil {
+		t.Fatalf("insert probe row after reset: %v", err)
+	}
+	if nextID != 1 {
+		t.Fatalf("probe id after reset = %d, want identity to restart at 1", nextID)
+	}
+	if err := redisClient.Get(context.Background(), "test-runtime-reset-probe").Err(); !errors.Is(err, redis.Nil) {
+		t.Fatalf("Redis probe key after reset error = %v, want redis.Nil", err)
 	}
 }
