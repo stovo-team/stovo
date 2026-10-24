@@ -161,26 +161,6 @@ func (s *Server) intelligenceSourceV2EnabledInstallation(ctx context.Context, fa
 	return ids[0], nil
 }
 
-func (s *Server) intelligenceSourceV2EnabledInstallationTx(ctx context.Context, tx *sql.Tx, familyID string) (string, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT id FROM public.intelligence_installations WHERE family_id=$1 AND enabled ORDER BY id LIMIT 2 FOR SHARE`, familyID)
-	if err != nil {
-		return "", httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	defer func() { _ = rows.Close() }()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return "", httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil || len(ids) != 1 {
-		return "", httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	return ids[0], nil
-}
-
 func (s *Server) intelligenceSourceV2ConsentRateLimit(ctx context.Context, request *http.Request, operation string, limit int) error {
 	if s.cache == nil {
 		return httptransport.ErrIntelligenceSourceV2ConsentUnavailable

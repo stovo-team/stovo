@@ -212,15 +212,3 @@ func validAppIntelligenceSourceV2Grant(grant string) bool {
 	}
 	return false
 }
-
-func equalIntelligenceSourceV2Grants(left, right map[string]bool) bool {
-	if len(left) != len(intelligenceSourceV2GrantTypes) || len(right) != len(intelligenceSourceV2GrantTypes) {
-		return false
-	}
-	for _, grant := range intelligenceSourceV2GrantTypes {
-		if left[grant] != right[grant] {
-			return false
-		}
-	}
-	return true
-}
