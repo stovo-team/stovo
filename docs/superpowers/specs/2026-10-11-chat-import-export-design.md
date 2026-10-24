@@ -1,3 +1,8 @@
+---
+title: "Chat Import and Export — V1 Design"
+type: specification
+---
+
 # Chat Import and Export — V1 Design
 
 **Status:** Proposed for review

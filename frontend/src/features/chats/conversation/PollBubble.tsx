@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, X, Lock, Users, BarChart2, CheckCircle2, HelpCircle } from "lucide-react";
 import type { Poll, PollOption } from "../../../api/polls";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export interface PollBubbleProps {
   poll: Poll;
@@ -19,6 +20,7 @@ export function PollBubble({
   onViewVoters,
   canClosePoll = false,
 }: PollBubbleProps) {
+  const copy = useStrings().auditUi;
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(() =>
     poll.options.filter((o) => o.voted).map((o) => o.id)
   );
@@ -93,17 +95,15 @@ export function PollBubble({
         </div>
         <div className="poll-badges">
           {poll.isAnonymous ? (
-            <span className="poll-badge" title="Anonymous Poll">
-              <Lock size={12} /> Anonymous
-            </span>
+            <span className="poll-badge" title={copy.anonymousPoll}>
+              <Lock size={12} />{copy.anonymous}</span>
           ) : (
-            <span className="poll-badge" title="Public Poll">
-              <Users size={12} /> Public
-            </span>
+            <span className="poll-badge" title={copy.publicPoll}>
+              <Users size={12} />{copy.public}</span>
           )}
-          {poll.allowMultiple && <span className="poll-badge">Multiple Choice</span>}
-          {poll.isQuiz && <span className="poll-badge quiz-badge">Quiz</span>}
-          {poll.isClosed && <span className="poll-badge closed-badge">Closed</span>}
+          {poll.allowMultiple && <span className="poll-badge">{copy.multipleChoice}</span>}
+          {poll.isQuiz && <span className="poll-badge quiz-badge">{copy.quiz}</span>}
+          {poll.isClosed && <span className="poll-badge closed-badge">{copy.closed}</span>}
         </div>
       </div>
 
@@ -161,7 +161,7 @@ export function PollBubble({
                     </span>
                   )}
                   {opt.voted && (
-                    <span title="You voted for this option">
+                    <span title={copy.votedOption}>
                       <Check size={16} className="poll-user-voted-icon" />
                     </span>
                   )}
@@ -191,9 +191,7 @@ export function PollBubble({
                 type="button"
                 className="poll-view-voters-btn"
                 onClick={() => onViewVoters(poll)}
-              >
-                View Voters
-              </button>
+              >{copy.viewVoters}</button>
             </>
           )}
         </div>
@@ -205,9 +203,7 @@ export function PollBubble({
               className="poll-action-btn submit-btn"
               onClick={() => void handleSubmitMultiVote()}
               disabled={isSubmitting}
-            >
-              Submit Vote
-            </button>
+            >{copy.submitVote}</button>
           )}
 
           {hasVoted && !poll.isClosed && (
@@ -216,9 +212,7 @@ export function PollBubble({
               className="poll-action-btn retract-btn"
               onClick={() => void handleRetractVote()}
               disabled={isSubmitting}
-            >
-              Retract Vote
-            </button>
+            >{copy.retractVote}</button>
           )}
 
           {canClosePoll && !poll.isClosed && onClosePoll && (

@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/google/uuid"
@@ -1313,11 +1314,22 @@ func TestIntelligenceSourceV2RetentionPreservesActivePayloadsAndTombstones(t *te
 	}
 	backupCreatedAt := time.Now().UTC()
 	backupRestorableUntil := backupCreatedAt.Add(30 * 24 * time.Hour)
-	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup-too-long", backupCreatedAt, backupCreatedAt.Add(31*24*time.Hour)); !errors.Is(err, httptransport.ErrIntelligenceSourceInvalidRequest) {
+	operations := NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(fixture.server.sqlDB))
+	if err := operations.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
+		t.Fatalf("mark initial synthetic backup inventory: %v", err)
+	}
+	var inventoryComplete bool
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT complete FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global'`).Scan(&inventoryComplete); err != nil || !inventoryComplete {
+		t.Fatalf("initial backup inventory is not complete: complete=%v err=%v", inventoryComplete, err)
+	}
+	if err := operations.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup-too-long", backupCreatedAt, backupCreatedAt.Add(31*24*time.Hour)); !errors.Is(err, httptransport.ErrIntelligenceSourceInvalidRequest) {
 		t.Fatalf("backup horizon longer than 30 days returned %v, want invalid request", err)
 	}
-	if err := fixture.server.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
+	if err := operations.RegisterIntelligenceSourceV2BackupHorizon(ctx, "synthetic-backup", backupCreatedAt, backupRestorableUntil); err != nil {
 		t.Fatalf("register synthetic restorable backup horizon: %v", err)
+	}
+	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT complete FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global'`).Scan(&inventoryComplete); err != nil || inventoryComplete {
+		t.Fatalf("new backup registration left inventory complete: complete=%v err=%v", inventoryComplete, err)
 	}
 	_, err := fixture.server.cleanupIntelligenceSourceV2Retention(ctx, time.Now().UTC().Add(31*24*time.Hour))
 	if err != nil {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, CheckSquare, ChevronRight, LockKeyhole, Plus, ShoppingCart, Truck } from "lucide-react";
 import type { ChecklistCard, ChecklistItem } from "../../../api/checklist";
 import { addChecklistItem, toggleChecklistItem } from "../../../api/checklist";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export interface ChecklistCardBubbleProps {
   checklist: ChecklistCard;
@@ -16,6 +17,7 @@ export function ChecklistCardBubble({
   currentUserId,
   onOpenChecklist
 }: ChecklistCardBubbleProps) {
+  const copy = useStrings().auditUi;
   const [items, setItems] = useState<ChecklistItem[]>(checklist.items || []);
   const [newItemText, setNewItemText] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -86,9 +88,9 @@ export function ChecklistCardBubble({
 
   if (!checklist.available) {
     return (
-      <div className="message-checklist-card message-checklist-card--unavailable" role="region" aria-label="Checklist">
+      <div className="message-checklist-card message-checklist-card--unavailable" role="region" aria-label={copy.checklist}>
         <span className="checklist-card-header-icon"><LockKeyhole size={20} /></span>
-        <span className="checklist-card-title"><strong>Checklist unavailable</strong></span>
+        <span className="checklist-card-title"><strong>{copy.checklistUnavailable}</strong></span>
       </div>
     );
   }
@@ -110,12 +112,12 @@ export function ChecklistCardBubble({
     switch (checklist.category) {
       case "grocery":
       case "groceries":
-        return "Groceries";
+        return copy.groceries;
       case "errand":
       case "errands":
-        return "Errands";
+        return copy.errands;
       default:
-        return "Checklist";
+        return copy.checklist;
     }
   };
 
@@ -136,7 +138,7 @@ export function ChecklistCardBubble({
     <div
       className={`message-checklist-card message-checklist-card--${checklist.category || "general"}`}
       role="region"
-      aria-label={`${checklist.title} checklist`}
+      aria-label={copy.checklistTitle(checklist.title)}
     >
       <header className="checklist-card-header">
         <div className="checklist-card-header-main">
@@ -151,13 +153,13 @@ export function ChecklistCardBubble({
         <button
           type="button"
           className="checklist-card-open-btn"
-          aria-label={`Open ${checklist.title}`}
+          aria-label={copy.openChecklist(checklist.title)}
           onClick={(e) => {
             e.stopPropagation();
             onOpenChecklist();
           }}
         >
-          <span>Open</span>
+          <span>{copy.open}</span>
           <ChevronRight size={16} />
         </button>
       </header>
@@ -209,7 +211,7 @@ export function ChecklistCardBubble({
         <input
           type="text"
           className="checklist-card-add-input"
-          placeholder="Add Item"
+          placeholder={copy.addItem}
           value={newItemText}
           maxLength={280}
           onChange={(e) => setNewItemText(e.target.value)}
@@ -218,7 +220,7 @@ export function ChecklistCardBubble({
         <button
           type="submit"
           className="checklist-card-add-submit"
-          aria-label="Add item to checklist"
+          aria-label={copy.addItemChecklist}
           disabled={isAdding || !newItemText.trim()}
         >
           <Plus size={13} strokeWidth={2.5} />
@@ -235,6 +237,7 @@ function ChecklistCardItemRow({
   item: ChecklistItem;
   onToggle: (event: React.MouseEvent) => void;
 }) {
+  const copy = useStrings().auditUi;
   return (
     <li
       className={`checklist-card-item ${item.completed ? "is-completed" : ""}`}
@@ -246,7 +249,7 @@ function ChecklistCardItemRow({
         className={`checklist-card-checkbox ${item.completed ? "checked" : ""}`}
         aria-checked={item.completed}
         role="checkbox"
-        aria-label={`Mark "${item.text}" as ${item.completed ? "incomplete" : "complete"}`}
+        aria-label={copy.markItem(item.text, item.completed ? copy.markIncomplete : copy.markComplete)}
         onClick={onToggle}
       >
         {item.completed && <Check size={11} strokeWidth={3} />}

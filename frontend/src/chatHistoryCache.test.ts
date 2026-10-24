@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveLastActiveChatId, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
+import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadPinnedMessagesFromLocalStorage, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveLastActiveChatId, savePinnedMessagesToLocalStorage, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
 
 describe("chat history cache helpers", () => {
   beforeEach(() => {
@@ -74,6 +74,15 @@ describe("chat history cache helpers", () => {
     saveRecentChatHistoryToLocalStorage("user-1", "chat-1", messages);
     const restored = loadRecentChatHistoryFromLocalStorage("user-1", "chat-1");
     expect(restored).toEqual(messages);
+  });
+
+  it("saves and restores pinned messages per user and chat", () => {
+    const pins = [{ chatId: "chat-1", messageId: "message-1" }];
+
+    savePinnedMessagesToLocalStorage("user-1", "chat-1", pins);
+
+    expect(loadPinnedMessagesFromLocalStorage("user-1", "chat-1")).toEqual(pins);
+    expect(loadPinnedMessagesFromLocalStorage("user-1", "chat-2")).toBeNull();
   });
 });
 

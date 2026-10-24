@@ -1,3 +1,8 @@
+---
+title: "Chat Import and Export Implementation Plan"
+type: implementation-plan
+---
+
 # Chat Import and Export Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -57,7 +62,7 @@
 - Create: `backend/internal/features/chattransfer/archive.go`
 - Create: `backend/internal/features/chattransfer/archive_test.go`
 - Create: `backend/internal/features/chattransfer/archive_fuzz_test.go`
-- Create shared canonical fixtures under: `testdata/chat-transfer/v1/`
+- Create shared canonical fixtures under: `e2e/fixtures/chat-transfer/v1/`
 
 **Interfaces:**
 - Define a versioned `ChatArchive` with source provider/profile, exactly one conversation, external participants, chronological messages, attachment metadata/bytes, and warnings/losses.

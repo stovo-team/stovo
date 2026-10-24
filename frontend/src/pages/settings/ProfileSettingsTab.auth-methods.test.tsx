@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Capacitor } from "@capacitor/core";
 import QRCode from "qrcode";
 import * as client from "../../api/client";
-import { strings } from "../../config/strings";
+import { getSystemLanguage, russianStrings, strings } from "../../config/strings";
 import { ProfileSettingsTab } from "./ProfileSettingsTab";
 
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));
@@ -62,6 +62,14 @@ describe("Profile Settings Android sign-in", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("renders passkey and Android QR copy in Russian", async () => {
+    props.strings = russianStrings;
+    await render();
+    expect(container.textContent).toContain("Ключи доступа");
+    expect(container.textContent).toContain("QR-код для входа на Android");
+    expect(container.textContent).not.toContain("Android sign-in QR");
+  });
+
   it("creates an authenticated grant and displays the encoded current-server QR and expiry", async () => {
     await render();
     await create();
@@ -73,8 +81,9 @@ describe("Profile Settings Android sign-in", () => {
     expect([...new URL(payload).searchParams.keys()]).toEqual(["version", "apiUrl", "code"]);
     expect(payload).not.toContain("secret-access-token");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.getAttribute("src")).toBe("data:image/png;base64,cXJjb2Rl");
+    expect(container.querySelector('img[alt="Android sign-in QR code"]')?.classList.contains("android-qr-code")).toBe(true);
     expect(container.querySelector("time")?.dateTime).toBe(expiresAt);
-    expect(container.querySelector("time")?.textContent).toBe(new Date(expiresAt).toLocaleString());
+    expect(container.querySelector("time")?.textContent).toBe(new Date(expiresAt).toLocaleString("en"));
     expect(localStorage.length).toBe(0);
   });
 

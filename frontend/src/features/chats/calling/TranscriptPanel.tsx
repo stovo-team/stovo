@@ -4,8 +4,10 @@
  * Appears as an overlay panel on the call UI. Only shown when
  * `isTranscriptPanelOpen` is true from useTranscription.
  */
-import { X, FileText, CheckSquare, HelpCircle, Lightbulb, Download } from "lucide-react";
+import { FileText, CheckSquare, HelpCircle, Lightbulb, Download } from "lucide-react";
+import { PopupCloseButton } from "../../../components/ui/Popup";
 import type { TranscriptData, TranscriptSegment } from "./useTranscription";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -57,55 +59,53 @@ type TranscriptPanelProps = {
 };
 
 export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelProps) {
+  const copy = useStrings().auditUi;
   return (
     <div
       className="transcript-panel"
       role="dialog"
-      aria-label="AI Call Transcript"
+      aria-label={copy.transcriptTitle}
       aria-modal="false"
     >
       {/* Header */}
       <div className="transcript-panel__header">
         <div className="transcript-panel__title">
           <FileText size={16} aria-hidden />
-          <span>AI Transcript</span>
+          <span>{copy.aiTranscript}</span>
         </div>
         <div className="transcript-panel__header-actions">
           {data && data.segments.length > 0 && (
             <button
               type="button"
               className="transcript-panel__icon-btn"
-              title="Export as WebVTT"
-              aria-label="Export transcript as WebVTT"
+              title={copy.exportVtt}
+              aria-label={copy.exportTranscriptVtt}
               onClick={() => exportVTT(data.segments)}
             >
               <Download size={15} aria-hidden />
             </button>
           )}
-          <button
-            type="button"
+          <PopupCloseButton
             className="transcript-panel__icon-btn"
-            title="Close transcript"
-            aria-label="Close transcript panel"
+            title={copy.closeTranscript}
+            ariaLabel={copy.closeTranscriptPanel}
             onClick={onClose}
-          >
-            <X size={15} aria-hidden />
-          </button>
+          />
         </div>
       </div>
 
       <div className="transcript-panel__body">
         {isLoading && (
           <div className="transcript-panel__empty">
-            <div className="transcript-panel__spinner" aria-label="Loading transcript" />
-            <p>Processing transcript…</p>
+            <div className="transcript-panel__spinner" aria-label={copy.loadingTranscript} />
+            <p>{copy.processingTranscript}</p>
           </div>
         )}
 
         {!isLoading && !data && (
           <div className="transcript-panel__empty">
             <FileText size={28} aria-hidden />
-            <p>No transcript available yet.</p>
+            <p>{copy.noTranscript}</p>
           </div>
         )}
 
@@ -115,9 +115,7 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
             {data.summary && data.summary.summary && (
               <section className="transcript-panel__section">
                 <h3 className="transcript-panel__section-title">
-                  <Lightbulb size={14} aria-hidden />
-                  Summary
-                </h3>
+                  <Lightbulb size={14} aria-hidden />{copy.summary}</h3>
                 <p className="transcript-panel__summary-text">{data.summary.summary}</p>
               </section>
             )}
@@ -126,9 +124,7 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
             {data.summary && data.summary.actionItems.length > 0 && (
               <section className="transcript-panel__section">
                 <h3 className="transcript-panel__section-title">
-                  <CheckSquare size={14} aria-hidden />
-                  Action Items
-                </h3>
+                  <CheckSquare size={14} aria-hidden />{copy.actionItems}</h3>
                 <ul className="transcript-panel__list">
                   {data.summary.actionItems.map((item, i) => (
                     <li key={i} className="transcript-panel__list-item">
@@ -143,9 +139,7 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
             {data.summary && data.summary.openQuestions.length > 0 && (
               <section className="transcript-panel__section">
                 <h3 className="transcript-panel__section-title">
-                  <HelpCircle size={14} aria-hidden />
-                  Open Questions
-                </h3>
+                  <HelpCircle size={14} aria-hidden />{copy.openQuestions}</h3>
                 <ul className="transcript-panel__list">
                   {data.summary.openQuestions.map((q, i) => (
                     <li key={i} className="transcript-panel__list-item">
@@ -160,9 +154,7 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
             {data.segments.length > 0 ? (
               <section className="transcript-panel__section">
                 <h3 className="transcript-panel__section-title">
-                  <FileText size={14} aria-hidden />
-                  Full Transcript
-                </h3>
+                  <FileText size={14} aria-hidden />{copy.fullTranscript}</h3>
                 <div className="transcript-panel__segments">
                   {data.segments.map((seg) => (
                     <div key={seg.id} className="transcript-panel__segment">
@@ -183,7 +175,7 @@ export function TranscriptPanel({ data, isLoading, onClose }: TranscriptPanelPro
               </section>
             ) : (
               <div className="transcript-panel__empty">
-                <p>No speech segments detected.</p>
+                <p>{copy.noSpeechSegments}</p>
               </div>
             )}
           </>

@@ -1,9 +1,11 @@
-import { X } from "lucide-react";
 import {
   CallCapabilities,
   CallDevice,
   CallSettings,
 } from "../../../realtime/CallController";
+import { PopupBackdrop, PopupCloseButton } from "../../../components/ui/Popup";
+import { PopupSelect } from "../../../components/ui/PopupSelect";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function CallVideoSettingsPopup({
   settings,
@@ -22,67 +24,73 @@ export function CallVideoSettingsPopup({
   onClose: () => void;
   embedded?: boolean;
 }) {
+  const copy = useStrings().callAudio;
   const videoDevices = devices.filter((d) => d.kind === "videoinput");
 
-  return (
+  const content = (
     <div
-      className={embedded ? "call-settings-embedded-content" : "call-audio-popup-backdrop"}
-      role={embedded ? undefined : "presentation"}
-      onMouseDown={!embedded ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
+      className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
+      role={embedded ? "region" : "dialog"}
+      aria-modal={embedded ? undefined : true}
+      aria-label={embedded ? copy.cameraSettings : copy.videoSettings}
+      onClick={!embedded ? (e) => e.stopPropagation() : undefined}
     >
-      <div
-        className={embedded ? "call-audio-popup call-settings-embedded-panel" : "call-audio-popup"}
-        role={embedded ? "region" : "dialog"}
-        aria-modal={embedded ? undefined : true}
-        aria-label={embedded ? "Camera settings" : "Video settings"}
-      >
-        {!embedded && <div className="call-audio-popup-header">
-          <span>Video settings</span>
-          <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
-            <X aria-hidden="true" size={14} />
-          </button>
-        </div>}
-        <div className="call-audio-popup-body">
-          {!isMobile && (
-            <section className="call-audio-popup-section">
-              <div className="call-audio-section-label">Camera device</div>
-              <label className="call-audio-device-row">
-                <span>Camera</span>
-                <select
-                  value={settings.videoDeviceId}
-                  disabled={!capabilities.canUseCamera || videoDevices.length === 0}
-                  onChange={(e) => onPatch({ videoDeviceId: e.target.value })}
-                >
-                  <option value="">System default</option>
-                  {videoDevices.map((d) => (
-                    <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-                  ))}
-                </select>
-              </label>
-            </section>
-          )}
-          {!isMobile && <div className="call-audio-popup-divider" />}
+      {!embedded && (
+        <div className="call-audio-popup-header">
+          <span>{copy.videoSettings}</span>
+          <PopupCloseButton className="call-audio-popup-close" ariaLabel={copy.close} autoFocus onClick={onClose} />
+        </div>
+      )}
+      <div className="call-audio-popup-body">
+        {!isMobile && (
           <section className="call-audio-popup-section">
-            <div className="call-audio-section-label">Display</div>
-            <div className="call-audio-toggle-group">
-              <div className="call-audio-toggle-row">
-                <div className="call-audio-toggle-info">
-                  <span className="call-audio-toggle-name">Mirror my video</span>
-                  <span className="call-audio-toggle-desc">Flip the local preview horizontally (front camera)</span>
-                </div>
-                <label className="call-audio-toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={settings.mirrorLocalVideo}
-                    onChange={(e) => onPatch({ mirrorLocalVideo: e.target.checked })}
-                  />
-                  <span className="call-audio-toggle-track" />
-                </label>
-              </div>
+            <div className="call-audio-section-label">{copy.cameraDevice}</div>
+            <div className="call-audio-device-row">
+              <span>{copy.camera}</span>
+              <PopupSelect
+                ariaLabel={copy.camera}
+                className="call-audio-device-select"
+                value={settings.videoDeviceId}
+                disabled={!capabilities.canUseCamera || videoDevices.length === 0}
+                onChange={(videoDeviceId) => onPatch({ videoDeviceId })}
+                options={[
+                  { value: "", label: copy.systemDefault },
+                  ...videoDevices.map((d) => ({ value: d.deviceId, label: d.label })),
+                ]}
+              />
             </div>
           </section>
-        </div>
+        )}
+        <section className="call-audio-popup-section" aria-label={copy.display}>
+          <div className="call-audio-section-label">{copy.display}</div>
+          <div className="call-audio-toggle-group">
+            <div className="call-audio-toggle-row">
+              <div className="call-audio-toggle-info">
+                <span className="call-audio-toggle-name">{copy.mirrorVideo}</span>
+                <span className="call-audio-toggle-desc">{copy.mirrorVideoHelp}</span>
+              </div>
+              <label className="call-audio-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={settings.mirrorLocalVideo}
+                  onChange={(e) => onPatch({ mirrorLocalVideo: e.target.checked })}
+                />
+                <span className="call-audio-toggle-track" />
+              </label>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
+  );
+
+  if (embedded) {
+    return <div className="call-settings-embedded-content">{content}</div>;
+  }
+
+  return (
+    <PopupBackdrop className="call-audio-popup-backdrop" onClick={onClose}>
+      {content}
+    </PopupBackdrop>
   );
 }

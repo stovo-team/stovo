@@ -64,6 +64,15 @@ function renderPopover(anchorRect: DOMRect, isMobile = false) {
 }
 
 describe("meeting intelligence popover placement", () => {
+  it("uses the shorter Captions label", () => {
+    const popover = renderPopover({
+      x: 400, y: 320, top: 320, right: 450, bottom: 360, left: 400, width: 50, height: 40,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    expect(popover?.querySelector(".meeting-intel-card-icon--captions")?.parentElement?.querySelector(".meeting-intel-card-title")?.textContent).toBe("Captions");
+  });
+
   it("opens beside its own control and clamps to the right viewport edge", () => {
     const popover = renderPopover({
       x: 960, y: 480, top: 480, right: 1000, bottom: 520, left: 960, width: 40, height: 40,

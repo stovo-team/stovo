@@ -1,9 +1,10 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useRef, useState } from "react";
-import { Archive, BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileCode, FileImage, FileSpreadsheet, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Search, Settings, Star, UserPlus, Video } from "lucide-react";
+import { Archive, BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileCode, FileImage, FileSpreadsheet, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Settings, Star, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
 import { BackButton } from "../../../components/BackButton";
+import { PopupField } from "../../../components/ui/PopupField";
 
 const MESSAGE_DELAY_PRESETS = [
   { label: "5s", value: 5 },
@@ -33,6 +34,7 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
 import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
+import { ChatTransferSettingsActions } from "../transfer/ChatTransferSettingsActions";
 
 export function SharedContentThumb({
   accessToken,
@@ -45,6 +47,7 @@ export function SharedContentThumb({
   onFocusMessage: () => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
 }) {
+  const strings = useStrings();
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
@@ -58,8 +61,8 @@ export function SharedContentThumb({
       <button
         type="button"
         className={`media-thumb${isVideo && previewUrl && !videoPreviewFailed ? " is-video" : ""}`}
-        title={`Open the message containing ${file.originalName}`}
-        aria-label={`Open the message containing ${file.originalName}`}
+        title={strings.chats.details.openMessageContainingFile(file.originalName)}
+        aria-label={strings.chats.details.openMessageContainingFile(file.originalName)}
         onClick={onFocusMessage}
       >
         {isVideo && previewUrl && !videoPreviewFailed ? (
@@ -80,7 +83,7 @@ export function SharedContentThumb({
     <button
       type="button"
       className="media-thumb is-image"
-      aria-label={`Open ${file.originalName} full view`}
+      aria-label={strings.chats.details.openFileFullView(file.originalName)}
       title={file.originalName}
       disabled={!previewUrl}
       onClick={() => {
@@ -148,8 +151,7 @@ export function ChatDetailsPanel({
   pendingMessageDelay,
   messageDelayStatus,
   onPreferenceChange,
-  onTitleDraftChange,
-  onDescriptionChange,
+  onTitleDraftChange, onDescriptionChange, onImported,
   editingChatPhotoFile,
   onCloseEditChatPhoto,
   onSaveCroppedChatPhoto,
@@ -208,7 +210,7 @@ export function ChatDetailsPanel({
     notice: string
   ) => void;
   onTitleDraftChange: (value: string) => void;
-  onDescriptionChange?: (description: string) => Promise<boolean>;
+  onDescriptionChange?: (description: string) => Promise<boolean>; onImported?: (chat: Chat) => void;
 }) {
   const strings = useStrings();
   const { authRequest } = useAuth();
@@ -446,6 +448,7 @@ export function ChatDetailsPanel({
         </header>
 
         <div className="chat-info-body">
+          <ChatTransferSettingsActions chat={chat} accessToken={accessToken} currentUserId={currentUserId} onImported={onImported} />
           <div className="chat-info-section">
             <div className="chat-info-island chat-info-wallpaper">
               <div className="chat-info-wallpaper-copy">
@@ -611,11 +614,10 @@ export function ChatDetailsPanel({
               </label>
               {chat.quietHoursEnabled && (
                 <div className="chat-info-quiet-hours-inputs">
-                  <label className="chat-info-quiet-time-field">
-                    <span>{strings.chats.details.notificationsQuietHoursFrom}</span>
-                    <input
+                  <div className="chat-info-quiet-time-field">
+                    <PopupField
+                      label={strings.chats.details.notificationsQuietHoursFrom}
                       type="time"
-                      className="chat-info-time-input"
                       value={chat.quietHoursStart ?? "22:00"}
                       onChange={(event) =>
                         void onPreferenceChange(
@@ -624,13 +626,12 @@ export function ChatDetailsPanel({
                         )
                       }
                     />
-                  </label>
+                  </div>
                   <span className="chat-info-quiet-time-sep">—</span>
-                  <label className="chat-info-quiet-time-field">
-                    <span>{strings.chats.details.notificationsQuietHoursTo}</span>
-                    <input
+                  <div className="chat-info-quiet-time-field">
+                    <PopupField
+                      label={strings.chats.details.notificationsQuietHoursTo}
                       type="time"
-                      className="chat-info-time-input"
                       value={chat.quietHoursEnd ?? "07:00"}
                       onChange={(event) =>
                         void onPreferenceChange(
@@ -639,7 +640,7 @@ export function ChatDetailsPanel({
                         )
                       }
                     />
-                  </label>
+                  </div>
                 </div>
               )}
 
@@ -698,16 +699,14 @@ export function ChatDetailsPanel({
               {chat.notificationMode === "specific_senders" && (
                 <div className="chat-info-senders-picker">
                   <p className="chat-info-senders-help">{strings.chats.details.notificationsSpecificMembersHelp}</p>
-                  <div className="chat-info-senders-search-wrap">
-                    <Search aria-hidden="true" size={16} />
-                    <input
-                      type="search"
-                      className="chat-info-senders-search"
-                      placeholder={strings.chats.details.notificationsSearchMembers}
-                      value={memberSearchDraft}
-                      onChange={(e) => setMemberSearchDraft(e.target.value)}
-                    />
-                  </div>
+                  <PopupField
+                    label={strings.chats.details.notificationsSearchMembers}
+                    type="search"
+                    className="chat-info-senders-search"
+                    placeholder={strings.chats.details.notificationsSearchMembers}
+                    value={memberSearchDraft}
+                    onChange={(e) => setMemberSearchDraft(e.target.value)}
+                  />
                   <div className="chat-info-senders-actions">
                     <button
                       type="button"
@@ -828,7 +827,7 @@ export function ChatDetailsPanel({
                 )}
                 {chat.mediaVisibilityPendingApproval && (
                   <p className="chat-info-island-note">
-                    Approval {chat.mediaVisibilityApprovalCount}/{chat.mediaVisibilityApprovalRequired}
+                    {strings.chats.details.approvalCount(chat.mediaVisibilityApprovalCount, chat.mediaVisibilityApprovalRequired)}
                   </p>
                 )}
               </div>
@@ -934,8 +933,8 @@ export function ChatDetailsPanel({
                           min="1"
                           max="86400"
                           className="chat-info-delay-custom-input"
-                          aria-label="Custom delay seconds"
-                          placeholder="Seconds"
+                          aria-label={strings.chats.details.customDelayAria}
+                          placeholder={strings.chats.details.seconds}
                           value={customDelayDraft}
                           onChange={handleCustomDelayChange}
                         />
@@ -981,8 +980,8 @@ export function ChatDetailsPanel({
           <button
             type="button"
             className="chat-info-topbar-action"
-            aria-label="Chat options"
-            title="Chat options"
+            aria-label={strings.chats.details.chatOptions}
+            title={strings.chats.details.chatOptions}
             aria-expanded={isChatMenuOpen}
             onClick={() => setIsChatMenuOpen((open) => !open)}
           >
@@ -992,7 +991,7 @@ export function ChatDetailsPanel({
             <div className="chat-info-overflow-menu" role="menu">
               {statsPluginEnabled && (
                 <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); void handleOpenStats(); }}>
-                  <BarChart2 aria-hidden="true" size={18} /> Chat statistics
+                  <BarChart2 aria-hidden="true" size={18} /> {strings.chats.details.chatStatistics}
                 </button>
               )}
               <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); setActiveControl("settings"); }}>
@@ -1169,7 +1168,7 @@ export function ChatDetailsPanel({
           </div>
         )}
 
-        <section className="chat-info-actions" aria-label="Chat actions">
+        <section className="chat-info-actions" aria-label={strings.chats.details.chatActions}>
           <button type="button" className="chat-info-action" onClick={onFocusComposer}>
             <MessageSquare className="chat-info-action-icon" aria-hidden="true" size={24} strokeWidth={1.7} />
             <span>{strings.chats.details.message}</span>
@@ -1239,7 +1238,7 @@ export function ChatDetailsPanel({
         })()}
 
         <div className="chat-info-section chat-info-section--media">
-          <div className="chat-info-tabs" role="tablist" aria-label="Shared content">
+          <div className="chat-info-tabs" role="tablist" aria-label={strings.chats.details.sharedContent}>
             {sharedContentTabs.map((tab) => (
               <button
                 key={tab}
@@ -1373,7 +1372,7 @@ export function ChatDetailsPanel({
                 className="chat-info-member-invite"
                 onClick={onOpenAddPeople}
               >
-                <UserPlus aria-hidden="true" size={20} />
+                <UserPlus aria-hidden="true" size={16} />
                 {strings.chats.details.addPeople}
               </button>
             )}

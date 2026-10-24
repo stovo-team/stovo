@@ -71,6 +71,16 @@ describe("InvitePage authentication method choice", () => {
     expect(container.textContent).not.toContain("QR code");
   });
 
+  it("renders invite choices in Russian when the device language is Russian", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(container.textContent).toContain("Приглашение");
+    expect(container.textContent).toContain("Создать пароль");
+    expect(container.textContent).toContain("Создать ключ доступа");
+    expect(container.textContent).not.toContain("Create a password");
+    Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+  });
+
   it("does not require or submit a password when the invitee chooses passkey", async () => {
     await renderPage();
 

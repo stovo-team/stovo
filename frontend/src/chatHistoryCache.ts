@@ -212,6 +212,33 @@ export function loadRecentChatHistoryFromLocalStorage<T extends { id: string }>(
   }
 }
 
+function getPinnedMessagesKey(userId: string, chatId: string): string {
+  return `stovo_cached_pins_${encodeURIComponent(userId)}_${encodeURIComponent(chatId)}`;
+}
+
+export function loadPinnedMessagesFromLocalStorage<T>(userId: string, chatId: string): T[] | null {
+  if (isAndroidLocalReplicaPlatform()) return null;
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(getPinnedMessagesKey(userId, chatId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as T[] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePinnedMessagesToLocalStorage<T>(userId: string, chatId: string, pins: T[]): void {
+  if (isAndroidLocalReplicaPlatform()) return;
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(getPinnedMessagesKey(userId, chatId), JSON.stringify(pins));
+  } catch {
+    // Non-fatal.
+  }
+}
+
 export function saveRecentChatHistoryToLocalStorage<T extends { id: string }>(
   userId: string,
   chatId: string,
@@ -323,7 +350,7 @@ export async function clearRecentChatHistory(): Promise<void> {
   if (typeof localStorage !== "undefined") {
     try {
       const keys = Object.keys(localStorage).filter(
-        (key) => key.startsWith("stovo_cached_chats_") || key.startsWith("stovo_cached_messages_") || key.startsWith("stovo_last_active_chat_"),
+        (key) => key.startsWith("stovo_cached_chats_") || key.startsWith("stovo_cached_messages_") || key.startsWith("stovo_cached_pins_") || key.startsWith("stovo_last_active_chat_"),
       );
       for (const key of keys) localStorage.removeItem(key);
     } catch {

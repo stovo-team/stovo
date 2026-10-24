@@ -242,9 +242,9 @@ describe("DesktopCallControls visibility", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const inviteButton = lastCssRule(css, ".call-invite-modal-actions .action-button.primary");
     const cancelButton = lastCssRule(css, ".call-invite-modal-actions .action-button.subtle");
-    expect(inviteButton).toMatch(/border-radius:\s*999px/);
+    expect(inviteButton).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(inviteButton).toMatch(/background(?:-color)?:\s*var\(--accent-primary/);
-    expect(cancelButton).toMatch(/border-radius:\s*999px/);
+    expect(cancelButton).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(cancelButton).toMatch(/border:\s*1px solid/);
   });
 
@@ -275,6 +275,17 @@ describe("DesktopCallControls visibility", () => {
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Mute"]')?.click());
     expect(controls?.getAttribute("aria-hidden")).toBeNull();
     expect(controls?.classList.contains("is-hidden")).toBe(false);
+  });
+
+  it("reveals auto-hidden controls when the visible one-to-one audio stage receives pointer movement", () => {
+    const host = renderDesktopControls({ callType: "audio" });
+    const reveal = vi.fn();
+    window.addEventListener("stovo:reveal-call-controls", reveal);
+
+    act(() => host.querySelector(".call-popup-audio-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+
+    window.removeEventListener("stovo:reveal-call-controls", reveal);
+    expect(reveal).toHaveBeenCalledTimes(1);
   });
 
   it("keeps Stovo Intelligence directly available in the desktop call controls", () => {

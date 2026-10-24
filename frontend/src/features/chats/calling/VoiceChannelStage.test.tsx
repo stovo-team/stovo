@@ -3,6 +3,7 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VoiceChannelStage } from "./VoiceChannelStage";
+import { CALL_CONTROLS_REVEAL_EVENT } from "./SharedCallControlPanel";
 import type { Chat } from "../../../api/chats";
 import type { User } from "../../../api/auth";
 import type { CallSessionApi } from "./useCallSession";
@@ -102,6 +103,25 @@ const mockCurrentUser: User = {
 };
 
 describe("VoiceChannelStage", () => {
+  it("reveals hidden call controls when the pointer moves over the voice stage", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false, activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const onReveal = vi.fn();
+    window.addEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    act(() => container.querySelector<HTMLElement>(".voice-room-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+    expect(onReveal).toHaveBeenCalledOnce();
+    window.removeEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+  });
+
   it("exposes a voice call expand control with the current expanded state", () => {
     const onToggleExpanded = vi.fn();
     const mockSession = {
@@ -756,6 +776,31 @@ describe("VoiceChannelStage", () => {
     });
 
     expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
+  });
+
+  it("closes the Intelligence popover when its button is clicked a second time", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callRoomId: "voice-room-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false,
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+    const button = container.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')!;
+    const clickLikeUser = () => {
+      button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      button.click();
+    };
+
+    act(clickLikeUser);
+    expect(document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).not.toBeNull();
+    act(clickLikeUser);
+    expect(document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
   it("shows the shared speaking state and ring on an active voice participant", () => {

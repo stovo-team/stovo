@@ -64,6 +64,18 @@ test('README links to the maintained deployment and contributor guides', () => {
   }
 });
 
+test('agent instructions link to the PR review findings workflow', () => {
+  const instructions = read('AGENTS.md');
+  const docsIndex = read('docs/README.md');
+  const workflowPath = 'docs/agent-workflows/pr-review-findings.md';
+  assert.ok(existsSync(path.join(root, workflowPath)), `missing ${workflowPath}`);
+  assert.ok(instructions.includes(workflowPath), 'AGENTS.md must point agents to the review workflow');
+  assert.ok(docsIndex.includes('pr-review-findings.md'), 'docs index must link to the review workflow');
+  const workflow = read(workflowPath);
+  assert.match(workflow, /Include evidence when opening a PR/);
+  assert.match(workflow, /before-and-after screenshots/);
+});
+
 test('bug report deployment choices cover hosted, managed, and local deployments', () => {
   const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
   const deploymentField = bugReport.match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
@@ -258,6 +270,9 @@ test('Compose production and external-storage overlays resolve with the document
   assert.equal(base.status, 0, base.stderr);
   const defaultConfig = JSON.parse(base.stdout);
   const defaultServices = Object.keys(defaultConfig.services);
+  const ntfyConfigMount = defaultConfig.services.ntfy.volumes.find((volume) => volume.target === '/etc/ntfy/server.yml');
+  assert.equal(ntfyConfigMount?.source, path.join(root, 'deploy/ntfy/server.yml'), 'ntfy config must resolve from deploy/');
+  assert.ok(existsSync(path.join(root, 'deploy/ntfy/server.yml')), 'ntfy config must exist at its declared source');
   assert.equal(
     defaultConfig.services.caddy.environment.BACKEND_UPSTREAMS,
     'backend-blue:8000',
@@ -305,8 +320,8 @@ test('External overlay keeps backend dependency gates', { skip: 'Known pre-exist
 });
 
 test('Helm chart exists and requires externally managed credentials', () => {
-  const chart = path.join(root, 'charts/stovo/Chart.yaml');
-  const values = path.join(root, 'charts/stovo/values.yaml');
+  const chart = path.join(root, 'deploy/charts/stovo/Chart.yaml');
+  const values = path.join(root, 'deploy/charts/stovo/values.yaml');
   assert.ok(existsSync(chart), 'missing Helm chart metadata');
   assert.ok(existsSync(values), 'missing Helm values');
   const text = readFileSync(values, 'utf8');
@@ -319,9 +334,9 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   if (version.error?.code === 'ENOENT') return t.skip('Helm CLI is unavailable');
   assert.equal(version.status, 0, version.stderr);
   const imageOverrides = ['--set', 'backend.image.repository=registry.example.test/stovo/backend', '--set', 'backend.image.tag=v1.2.3', '--set', 'frontend.image.repository=registry.example.test/stovo/frontend', '--set', 'frontend.image.tag=v1.2.3'];
-  const lint = cli('helm', ['lint', 'charts/stovo', ...imageOverrides]);
+  const lint = cli('helm', ['lint', 'deploy/charts/stovo', ...imageOverrides]);
   assert.equal(lint.status, 0, lint.stdout + lint.stderr);
-  const render = cli('helm', ['template', 'stovo', 'charts/stovo', ...imageOverrides]);
+  const render = cli('helm', ['template', 'stovo', 'deploy/charts/stovo', ...imageOverrides]);
   assert.equal(render.status, 0, render.stderr);
   const documents = render.stdout.split(/^---\s*$/m).map((text) => ({
     text,
@@ -357,7 +372,7 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   assert.doesNotMatch(render.stdout, /change_me|changeme|devkey/i);
   assert.doesNotMatch(render.stdout, /^kind:\s*Secret\s*$/m, 'chart must use an external Secret, not render Secret resources');
 
-  const custom = cli('helm', ['template', 'stovo', 'charts/stovo',
+  const custom = cli('helm', ['template', 'stovo', 'deploy/charts/stovo',
     '--set', 'app.domain=chat.example.test',
     '--set', 'backend.image.repository=registry.example.test/stovo/backend',
     '--set', 'backend.image.tag=release-42',

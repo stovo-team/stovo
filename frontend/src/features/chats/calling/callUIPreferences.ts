@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type CallUIPreferences = { autoHideControls: boolean; cameraFit: "fit" | "cover" };
 const key = "stovo.call-ui-preferences";
-const defaults: CallUIPreferences = { autoHideControls: false, cameraFit: "fit" };
+const defaults: CallUIPreferences = { autoHideControls: true, cameraFit: "fit" };
 const eventName = "stovo:call-ui-preferences";
 
 export function readCallUIPreferences(): CallUIPreferences {

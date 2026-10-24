@@ -7,8 +7,10 @@ import { sendMessage } from "../../../api/chats";
 import { createGuestMeeting } from "../../../api/guestMeetings";
 import { encryptMessageContent } from "../../../api/messageCrypto";
 import { GuestMeetingSelect } from "./GuestMeetingSelect";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCreateChat, onQueueAnnouncement, newChatTitle = "", currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; onCreateChat?: (title: string) => Promise<Chat | null>; onQueueAnnouncement?: (chat: Chat, content: string) => Promise<void>; newChatTitle?: string; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
+  const copy = useStrings().auditUi;
   const [title, setTitle] = useState(initialTitle);
   const [mode, setMode] = useState<"immediate" | "lobby">("immediate");
   const [duration, setDuration] = useState("24");
@@ -74,7 +76,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
             await sendMessage(memberToken, targetChat.id, encrypted.content, [], null, null, encrypted.encryption);
           }
         } catch {
-          setError("Meeting link created, but it could not be posted to the chat. You can copy the link below.");
+          setError(copy.meetingLinkPostedFailed);
         }
       }
       // Clipboard permissions vary by browser and embedding context. The link
@@ -108,17 +110,17 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-    } catch { setError("Could not copy the meeting link"); }
+    } catch { setError(copy.copyMeetingLinkFailed); }
   };
   return <div className="guest-link-control">
-    <label className="guest-link-field"><span>Meeting name</span><input autoFocus value={title} maxLength={120} placeholder="e.g. Design review" onChange={(e) => setTitle(e.target.value)} /></label>
+    <label className="guest-link-field"><span>{copy.meetingName}</span><input autoFocus value={title} maxLength={120} placeholder={copy.meetingNamePlaceholder} onChange={(e) => setTitle(e.target.value)} /></label>
     <div className="guest-link-settings">
-      <label className="guest-link-field"><span><DoorOpen size={15} /> Guest entry</span><GuestMeetingSelect ariaLabel="Guest entry" value={mode} onChange={(value) => setMode(value as "immediate" | "lobby")} options={[{ value: "immediate", label: "Anyone with link" }, { value: "lobby", label: "Host approval" }]} /></label>
-      <label className="guest-link-field"><span><Clock3 size={15} /> Link expires</span><GuestMeetingSelect ariaLabel="Link expires" value={duration} onChange={setDuration} options={[{ value: "1", label: "In 1 hour" }, { value: "24", label: "In 24 hours" }, { value: "168", label: "In 7 days" }, { value: "custom", label: "Choose date & time" }]} /></label>
+      <label className="guest-link-field"><span><DoorOpen size={15} /> {copy.guestEntry}</span><GuestMeetingSelect ariaLabel={copy.guestEntry} value={mode} onChange={(value) => setMode(value as "immediate" | "lobby")} options={[{ value: "immediate", label: "Anyone with link" }, { value: "lobby", label: "Host approval" }]} /></label>
+      <label className="guest-link-field"><span><Clock3 size={15} /> {copy.linkExpires}</span><GuestMeetingSelect ariaLabel={copy.linkExpires} value={duration} onChange={setDuration} options={[{ value: "1", label: "In 1 hour" }, { value: "24", label: "In 24 hours" }, { value: "168", label: "In 7 days" }, { value: "custom", label: "Choose date & time" }]} /></label>
     </div>
-    {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> Expiry date and time</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
+    {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> {copy.expiryDateTime}</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
     <button type="button" className="guest-link-create-button" onClick={() => void create()} disabled={loading}><Link size={17} />{loading ? "Creating meeting link…" : "Create meeting link"}</button>
-    {url && <div className="guest-link-result"><div className="guest-link-result-copy"><strong>Link ready</strong><code tabIndex={0} title="Meeting link — scroll horizontally to see the full address">{url}</code></div><span className="visually-hidden" role="status" aria-live="polite">{copied ? "Meeting link copied" : ""}</span><div className="guest-link-result-actions"><button type="button" className={`secondary-button guest-link-copy-button${copied ? " copied" : ""}`} onClick={() => void copyLink()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? "Copied" : "Copy link"}</button><button type="button" className="secondary-button guest-link-plan-button" onClick={addToPlans}><CalendarDays size={17} /> Add to Plans</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}>Add to Google Calendar</button></div></div>}
+    {url && <div className="guest-link-result"><div className="guest-link-result-copy"><strong>{copy.linkReady}</strong><code tabIndex={0} title={copy.meetingLinkScroll}>{url}</code></div><span className="visually-hidden" role="status" aria-live="polite">{copied ? "Meeting link copied" : ""}</span><div className="guest-link-result-actions"><button type="button" className={`secondary-button guest-link-copy-button${copied ? " copied" : ""}`} onClick={() => void copyLink()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? "Copied" : "Copy link"}</button><button type="button" className="secondary-button guest-link-plan-button" onClick={addToPlans}><CalendarDays size={17} /> {copy.plansAction}</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}>{copy.addGoogleCalendar}</button></div></div>}
     {error && <p className="error-text">{error}</p>}
   </div>;
 }

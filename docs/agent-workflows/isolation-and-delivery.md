@@ -1,3 +1,8 @@
+---
+title: "Task Isolation and Delivery"
+type: workflow
+---
+
 # Task Isolation and Delivery
 
 ## Branch and worktree

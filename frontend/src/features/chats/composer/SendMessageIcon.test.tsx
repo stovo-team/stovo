@@ -27,5 +27,6 @@ describe("SendMessageIcon", () => {
     expect(container.querySelector("svg")).not.toBeNull();
     expect(container.querySelector("svg")?.classList.contains("composer-send-icon")).toBe(true);
     expect(container.textContent?.trim()).toBe("");
+    expect(container.querySelector("svg.lucide-arrow-up")).not.toBeNull();
   });
 });

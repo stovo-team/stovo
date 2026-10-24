@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 )
 
 const intelligenceBrowserTicketTTL = 2 * time.Minute
 
 func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *http.Request, principal httptransport.IntelligenceSourceV2ConsentPrincipal, input httptransport.IntelligenceBrowserSessionRequest) (httptransport.IntelligenceBrowserSessionTicket, error) {
-	if s.sqlDB == nil || principal.UserID == "" || principal.FamilyID == "" {
+	if s.intelligenceSourceV2Persistence() == nil || principal.UserID == "" || principal.FamilyID == "" {
 		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnauthorized
 	}
 	switch input.Flow {
@@ -60,58 +61,24 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 	}
 	digest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
+	err = s.intelligenceSourceV2Persistence().CreateBrowserSession(ctx, adapterintelligencesourcev2.BrowserSession{
+		TicketHash: digest[:], Flow: input.Flow, UserID: principal.UserID, FamilyID: principal.FamilyID,
+		ClientID: input.ClientID, RedirectURI: input.RedirectURI, State: input.State,
+		CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
+		Nonce: input.Nonce, ChatID: input.ChatID, Grants: input.Grants,
+		CreatedAt: now, ExpiresAt: now.Add(intelligenceBrowserTicketTTL),
+	})
+	if errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {
+		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentForbidden
+	}
 	if err != nil {
-		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_browser_authorization_sessions WHERE expires_at <= $1`, now); err != nil {
-		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	var chatValue any
-	var nonceValue any
-	if input.Flow == "oidc" {
-		nonceValue = input.Nonce
-	} else {
-		_, err = s.intelligenceSourceV2EnabledInstallationTx(ctx, tx, principal.FamilyID)
-		if err != nil {
-			return httptransport.IntelligenceBrowserSessionTicket{}, err
-		}
-		var accessible bool
-		err = tx.QueryRowContext(ctx, `
-			SELECT true
-			FROM public.users u
-			JOIN public.chat_members cm ON cm.chat_id=$3 AND cm.user_id=u.id
-			JOIN public.chats ch ON ch.id=cm.chat_id AND ch.family_id=u.family_id
-			WHERE u.id=$1 AND u.family_id=$2 AND u.is_active=1
-			FOR SHARE OF u,cm,ch`, principal.UserID, principal.FamilyID, input.ChatID).Scan(&accessible)
-		if errors.Is(err, sql.ErrNoRows) {
-			return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentForbidden
-		}
-		if err != nil {
-			return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-		}
-		chatValue = input.ChatID
-	}
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO public.intelligence_browser_authorization_sessions
-			(ticket_hash,flow,user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,nonce,chat_id,
-			 read_granted,process_granted,external_transfer_granted,export_granted,expires_at,created_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-		digest[:], input.Flow, principal.UserID, principal.FamilyID, input.ClientID, input.RedirectURI, input.State,
-		input.CodeChallenge, input.CodeChallengeMethod, nonceValue, chatValue,
-		input.Grants["read"], input.Grants["process"], input.Grants["external_transfer"], input.Grants["export"], now.Add(intelligenceBrowserTicketTTL), now)
-	if err != nil {
-		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	if err := tx.Commit(); err != nil {
 		return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	return httptransport.IntelligenceBrowserSessionTicket{Value: ticket, ExpiresIn: int64(intelligenceBrowserTicketTTL.Seconds())}, nil
 }
 
 func (s *Server) authorizeIntelligenceOIDCBrowserSession(ctx context.Context, request *http.Request, ticket string, input httptransport.IntelligenceOIDCAuthorizationRequest) (httptransport.IntelligenceOIDCAuthorizationResult, error) {
-	if !s.cfg.IntelligenceOIDCEnabled || s.sqlDB == nil || ticket == "" {
+	if !s.cfg.IntelligenceOIDCEnabled || s.intelligenceSourceV2Persistence() == nil || ticket == "" {
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnauthorized
 	}
 	if err := s.intelligenceOIDCRateLimit(ctx, request, "oidc-browser-authorize", 30); err != nil {
@@ -119,60 +86,35 @@ func (s *Server) authorizeIntelligenceOIDCBrowserSession(ctx context.Context, re
 	}
 	digest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var userID, familyID, clientID, redirectURI, state, challenge, method, nonce string
-	err = tx.QueryRowContext(ctx, `
-		SELECT user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,nonce
-		FROM public.intelligence_browser_authorization_sessions
-		WHERE ticket_hash=$1 AND flow='oidc' AND expires_at>$2 FOR UPDATE`, digest[:], now).
-		Scan(&userID, &familyID, &clientID, &redirectURI, &state, &challenge, &method, &nonce)
-	if errors.Is(err, sql.ErrNoRows) {
+	code, err := randomToken()
+	if err != nil { return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable }
+	codeDigest := sha256.Sum256([]byte(code))
+	stored, err := s.intelligenceSourceV2Persistence().AuthorizeOIDCBrowserSession(ctx, digest[:], codeDigest[:], now, now.Add(intelligenceOIDCAuthorizationCodeTTL), now, adapterintelligencesourcev2.OIDCBrowserSessionExpectation{
+		ClientID: input.ClientID, RedirectURI: input.RedirectURI, State: input.State, Nonce: input.Nonce,
+		CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
+		ResponseTypeCode: input.ResponseType == "code",
+		AllowedClientID: input.ClientID == s.cfg.IntelligenceOIDCClientID,
+		RedirectURIAllowed: containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, input.RedirectURI),
+	}, func(userID string) bool {
+		_, subjectErr := s.intelligenceOIDCSubject(ctx, userID)
+		return subjectErr == nil
+	})
+	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) || errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnauthorized
 	}
-	if err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	if input.ResponseType != "code" || input.ClientID != clientID || input.RedirectURI != redirectURI || input.State != state || input.Nonce != nonce || input.CodeChallenge != challenge || input.CodeChallengeMethod != method || clientID != s.cfg.IntelligenceOIDCClientID || !containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, redirectURI) {
+	if errors.Is(err, adapterintelligencesourcev2.ErrInvalidRequest) {
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCInvalidRequest
 	}
-	var active bool
-	err = tx.QueryRowContext(ctx, `SELECT true FROM public.users WHERE id=$1 AND family_id=$2 AND is_active=1 FOR SHARE`, userID, familyID).Scan(&active)
-	if errors.Is(err, sql.ErrNoRows) {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnauthorized
-	}
 	if err != nil {
 		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
 	}
-	if _, err := s.intelligenceOIDCSubject(ctx, userID); err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnauthorized
-	}
-	code, err := randomToken()
-	if err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	codeDigest := sha256.Sum256([]byte(code))
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_oidc_authorization_codes WHERE expires_at <= $1`, now); err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO public.intelligence_oidc_authorization_codes(code_hash,client_id,redirect_uri,user_id,code_challenge,nonce,expires_at,created_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, codeDigest[:], clientID, redirectURI, userID, challenge, nonce, now.Add(intelligenceOIDCAuthorizationCodeTTL), now); err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1`, digest[:]); err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	return httptransport.IntelligenceOIDCAuthorizationResult{RedirectURI: redirectURI, Code: code, State: state}, nil
+	return httptransport.IntelligenceOIDCAuthorizationResult{RedirectURI: stored.RedirectURI, Code: code, State: stored.State}, nil
 }
 
 func (s *Server) authorizeIntelligenceSourceV2BrowserSession(ctx context.Context, request *http.Request, ticket string, input httptransport.IntelligenceSourceV2ConsentRequest) (httptransport.IntelligenceSourceV2ConsentRedirect, error) {
+	if s.intelligenceSourceV2Persistence() == nil {
+		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
+	}
 	if err := s.requireIntelligenceSourceV2ConsentEnabled(); err != nil {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, err
 	}
@@ -195,71 +137,25 @@ func (s *Server) authorizeIntelligenceSourceV2BrowserSession(ctx context.Context
 	codeDigest := sha256.Sum256([]byte(code))
 	ticketDigest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var userID, familyID, clientID, redirectURI, state, challenge, method, chatID string
-	var readGranted, processGranted, externalTransferGranted, exportGranted bool
-	err = tx.QueryRowContext(ctx, `
-		SELECT user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,chat_id,
-		       read_granted,process_granted,external_transfer_granted,export_granted
-		FROM public.intelligence_browser_authorization_sessions
-		WHERE ticket_hash=$1 AND flow='source_v2' AND expires_at>$2 FOR UPDATE`, ticketDigest[:], now).Scan(
-		&userID, &familyID, &clientID, &redirectURI, &state, &challenge, &method, &chatID,
-		&readGranted, &processGranted, &externalTransferGranted, &exportGranted)
-	if errors.Is(err, sql.ErrNoRows) {
+	stored, err := s.intelligenceSourceV2Persistence().AuthorizeSourceV2BrowserSession(ctx, adapterintelligencesourcev2.SourceV2BrowserAuthorization{
+		TicketHash: ticketDigest[:], CodeHash: codeDigest[:], ClientID: parameters.ClientID,
+		RedirectURI: parameters.RedirectURI, State: parameters.State, CodeChallenge: parameters.CodeChallenge,
+		CodeChallengeMethod: parameters.CodeChallengeMethod, ChatID: input.ChatID, Grants: input.Grants,
+		Now: now, CodeExpiresAt: now.Add(intelligenceSourceV2ConsentCodeTTL),
+	})
+	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnauthorized
 	}
-	if err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	boundGrants := map[string]bool{"read": readGranted, "process": processGranted, "external_transfer": externalTransferGranted, "export": exportGranted}
-	if clientID != parameters.ClientID || redirectURI != parameters.RedirectURI || state != parameters.State || challenge != parameters.CodeChallenge || method != parameters.CodeChallengeMethod || chatID != input.ChatID || !equalIntelligenceSourceV2Grants(boundGrants, input.Grants) {
+	if errors.Is(err, adapterintelligencesourcev2.ErrInvalidRequest) {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
 	}
-	installationID, err := s.intelligenceSourceV2EnabledInstallationTx(ctx, tx, familyID)
-	if err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, err
-	}
-	var accessible bool
-	err = tx.QueryRowContext(ctx, `
-		SELECT true
-		FROM public.users u
-		JOIN public.families f ON f.id=u.family_id AND f.id=$2
-		JOIN public.chat_members cm ON cm.user_id=u.id AND cm.chat_id=$3
-		JOIN public.chats ch ON ch.id=cm.chat_id AND ch.family_id=f.id
-		WHERE u.id=$1 AND u.is_active=1
-		FOR SHARE OF u,f,cm,ch`, userID, familyID, chatID).Scan(&accessible)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentForbidden
 	}
 	if err != nil {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_source_v2_consent_codes WHERE expires_at <= $1`, now); err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO public.intelligence_source_v2_consent_codes
-			(code_hash,client_id,redirect_uri,installation_id,user_id,family_id,chat_id,code_challenge,
-			 read_granted,process_granted,external_transfer_granted,export_granted,expires_at,created_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`, codeDigest[:], clientID, redirectURI,
-		installationID, userID, familyID, chatID, challenge, readGranted, processGranted, externalTransferGranted, exportGranted,
-		now.Add(intelligenceSourceV2ConsentCodeTTL), now); err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1`, ticketDigest[:]); err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	if err := insertIntelligenceSourceV2Audit(ctx, tx, installationID, "", userID, "consent_authorize", "issued", "", now); err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	return httptransport.IntelligenceSourceV2ConsentRedirect{RedirectURI: redirectURI, Code: code, State: state}, nil
+	return httptransport.IntelligenceSourceV2ConsentRedirect{RedirectURI: stored.RedirectURI, Code: code, State: stored.State}, nil
 }
 
 func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *http.Request, principal httptransport.IntelligenceSourceV2ConsentPrincipal) ([]httptransport.IntelligenceSourceV2ConnectionSummary, error) {
@@ -315,16 +211,4 @@ func validAppIntelligenceSourceV2Grant(grant string) bool {
 		}
 	}
 	return false
-}
-
-func equalIntelligenceSourceV2Grants(left, right map[string]bool) bool {
-	if len(left) != len(intelligenceSourceV2GrantTypes) || len(right) != len(intelligenceSourceV2GrantTypes) {
-		return false
-	}
-	for _, grant := range intelligenceSourceV2GrantTypes {
-		if left[grant] != right[grant] {
-			return false
-		}
-	}
-	return true
 }

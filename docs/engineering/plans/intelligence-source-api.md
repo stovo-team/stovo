@@ -1,3 +1,8 @@
+---
+title: "Messenger Source Interface for Stovo Intelligence"
+type: engineering-plan
+---
+
 # Messenger Source Interface for Stovo Intelligence
 
 ## Feature plan

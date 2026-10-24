@@ -11,7 +11,8 @@ const {
   encryptMessageContent,
   ensureLocalEncryptionIdentity,
   serializeChatArchive,
-  downloadFileBlob
+  downloadFileBlob,
+  currentLanguage
 } = vi.hoisted(() => ({
   parseChatFile: vi.fn(),
   getChatExportSource: vi.fn(),
@@ -21,7 +22,8 @@ const {
   encryptMessageContent: vi.fn(),
   ensureLocalEncryptionIdentity: vi.fn(),
   serializeChatArchive: vi.fn(),
-  downloadFileBlob: vi.fn()
+  downloadFileBlob: vi.fn(),
+  currentLanguage: { value: "en" as "en" | "ru" }
 }));
 
 vi.mock("./adapters", () => ({
@@ -36,6 +38,10 @@ vi.mock("../../../api/chatTransfer", () => ({ getChatExportSource, commitChatImp
 vi.mock("../../../api/family", () => ({ getFamily }));
 vi.mock("../../../api/messageCrypto", () => ({ decryptMessages, encryptMessageContent, ensureLocalEncryptionIdentity }));
 vi.mock("../../../api/files", () => ({ downloadFileBlob }));
+vi.mock("../../../i18n/LanguageContext", () => ({
+  useResolvedLanguage: () => currentLanguage.value,
+  useStrings: () => ({ auditUi: { close: "Close" } })
+}));
 
 import type { Chat } from "../../../api/chats";
 import type { ChatArchive } from "./archive";
@@ -63,6 +69,7 @@ const chat = {
 } as unknown as Chat;
 
 beforeEach(() => {
+  currentLanguage.value = "en";
   parseChatFile.mockReset().mockResolvedValue(archive);
   getChatExportSource.mockReset();
   getFamily.mockReset().mockResolvedValue({ defaultMessageEncryptionProtocol: "end_to_end" });
@@ -84,12 +91,12 @@ afterEach(() => {
 });
 
 function mount(mode: "import" | "export", onClose = vi.fn(), onImported = vi.fn()) {
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
   roots.push(root);
   act(() => root.render(<ChatTransferDialog mode={mode} chat={chat} accessToken="access-token" currentUserId="user-1" onClose={onClose} onImported={onImported} />));
-  return { container, onClose, onImported };
+  return { container: document.body, onClose, onImported };
 }
 
 async function chooseFile(container: HTMLElement) {
@@ -103,7 +110,43 @@ async function chooseFile(container: HTMLElement) {
 }
 
 describe("ChatTransferDialog", () => {
-  it("previews the locally parsed one-chat file and cancel performs no import write", async () => {
+  it("uses the localized file picker action and shows the selected file name", async () => {
+    currentLanguage.value = "ru";
+    const { container } = mount("import");
+
+    expect(container.querySelector(".chat-transfer-file-trigger")?.textContent).toBe("Выбрать файл");
+    expect(container.querySelector(".chat-transfer-file-name")?.textContent).toBe("Файл не выбран");
+
+    await chooseFile(container);
+
+    expect(container.querySelector(".chat-transfer-file-name")?.textContent).toBe("telegram.json");
+  });
+
+  it("renders the export profile inside the shared dropdown control", async () => {
+    const { container } = mount("export");
+    getChatExportSource.mockResolvedValue({ chatId: "selected-chat", chat, messages: [] });
+    const review = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Review export"));
+    await act(async () => review?.click());
+
+    expect(container.querySelector(".popup-select__trigger")?.textContent).toContain("stovo");
+    expect(container.querySelector(".popup-select__chevron")).not.toBeNull();
+  });
+
+  it("uses the shared popup shell and closes from its standard close and cancel buttons", async () => {
+    const { container, onClose } = mount("import");
+    const backdrop = container.querySelector(".popup-backdrop");
+
+    expect(backdrop).not.toBeNull();
+    expect(container.querySelector(".popup-dialog.chat-transfer-dialog")).not.toBeNull();
+    expect(container.querySelector(".popup-close")).not.toBeNull();
+    expect(container.querySelector(".chat-transfer-actions .popup-button--secondary")).not.toBeNull();
+
+    const close = container.querySelector<HTMLButtonElement>(".popup-close");
+    await act(async () => close?.click());
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("previews the locally parsed one-chat file and closing performs no import write", async () => {
     const { container, onClose } = mount("import");
     await chooseFile(container);
 
@@ -113,8 +156,8 @@ describe("ChatTransferDialog", () => {
     expect(container.textContent).toContain("Mira");
     expect(container.textContent).toContain("Rich formatting was flattened");
 
-    const cancel = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Cancel"));
-    await act(async () => cancel?.click());
+    const close = container.querySelector<HTMLButtonElement>(".popup-close");
+    await act(async () => close?.click());
     expect(commitChatImport).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
@@ -140,13 +183,13 @@ describe("ChatTransferDialog", () => {
   it("uses the space's default encryption protocol rather than the selected chat's legacy protocol", async () => {
     getFamily.mockResolvedValue({ defaultMessageEncryptionProtocol: "end_to_end" });
     const legacyChat = { ...chat, encryptionProtocol: "legacy_plaintext" } as Chat;
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
     roots.push(root);
     act(() => root.render(<ChatTransferDialog mode="import" chat={legacyChat} accessToken="access-token" currentUserId="user-1" onClose={vi.fn()} />));
-    await chooseFile(container);
-    const confirm = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Import as new chat"));
+    await chooseFile(document.body);
+    const confirm = Array.from(document.body.querySelectorAll("button")).find((button) => button.textContent?.includes("Import as new chat"));
     await act(async () => confirm?.click());
 
     expect(getFamily).toHaveBeenCalledWith("access-token");
@@ -278,13 +321,13 @@ describe("ChatTransferDialog", () => {
     expect(serializedArchive.messages[0]).not.toHaveProperty("encryptionMetadata");
   });
 
-  it("canceling the export confirmation does not decrypt or serialize", async () => {
+  it("closing the export confirmation does not decrypt or serialize", async () => {
     getChatExportSource.mockResolvedValue({ chatId: chat.id, chat, messages: [] });
     const { container } = mount("export");
     const review = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Review export"));
     await act(async () => review?.click());
-    const cancel = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.includes("Cancel"));
-    await act(async () => cancel?.click());
+    const close = container.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    await act(async () => close?.click());
 
     expect(decryptMessages).not.toHaveBeenCalled();
     expect(serializeChatArchive).not.toHaveBeenCalled();

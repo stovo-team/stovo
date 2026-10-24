@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 
 test("renders the real chats route with mock data, sends locally, and resets on reload", async ({ page }) => {
@@ -58,9 +59,11 @@ test("renders the real chats route with mock data, sends locally, and resets on 
 });
 
 test("simulates a video call between two demo users in separate tabs without media devices", async ({ page }) => {
+  test.setTimeout(60000);
   const socketRequests: string[] = [];
   const installMediaGuard = async (targetPage: typeof page) => {
     await targetPage.addInitScript(() => {
+      localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: false, cameraFit: "fit" }));
       const mockWindow = window as Window & {
         __mockMediaCalls?: number;
         __mockRtcConnections?: number;
@@ -164,6 +167,13 @@ test("simulates a video call between two demo users in separate tabs without med
   await expect(thirdPage.locator(".call-grid__tile--remote")).toHaveCount(2);
   await expect(page.locator(".call-grid__tile")).toHaveCount(3);
   await expect(secondPage.locator(".call-grid__tile")).toHaveCount(3);
+
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({
+    content: `*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; scroll-behavior: auto !important; caret-color: transparent !important; } .call-popup-notice, .mobile-active-notice-banner { display: none !important; }`,
+  });
+  await expect(page).toHaveScreenshot("active-call-desktop.png");
+
   const sharedScreen = page.getByRole("img", { name: "Stovo Demo's shared screen" });
   await page.getByRole("button", { name: "Share screen" }).click();
   await expect(sharedScreen).toBeVisible();
@@ -190,6 +200,11 @@ test("simulates a video call between two demo users in separate tabs without med
     expect(await targetPage.evaluate(() => (window as Window & { __mockAudioPlays?: number }).__mockAudioPlays)).toBe(0);
     expect(await targetPage.evaluate(() => (window as Window & { __mockMediaCalls?: number }).__mockMediaCalls)).toBe(0);
   }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("dialog", { name: "Active call" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Stovo Demo's shared screen" })).toBeVisible();
+  await expect(page).toHaveScreenshot("active-call-mobile.png");
 
   await page.close();
   await expect(secondPage.getByRole("img", { name: "Stovo Demo's shared screen" })).toHaveCount(0);
@@ -230,5 +245,83 @@ test("uploads a local chat attachment and keeps it available to another user aft
   await expect(secondPage.getByText(fileName, { exact: true })).toBeVisible();
   await secondPage.reload();
   await expect(secondPage.getByText(fileName, { exact: true })).toBeVisible();
+
+  const fileTile = secondPage.locator(".storage-tile").filter({ hasText: fileName });
+  const fileId = await fileTile.getAttribute("data-storage-file-id");
+  expect(fileId).toBeTruthy();
+  await fileTile.click();
+  const preview = secondPage.locator(".storage-preview-dialog");
+  await expect(preview).toBeVisible();
+  await expect(preview.getByText("Locally stored test attachment.", { exact: true })).toBeVisible();
+
+  const downloadPromise = secondPage.waitForEvent("download");
+  await preview.getByRole("button", { name: "Download" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(fileName);
+  const downloadedPath = await download.path();
+  expect(await readFile(downloadedPath!)).toEqual(Buffer.from("Locally stored test attachment."));
+
+  await preview.getByRole("button", { name: "More actions" }).click();
+  await preview.getByRole("button", { name: "Delete" }).click();
+  await expect(secondPage.locator(".storage-tile").filter({ hasText: fileName })).toHaveCount(0);
+  const deletedDownloadStatus = await secondPage.evaluate(async (id) =>
+    (await fetch(`/api/files/${encodeURIComponent(id)}/download`)).status, fileId);
+  expect(deletedDownloadStatus).toBe(404);
   await secondPage.close();
+});
+
+test("creates and reopens a canvas with a saved whiteboard in local mock mode", async ({ page }) => {
+  const socketRequests: string[] = [];
+  const socketResponseStatuses: number[] = [];
+  const blockedSocketWebSockets: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/socket.io")) socketRequests.push(request.url());
+  });
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname.startsWith("/socket.io")) socketResponseStatuses.push(response.status());
+  });
+  await page.route("**/socket.io/**", async (route) => {
+    await route.fulfill({ status: 503, body: "socket disabled in local mock E2E" });
+    socketResponseStatuses.push(503);
+  });
+  await page.routeWebSocket("**/socket.io/**", (socket) => {
+    blockedSocketWebSockets.push(socket.url);
+    socket.close();
+  });
+
+  await page.goto("/app/chats/chat-planning-team?mockUser=user-stovo-demo");
+  await expect(page.locator(".message-composer textarea")).toBeVisible();
+  await page.locator(".message-composer textarea").fill("/canvas");
+  const suggestions = page.getByRole("listbox", { name: "Slash commands" });
+  await expect(suggestions.getByRole("option", { name: /\/canvas/ })).toBeVisible();
+  await suggestions.getByRole("option", { name: /\/canvas/ }).click();
+  await expect(page).toHaveURL(/\/app\/canvas\/[^/]+$/);
+  const canvasId = new URL(page.url()).pathname.split("/").at(-1)!;
+  const canvasTitle = "Untitled canvas";
+  await expect(page.locator(".canvas-page-header").getByRole("heading", { name: canvasTitle })).toBeVisible();
+
+  await page.getByRole("button", { name: "Insert into canvas" }).click();
+  await page.getByRole("menuitem", { name: /Whiteboard/ }).click();
+  await expect(page.locator(".canvas-whiteboard-block")).toBeVisible();
+  await expect.poll(() => page.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/plugins/canvas/canvases/${encodeURIComponent(id)}/document`);
+    const document = await response.json() as { updates?: Array<{ update: string }> };
+    return document.updates?.some(({ update }) => {
+      const binary = atob(update);
+      return binary.includes("whiteboard");
+    }) ?? false;
+  }, canvasId)).toBe(true);
+  await page.reload();
+  await expect(page.locator(".canvas-whiteboard-block")).toBeVisible();
+
+  await page.goto("/app/files?mockUser=user-stovo-demo");
+  const canvasTile = page.locator(".storage-canvas-tile").filter({ hasText: canvasTitle });
+  await expect(canvasTile).toBeVisible();
+  await canvasTile.click();
+  await expect(page).toHaveURL(new RegExp(`/app/canvas/${canvasId}$`));
+  await expect(page.locator(".canvas-whiteboard-block")).toBeVisible();
+
+  expect(blockedSocketWebSockets.length).toBeGreaterThan(0);
+  expect(socketResponseStatuses.length).toBe(socketRequests.length);
+  expect(socketResponseStatuses.every((status) => status === 503)).toBe(true);
 });

@@ -22,7 +22,7 @@ describe("Voice Channel call layout restoration", () => {
 describe("minimized desktop call controls", () => {
   it("keeps one shared restore action with microphone, speaker and end controls", () => {
     expect(desktopCallControlsSource).not.toContain("call-status-chip-controls");
-    expect(minimizedSource.match(/aria-label="Restore call"/g)).toHaveLength(1);
+    expect(minimizedSource.match(/aria-label=\{copy.restoreCall\}/g)).toHaveLength(1);
     expect(minimizedSource).toContain('action="microphone"');
     expect(minimizedSource).toContain('action="audio-output"');
     expect(minimizedSource).toContain('action="end-call"');

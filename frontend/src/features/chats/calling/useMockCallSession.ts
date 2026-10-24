@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import type { User } from "../../../api/auth";
@@ -86,6 +87,7 @@ export function useMockCallSession({
   refs,
   setters,
 }: MockCallSessionParams) {
+  const copy = useStrings().sharedUi;
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
   const [mockScreenShareUserId, setMockScreenShareUserId] = useState<string | null>(null);
@@ -236,7 +238,7 @@ export function useMockCallSession({
     }
     if (!callChat) return true;
     if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
-      setError("This chat has no other members to call.");
+      setError(copy.membersToCallEmpty);
       return true;
     }
     const invitees = inviteUserIds && inviteUserIds.length > 0

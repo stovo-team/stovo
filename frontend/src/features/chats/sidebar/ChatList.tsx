@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, CircleSlash, FileText, FolderMinus, FolderPlus, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
+import { Archive, ChevronDown, CircleSlash, FileText, FolderMinus, FolderPlus, MessageCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -12,6 +12,7 @@ import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolder
 import { displayChatName } from "../shared/chatPresentation";
 import type { ChatContextMenuState } from "./ChatContextMenu";
 import { ChatListContextMenu } from "./ChatListContextMenu";
+import { PopupDialog } from "../../../components/ui/Popup";
 import {
   DefaultChatSectionNames,
   loadAllDefaultFolders,
@@ -542,31 +543,31 @@ export function ChatList({
           }}
         >
           <FolderMinus size={15} aria-hidden="true" />
-          <span>Drop here to move out of folder</span>
+          <span>{strings.chats.folders.dropToRemove}</span>
         </div>
       )}
 
       {!showSkeleton && (quickAccess.archiveEnabled || quickAccess.outboxEnabled) && (
-        <section className="chat-list-section chat-list-section--quick-access" aria-label="Quick Access">
+        <section className="chat-list-section chat-list-section--quick-access" aria-label={strings.chats.quickAccess.title}>
           <div className="chat-section-heading">
             <button type="button" className="chat-section-collapse" onClick={() => toggleSection("quick-access")} aria-expanded={!collapsed["quick-access"]}>
               <ChevronDown size={16} aria-hidden="true" className={collapsed["quick-access"] ? "is-collapsed" : ""} />
-              <span>Quick Access</span>
+              <span>{strings.chats.quickAccess.title}</span>
             </button>
             <span className="chat-folder-controls">
-              <button type="button" aria-label="Quick Access folder settings" title="Quick Access folder settings" onClick={() => setIsQuickAccessSettingsOpen(true)}><Settings2 size={14} /></button>
+              <button type="button" aria-label={strings.chats.quickAccess.settings} title={strings.chats.quickAccess.settings} onClick={() => setIsQuickAccessSettingsOpen(true)}><Settings2 size={14} /></button>
             </span>
           </div>
           {!collapsed["quick-access"] && (
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span></span>
+                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{strings.chats.quickAccess.archive}</strong></span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span></span>
+                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{strings.chats.quickAccess.drafts}</strong></span></span>
                 </button>
               )}
             </div>
@@ -632,15 +633,15 @@ export function ChatList({
                     <ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} />
                     <span>{sectionLabel}</span>
                     {isRestricted && (
-                      <span className="chat-folder-locked-icon" title="This chat cannot be dropped here" aria-label="Drop not allowed">
+                      <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedDrop} aria-label={strings.chats.folders.dropNotAllowed}>
                         <CircleSlash size={14} aria-hidden="true" />
                       </span>
                     )}
-                    <small className="chat-section-count">{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
+                    <small className="chat-section-count">{strings.chats.emptyStates.sectionCount(sectionChats.length)}</small>
                   </button>
                   {canManageFolders && (
                     <span className="chat-folder-controls">
-                      <button type="button" aria-label={`Edit ${sectionLabel}`} title="Folder settings" onClick={() => setEditingDefaultSection(section.key)}>
+                      <button type="button" aria-label={strings.chats.folders.settingsForFolder(sectionLabel)} title={strings.chats.folders.editFolder} onClick={() => setEditingDefaultSection(section.key)}>
                         <Settings2 size={14} />
                       </button>
                     </span>
@@ -652,7 +653,7 @@ export function ChatList({
                       <ChatListItem
                         key={chat.id}
                         chat={chat}
-                        isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
+                        isActive={!isDraftsAndScheduledActive && chat.id === (activeChatId ?? selectedChatId)}
                         isTransitionSource={selectedChatId === chat.id}
                         accessToken={accessToken}
                         currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
@@ -679,7 +680,7 @@ export function ChatList({
                       />
                     ))
                   ) : (
-                    <p className="chat-folder-empty chat-folder-empty--dropzone">Drop chats here to add to {sectionLabel}</p>
+                    <p className="chat-folder-empty chat-folder-empty--dropzone">{strings.chats.folders.dropToFolder(sectionLabel)}</p>
                   )
                 )}
               </section>
@@ -723,15 +724,15 @@ export function ChatList({
                 <ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} />
                 <span>{folder.name}</span>
                 {isFolderRestricted && (
-                  <span className="chat-folder-locked-icon" title="Chat properties do not match folder rules" aria-label="Restricted">
+                <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedRulesHelp} aria-label={strings.chats.folders.restrictedLabel}>
                     <CircleSlash size={14} aria-hidden="true" />
                   </span>
                 )}
-                <small className="chat-section-count">{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
+                <small className="chat-section-count">{strings.chats.emptyStates.sectionCount(sectionChats.length)}</small>
               </button>
               {canManageFolders && (
                 <span className="chat-folder-controls">
-                  <button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}>
+                  <button type="button" aria-label={strings.chats.folders.settingsForFolder(folder.name)} title={strings.chats.folders.editFolder} onClick={() => setEditingFolder(folder)}>
                     <Settings2 size={14} />
                   </button>
                 </span>
@@ -743,7 +744,7 @@ export function ChatList({
                   <ChatListItem
                     key={chat.id}
                     chat={chat}
-                    isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
+                    isActive={!isDraftsAndScheduledActive && chat.id === (activeChatId ?? selectedChatId)}
                     isTransitionSource={selectedChatId === chat.id}
                     accessToken={accessToken}
                     currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
@@ -770,23 +771,23 @@ export function ChatList({
                   />
                 ))
               ) : (
-                <p className="chat-folder-empty chat-folder-empty--dropzone">Drop chats here to add to {folder.name}</p>
+                <p className="chat-folder-empty chat-folder-empty--dropzone">{strings.chats.folders.dropToFolder(folder.name)}</p>
               )
             )}
           </section>
         );
       })}
 
-      {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />New folder</button>}
+      {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />{strings.chats.folders.newFolder}</button>}
       {canManageFolders && !showSkeleton && deletedDefaultSections.length > 0 && (
         <button
           type="button"
           className="chat-folder-restore"
           onClick={handleRestoreDefaultFolders}
-          title="Restore default folders"
+          title={strings.chats.folders.restoreDefaults}
         >
           <RotateCcw size={15} aria-hidden="true" />
-          Restore default folders
+          {strings.chats.folders.restoreDefaults}
         </button>
       )}
       {!showSkeleton && filteredChats.length === 0 && (
@@ -794,29 +795,29 @@ export function ChatList({
           <MessageCircle aria-hidden="true" size={28} />
           <strong>
             {chatFilter === "unread"
-              ? "Everything is read"
+              ? strings.chats.emptyStates.everythingRead
               : chatFilter === "muted"
-                ? "No muted chats"
-                : "No chats found"}
+                ? strings.chats.emptyStates.noMutedChats
+                : strings.chats.emptyStates.noChatsFound}
           </strong>
-          <p>Start a direct message or create a group for your family space.</p>
+          <p>{strings.chats.emptyStates.startChatHint}</p>
           <button type="button" onClick={onStartNewChat}>
-            Start a chat
+            {strings.chats.emptyStates.startChat}
           </button>
         </div>
       )}
       {!showSkeleton && filteredChats.length > 0 && !hasAnyChatsRendered && (
         <div className="empty-state compact-empty">
           <MessageCircle aria-hidden="true" size={28} />
-          <strong>No chats visible</strong>
-          <p>No chats match the configured folder rules.</p>
+          <strong>{strings.chats.emptyStates.noChatsVisible}</strong>
+          <p>{strings.chats.emptyStates.noFolderMatches}</p>
         </div>
       )}
       {editingFolder !== undefined && <ChatFolderDialog folder={editingFolder} onClose={() => setEditingFolder(undefined)} onSave={saveFolder} onDelete={deleteFolder} />}
       {editingDefaultSection !== undefined && (
         <ChatFolderDialog
           folder={defaultFolders[editingDefaultSection]}
-          title={`${defaultFolders[editingDefaultSection]?.name || "Folder"} settings`}
+          title={strings.chats.folders.settingsForFolder(defaultFolders[editingDefaultSection]?.name || strings.chats.folders.newFolder)}
           allowDelete={true}
           onClose={() => setEditingDefaultSection(undefined)}
           onSave={(folder) => saveDefaultFolderSettings(editingDefaultSection, folder)}
@@ -824,13 +825,11 @@ export function ChatList({
         />
       )}
       {isQuickAccessSettingsOpen && createPortal(
-        <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
-          <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="quick-access-close" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}><X size={18} /></button></div>
-            <div className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled }); }}><span /></button></div>
-            <div className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled }); }}><span /></button></div>
-          </section>
-        </div>
+        <PopupDialog className="quick-access-settings" ariaLabelledBy="quick-access-settings-title" onClose={() => setIsQuickAccessSettingsOpen(false)} closeLabel={strings.chats.quickAccess.close}>
+          <div className="modal-card-header"><h2 id="quick-access-settings-title">{strings.chats.quickAccess.settings}</h2></div>
+          <div className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span><strong>{strings.chats.quickAccess.archive}</strong><small>{strings.chats.quickAccess.archiveHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled }); }}><span /></button></div>
+          <div className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span><strong>{strings.chats.quickAccess.drafts}</strong><small>{strings.chats.quickAccess.draftsHelp}</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled }); }}><span /></button></div>
+        </PopupDialog>
       , document.body)}
       <ChatListContextMenu menu={contextMenu} folders={folders} onClose={() => setContextMenu(null)} onOpenChat={(c) => { onSelectChat(c); onOpenChat(c); }} onToggleMute={handleToggleMute} onToggleFavorite={handleToggleFavorite} onRemoveFromFolder={handleRemoveChatFromFolder} onMoveToFolder={handleDropChatToFolder} onMarkAsRead={handleMarkAsRead} accessToken={accessToken} currentUserId={currentUserId} onImported={() => { void refreshChats(); }} />
     </div>

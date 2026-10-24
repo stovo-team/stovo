@@ -1,3 +1,8 @@
+---
+title: "Floating minimized call panel"
+type: plan
+---
+
 # Floating minimized call panel
 
 Problem: the minimized call obscures the header and cannot be moved out of the way.

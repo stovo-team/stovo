@@ -1,3 +1,8 @@
+---
+title: "Admin console cleanup and localization"
+type: engineering-plan
+---
+
 # Admin console cleanup and localization
 
 ## Feature plan

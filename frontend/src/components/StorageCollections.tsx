@@ -12,6 +12,12 @@ import { storageFileKind } from "../pages/storageLibrary";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "./BackButton";
+import { PopupDialog } from "./ui/Popup";
+import { PopupButton } from "./ui/PopupButton";
+import { PopupField } from "./ui/PopupField";
+import { PopupSelect } from "./ui/PopupSelect";
+import { useStrings } from "../i18n/LanguageContext";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 
 const iconFor = (file: FamilyFile) => storageFileKind(file) === "audio" ? Music2 : storageFileKind(file) === "photos" || storageFileKind(file) === "videos" ? Image : FileText;
 const extensionLabel = (file: FamilyFile) => {
@@ -20,18 +26,13 @@ const extensionLabel = (file: FamilyFile) => {
   if (extension === "XLSX" || extension === "XLS") return "XLS";
   return extension.length <= 5 ? extension : "FILE";
 };
-const typeLabel = (item: StorageCollection) => item.displayKind === "music-album" ? "Music album" : item.displayKind === "album" ? "Photo album" : "File folder";
+const typeLabel = (item: StorageCollection, copy: ReturnType<typeof useStrings>["files"]["collections"]) => item.displayKind === "music-album" ? copy.musicAlbum : item.displayKind === "album" ? copy.photoAlbum : copy.fileFolder;
 type CoverIconName = "folder" | "image" | "music" | "file" | "video" | "camera" | "archive" | "star";
 const coverIconOptions: Array<{ value: CoverIconName; Icon: typeof Folder }> = [
   { value: "folder", Icon: Folder }, { value: "image", Icon: Image }, { value: "music", Icon: Music2 }, { value: "file", Icon: FileText },
   { value: "video", Icon: FileVideo }, { value: "camera", Icon: Camera }, { value: "archive", Icon: Archive }, { value: "star", Icon: Star }
 ];
-const contentTypeOptions: Array<{ value: CollectionContentType; label: string; description: string }> = [
-  { value: "mixed", label: "Any files", description: "*.png, *.mp3, *.pdf and more" },
-  { value: "media", label: "Photos & videos", description: "*.png, *.jpg, *.webp, *.mp4" },
-  { value: "audio", label: "Music", description: "*.mp3, *.wav, *.m4a, *.ogg" },
-  { value: "documents", label: "Documents", description: "*.pdf, *.docx, *.xlsx, *.txt" }
-];
+const contentTypeOptions: Exclude<CollectionContentType, "custom">[] = ["mixed", "media", "audio", "documents"];
 const allowsContentType = (contentType: CollectionContentType, file: FamilyFile, customFileTypes = "") => {
   const fileKind = storageFileKind(file);
   if (contentType === "custom") return customFileTypes.split(",").some((pattern) => { const suffix = pattern.trim().toLowerCase().replace(/^\*\./, "."); return suffix.length > 1 && file.originalName.toLowerCase().endsWith(suffix); });
@@ -48,15 +49,21 @@ function memberInitials(name: string) { return name.split(" ").filter(Boolean).s
 function StorageMemberAvatar({ accessToken, member }: { accessToken: string; member: User }) {
   const [url, setUrl] = useState<string | null>(() => member.profilePhoto ? peekCachedObjectUrl(member.profilePhoto.id) : null);
   useEffect(() => { let cancelled = false; const photo = member.profilePhoto; if (!photo) { setUrl(null); return; } const cached = peekCachedObjectUrl(photo.id); if (cached) { setUrl(cached); return; } void downloadFileBlob(accessToken, photo.id).then(() => { if (!cancelled) setUrl(peekCachedObjectUrl(photo.id)); }).catch(() => { if (!cancelled) setUrl(null); }); return () => { cancelled = true; }; }, [accessToken, member.profilePhoto?.id]);
-  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : memberInitials(member.displayName)}</span>;
+  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : <span className="avatar-initials">{memberInitials(member.displayName)}</span>}</span>;
 }
 function AccessPrincipalPicker({ accessToken, members, roles, value, onChange }: { accessToken: string; members: User[]; roles: ServerRole[]; value: string; onChange: (value: string) => void }) {
-  return <div className="storage-access-principal-picker"><p>Choose who gets access</p><div className="storage-access-principal-group"><strong>Members</strong><div className="storage-access-principal-list">{members.map((member) => <button type="button" key={member.id} className={value === `user:${member.id}` ? "is-selected" : ""} onClick={() => onChange(`user:${member.id}`)}><StorageMemberAvatar accessToken={accessToken} member={member} /><span>{member.displayName}</span></button>)}</div></div><div className="storage-access-principal-group"><strong>Roles</strong><div className="storage-access-principal-list storage-access-role-list">{roles.map((role) => <button type="button" key={role.id} className={value === `role:${role.id}` ? "is-selected" : ""} onClick={() => onChange(`role:${role.id}`)}><span className="storage-access-role-avatar">{role.name.slice(0, 1).toUpperCase()}</span><span>{role.name}</span><small>{role.memberCount} member{role.memberCount === 1 ? "" : "s"}</small></button>)}</div></div></div>;
+  const copy = useStrings().files.collections;
+  const options = [
+    ...members.map((member) => ({ value: `user:${member.id}`, label: member.displayName })),
+    ...roles.map((role) => ({ value: `role:${role.id}`, label: `${copy.rolePrefix} ${role.name} (${copy.roleMembers(role.memberCount)})` })),
+  ];
+  return <div className="storage-access-principal-picker"><p>{copy.chooseAccess}</p><PopupSelect ariaLabel={copy.accessLevel} options={options} value={value} onChange={onChange} placeholder={copy.addPersonOrRole} emptyMessage={copy.addPersonOrRole} renderOption={(option: { value: string; label: string; disabled?: boolean }) => { const member = members.find((candidate) => option.value === `user:${candidate.id}`); return <span className="storage-access-option">{member && <StorageMemberAvatar accessToken={accessToken} member={member} />}<span>{option.label}</span></span>; }} /></div>;
 }
 function AllowedFileTypePicker({ value, customFileTypes, onChange }: { value: CollectionContentType; customFileTypes: string; onChange: (value: CollectionContentType, customFileTypes?: string) => void }) {
+  const copy = useStrings().files.collections;
   const [customOpen, setCustomOpen] = useState(value === "custom"); const [customTypes, setCustomTypes] = useState(customFileTypes);
   useEffect(() => { setCustomOpen(value === "custom"); setCustomTypes(customFileTypes); }, [value, customFileTypes]);
-  return <section className="storage-settings-section"><h3>Allowed file types</h3><p>Choose what can be added to this collection.</p><div className="storage-content-type-options">{contentTypeOptions.map((option) => <button type="button" key={option.value} className={value === option.value ? "is-selected" : ""} onClick={() => onChange(option.value)}><strong>{option.label}</strong><small>{option.description}</small></button>)}<button type="button" className={value === "custom" || customOpen ? "is-selected" : ""} onClick={() => setCustomOpen(true)}><strong>Custom</strong><small>Set your own file patterns</small></button></div>{customOpen && <div className="storage-custom-file-types"><label>Allowed patterns<input value={customTypes} placeholder="*.png, *.jpg, *.pdf" onChange={(event) => setCustomTypes(event.target.value)} /></label><p>Use comma-separated patterns, for example <code>*.png, *.webp, *.pdf</code>.</p><button type="button" className="storage-pill-button" disabled={!customTypes.trim()} onClick={() => onChange("custom", customTypes)}>Apply custom types</button></div>}</section>;
+  return <section className="storage-settings-section"><h3>{copy.allowedTypes}</h3><p>{copy.chooseTypesHelp}</p><div className="storage-content-type-options">{contentTypeOptions.map((type) => <button type="button" key={type} className={value === type ? "is-selected" : ""} onClick={() => onChange(type)}><strong>{copy.contentTypes[type].label}</strong><small>{copy.contentTypes[type].description}</small></button>)}<button type="button" className={value === "custom" || customOpen ? "is-selected" : ""} onClick={() => setCustomOpen(true)}><strong>{copy.custom}</strong><small>{copy.customPatternsHelp}</small></button></div>{customOpen && <div className="storage-custom-file-types"><PopupField label={copy.allowedPatterns} value={customTypes} placeholder={copy.patternPlaceholder} onChange={(event: ChangeEvent<HTMLInputElement>) => setCustomTypes(event.target.value)} /><p>{copy.commaPatterns} <code>{copy.patternExamples}</code>.</p><PopupButton variant="primary" disabled={!customTypes.trim()} onClick={() => onChange("custom", customTypes)}>{copy.applyCustomTypes}</PopupButton></div>}</section>;
 }
 function Cover({ collection, token, file }: { collection: StorageCollection; token: string; file: FamilyFile | null }) {
   const url = useFilePreviewUrl(token, file, Boolean(file));
@@ -70,66 +77,258 @@ function matches(collection: StorageCollection, filter: string) {
   return collection.contentType === "media";
 }
 function AddFromStorage({ files, token, onAdd, onClose }: { files: FamilyFile[]; token: string; onAdd: (ids: string[]) => void; onClose: () => void }) {
+  const copy = useStrings().files.collections;
   const [query, setQuery] = useState(""); const [picked, setPicked] = useState<string[]>([]);
   const visible = files.filter((file) => file.originalName.toLowerCase().includes(query.toLowerCase()));
-  return <div className="storage-file-picker-popover storage-page" role="dialog" aria-modal="true" aria-label="Select from Storage"><header><div><h3>Storage</h3><p>Select files to add to this collection.</p></div><button className="storage-round-icon" onClick={onClose}><X size={18} /></button></header><label className="search-field storage-picker-search"><input autoFocus placeholder="Search Storage" value={query} onChange={(e) => setQuery(e.target.value)} /></label><div className="storage-grid storage-picker-grid">{visible.map((file) => <StoragePickerTile key={file.id} token={token} file={file} active={picked.includes(file.id)} onClick={() => setPicked((all) => all.includes(file.id) ? all.filter((id) => id !== file.id) : [...all, file.id])} />)}</div><footer><button onClick={onClose}>Cancel</button><button className="primary-button" disabled={!picked.length} onClick={() => onAdd(picked)}>Add {picked.length || ""} files</button></footer></div>;
+  return <PopupDialog className="storage-file-picker-popover storage-page" ariaLabel={copy.selectFromStorage} onClose={onClose} size="xl"><header><div><h3>{copy.storage}</h3><p>{copy.selectFilesHelp}</p></div></header><PopupField label={copy.searchStorage} labelHidden autoFocus value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} /><div className="storage-grid storage-picker-grid">{visible.map((file) => <StoragePickerTile key={file.id} token={token} file={file} active={picked.includes(file.id)} onClick={() => setPicked((all) => all.includes(file.id) ? all.filter((id) => id !== file.id) : [...all, file.id])} />)}</div><footer><PopupButton variant="secondary" onClick={onClose}>{copy.cancel}</PopupButton><PopupButton variant="primary" disabled={!picked.length} onClick={() => onAdd(picked)}>{copy.addFiles(picked.length)}</PopupButton></footer></PopupDialog>;
 }
 function StoragePickerTile({ file, token, active, onClick }: { file: FamilyFile; token: string; active: boolean; onClick: () => void }) { const preview = useFilePreviewUrl(token, file, storageFileKind(file) === "photos"); const Icon = iconFor(file); return <button type="button" className={`storage-tile ${storageFileKind(file)}${active ? " selected" : ""}`} data-file-type={extensionLabel(file)} onClick={onClick}>{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span></button>; }
-function CollectionFileCard({ file, token, editable, onRemove }: { file: FamilyFile; token: string; editable: boolean; onRemove: () => void }) {
+function CollectionFileCard({ file, token, editable, onRemove, onOpen }: { file: FamilyFile; token: string; editable: boolean; onRemove: () => void; onOpen: () => void }) {
+  const copy = useStrings().files.collections;
   const preview = useFilePreviewUrl(token, file, storageFileKind(file) === "photos");
   const Icon = iconFor(file);
-  return <article className={`storage-tile collection-file-tile ${storageFileKind(file)}`} data-file-type={extensionLabel(file)}>{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span>{editable && <button type="button" onClick={onRemove}><X size={14} /></button>}</article>;
+  return <article className={`storage-tile collection-file-tile ${storageFileKind(file)}`} data-file-type={extensionLabel(file)}><button type="button" className="collection-file-open" aria-label={file.originalName} onClick={onOpen} />{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span>{editable && <button type="button" aria-label={copy.removeFile(file.originalName)} title={copy.removeFile(file.originalName)} onClick={onRemove}><X size={14} /></button>}</article>;
 }
 
-export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void }) {
+export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage, groupByChat = false, groupFallbackLabel, onPreviewFile }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void; groupByChat?: boolean; groupFallbackLabel?: string; onPreviewFile?: (file: FamilyFile) => void }) {
+  const copy = useStrings().files.collections;
   const navigate = useNavigate();
   const location = useLocation();
-  const [collections, setCollections] = useState<StorageCollection[]>(() => currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); const [selected, setSelected] = useState<StorageCollection | null>(null); const [items, setItems] = useState<FamilyFile[]>([]); const [grants, setGrants] = useState<CollectionGrant[]>([]); const [members, setMembers] = useState<User[]>([]); const [roles, setRoles] = useState<ServerRole[]>([]); const [chats, setChats] = useState<Chat[]>([]); const [creating, setCreating] = useState(false); const [settings, setSettings] = useState(false); const [adding, setAdding] = useState(false); const [coverMenu, setCoverMenu] = useState(false); const [coverColor, setCoverColor] = useState("#24364b"); const [coverIcon, setCoverIcon] = useState<CoverIconName>("folder"); const [renaming, setRenaming] = useState(false); const [forwarding, setForwarding] = useState<StorageCollection | null>(null); const [confirmingDelete, setConfirmingDelete] = useState(false); const [title, setTitle] = useState(""); const [kind, setKind] = useState<CollectionKind>("folder"); const [grantTarget, setGrantTarget] = useState(""); const [grantLevel, setGrantLevel] = useState<CollectionAccessLevel>("viewer"); const [forwardChatIds, setForwardChatIds] = useState<string[]>([]); const [error, setError] = useState<string | null>(null);
+  const [collections, setCollections] = useState<StorageCollection[]>(() => currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); const [selected, setSelected] = useState<StorageCollection | null>(null); const [items, setItems] = useState<FamilyFile[]>([]); const [grants, setGrants] = useState<CollectionGrant[]>([]); const [members, setMembers] = useState<User[]>([]); const [roles, setRoles] = useState<ServerRole[]>([]); const [chats, setChats] = useState<Chat[]>([]); const [creating, setCreating] = useState(false); const [settings, setSettings] = useState(false); const [adding, setAdding] = useState(false); const [coverMenu, setCoverMenu] = useState(false); const [coverColor, setCoverColor] = useState<string>(DESIGN_COLOR_VALUES.storageCollections.defaultCover); const [coverIcon, setCoverIcon] = useState<CoverIconName>("folder"); const [renaming, setRenaming] = useState(false); const [forwarding, setForwarding] = useState<StorageCollection | null>(null); const [confirmingDelete, setConfirmingDelete] = useState(false); const [title, setTitle] = useState(""); const [kind, setKind] = useState<CollectionKind>("folder"); const [grantTarget, setGrantTarget] = useState(""); const [grantLevel, setGrantLevel] = useState<CollectionAccessLevel>("viewer"); const [forwardChatIds, setForwardChatIds] = useState<string[]>([]); const [error, setError] = useState<string | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null); const coverUploadRef = useRef<HTMLInputElement>(null); const requested = useMemo(() => new URLSearchParams(location.search).get("collection"), [location.search]); const opened = useRef(false);
   const load = async () => { if (accessToken) setCollections(await getCollections(accessToken)); };
   useEffect(() => { setCollections(currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); }, [currentUserId]);
   useEffect(() => { if (currentUserId) void saveCachedStorageItems(currentUserId, "collections", collections); }, [collections, currentUserId]);
-  useEffect(() => { void load().catch(() => setError("Could not load folders and albums")); }, [accessToken]);
+  useEffect(() => { void load().catch(() => setError(copy.loadFailed)); }, [accessToken]);
   useEffect(() => { if (!accessToken) return; void Promise.all([getMembers(accessToken), getServerRoles(accessToken), getChats(accessToken)]).then(([m, r, c]) => { setMembers(m); setRoles(r); setChats(c); }); }, [accessToken]);
   const open = async (collection: StorageCollection) => { if (!accessToken) return; setSelected(collection); setSettings(false); const [nextItems, nextGrants] = await Promise.all([getCollectionItems(accessToken, collection.id), collection.accessLevel === "editor" ? getCollectionGrants(accessToken, collection.id) : Promise.resolve([])]); setItems(nextItems); setGrants(nextGrants); };
   useEffect(() => { opened.current = false; }, [requested]);
   useEffect(() => { const collection = requested ? collections.find((item) => item.id === requested) : null; if (collection && !opened.current) { opened.current = true; void open(collection); } }, [collections, requested]);
   const updateSelected = (next: StorageCollection) => { setSelected(next); setCollections((all) => all.map((item) => item.id === next.id ? next : item)); };
-  const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError("Could not create collection"); } };
+  const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError(copy.createFailed); } };
   const add = async (id: string, privateFile = false) => { if (!accessToken || !selected) return; const file = await addCollectionItem(accessToken, selected.id, id, privateFile); setItems((all) => [file, ...all.filter((item) => item.id !== file.id)]); setCollections((all) => all.map((item) => item.id === selected.id ? { ...item, itemCount: item.itemCount + (items.some((item) => item.id === file.id) ? 0 : 1) } : item)); };
-  const addMany = async (ids: string[]) => { try { for (const id of ids) await add(id); setAdding(false); } catch { setError("Some files could not be added to this collection"); } };
+  const addMany = async (ids: string[]) => { try { for (const id of ids) await add(id); setAdding(false); } catch { setError(copy.addSomeFailed); } };
   const requestStorageSelection = () => { if (!selected) return; onSelectFromStorage?.({ collectionId: selected.id, collectionTitle: selected.title, lockedFileIds: items.map((file) => file.id), allowedFileIds: files.filter((file) => allowsContentType(selected.contentType, file, selected.customFileTypes)).map((file) => file.id), onConfirm: addMany }); };
-  const upload = async (event: ChangeEvent<HTMLInputElement>, asCover = false) => { if (!accessToken || !selected) return; const newFiles = Array.from(event.target.files ?? []); event.target.value = ""; try { for (const file of newFiles) { const next = await uploadFile(accessToken, file); await add(next.id, true); if (asCover && file.type.startsWith("image/")) updateSelected(await updateCollection(accessToken, selected.id, { coverFileId: next.id })); } onFilesChanged?.(); } catch { setError("Could not upload files"); } };
+  const upload = async (event: ChangeEvent<HTMLInputElement>, asCover = false) => { if (!accessToken || !selected) return; const newFiles = Array.from(event.target.files ?? []); event.target.value = ""; try { for (const file of newFiles) { const next = await uploadFile(accessToken, file); await add(next.id, true); if (asCover && file.type.startsWith("image/")) updateSelected(await updateCollection(accessToken, selected.id, { coverFileId: next.id })); } onFilesChanged?.(); } catch { setError(copy.uploadFailed); } };
   const remove = async (id: string) => { if (!accessToken || !selected) return; await removeCollectionItem(accessToken, selected.id, id); setItems((all) => all.filter((file) => file.id !== id)); };
   const saveName = async () => { if (!accessToken || !selected || !title.trim()) return; updateSelected(await updateCollection(accessToken, selected.id, { title: title.trim() })); setTitle(""); };
   const saveCover = async (id: string) => { if (accessToken && selected) updateSelected(await updateCollection(accessToken, selected.id, { coverFileId: id || null })); };
-  const saveContentType = async (contentType: CollectionContentType, customFileTypes = "") => { if (!accessToken || !selected || (selected.contentType === contentType && selected.customFileTypes === customFileTypes)) return; try { updateSelected(await updateCollection(accessToken, selected.id, { contentType, customFileTypes })); } catch { setError("Could not update allowed file types"); } };
+  const saveContentType = async (contentType: CollectionContentType, customFileTypes = "") => { if (!accessToken || !selected || (selected.contentType === contentType && selected.customFileTypes === customFileTypes)) return; try { updateSelected(await updateCollection(accessToken, selected.id, { contentType, customFileTypes })); } catch { setError(copy.typesUpdateFailed); } };
   const saveGrant = async () => { if (!accessToken || !selected || !grantTarget) return; const [principalType, principalId] = grantTarget.split(":") as ["user" | "role", string]; const grant = await saveCollectionGrant(accessToken, selected.id, { principalType, principalId, accessLevel: grantLevel }); setGrants((all) => [...all.filter((item) => item.principalType !== principalType || item.principalId !== principalId), grant]); setGrantTarget(""); };
   const removeGrant = async (grant: CollectionGrant) => { if (!accessToken || !selected) return; await deleteCollectionGrant(accessToken, selected.id, grant); setGrants((all) => all.filter((item) => item.principalType !== grant.principalType || item.principalId !== grant.principalId)); };
-  const forward = async () => { if (!accessToken || !forwarding || !forwardChatIds.length) return; const destinations = forwardChatIds; try { await Promise.all(destinations.map((chatId) => sendCollectionMessage(accessToken, chatId, forwarding.id))); setForwarding(null); setForwardChatIds([]); if (destinations.length === 1) navigate(`/app/chats/${destinations[0]}`); } catch { setError("Could not forward collection to every selected chat"); } };
+  const forward = async () => { if (!accessToken || !forwarding || !forwardChatIds.length) return; const destinations = forwardChatIds; try { await Promise.all(destinations.map((chatId) => sendCollectionMessage(accessToken, chatId, forwarding.id))); setForwarding(null); setForwardChatIds([]); if (destinations.length === 1) navigate(`/app/chats/${destinations[0]}`); } catch { setError(copy.forwardFailed); } };
   const erase = async () => { if (!accessToken || !selected) return; await deleteCollection(accessToken, selected.id); setCollections((all) => all.filter((item) => item.id !== selected.id)); setSelected(null); };
   if (!accessToken) return null;
-  const visible = collections.filter((item) => matches(item, filter)); const label = filter === "audio" ? "Music albums" : filter === "documents" ? "Folders" : filter === "photos" || filter === "videos" ? "Albums" : "Folders & albums"; const available = files.filter((file) => !items.some((item) => item.id === file.id));
+  const visible = collections.filter((item) => matches(item, filter)); const label = filter === "audio" ? copy.musicAlbums : filter === "documents" ? copy.folders : filter === "photos" || filter === "videos" ? copy.albums : copy.foldersAlbums; const available = files.filter((file) => !items.some((item) => item.id === file.id));
+  const groupedCollections = groupByChat ? visible.reduce<Array<{ label: string; collections: StorageCollection[] }>>((groups, collection) => {
+    const source = files.find((file) => file.id === collection.coverFileId);
+    const label = source?.chatTitle || groupFallbackLabel || copy.folders;
+    const existing = groups.find((group) => group.label === label);
+    if (existing) existing.collections.push(collection);
+    else groups.push({ label, collections: [collection] });
+    return groups;
+  }, []) : [];
+  const renderCollection = (collection: StorageCollection) => <article className="storage-collection-card" key={collection.id}><button className="storage-collection-open" onClick={() => void open(collection)}><Cover collection={collection} token={accessToken} file={files.find((file) => file.id === collection.coverFileId) ?? null} /><span><strong>{collection.title}</strong><small>{copy.items(collection.itemCount, typeLabel(collection, copy))}</small></span>{collection.accessLevel === "viewer" && <LockKeyhole size={15} />}</button><button className="storage-collection-forward" onClick={() => { setForwardChatIds([]); setForwarding(collection); }} title={copy.forwardToChats}><Forward size={20} /></button></article>;
   const current = selected as StorageCollection;
   const CustomCoverIcon = coverIconOptions.find((option) => option.value === coverIcon)?.Icon ?? Folder;
   if (Boolean(selected)) return <section className="storage-collection-full-page" aria-label={current.title}>
     <header className="storage-collection-full-header">
-      <BackButton className="storage-collection-back" ariaLabel="Back to Storage" title="Back to Storage" onClick={() => setSelected(null)} />
+      <BackButton className="storage-collection-back" ariaLabel={copy.backStorage} title={copy.backStorage} onClick={() => setSelected(null)} />
       <div className="storage-collection-full-title">
-        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title="Change folder cover" onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><strong>Cover icon</strong><div className="storage-cover-icon-grid">{coverIconOptions.map(({ value, Icon }) => <button type="button" key={value} className={coverIcon === value ? "is-selected" : ""} aria-label={`Use ${value} cover icon`} onClick={() => setCoverIcon(value)}><Icon size={16} /></button>)}</div><strong>Color</strong><div className="storage-cover-color-row">{["#24364b", "#315f9a", "#5b4a92", "#9a4d62", "#9a6735", "#347364"].map((color) => <button type="button" key={color} className={coverColor === color ? "is-selected" : ""} aria-label={`Use ${color} cover color`} style={{ backgroundColor: color }} onClick={() => setCoverColor(color)} />)}<button type="button" className="storage-cover-palette" aria-label="Custom cover color"><Palette size={15} /></button></div><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>Upload custom cover</button></div>}</div>
-        <div>{renaming ? <input aria-label="Folder name" autoFocus value={title || current.title} onChange={(event) => setTitle(event.target.value)} onBlur={() => { if (title.trim()) void saveName(); setRenaming(false); }} /> : <div className="storage-collection-name"><strong>{current.title}</strong><button type="button" aria-label="Rename folder" onClick={() => setRenaming(true)}><Pencil size={14} /></button></div>}<small>{current.itemCount} items · {typeLabel(current)}</small></div>
+        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title={copy.changeCover} onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><strong>{copy.coverIcon}</strong><div className="storage-cover-icon-grid">{coverIconOptions.map(({ value, Icon }) => <button type="button" key={value} className={coverIcon === value ? "is-selected" : ""} aria-label={copy.useCoverIcon(copy.coverIconNames[value])} onClick={() => setCoverIcon(value)}><Icon size={16} /></button>)}</div><strong>{copy.color}</strong><div className="storage-cover-color-row">{DESIGN_COLOR_VALUES.storageCollections.coverColors.map((color) => <button type="button" key={color} className={coverColor === color ? "is-selected" : ""} aria-label={copy.useCoverColor(color)} style={{ backgroundColor: color }} onClick={() => setCoverColor(color)} />)}<button type="button" className="storage-cover-palette" aria-label={copy.customCoverColor}><Palette size={15} /></button></div><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCustomCover}</button></div>}</div>
+        <div>{renaming ? <input aria-label={copy.folderName} autoFocus value={title || current.title} onChange={(event) => setTitle(event.target.value)} onBlur={() => { if (title.trim()) void saveName(); setRenaming(false); }} /> : <div className="storage-collection-name"><strong>{current.title}</strong><button type="button" aria-label={copy.renameFolder} onClick={() => setRenaming(true)}><Pencil size={14} /></button></div>}<small>{copy.items(current.itemCount, typeLabel(current, copy))}</small></div>
       </div>
-      <div className="storage-collection-full-actions">{current.accessLevel === "editor" && <><button type="button" className="storage-round-icon" title="Add from Storage" onClick={requestStorageSelection}><Plus size={19} /></button><button type="button" className="storage-round-icon" title="Upload files" onClick={() => uploadRef.current?.click()}><Upload size={18} /></button></>}<button type="button" className="storage-round-icon" title="Collection settings" onClick={() => setSettings((value) => !value)}><Settings2 size={18} /></button></div>
+      <div className="storage-collection-full-actions">{current.accessLevel === "editor" && <><button type="button" className="storage-round-icon" title={copy.addFromStorage} onClick={requestStorageSelection}><Plus size={19} /></button><button type="button" className="storage-round-icon" title={copy.uploadFiles} onClick={() => uploadRef.current?.click()}><Upload size={18} /></button></>}<button type="button" className="storage-round-icon" title={copy.settings} onClick={() => setSettings((value) => !value)}><Settings2 size={18} /></button></div>
     </header>
     <input ref={uploadRef} className="visually-hidden" type="file" multiple onChange={(event) => void upload(event)} /><input ref={coverUploadRef} className="visually-hidden" type="file" accept="image/*" onChange={(event) => void upload(event, true)} />
-    <div className="storage-collection-file-grid">{items.map((file) => <CollectionFileCard key={file.id} file={file} token={accessToken} editable={current.accessLevel === "editor"} onRemove={() => void remove(file.id)} />)}{!items.length && <p className="storage-collection-empty">No files yet. Add existing files or upload new ones.</p>}</div>
-    {settings && <Modal className="storage-collection-settings-dialog" close={() => setSettings(false)}><h2>Collection settings</h2><section className="storage-settings-section"><h3><Users size={17} /> Access</h3><p>People and roles who can open this collection.</p><div className="storage-collection-sharing">{grants.map((grant) => <div key={`${grant.principalType}:${grant.principalId}`}><span>{grant.principalType === "user" ? members.find((member) => member.id === grant.principalId)?.displayName ?? "Member" : roles.find((role) => role.id === grant.principalId)?.name ?? "Role"} · {grant.accessLevel}</span><button type="button" className="storage-round-icon" aria-label="Remove access" onClick={() => void removeGrant(grant)}><X size={16} /></button></div>)}</div><AccessPrincipalPicker accessToken={accessToken} members={members} roles={roles} value={grantTarget} onChange={setGrantTarget} /><div className="storage-collection-grant"><select value={grantLevel} aria-label="Access level" onChange={(event) => setGrantLevel(event.target.value as CollectionAccessLevel)}><option value="viewer">Viewer</option><option value="editor">Editor</option></select><button type="button" className="storage-pill-button" disabled={!grantTarget} onClick={() => void saveGrant()}>Add access</button></div></section><AllowedFileTypePicker value={current.contentType} customFileTypes={current.customFileTypes} onChange={(contentType, customFileTypes) => void saveContentType(contentType, customFileTypes)} /><button type="button" className="storage-collection-delete" onClick={() => setConfirmingDelete(true)}><Trash2 size={16} /> Delete collection</button></Modal>}{adding && <AddFromStorage token={accessToken} files={available.filter((file) => allowsContentType(current.contentType, file, current.customFileTypes))} onClose={() => setAdding(false)} onAdd={(ids) => void addMany(ids)} />}{confirmingDelete && <Modal className="storage-confirm-dialog" close={() => setConfirmingDelete(false)}><h2>Delete this collection?</h2><p>The collection will be removed. Its files stay in Storage.</p><div><button onClick={() => setConfirmingDelete(false)}>Cancel</button><button className="storage-danger-button" onClick={() => void erase()}>Delete collection</button></div></Modal>}
+    <div className="storage-collection-file-grid">{items.map((file) => <CollectionFileCard key={file.id} file={file} token={accessToken} editable={current.accessLevel === "editor"} onOpen={() => onPreviewFile?.(file)} onRemove={() => void remove(file.id)} />)}{!items.length && <p className="storage-collection-empty">{copy.noFiles}</p>}</div>
+    {settings && (
+      <PopupDialog
+        className="storage-collection-dialog storage-collection-settings-dialog"
+        ariaLabel={copy.settings}
+        onClose={() => setSettings(false)}
+        size="md"
+      >
+        <h2>{copy.settings}</h2>
+        <section className="storage-settings-section">
+          <h3><Users size={17} /> {copy.access}</h3>
+          <p>{copy.peopleCanOpen}</p>
+          <div className="storage-collection-sharing">
+            {grants.map((grant) => (
+              <div key={`${grant.principalType}:${grant.principalId}`}>
+                <span>{grant.principalType === "user" ? members.find((member) => member.id === grant.principalId)?.displayName ?? copy.member : roles.find((role) => role.id === grant.principalId)?.name ?? copy.role} · {grant.accessLevel}</span>
+                <button type="button" className="storage-round-icon" aria-label={copy.removeAccess} onClick={() => void removeGrant(grant)}><X size={16} /></button>
+              </div>
+            ))}
+          </div>
+          <AccessPrincipalPicker accessToken={accessToken} members={members} roles={roles} value={grantTarget} onChange={setGrantTarget} />
+          <div className="storage-collection-grant">
+            <select value={grantLevel} aria-label={copy.accessLevel} onChange={(event: ChangeEvent<HTMLSelectElement>) => setGrantLevel(event.target.value as CollectionAccessLevel)}>
+              <option value="viewer">{copy.viewer}</option>
+              <option value="editor">{copy.editor}</option>
+            </select>
+            <PopupButton variant="primary" disabled={!grantTarget} onClick={() => void saveGrant()}>{copy.addAccess}</PopupButton>
+          </div>
+        </section>
+        <AllowedFileTypePicker value={current.contentType} customFileTypes={current.customFileTypes} onChange={(contentType, customFileTypes) => void saveContentType(contentType, customFileTypes)} />
+        <PopupButton variant="danger" startIcon={<Trash2 size={16} />} onClick={() => setConfirmingDelete(true)}>{copy.delete}</PopupButton>
+      </PopupDialog>
+    )}
+    {adding && <AddFromStorage token={accessToken} files={available.filter((file) => allowsContentType(current.contentType, file, current.customFileTypes))} onClose={() => setAdding(false)} onAdd={(ids) => void addMany(ids)} />}
+    {confirmingDelete && (
+      <PopupDialog
+        className="storage-collection-dialog storage-confirm-dialog"
+        ariaLabel={copy.deleteQuestion}
+        onClose={() => setConfirmingDelete(false)}
+        size="sm"
+      >
+        <h2>{copy.deleteQuestion}</h2>
+        <p>{copy.deleteDescription}</p>
+        <div>
+          <PopupButton variant="secondary" onClick={() => setConfirmingDelete(false)}>{copy.cancel}</PopupButton>
+          <PopupButton variant="danger" onClick={() => void erase()}>{copy.delete}</PopupButton>
+        </div>
+      </PopupDialog>
+    )}
   </section>;
-  return <section className="storage-collections"><div className="storage-collections-heading"><h2>{label}</h2><button className="storage-collection-new" onClick={() => setCreating(true)}><Plus size={16} /></button></div><div className="storage-collections-row">{visible.map((collection) => <article className="storage-collection-card" key={collection.id}><button className="storage-collection-open" onClick={() => void open(collection)}><Cover collection={collection} token={accessToken} file={files.find((file) => file.id === collection.coverFileId) ?? null} /><span><strong>{collection.title}</strong><small>{collection.itemCount} items</small></span>{collection.accessLevel === "viewer" && <LockKeyhole size={15} />}</button><button className="storage-collection-forward" onClick={() => { setForwardChatIds([]); setForwarding(collection); }} title="Forward to chats"><Forward size={20} /></button></article>)}</div>
-    {creating && <Modal className="storage-collection-create" close={() => setCreating(false)}><h2>New folder or album</h2><label>Title<input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} /></label><label>Type<select value={kind} onChange={(e) => setKind(e.target.value as CollectionKind)}><option value="folder">File folder</option><option value="album">Photo album</option><option value="music-album">Music album</option></select></label><button className="primary-button" onClick={() => void create()}>Create</button></Modal>}
-    {selected && <Modal className="storage-collection-detail" close={() => setSelected(null)}>{!settings ? <><header className="storage-collection-inner-header"><Cover collection={selected} token={accessToken} file={files.find((file) => file.id === selected.coverFileId) ?? null} /><div><h2>{selected.title}</h2><p>{selected.itemCount} items · {typeLabel(selected)}</p></div><div className="storage-collection-header-actions">{selected.accessLevel === "editor" && <><button className="storage-round-icon" onClick={() => setAdding(true)}><Plus size={19} /></button><button className="storage-round-icon" onClick={() => uploadRef.current?.click()}><Upload size={18} /></button></>}<button className="storage-round-icon" onClick={() => setSettings(true)}><Settings2 size={18} /></button></div></header><input ref={uploadRef} className="visually-hidden" type="file" multiple onChange={(e) => void upload(e)} /><div className="storage-collection-file-grid">{items.map((file) => { const Icon = iconFor(file); return <article key={file.id}><span><Icon size={26} /></span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small>{selected.accessLevel === "editor" && <button onClick={() => void remove(file.id)}><X size={14} /></button>}</article>; })}{!items.length && <p className="storage-collection-empty">No files yet. Add existing files or upload new ones.</p>}</div></> : <><header className="storage-collection-settings-header"><button className="storage-round-icon" onClick={() => setSettings(false)}><ChevronLeft size={19} /></button><div><h2>Collection settings</h2><p>{typeLabel(selected)}</p></div></header><section className="storage-settings-section"><h3>Name</h3><div className="storage-collection-controls"><input placeholder={selected.title} value={title} onChange={(e) => setTitle(e.target.value)} /><button className="storage-pill-button" disabled={!title.trim()} onClick={() => void saveName()}>Save</button></div></section><section className="storage-settings-section"><h3>Cover</h3><div className="storage-cover-controls"><Cover collection={selected} token={accessToken} file={files.find((file) => file.id === selected.coverFileId) ?? null} /><select value={selected.coverFileId ?? ""} onChange={(e) => void saveCover(e.target.value)}><option value="">Default icon</option>{items.map((file) => <option key={file.id} value={file.id}>{file.originalName}</option>)}</select><button className="storage-pill-button" onClick={() => coverUploadRef.current?.click()}>Upload cover</button><input ref={coverUploadRef} className="visually-hidden" type="file" accept="image/*" onChange={(e) => void upload(e, true)} /></div></section><section className="storage-settings-section"><h3><Users size={17} /> Access</h3><p>People and roles with access to this collection.</p><div className="storage-collection-sharing">{grants.map((grant) => <div key={`${grant.principalType}:${grant.principalId}`}><span>{grant.principalType === "user" ? members.find((m) => m.id === grant.principalId)?.displayName ?? "Member" : roles.find((r) => r.id === grant.principalId)?.name ?? "Role"} · {grant.accessLevel}</span><button className="storage-round-icon" onClick={() => void removeGrant(grant)}><X size={15} /></button></div>)}<div className="storage-collection-grant"><select value={grantTarget} onChange={(e) => setGrantTarget(e.target.value)}><option value="">Add person or role</option>{members.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.displayName}</option>)}{roles.map((r) => <option key={r.id} value={`role:${r.id}`}>Role: {r.name}</option>)}</select><select value={grantLevel} onChange={(e) => setGrantLevel(e.target.value as CollectionAccessLevel)}><option value="viewer">Viewer</option><option value="editor">Editor</option></select><button className="storage-pill-button" onClick={() => void saveGrant()}>Add</button></div></div></section><section className="storage-settings-section"><h3>Allowed file types</h3><p>{selected.displayKind === "music-album" ? "Music files" : selected.displayKind === "album" ? "Photos and videos" : "Any file type"}</p></section><section className="storage-settings-section"><h3>Folder size</h3><p>There is currently no file-count limit.</p></section><button className="storage-collection-delete" onClick={() => setConfirmingDelete(true)}><Trash2 size={16} /> Delete collection</button></>}</Modal>}
+  return <section className="storage-collections"><div className="storage-collections-heading"><h2>{label}</h2><button className="storage-collection-new" onClick={() => setCreating(true)}><Plus size={16} /></button></div>{groupByChat ? <div className="storage-collection-groups">{groupedCollections.map((group) => <section className="storage-collection-group" data-chat-group={group.label} key={group.label}><h3 className="storage-group-heading">{group.label}</h3><div className="storage-collections-row">{group.collections.map(renderCollection)}</div></section>)}</div> : <div className="storage-collections-row">{visible.map(renderCollection)}</div>}
+    {creating && (
+      <PopupDialog
+        className="storage-collection-dialog storage-collection-create"
+        ariaLabel={copy.newFolder}
+        onClose={() => setCreating(false)}
+        size="sm"
+      >
+        <h2>{copy.newFolder}</h2>
+        <PopupField label={copy.title} autoFocus value={title} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} />
+        <div className="storage-popup-select-field">
+          <label id="storage-collection-kind-label">{copy.type}</label>
+          <PopupSelect
+            labelledBy="storage-collection-kind-label"
+            value={kind}
+            onChange={(value: string) => setKind(value as CollectionKind)}
+            options={[{ value: "folder", label: copy.fileFolder }, { value: "album", label: copy.photoAlbum }, { value: "music-album", label: copy.musicAlbum }]}
+          />
+        </div>
+        <PopupButton variant="primary" onClick={() => void create()}>{copy.create}</PopupButton>
+      </PopupDialog>
+    )}
+    {selected && (
+      <PopupDialog
+        className="storage-collection-dialog storage-collection-detail"
+        ariaLabel={selected.title}
+        onClose={() => setSelected(null)}
+      >
+        {!settings ? (
+          <>
+            <header className="storage-collection-inner-header">
+              <Cover collection={selected} token={accessToken} file={files.find((file) => file.id === selected.coverFileId) ?? null} />
+              <div><h2>{selected.title}</h2><p>{copy.items(selected.itemCount, typeLabel(selected, copy))}</p></div>
+              <div className="storage-collection-header-actions">
+                {selected.accessLevel === "editor" && (
+                  <>
+                    <button className="storage-round-icon" onClick={() => setAdding(true)}><Plus size={19} /></button>
+                    <button className="storage-round-icon" onClick={() => uploadRef.current?.click()}><Upload size={18} /></button>
+                  </>
+                )}
+                <button className="storage-round-icon" onClick={() => setSettings(true)}><Settings2 size={18} /></button>
+              </div>
+            </header>
+            <input ref={uploadRef} className="visually-hidden" type="file" multiple onChange={(e) => void upload(e)} />
+            <div className="storage-collection-file-grid">
+              {items.map((file) => {
+                const Icon = iconFor(file);
+                return (
+                  <article key={file.id}>
+                    <span><Icon size={26} /></span>
+                    <strong>{file.originalName}</strong>
+                    <small>{formatFileSize(file.sizeBytes)}</small>
+                    {selected.accessLevel === "editor" && <button onClick={() => void remove(file.id)}><X size={14} /></button>}
+                  </article>
+                );
+              })}
+              {!items.length && <p className="storage-collection-empty">{copy.noFiles}</p>}
+            </div>
+          </>
+        ) : (
+          <>
+            <header className="storage-collection-settings-header">
+              <button className="storage-round-icon" onClick={() => setSettings(false)}><ChevronLeft size={19} /></button>
+              <div><h2>{copy.settings}</h2><p>{typeLabel(selected, copy)}</p></div>
+            </header>
+            <section className="storage-settings-section">
+              <h3>{copy.name}</h3>
+              <div className="storage-collection-controls">
+                <input placeholder={selected.title} value={title} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} />
+                <button className="storage-pill-button" disabled={!title.trim()} onClick={() => void saveName()}>{copy.save}</button>
+              </div>
+            </section>
+            <section className="storage-settings-section">
+              <h3>{copy.cover}</h3>
+              <div className="storage-cover-controls">
+                <Cover collection={selected} token={accessToken} file={files.find((file) => file.id === selected.coverFileId) ?? null} />
+                <select value={selected.coverFileId ?? ""} onChange={(e: ChangeEvent<HTMLSelectElement>) => void saveCover(e.target.value)}>
+                  <option value="">{copy.defaultIcon}</option>
+                  {items.map((file) => <option key={file.id} value={file.id}>{file.originalName}</option>)}
+                </select>
+                <button className="storage-pill-button" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCover}</button>
+                <input ref={coverUploadRef} className="visually-hidden" type="file" accept="image/*" onChange={(e) => void upload(e, true)} />
+              </div>
+            </section>
+            <section className="storage-settings-section">
+              <h3><Users size={17} /> {copy.access}</h3>
+              <p>{copy.peopleRoles}</p>
+              <div className="storage-collection-sharing">
+                {grants.map((grant) => (
+                  <div key={`${grant.principalType}:${grant.principalId}`}>
+                    <span>{grant.principalType === "user" ? members.find((m) => m.id === grant.principalId)?.displayName ?? copy.member : roles.find((r) => r.id === grant.principalId)?.name ?? copy.role} · {grant.accessLevel}</span>
+                    <button className="storage-round-icon" onClick={() => void removeGrant(grant)}><X size={15} /></button>
+                  </div>
+                ))}
+                <div className="storage-collection-grant">
+                  <select value={grantTarget} onChange={(e: ChangeEvent<HTMLSelectElement>) => setGrantTarget(e.target.value)}>
+                    <option value="">{copy.addPersonOrRole}</option>
+                    {members.map((m) => <option key={m.id} value={`user:${m.id}`}>{m.displayName}</option>)}
+                    {roles.map((r) => <option key={r.id} value={`role:${r.id}`}>{copy.rolePrefix} {r.name}</option>)}
+                  </select>
+                  <select value={grantLevel} onChange={(e: ChangeEvent<HTMLSelectElement>) => setGrantLevel(e.target.value as CollectionAccessLevel)}>
+                    <option value="viewer">{copy.viewer}</option>
+                    <option value="editor">{copy.editor}</option>
+                  </select>
+                  <button className="storage-pill-button" onClick={() => void saveGrant()}>{copy.addAccess}</button>
+                </div>
+              </div>
+            </section>
+            <section className="storage-settings-section">
+              <h3>{copy.allowedTypes}</h3>
+              <p>{selected.displayKind === "music-album" ? copy.musicFiles : selected.displayKind === "album" ? copy.photosVideos : copy.anyFileType}</p>
+            </section>
+            <section className="storage-settings-section">
+              <h3>{copy.folderSize}</h3>
+              <p>{copy.noFileLimit}</p>
+            </section>
+            <PopupButton variant="danger" startIcon={<Trash2 size={16} />} onClick={() => setConfirmingDelete(true)}>{copy.delete}</PopupButton>
+          </>
+        )}
+      </PopupDialog>
+    )}
     {adding && <AddFromStorage token={accessToken} files={available} onClose={() => setAdding(false)} onAdd={(ids) => void addMany(ids)} />}
-    {forwarding && <ForwardChatDialog title={`Forward “${forwarding.title}”`} accessToken={accessToken} currentUserId={currentUserId} chats={chats} selectedChatIds={forwardChatIds} onToggle={(chatId) => setForwardChatIds((ids) => ids.includes(chatId) ? ids.filter((id) => id !== chatId) : [...ids, chatId])} onForward={() => void forward()} onClose={() => { setForwardChatIds([]); setForwarding(null); }} />}
-    {confirmingDelete && <Modal className="storage-confirm-dialog" close={() => setConfirmingDelete(false)}><h2>Delete this collection?</h2><p>The collection will be removed. Its files stay in Storage.</p><div><button onClick={() => setConfirmingDelete(false)}>Cancel</button><button className="storage-danger-button" onClick={() => void erase()}>Delete collection</button></div></Modal>}{error && <p className="error-text storage-collection-error">{error}</p>}</section>;
+    {forwarding && <ForwardChatDialog title={copy.forwardTitle(forwarding.title)} accessToken={accessToken} currentUserId={currentUserId} chats={chats} selectedChatIds={forwardChatIds} onToggle={(chatId) => setForwardChatIds((ids) => ids.includes(chatId) ? ids.filter((id) => id !== chatId) : [...ids, chatId])} onForward={() => void forward()} onClose={() => { setForwardChatIds([]); setForwarding(null); }} />}
+    {confirmingDelete && (
+      <PopupDialog
+        className="storage-collection-dialog storage-confirm-dialog"
+        ariaLabel={copy.deleteQuestion}
+        onClose={() => setConfirmingDelete(false)}
+        size="sm"
+      >
+        <h2>{copy.deleteQuestion}</h2>
+        <p>{copy.deleteDescription}</p>
+        <div>
+          <PopupButton variant="secondary" onClick={() => setConfirmingDelete(false)}>{copy.cancel}</PopupButton>
+          <PopupButton variant="danger" onClick={() => void erase()}>{copy.delete}</PopupButton>
+        </div>
+      </PopupDialog>
+    )}
+    {error && <p className="error-text storage-collection-error">{error}</p>}
+  </section>;
 }
-function Modal({ children, close, className }: { children: React.ReactNode; close: () => void; className: string }) { return <div className="modal-backdrop"><div className={`messenger-modal storage-collection-dialog ${className}`} role="dialog" aria-modal="true"><button className="storage-collection-close" onClick={close}><X size={19} /></button>{children}</div></div>; }

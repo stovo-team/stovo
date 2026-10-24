@@ -134,8 +134,21 @@ describe("shared call control button", () => {
     const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
     const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
-    expect(endRules).toMatch(/background(?:-color)?:\s*#(?:dc2626|ef4444|ff3b30)/i);
-    expect(endRules).toMatch(/color:\s*#fff/);
+    expect(endRules).toMatch(/background(?:-color)?:\s*var\(--color-palette-3871da342003\)/i);
+    expect(endRules).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
     expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
+  });
+
+  it("outlines the grouped microphone, speaker, and camera controls", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const rules = Array.from(css.matchAll(/\.guest-call-controls \.guest-device-control\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(rules.some((rule) => /border:\s*1px solid var\(--border-default/.test(rule))).toBe(true);
+  });
+
+  it("removes the mouse activation halo while retaining a visible keyboard focus ring", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus-visible")).toBe(true);
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus:not(:focus-visible)")).toBe(true);
+    expect(css).toMatch(/\.shared-call-controls \.call-ctrl-btn:focus-visible,?[^}]*\{[^}]*outline:\s*2px solid var\(--focus-ring\)/s);
   });
 });

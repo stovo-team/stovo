@@ -34,6 +34,40 @@ func TestProductionMultiserverOrchestratorReceivesPublicAppURL(t *testing.T) {
 	}
 }
 
+func TestProductionMultiserverOrchestratorReceivesStorageConfiguration(t *testing.T) {
+	composePath := filepath.Join("..", "..", "..", "deploy", "compose", "production-multiserver.yml")
+	composeYAML, err := os.ReadFile(composePath)
+	if err != nil {
+		t.Fatalf("read production multi-server Compose config: %v", err)
+	}
+
+	var compose struct {
+		Services map[string]struct {
+			Environment map[string]string `yaml:"environment"`
+		} `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(composeYAML, &compose); err != nil {
+		t.Fatalf("parse production multi-server Compose config: %v", err)
+	}
+
+	orchestrator, ok := compose.Services["orchestrator"]
+	if !ok {
+		t.Fatal("production multi-server Compose config has no orchestrator service")
+	}
+	want := map[string]string{
+		"STORAGE_PROVIDER": "${STORAGE_PROVIDER:-minio}",
+		"MINIO_ENDPOINT":   "${S3_ENDPOINT:-minio:9000}",
+		"MINIO_SECURE":     "${S3_SECURE:-false}",
+		"MINIO_ACCESS_KEY": "${MINIO_ACCESS_KEY:-}",
+		"MINIO_SECRET_KEY": "${MINIO_SECRET_KEY:-}",
+	}
+	for key, expected := range want {
+		if got := orchestrator.Environment[key]; got != expected {
+			t.Errorf("orchestrator %s mapping = %q, want %q", key, got, expected)
+		}
+	}
+}
+
 func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		values := map[string]string{
@@ -70,6 +104,37 @@ func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("tenant backend is missing %q", strings.TrimSpace(want))
+		}
+	}
+}
+
+func TestBackendContainerEnvUsesConfiguredS3Storage(t *testing.T) {
+	values := map[string]string{
+		"STORAGE_PROVIDER":    "s3",
+		"MINIO_ENDPOINT":      "s3.cloud.ru",
+		"MINIO_SECURE":        "true",
+		"MINIO_ACCESS_KEY":    "tenant:key-id",
+		"MINIO_SECRET_KEY":    "s3-secret",
+		"MINIO_ROOT_USER":     "local-root-user",
+		"MINIO_ROOT_PASSWORD": "local-root-password",
+	}
+	env := backendContainerEnv("family", func(key, fallback string) string {
+		if value, ok := values[key]; ok {
+			return value
+		}
+		return fallback
+	})
+
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	for _, want := range []string{
+		"\nSTORAGE_PROVIDER=s3\n",
+		"\nMINIO_ENDPOINT=s3.cloud.ru\n",
+		"\nMINIO_SECURE=true\n",
+		"\nMINIO_ACCESS_KEY=tenant:key-id\n",
+		"\nMINIO_SECRET_KEY=s3-secret\n",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("tenant backend storage config is missing %q", strings.TrimSpace(want))
 		}
 	}
 }
@@ -128,16 +193,28 @@ func TestBackendContainerEnvIncludesSupervisorChatTypes(t *testing.T) {
 func TestBackendContainerEnvUsesExplicitTrustedProxyCIDR(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		if key == "TRUSTED_PROXY_CIDRS" {
-			return "172.33.0.2/32"
+			return "172.34.0.2/32"
 		}
 		return fallback
 	})
 	for _, value := range env {
-		if value == "TRUSTED_PROXY_CIDRS=172.33.0.2/32" {
+		if value == "TRUSTED_PROXY_CIDRS=172.34.0.2/32" {
 			return
 		}
 	}
 	t.Fatal("tenant backend did not receive the explicit Caddy proxy CIDR")
+}
+
+func TestBackendContainerEnvDefaultsTrustedProxyToReservedCaddyAddress(t *testing.T) {
+	env := backendContainerEnv("family", func(_, fallback string) string {
+		return fallback
+	})
+	for _, value := range env {
+		if value == "TRUSTED_PROXY_CIDRS=172.34.0.2/32" {
+			return
+		}
+	}
+	t.Fatal("tenant backend did not receive the reserved Caddy proxy CIDR by default")
 }
 
 func TestProxyEndpointSettingsUsesUniqueCaddyAlias(t *testing.T) {

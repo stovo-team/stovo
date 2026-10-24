@@ -28,6 +28,16 @@ vi.mock("../../../i18n/LanguageContext", () => ({
     spaceSwitcher: { selectSpace: "Select space", currentSpace: "Current space", connectSpace: "Connect Space" },
     chats: {
       title: "Chats",
+      sidebar: {
+        ariaLabel: "Chat sidebar",
+        spaces: "Spaces",
+        removeSpace: (name: string) => `Remove ${name}`,
+        selectChatToAdd: "Select chat to add",
+        sharedFilesReady: "Shared files ready",
+        startChat: "Start chat",
+        invite: "Invite",
+        createInvitation: "Create invitation",
+      },
       searchPlaceholder: "Search",
       filters: {
         all: "All",
@@ -117,6 +127,7 @@ describe("ChatSidebar compose action", () => {
     const trigger = container.querySelector<HTMLButtonElement>(".server-switcher-trigger");
     expect(trigger?.getAttribute("aria-label")).toBe("Select space");
     act(() => { trigger?.click(); });
+    expect(container.textContent).not.toContain("Current space");
     const connect = container.querySelector<HTMLButtonElement>(".server-switcher-connect");
     expect(connect?.textContent?.trim()).toBe("Connect Space");
     act(() => { connect?.click(); });
@@ -151,7 +162,7 @@ describe("ChatSidebar compose action", () => {
     const composeFab = container.querySelector<HTMLButtonElement>("button.compose-fab");
     if (!composeFab) throw new Error("Expected the compose action button");
 
-    expect(composeFab.getAttribute("aria-label")).toBe("Start a chat");
+    expect(composeFab.getAttribute("aria-label")).toBe("Start chat");
     const icon = composeFab.querySelector("svg");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
     expect(icon?.classList.contains("lucide-plus")).toBe(true);

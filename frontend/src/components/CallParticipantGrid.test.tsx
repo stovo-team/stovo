@@ -53,6 +53,35 @@ describe("shared call participant presentation", () => {
     expect(width / height).toBeCloseTo(16 / 9);
   });
 
+  it("slightly narrows the initial single-user group-call tile", () => {
+    const container = renderGrid({
+      localStream: null,
+      remoteMedia: [],
+      localUserLabel: "You",
+      callType: "video",
+      isGroupCall: true,
+    });
+
+    const grid = container.querySelector<HTMLElement>(".call-grid");
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(grid?.classList.contains("call-grid--single-group-participant")).toBe(true);
+    expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/width:\s*92%/);
+    expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/justify-self:\s*center/);
+  });
+
+  it("keeps regular calls and populated group calls at their current tile size", () => {
+    const regularCall = renderGrid({ localStream: null, remoteMedia: [], callType: "video" });
+    const populatedGroupCall = renderGrid({
+      localStream: null,
+      remoteMedia: [{ userId: "Alex", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      callType: "video",
+      isGroupCall: true,
+    });
+
+    expect(regularCall.querySelector(".call-grid--single-group-participant")).toBeNull();
+    expect(populatedGroupCall.querySelector(".call-grid--single-group-participant")).toBeNull();
+  });
+
   it("leaves the self video unchanged when clicked and disables native video popouts", () => {
     const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
     const focus = vi.fn();
@@ -246,12 +275,16 @@ describe("shared call participant presentation", () => {
     const container = renderGrid({ localStream: null, localScreenStream: screenStream, remoteMedia, callType: "video" });
     const grid = container.querySelector<HTMLElement>(".call-grid");
     expect(grid?.classList.contains("call-grid--screen-share-bottom")).toBe(true);
+    expect(grid?.style.alignContent).toBe("start");
     expect(grid?.querySelector(".call-grid__participant-rail")).not.toBeNull();
 
     const css = readFileSync("src/styles.css", "utf8");
     expect(css).toMatch(/\.shared-call-stage \.call-grid--presenting\.call-grid--screen-share\s*\{[^}]*height:\s*100%\s*!important;[^}]*aspect-ratio:\s*auto/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__tile--screen\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1/);
+    expect(css).toMatch(/@media\s*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share-bottom\s*\{[^}]*grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/);
+    expect(css).toMatch(/@media\s*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share-bottom > \.call-grid__tile--screen\s*\{[^}]*grid-row:\s*2/);
+    expect(css).toMatch(/@media\s*\(max-width:\s*720px\)[\s\S]*?\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-row:\s*1/);
     expect(css).toMatch(/\.call-grid--screen-share\s*\{[^}]*minmax\(0,\s*5fr\)\s+minmax\(112px,\s*1fr\)/);
   });
 
@@ -299,8 +332,8 @@ describe("shared call participant presentation", () => {
 
   it("adds the speaking halo around avatars and an outline around speaking tiles", () => {
     const css = readFileSync("src/styles.css", "utf8");
-    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+#22c55e/);
-    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0\s+0\s+0\s+2px\s+rgba\(34,\s*197,\s*94,\s*\.82\)/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+var\(--color-palette-8b8f7c3d4541\)/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toContain("box-shadow: 0 0 0 2px var(--color-palette-449c31647178)");
     expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).not.toMatch(/(?:4px|7px)/);
 
     const container = renderGrid({

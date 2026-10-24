@@ -3,6 +3,7 @@ import { ExternalLink, Layers3, LockKeyhole } from "lucide-react";
 import type { CanvasReference, CanvasUpdate } from "../../../api/canvas";
 import { getCanvasDocument } from "../../../api/canvas";
 import { RichCanvasPreview } from "../../../components/RichCanvasPreview";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export interface CanvasCardBubbleProps {
   canvas: CanvasReference;
@@ -15,6 +16,7 @@ export function CanvasCardBubble({
   accessToken,
   onOpenCanvas,
 }: CanvasCardBubbleProps) {
+  const copy = useStrings().auditUi;
   const [updates, setUpdates] = useState<CanvasUpdate[] | undefined>(undefined);
 
   useEffect(() => {
@@ -34,10 +36,10 @@ export function CanvasCardBubble({
 
   if (!canvas.available) {
     return (
-      <div className="canvas-card-bubble" role="region" aria-label="Canvas">
+      <div className="canvas-card-bubble" role="region" aria-label={copy.canvas}>
         <div className="canvas-card-bubble-locked">
           <LockKeyhole size={18} />
-          <span>Canvas unavailable</span>
+          <span>{copy.canvasUnavailable}</span>
         </div>
       </div>
     );
@@ -48,7 +50,7 @@ export function CanvasCardBubble({
       className="canvas-card-bubble"
       role="region"
       tabIndex={0}
-      aria-label={`Canvas: ${canvas.title}`}
+      aria-label={copy.canvasDocumentTitle(canvas.title)}
       onClick={(e) => {
         e.stopPropagation();
         onOpenCanvas();
@@ -70,21 +72,19 @@ export function CanvasCardBubble({
             <span className="canvas-card-bubble-title" title={canvas.title}>
               {canvas.title}
             </span>
-            <span className="canvas-card-bubble-subtitle">
-              View Markdown in Canvas
-            </span>
+            <span className="canvas-card-bubble-subtitle">{copy.viewMarkdownCanvas}</span>
           </div>
         </div>
         <button
           type="button"
           className="canvas-card-bubble-open-btn"
-          aria-label={`Open ${canvas.title}`}
+          aria-label={copy.openCanvasTitle(canvas.title)}
           onClick={(e) => {
             e.stopPropagation();
             onOpenCanvas();
           }}
         >
-          <span className="canvas-card-bubble-open">Open</span>
+          <span className="canvas-card-bubble-open">{copy.open}</span>
           <ExternalLink size={13} strokeWidth={2.4} />
         </button>
       </div>

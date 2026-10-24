@@ -1,3 +1,8 @@
+---
+title: "Unified minimized calls"
+type: plan
+---
+
 # Unified minimized calls
 
 Problem: DM/group desktop popups and voice/mobile header strips differ and can coexist.

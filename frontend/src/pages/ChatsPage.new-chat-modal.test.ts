@@ -7,27 +7,32 @@ const styles = readFileSync("src/styles.css", "utf8");
 
 describe("new message dialog on web", () => {
   it("places the new-chat flow inside a dismissible desktop modal backdrop", () => {
-    expect(chatOverlays).toContain('className="new-chat-modal-backdrop"');
-    expect(chatOverlays).toContain('onMouseDown={closeNewChatScreen}');
+    expect(chatOverlays).toContain('backdropClassName="new-chat-modal-backdrop"');
+    expect(chatOverlays).toContain('onClose={closeNewChatScreen}');
+    expect(chatOverlays).toContain("closeOnBackdrop");
   });
 
   it("uses a centered dialog on web and retains the full-screen mobile layout", () => {
     expect(styles).toContain(".new-chat-modal-backdrop {");
     expect(styles).toContain(".new-chat-screen {");
-    expect(styles).toContain("width: min(100%, 460px);");
+    expect(styles).toContain("width: min(100%, 640px);");
+    expect(styles).toContain("max-width: 640px;");
     expect(styles).toContain("@media (max-width: 767px)");
   });
 
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
-    expect(newChatDialog).toContain('className="new-chat-screen-close"');
-    expect(newChatDialog).toContain('aria-label="Close new message"');
+    expect(newChatDialog).toContain("<PopupCloseButton");
+    expect(newChatDialog).toContain("ariaLabel={strings.chats.newChat.close}");
     expect(newChatDialog).toContain("onClick={onClose}");
     expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
 
-  it("rounds any new chat name input box to 22px matching the normal chat list item", () => {
+  it("uses the shared pill input for new chat title inputs", () => {
+    expect(newChatDialog).toContain("<PopupField");
+    const popupCss = readFileSync("src/components/ui/Popup.css", "utf8");
+    expect(popupCss).toContain("border-radius: 999px;");
     expect(styles).toContain(".new-chat-screen .new-chat-compose-title-field input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"range\"]),");
-    expect(styles).toContain("border-radius: 22px;");
+    expect(styles).toContain("border-radius: var(--radius-panel);");
   });
 
   it("supports 1-person chat creation with creator listed and solo hint", () => {

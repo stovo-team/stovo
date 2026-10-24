@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { fetchUnfurlData, type UnfurlData } from "../api/unfurl";
+import { useStrings } from "../i18n/LanguageContext";
 
 const unfurlCache = new Map<string, Promise<UnfurlData | null>>();
 const MAX_CONCURRENT_UNFURL_REQUESTS = 3;
@@ -58,6 +59,7 @@ export function LinkUnfurlCard({
   accessToken: string | null;
   fallback?: ReactNode;
 }) {
+  const copy = useStrings().sharedUi;
   const [data, setData] = useState<UnfurlData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<boolean>(false);
@@ -96,7 +98,7 @@ export function LinkUnfurlCard({
 
   if (loading) {
     return (
-      <div className="link-unfurl-card is-loading" aria-label="Loading link preview">
+      <div className="link-unfurl-card is-loading" aria-label={copy.loadingLinkPreview}>
         <div className="link-unfurl-skeleton-header" />
         <div className="link-unfurl-skeleton-title" />
         <div className="link-unfurl-skeleton-description" />

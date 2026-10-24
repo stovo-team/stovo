@@ -1,3 +1,8 @@
+---
+title: "Messenger Intelligence Source v2 Implementation Plan"
+type: implementation-plan
+---
+
 # Messenger Intelligence Source v2 Implementation Plan
 
 **Status:** Approved; implementation in progress

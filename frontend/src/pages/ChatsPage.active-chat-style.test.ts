@@ -13,7 +13,7 @@ describe("active chat list item styling", () => {
     expect(activeRule).toContain(
       "background: color-mix(in oklab, var(--accent-soft) 28%, transparent);"
     );
-    expect(activeRule).toContain("border-radius: 22px;");
+    expect(activeRule).toContain("border-radius: var(--radius-panel);");
     expect(activeRule).not.toContain("border-left");
   });
 
@@ -64,6 +64,22 @@ describe("active chat list item styling", () => {
     expect(styles).toMatch(
       /\.chat-list-preview,[\s\S]*?\.chat-list-copy > span:not\(\.chat-list-topline\)/
     );
+  });
+
+  it("matches the Back to chats arrow size and radius to the Plans arrows", () => {
+    const plansArrowRule = Array.from(
+      styles.matchAll(/\.plans-header button\s*\{([^}]*)\}/g)
+    ).at(-1)?.[1] ?? "";
+    const chatsBackArrowRule = Array.from(
+      styles.matchAll(/\.messenger-shell\.has-active-chat \.chat-detail-header \.mobile-back-button\s*\{([^}]*)\}/g)
+    ).at(-1)?.[1] ?? "";
+
+    expect(plansArrowRule).toContain("border-radius: var(--radius-circle);");
+    expect(plansArrowRule).toContain("height: 36px;");
+    expect(plansArrowRule).toContain("width: 36px;");
+    expect(chatsBackArrowRule).toContain("border-radius: var(--radius-circle);");
+    expect(chatsBackArrowRule).toContain("height: 36px;");
+    expect(chatsBackArrowRule).toContain("width: 36px;");
   });
 });
 

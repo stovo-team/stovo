@@ -20,8 +20,8 @@ describe("guest meeting responsive device-control source contract", () => {
   });
 
   it("uses an SVG arrow in the Run Stovo link", () => {
-    expect(guestMeeting).toContain("Run Stovo <ArrowUpRight size={16} aria-hidden=\"true\" />");
-    expect(guestMeeting).not.toContain("Run Stovo <span aria-hidden=\"true\">↗</span>");
+    expect(guestMeeting).toContain("{text.privateSpaceMarketing} <ArrowUpRight size={16} aria-hidden=\"true\" />");
+    expect(guestMeeting).not.toContain("↗</span>");
   });
 
   it("uses the shared speaking-indicator contract rather than a guest-only threshold", () => {
@@ -32,8 +32,8 @@ describe("guest meeting responsive device-control source contract", () => {
   });
 
   it("declares mobile audio-output switching and camera-rotation controls", () => {
-    expect(/aria-label="Audio output"/.test(guestMeeting)).toBe(true);
-    expect(/aria-label="Flip camera"/.test(guestMeeting)).toBe(true);
+    expect(/aria-label=\{text\.audioOutput\}/.test(guestMeeting)).toBe(true);
+    expect(/aria-label=\{text\.flipCamera\}/.test(guestMeeting)).toBe(true);
   });
 
   it("tracks speaking state for remote guest participants", () => {
@@ -71,7 +71,7 @@ describe("guest meeting responsive device-control source contract", () => {
   });
 
   it("keeps live camera errors outside the horizontally scrolling controls row", () => {
-    const liveError = guestMeeting.indexOf('className="guest-device-issue guest-device-issue--visible" role="status"', guestMeeting.indexOf("async function flipCamera()"));
+    const liveError = guestMeeting.indexOf('<CallDeviceErrorToast message={deviceIssue}', guestMeeting.indexOf("async function flipCamera()"));
     const bottomBar = guestMeeting.indexOf('<div className="voice-room-bottom-bar">');
     const toolbar = guestMeeting.indexOf('className="voice-room-in-call-controls guest-call-controls shared-call-controls"');
 

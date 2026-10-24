@@ -1,3 +1,8 @@
+---
+title: "Voice and chat layout fixes"
+type: implementation-plan
+---
+
 # Voice and chat layout fixes
 
 ## Goal
