@@ -32871,6 +32871,17 @@ button.minimized-call-button--end:active:not(:disabled) {
   --storage-preview-height: min(78dvh, 960px);
 }
 
+@media (max-width: 680px) {
+  .messenger-shell.has-active-chat .chat-detail-header .mobile-back-button {
+    border-radius: var(--radius-circle);
+    flex-basis: 36px;
+    height: 36px;
+    min-height: 36px;
+    min-width: 36px;
+    width: 36px;
+  }
+}
+
 /* Fit whole voice rows, including their 12px gaps, inside the stage budget. */
 .voice-channel-room .shared-call-stage .voice-room-grid.voice-grid--2 {
   width: min(100%, 1120px, calc((100dvh - 232px) * 8 / 9)) !important;
