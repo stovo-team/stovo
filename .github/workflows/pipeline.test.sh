@@ -426,6 +426,10 @@ for deployment in deploy-frontend-web deploy-backend-web; do
     echo "$deployment must target the Windows tests runners." >&2
     exit 1
   fi
+  if ! grep -Fq 'SSH_CLIENT_OS: windows' <<< "$deployment_contract"; then
+    echo "$deployment must tell appleboy/ssh-action that Git Bash is running on Windows." >&2
+    exit 1
+  fi
 done
 android_deploy_contract=$(sed -n '/^  deploy-android:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'; do
