@@ -4857,6 +4857,8 @@ h2 {
   background-position: var(--wallpaper-background-position);
   background-repeat: var(--wallpaper-background-repeat);
   background-size: var(--wallpaper-background-size);
+  container-name: chat-messages;
+  container-type: inline-size;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
@@ -8117,9 +8119,9 @@ span.message-spoiler.is-revealed {
 /* Documents use their own compact card, so do not retain the generic
    text-message width or its large right-side gutter. */
 .message-bubble:has(.document-preview-card) {
-  max-width: min(560px, calc(100vw - 48px));
+  max-width: min(560px, 100%);
   padding-inline: 6px;
-  width: min(560px, calc(100vw - 48px));
+  width: min(560px, 100%);
 }
 
 .message-bubble:has(.document-preview-card) .document-preview-card {
@@ -32728,6 +32730,33 @@ button.minimized-call-button--end:active:not(:disabled) {
     max-height: min(220px, 36dvh);
   }
 }
+@container chat-messages (max-width: 720px) {
+  .message-bubble {
+    max-width: 82%;
+  }
+
+  .message-bubble.has-photo-attachments {
+    max-width: min(420px, 78%);
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-video-attachment),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+    max-width: min(420px, 78%);
+    width: min(420px, 78%);
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait) {
+    max-width: min(320px, 62%);
+    width: min(320px, 62%);
+  }
+
+  .message-bubble:has(.document-preview-card) {
+    max-width: min(420px, 100%);
+    width: min(420px, 100%);
+  }
+}
+
 /* Preserve source-list widths while keeping wide-screen main panes readable. */
 @media (min-width: 1600px) {
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,

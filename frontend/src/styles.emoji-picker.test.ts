@@ -249,6 +249,24 @@ describe("message media sizing", () => {
       )
     ).toContain("width: min(400px, 68%);");
   });
+
+  it("reduces bubble and media widths when the chat area is narrow without shrinking message text", () => {
+    expect(styles).toMatch(/\.messages-panel\s*\{[^}]*container-name: chat-messages;/);
+    expect(styles).toMatch(/\.messages-panel\s*\{[^}]*container-type: inline-size;/);
+    expect(lastRule(".message-bubble")).toContain("max-width: 82%;");
+    expect(lastRule(".message-bubble.has-photo-attachments")).toContain(
+      "max-width: min(420px, 78%);"
+    );
+    expect(lastRule(".message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))")).toContain(
+      "width: min(420px, 78%);"
+    );
+    expect(lastRule(".message-bubble:has(.document-preview-card)")).toContain(
+      "width: min(420px, 100%);"
+    );
+    expect(rule(".message-bubble")).toContain(
+      "font-size: calc(var(--font-size-body) * var(--message-scale));"
+    );
+  });
 });
 
 describe("native fullscreen video player", () => {
