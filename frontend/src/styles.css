@@ -32283,6 +32283,13 @@ button.minimized-call-button--end:active:not(:disabled) {
   z-index: 100;
 }
 .sidebar-collapse-button:hover { opacity: .58; }
+.plans-layout--sidebar-collapsed .plans-sidebar-collapse:hover:not(:disabled) {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37));
+  opacity: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 24%, transparent);
+}
 .sidebar-collapse-button:focus-visible { opacity: 1; outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .storage-source-sidebar { overflow: visible; position: relative; }
 .plans-sidebar-resizer {
