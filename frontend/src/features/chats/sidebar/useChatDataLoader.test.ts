@@ -37,6 +37,55 @@ function makeMessage(id: string, createdAt: string): Message {
 }
 
 describe("useChatDataLoader", () => {
+  it("applies the saved chat layout as soon as the family request resolves", async () => {
+    let resolveFamily!: (value: any) => void;
+    const familyRequest = new Promise<any>((resolve) => { resolveFamily = resolve; });
+    const pendingMembers = new Promise<any[]>(() => {});
+    const pendingChats = new Promise<any[]>(() => {});
+    const family = { id: "family-1", name: "Family", minimizedChatLayout: true };
+    const authRequest = vi.fn((url: string) => {
+      if (url === "/api/family") return familyRequest;
+      if (url === "/api/family/members") return pendingMembers;
+      if (url === "/api/chats") return pendingChats;
+      return Promise.resolve(null);
+    });
+    const setFamily = vi.fn();
+    let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
+
+    function TestComponent() {
+      loaderRef = useChatDataLoader({
+        accessTokenRef: { current: "test-token" }, authRequest: authRequest as any,
+        currentUser: { id: "user-1" } as any, chatId: undefined, onError: vi.fn(),
+        setFamily, setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+        setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(),
+        activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [] },
+        chatMutationVersionRef: { current: {} }, messageCacheRef: { current: {} },
+        historyCursorRef: { current: {} }, setMessages: vi.fn(), setPinnedMessages: vi.fn(),
+        setPinIndex: vi.fn(), applyMessagesForChat: vi.fn(), markChatRead: vi.fn(() => Promise.resolve())
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT;
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    try {
+      act(() => root.render(createElement(TestComponent)));
+      act(() => { void loaderRef?.loadOverview(); });
+      await act(async () => {
+        resolveFamily(family);
+        await Promise.resolve();
+      });
+      expect(setFamily).toHaveBeenCalledWith(family);
+      act(() => root.unmount());
+    } finally {
+      (globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      container.remove();
+    }
+  });
+
   it("restores cached pins and leaves them in place when the pin request fails", async () => {
     const cachedPin = {
       chatId: "chat-1",
