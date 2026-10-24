@@ -32893,3 +32893,134 @@ button.minimized-call-button--end:active:not(:disabled) {
   width: min(100%, 1120px, calc((100dvh - 244px) * 16 / 9 + 24px)) !important;
   aspect-ratio: auto;
 }
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .app-frame > .app-nav.app-nav--active-variant-a {
+    grid-column: 1;
+    height: calc(100dvh - 2 * var(--float-outer-gap));
+    left: auto;
+    position: sticky;
+    right: auto;
+    top: var(--float-outer-gap);
+    width: var(--nav-rail-width);
+  }
+
+  .app-frame > .app-nav.app-nav--active-variant-a a.active {
+    background: transparent;
+    border-radius: 0;
+    color: var(--accent-primary);
+  }
+
+  .app-frame > .app-nav.app-nav--active-variant-a a.active::before {
+    background: color-mix(
+      in oklab,
+      var(--accent-soft) calc(var(--nav-active-pill-opacity) * 100%),
+      transparent
+    );
+    border-radius: var(--radius-pill);
+    content: "";
+    display: block;
+    height: 44px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    z-index: 0;
+  }
+
+  .app-frame > :not(.app-nav) {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .messenger-shell .chat-layout {
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  }
+
+  .messenger-shell .chat-layout.details-open {
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr) minmax(240px, 280px);
+  }
+
+  .messenger-shell.has-active-chat .chat-detail-header--floating {
+    gap: 8px;
+    min-height: 48px;
+    padding: 4px;
+  }
+
+  .messenger-shell.has-active-chat .chat-detail-header {
+    gap: 10px;
+    min-height: 48px;
+  }
+
+  .messenger-shell.has-active-chat .chat-detail-header .chat-avatar,
+  .messenger-shell.has-active-chat .chat-title-group .chat-avatar {
+    height: 34px;
+    width: 34px;
+  }
+
+  .messenger-shell.has-active-chat .chat-title-group {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .messenger-shell.has-active-chat .chat-header-actions {
+    gap: 2px;
+    margin-left: auto;
+    padding-right: 0;
+  }
+
+  .messenger-shell.has-active-chat .chat-header-actions .icon-button,
+  .messenger-shell.has-active-chat .chat-header-actions .chat-header-call-button {
+    flex: 0 0 34px;
+    height: 34px;
+    min-height: 34px;
+    min-width: 34px;
+    width: 34px;
+  }
+
+  .messenger-shell .chat-sidebar {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .messenger-shell.chat-list-view .chat-sidebar-header {
+    border-bottom: 0;
+  }
+
+  .messenger-shell.chat-list-view .chat-detail {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .messenger-shell.chat-list-view .chat-empty-state-wrapper {
+    background: transparent;
+  }
+
+  .messenger-shell.chat-list-view .chat-empty-state-card {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 460px;
+    padding: 24px;
+  }
+
+  .messenger-shell.chat-list-view .chat-empty-state-card:hover {
+    border-color: transparent;
+  }
+
+  .messenger-shell.chat-list-view .chat-empty-icon-pill {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .messenger-shell.chat-list-view .chat-empty-action-pill {
+    box-shadow: none;
+  }
+}
