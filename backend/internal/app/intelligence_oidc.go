@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -135,7 +136,7 @@ func (s *Server) validateIntelligenceOIDCAuthorizationRequest(_ context.Context,
 }
 
 func (s *Server) exchangeIntelligenceOIDCCode(ctx context.Context, request *http.Request, clientID, clientSecret, code, redirectURI, verifier string) (string, error) {
-	if s.sqlDB == nil || !s.cfg.IntelligenceOIDCEnabled || s.cfg.IntelligenceOIDCClientID == "" || s.cfg.IntelligenceOIDCClientSecret == "" {
+	if s.intelligenceSourceV2Persistence() == nil || !s.cfg.IntelligenceOIDCEnabled || s.cfg.IntelligenceOIDCClientID == "" || s.cfg.IntelligenceOIDCClientSecret == "" {
 		return "", httptransport.ErrIntelligenceOIDCUnavailable
 	}
 	if err := s.intelligenceOIDCRateLimit(ctx, request, "oidc-token", 60); err != nil {
@@ -150,33 +151,16 @@ func (s *Server) exchangeIntelligenceOIDCCode(ctx context.Context, request *http
 	}
 	digest := sha256.Sum256([]byte(code))
 	now := s.intelligenceOIDCNow()
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return "", httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var userID, challenge, nonce string
-	err = tx.QueryRowContext(ctx, `
-		SELECT user_id,code_challenge,nonce
-		FROM public.intelligence_oidc_authorization_codes
-		WHERE code_hash=$1 AND client_id=$2 AND redirect_uri=$3 AND expires_at>$4
-		FOR UPDATE`, digest[:], clientID, redirectURI, now).Scan(&userID, &challenge, &nonce)
-	if errors.Is(err, sql.ErrNoRows) {
+	consumed, err := s.intelligenceSourceV2Persistence().ConsumeOIDCAuthorizationCode(ctx, digest[:], clientID, redirectURI, now, func(challenge string) bool {
+		return intelligenceOIDCPKCEVerifierMatches(verifier, challenge)
+	})
+	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) || errors.Is(err, adapterintelligencesourcev2.ErrInvalidPKCE) {
 		return "", httptransport.ErrIntelligenceOIDCInvalidRequest
 	}
 	if err != nil {
 		return "", httptransport.ErrIntelligenceOIDCUnavailable
 	}
-	if !intelligenceOIDCPKCEVerifierMatches(verifier, challenge) {
-		return "", httptransport.ErrIntelligenceOIDCInvalidRequest
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_oidc_authorization_codes WHERE code_hash=$1`, digest[:]); err != nil {
-		return "", httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	if err := tx.Commit(); err != nil {
-		return "", httptransport.ErrIntelligenceOIDCUnavailable
-	}
-	subject, err := s.intelligenceOIDCSubject(ctx, userID)
+	subject, err := s.intelligenceOIDCSubject(ctx, consumed.UserID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", httptransport.ErrIntelligenceOIDCUnauthorized
 	}
@@ -192,7 +176,7 @@ func (s *Server) exchangeIntelligenceOIDCCode(ctx context.Context, request *http
 		Nonce string `json:"nonce"`
 		jwt.RegisteredClaims
 	}{
-		Nonce: nonce,
+		Nonce: consumed.Nonce,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: s.cfg.IntelligenceOIDCIssuer, Subject: subject,
 			Audience: jwt.ClaimStrings{s.cfg.IntelligenceOIDCClientID},

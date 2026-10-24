@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/google/uuid"
@@ -42,62 +43,32 @@ type sourceV2BackfillMessage struct {
 }
 
 func (s *Server) intelligenceSourceV2StartBackfill(ctx context.Context, identity httptransport.IntelligenceSourceIdentity) (httptransport.IntelligenceSourceV2BackfillStart, error) {
-	if s.sqlDB == nil || s.cfg.JWTSecret == "" {
+	if s.intelligenceSourceV2Persistence() == nil || s.cfg.JWTSecret == "" {
 		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
 	now := s.intelligenceOIDCNow()
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var fenceSequence int64
-	err = tx.QueryRowContext(ctx, `
-		SELECT c.next_sequence-1
-		FROM public.intelligence_source_v2_connections c
-		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.enabled
-		JOIN public.users u ON u.id=c.principal_user_id AND u.is_active=1 AND u.family_id=i.family_id
-		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=$6
-		JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
-		  AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
-		JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
-		JOIN public.intelligence_source_v2_connection_grants read_grant
-		  ON read_grant.connection_id=c.id AND read_grant.grant_type='read' AND read_grant.granted
-		WHERE c.id=$1 AND c.installation_id=$2 AND c.principal_user_id=$3 AND i.tenant_id=$4
-		  AND i.family_id=$5 AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$7
-		  AND (SELECT count(*) FROM public.intelligence_source_v2_connection_chats exact_scope WHERE exact_scope.connection_id=c.id)=1
-		FOR UPDATE OF c`, identity.ConnectionID, identity.InstallationID, identity.PrincipalUserID, identity.TenantID, identity.FamilyID, identity.ChatID, now).Scan(&fenceSequence)
-	if errors.Is(err, sql.ErrNoRows) {
+	started, err := s.intelligenceSourceV2Persistence().StartBackfill(ctx, identity, now)
+	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) {
 		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceForbidden
 	}
 	if err != nil {
 		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	backfillID := uuid.NewString()
-	var createdAt time.Time
-	if err := tx.QueryRowContext(ctx, `
-		INSERT INTO public.intelligence_source_v2_backfills(id,connection_id,chat_id,fence_sequence,created_at)
-		VALUES($1,$2,$3,$4,$5) RETURNING created_at`, backfillID, identity.ConnectionID, identity.ChatID, fenceSequence, now).Scan(&createdAt); err != nil {
-		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
 	cursor := intelligenceSourceV2Cursor{
 		Kind: "snapshot", ConnectionID: identity.ConnectionID, ChatID: identity.ChatID,
-		BackfillID: backfillID, Page: 0, IssuedAt: createdAt.Unix(),
+		BackfillID: started.BackfillID, Page: 0, IssuedAt: started.CreatedAt.Unix(),
 	}
 	token := s.encodeIntelligenceSourceV2Cursor(cursor)
 	if token == "" {
 		return httptransport.IntelligenceSourceV2BackfillStart{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return httptransport.IntelligenceSourceV2BackfillStart{
-		SchemaVersion: "v2", BackfillID: backfillID, SnapshotCursor: token, ScopeReset: true,
+		SchemaVersion: "v2", BackfillID: started.BackfillID, SnapshotCursor: token, ScopeReset: true,
 	}, nil
 }
 
 func (s *Server) intelligenceSourceV2BackfillSnapshots(ctx context.Context, identity httptransport.IntelligenceSourceIdentity, backfillID, rawCursor string, limit int) (httptransport.IntelligenceSourceV2SnapshotPage, error) {
-	if s.sqlDB == nil || limit < 1 || limit > intelligenceSourceV2SnapshotPageLimit || backfillID == "" {
+	if s.intelligenceSourceV2Persistence() == nil || limit < 1 || limit > intelligenceSourceV2SnapshotPageLimit || backfillID == "" {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceInvalidRequest
 	}
 	cursor, err := s.decodeIntelligenceSourceV2Cursor(rawCursor, identity, "snapshot")
@@ -107,105 +78,45 @@ func (s *Server) intelligenceSourceV2BackfillSnapshots(ctx context.Context, iden
 	if cursor.BackfillID != backfillID {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceInvalidCursor
 	}
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var fenceSequence int64
-	var nextPage int
-	var lastCreatedAt, lastResourceID sql.NullString
-	err = tx.QueryRowContext(ctx, `
-		SELECT b.fence_sequence,b.next_page,b.last_created_at,b.last_resource_id
-		FROM public.intelligence_source_v2_backfills b
-		WHERE b.id=$1 AND b.connection_id=$2 AND b.chat_id=$3
-		FOR UPDATE`, backfillID, identity.ConnectionID, identity.ChatID).Scan(&fenceSequence, &nextPage, &lastCreatedAt, &lastResourceID)
-	if errors.Is(err, sql.ErrNoRows) {
+	stored, err := s.intelligenceSourceV2Persistence().BuildBackfillPage(ctx, identity, backfillID, cursor.Page, limit, s.intelligenceOIDCNow())
+	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) || errors.Is(err, adapterintelligencesourcev2.ErrInvalidRequest) {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceInvalidCursor
 	}
-	if err != nil {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	allowed, err := intelligenceSourceV2LockReadScope(ctx, tx, identity, s.intelligenceOIDCNow())
-	if err != nil {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, err
-	}
-	if !allowed {
+	if errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {
 		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceForbidden
 	}
-	if cursor.Page > nextPage {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceInvalidCursor
-	}
-	var hasMore bool
-	var pageCreatedAt time.Time
-	if cursor.Page < nextPage {
-		err = tx.QueryRowContext(ctx, `
-			SELECT has_more,created_at FROM public.intelligence_source_v2_backfill_pages
-			WHERE backfill_id=$1 AND page_number=$2`, backfillID, cursor.Page).Scan(&hasMore, &pageCreatedAt)
-		if errors.Is(err, sql.ErrNoRows) {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceInvalidCursor
-		}
-		if err != nil {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-	} else {
-		if lastCreatedAt.Valid != lastResourceID.Valid {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-		messages, err := s.readIntelligenceSourceV2BackfillMessages(ctx, tx, identity, lastCreatedAt, lastResourceID, limit+1)
-		if err != nil {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, err
-		}
-		hasMore = len(messages) > limit
-		if hasMore {
-			messages = messages[:limit]
-		}
-		pageCreatedAt = s.intelligenceOIDCNow()
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO public.intelligence_source_v2_backfill_pages(backfill_id,page_number,has_more,created_at)
-			VALUES($1,$2,$3,$4)`, backfillID, cursor.Page, hasMore, pageCreatedAt); err != nil {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-		for index := range messages {
-			if err := s.insertIntelligenceSourceV2BackfillSnapshot(ctx, tx, identity, backfillID, cursor.Page, index, messages[index]); err != nil {
-				return httptransport.IntelligenceSourceV2SnapshotPage{}, err
-			}
-		}
-		if len(messages) > 0 {
-			last := messages[len(messages)-1]
-			lastCreatedAt, lastResourceID = sql.NullString{String: last.createdAt, Valid: true}, sql.NullString{String: last.resourceID, Valid: true}
-		}
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE public.intelligence_source_v2_backfills
-			SET next_page=next_page+1,last_created_at=$2,last_resource_id=$3,completed=$4
-			WHERE id=$1`, backfillID, nullableString(lastCreatedAt), nullableString(lastResourceID), !hasMore); err != nil {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-	}
-	snapshots, err := s.loadIntelligenceSourceV2BackfillPage(ctx, tx, identity, backfillID, cursor.Page)
 	if err != nil {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, err
+		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	page := httptransport.IntelligenceSourceV2SnapshotPage{SchemaVersion: "v2", Snapshots: snapshots, HasMore: hasMore}
-	if hasMore {
+	snapshots := make([]httptransport.IntelligenceSourceV2ResourceSnapshot, 0, len(stored.Snapshots))
+	for _, record := range stored.Snapshots {
+		var snapshot httptransport.IntelligenceSourceV2ResourceSnapshot
+		snapshot.ResourceID, snapshot.RevisionID, snapshot.ObservedAt = record.ResourceID, record.RevisionID, record.ObservedAt
+		if err := json.Unmarshal(record.Metadata, &snapshot.Metadata); err != nil {
+			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
+		}
+		if record.Protocol == "server_at_rest" {
+			if !record.Ciphertext.Valid || !record.Nonce.Valid { return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable }
+			plaintext, err := s.decryptServerAtRest(identity.FamilyID, record.Ciphertext.String, record.Nonce.String)
+			if err != nil || plaintext == nil { return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable }
+			snapshot.Content = *plaintext
+		} else if record.Protocol == "legacy_plaintext" && record.Content.Valid {
+			snapshot.Content = record.Content.String
+		} else { return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable }
+		snapshot.SchemaVersion, snapshot.TenantID, snapshot.ConnectionID, snapshot.PrincipalID = "v2", identity.TenantID, identity.ConnectionID, identity.PrincipalUserID
+		snapshot.ContentRevisionID, snapshot.MetadataRevisionID = snapshot.RevisionID, snapshot.RevisionID
+		snapshots = append(snapshots, snapshot)
+	}
+	page := httptransport.IntelligenceSourceV2SnapshotPage{SchemaVersion: "v2", Snapshots: snapshots, HasMore: stored.HasMore}
+	if stored.HasMore {
 		next := cursor
 		next.Page++
-		next.IssuedAt = pageCreatedAt.Unix()
+		next.IssuedAt = stored.CreatedAt.Unix()
 		page.NextSnapshotCursor = s.encodeIntelligenceSourceV2Cursor(next)
-		if page.NextSnapshotCursor == "" {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
+		if page.NextSnapshotCursor == "" { return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable }
 	} else {
-		page.FenceCursor = s.encodeIntelligenceSourceV2Cursor(intelligenceSourceV2Cursor{
-			Kind: "event", ConnectionID: identity.ConnectionID, ChatID: identity.ChatID,
-			BackfillID: backfillID, Sequence: fenceSequence, IssuedAt: pageCreatedAt.Unix(),
-		})
-		if page.FenceCursor == "" {
-			return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable
+		page.FenceCursor = s.encodeIntelligenceSourceV2Cursor(intelligenceSourceV2Cursor{Kind: "event", ConnectionID: identity.ConnectionID, ChatID: identity.ChatID, BackfillID: backfillID, Sequence: stored.FenceSequence, IssuedAt: stored.CreatedAt.Unix()})
+		if page.FenceCursor == "" { return httptransport.IntelligenceSourceV2SnapshotPage{}, httptransport.ErrIntelligenceSourceUnavailable }
 	}
 	return page, nil
 }
@@ -329,4 +240,18 @@ func (s *Server) loadIntelligenceSourceV2BackfillPage(ctx context.Context, tx *s
 		return nil, httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return snapshots, nil
+}
+
+func nullableString(value sql.NullString) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.String
+}
+
+func nullableInt64(value sql.NullInt64) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.Int64
 }
