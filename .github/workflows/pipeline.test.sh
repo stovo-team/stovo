@@ -473,3 +473,9 @@ for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "contain
     exit 1
   fi
 done
+for required in 'migration_dir="$(cygpath -w "$PWD/migrations")"' 'source=$migration_dir,target=/migrations,readonly' '--mount "$migration_mount"'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Master backend CI must mount migrations using a Windows-native Docker source path ($required)." >&2
+    exit 1
+  fi
+done
