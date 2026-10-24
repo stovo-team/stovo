@@ -158,9 +158,9 @@ export function MeetingIntelligencePopover({
     if (!isOpen) return;
     if (inlineMenu) return;
     const handleOutsideClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      const target = e.target as Node;
+      if (popoverRef.current?.contains(target) || anchorElement?.contains(target) || anchorRef.current?.contains(target)) return;
+      onClose();
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -173,7 +173,7 @@ export function MeetingIntelligencePopover({
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [anchorElement, isOpen, onClose]);
 
   if (!isOpen) return backgroundToast;
 
