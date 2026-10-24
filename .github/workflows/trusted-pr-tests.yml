@@ -151,6 +151,11 @@ jobs:
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
     runs-on: [self-hosted, tests, Windows]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: [0, 1, 2]
     timeout-minutes: 45
     defaults:
       run:
@@ -224,7 +229,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
           $postgresContainer = "stovo-test-postgres-$suffix"
           $redisContainer = "stovo-test-redis-$suffix"
 
@@ -276,11 +281,13 @@ jobs:
       - name: Download modules
         run: go mod download
       - name: Cache golangci-lint binary
+        if: matrix.shard == 0
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/golangci-lint/v2.14.0
           key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
       - name: Install golangci-lint binary
+        if: matrix.shard == 0
         shell: powershell
         run: |
           $version = '2.14.0'
@@ -309,6 +316,7 @@ jobs:
             throw "golangci-lint $version could not start."
           }
       - name: Go lint
+        if: matrix.shard == 0
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
@@ -317,13 +325,23 @@ jobs:
           verify: true
           skip-cache: false
           args: --timeout=5m
-      - name: Unit and integration tests
-        run: go test -count=1 ./...
+      - name: Sharded unit and integration tests
+        env:
+          BACKEND_TEST_SHARD: ${{ matrix.shard }}
+        run: |
+          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3)"
+          go test -count=1 -run "$testRegex" ./internal/app
+          if [ "$BACKEND_TEST_SHARD" = "0" ]; then
+            mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
+            if [ "${#packages[@]}" -gt 0 ]; then
+              go test -count=1 "${packages[@]}"
+            fi
+          fi
       - name: Stop backend test containers
         if: always()
         shell: powershell
         run: |
           if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
-            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
             docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }

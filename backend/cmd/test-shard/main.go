@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -43,30 +44,11 @@ func selectTests(args []string) error {
 		return fmt.Errorf("select accepts test names on stdin, not positional arguments")
 	}
 
-	var names []string
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		name := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(name, "Test") && !strings.Contains(name, "/") {
-			names = append(names, name)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("read test names: %w", err)
-	}
-	selected, err := testshard.Select(names, *shardIndex, *shardCount)
+	pattern, err := selectPattern(os.Stdin, *shardIndex, *shardCount)
 	if err != nil {
 		return err
 	}
-	if len(selected) == 0 {
-		fmt.Println("^$")
-		return nil
-	}
-	quoted := make([]string, len(selected))
-	for index, name := range selected {
-		quoted[index] = regexp.QuoteMeta(name)
-	}
-	fmt.Printf("^(%s)$\n", strings.Join(quoted, "|"))
+	fmt.Println(pattern)
 	return nil
 }
 
@@ -95,4 +77,31 @@ func mergeCoverage(args []string) error {
 		return fmt.Errorf("write merged coverage profile %s: %w", *outputPath, err)
 	}
 	return nil
+}
+
+func selectPattern(input io.Reader, shardIndex, shardCount int) (string, error) {
+	var names []string
+	scanner := bufio.NewScanner(input)
+	for scanner.Scan() {
+		name := strings.TrimSpace(scanner.Text())
+		isTestFunction := strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "Example") || strings.HasPrefix(name, "Fuzz")
+		if isTestFunction && !strings.Contains(name, "/") {
+			names = append(names, name)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("read test names: %w", err)
+	}
+	selected, err := testshard.Select(names, shardIndex, shardCount)
+	if err != nil {
+		return "", err
+	}
+	if len(selected) == 0 {
+		return "^$", nil
+	}
+	quoted := make([]string, len(selected))
+	for index, name := range selected {
+		quoted[index] = regexp.QuoteMeta(name)
+	}
+	return "^(" + strings.Join(quoted, "|") + ")$", nil
 }

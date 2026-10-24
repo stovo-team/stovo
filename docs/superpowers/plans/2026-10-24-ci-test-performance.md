@@ -41,9 +41,9 @@
 - Consumes: existing `CI` environment variable.
 - Produces: `maxWorkers === 3` when `CI` is set and `undefined` otherwise.
 
-- [ ] Update the CI config contract test to expect three workers and run the focused Vitest config test; it should fail against the current one-worker config.
-- [ ] Set `maxWorkers` to `process.env.CI ? 3 : undefined` and revise the comment to reflect the new Windows runner capacity.
-- [ ] Run the focused config test and frontend lint.
+- [x] Update the CI config contract test to expect three workers and run the focused Vitest config test; it should fail against the current one-worker config.
+- [x] Set `maxWorkers` to `process.env.CI ? 3 : undefined` and revise the comment to reflect the new Windows runner capacity.
+- [x] Run the focused config test and frontend lint.
 
 ### Task 2: Reuse backend schema and reset data between integration tests
 
@@ -55,10 +55,10 @@
 - Consumes: existing `resetTestRuntime(t, databaseURL, redisURL)` call from `newTestServer`.
 - Produces: one schema initialization per app test process, followed by data/sequence reset and Redis flush on each call.
 
-- [ ] Add a PostgreSQL-backed regression test that calls the reset path twice and proves a probe row is cleared, its generated identity restarts, the table remains present, and Redis is flushed; run it against disposable PostgreSQL and Redis and confirm it fails with the current drop-schema implementation.
-- [ ] Replace repeated schema drop/recreation and migration replay with a process-scoped schema initializer guarded by `sync.Once`; cache and report any initialization error.
-- [ ] Reset public table data with `TRUNCATE ... RESTART IDENTITY CASCADE` while retaining schema objects, and flush Redis on each test setup.
-- [ ] Run the fixture regression and focused `internal/app` integration tests against disposable local services.
+- [x] Add a PostgreSQL-backed regression test that calls the reset path twice and proves a probe row is cleared, its generated identity restarts, the table remains present, and Redis is flushed; run it against disposable PostgreSQL and Redis and confirm it fails with the current drop-schema implementation.
+- [x] Replace repeated schema drop/recreation and migration replay with a process-scoped schema initializer guarded by `sync.Once`; cache and report any initialization error.
+- [x] Reset public table data with `TRUNCATE ... RESTART IDENTITY CASCADE` while retaining schema objects, and flush Redis on each test setup.
+- [x] Run the fixture regression and focused `internal/app` integration tests against disposable local services; reset migration-seeded singleton rows as part of each data reset.
 
 ### Task 3: Deterministic backend test sharding and coverage merging
 
@@ -71,12 +71,12 @@
 
 **Interfaces:**
 - Produces: `Select(names []string, shardIndex, shardCount int) ([]string, error)` using stable name sorting and a stable hash; valid shard indexes are zero-based.
-- Produces: coverage merge that requires identical `mode:` headers and block keys, sums statement counters, and emits a single profile.
-- CLI reads `go test -list '^Test'` output from stdin and prints a Go `-run` regular expression for one shard; it also provides a coverage merge subcommand for downloaded profiles.
+- Produces: coverage merge that requires identical `mode:` headers, unions disjoint block keys, sums matching statement counters, and rejects conflicting statement counts.
+- CLI reads top-level Test, Example, and Fuzz names from `go test -list` output on stdin and prints a Go `-run` regular expression for one shard; it also provides a coverage merge subcommand for downloaded profiles.
 
-- [ ] Add tests for stable assignment, no overlap, complete union, empty input, invalid shard indexes, matching atomic profiles, counter sums, and incompatible profiles; run them and confirm missing implementations fail.
-- [ ] Implement the selector, coverage merger, and CLI with explicit validation and useful errors.
-- [ ] Run `go test ./internal/testshard ./cmd/test-shard` and exercise CLI output with the current `internal/app` test list.
+- [x] Add tests for stable assignment, no overlap, complete union, empty input, invalid shard indexes, matching atomic profiles, counter sums, and incompatible profiles; run them and confirm missing implementations fail.
+- [x] Implement the selector, coverage merger, and CLI with explicit validation and useful errors.
+- [x] Run `go test ./internal/testshard ./cmd/test-shard` and exercise CLI output with the current `internal/app` test list.
 
 ### Task 4: Three isolated backend CI shards and aggregate coverage
 
@@ -84,6 +84,7 @@
 - Modify: `.github/workflows/pipeline.yml`
 - Modify: `.github/workflows/trusted-pr-tests.yml`
 - Modify: `.github/workflows/pipeline.test.sh`
+- Test: `backend/cmd/test-shard/main_test.go`
 - Test: `.github/workflows/pipeline.test.sh`
 - Test: `.github/workflows/deploy.test.ps1`
 
@@ -91,18 +92,18 @@
 - Consumes: `test-shard` CLI from Task 3 and the existing `backend-ci` job identity used by deployment dependencies.
 - Produces: three backend test matrix jobs; every app test selected once, non-app packages tested once on shard 0, and one merged `backend-coverage` artifact in the standard pipeline.
 
-- [ ] Extend workflow contract checks to require three matrix shards, unique shard-qualified PostgreSQL/Redis names, dynamic ports, correct internal `ATLAS_DATABASE_URL` port in the standard pipeline, and the merged coverage artifact; run the contract script and confirm it fails before workflow changes.
-- [ ] Split backend test execution into three shards in both workflows. Run lint once on shard 0, retain `backend-ci` as the matrix job ID used by deployment, and guard quick non-test checks so they are not repeated by every shard.
-- [ ] Upload shard-specific coverage profiles and merge them into the existing coverage summary/artifact in the standard workflow; run the trusted PR workflow without coverage as it does today.
-- [ ] Run `.github/workflows/pipeline.test.sh`, `deploy.test.ps1`, and YAML/workflow validation available locally.
+- [x] Extend workflow contract checks to require three matrix shards, unique shard-qualified PostgreSQL/Redis names, dynamic ports, correct internal `ATLAS_DATABASE_URL` port in the standard pipeline, and the merged coverage artifact; run the contract script and confirm it fails before workflow changes.
+- [x] Split backend test execution into three shards in both workflows. Run lint once on shard 0, retain `backend-ci` as the matrix job ID used by deployment, and guard quick non-test checks so they are not repeated by every shard.
+- [x] Upload shard-specific coverage profiles and merge them into the existing coverage summary/artifact in the standard workflow; run the trusted PR workflow without coverage as it does today.
+- [x] Run `.github/workflows/pipeline.test.sh` and YAML/workflow validation; `.github/workflows/deploy.test.ps1` requires PowerShell, which is not installed in this environment.
 
 ### Task 5: End-to-end verification and review
 
 **Files:**
 - Review: all files above
 
-- [ ] Run the repository-required backend and frontend checks that are available, plus workflow contract tests.
-- [ ] Inspect `git diff --check` and the final diff; confirm no deployment steps changed and unrelated files remain unstaged.
-- [ ] Record any checks that require Windows runners or external services and cannot run in this environment.
+- [x] Run the repository-required backend and frontend checks that are available, plus workflow contract tests.
+- [x] Inspect `git diff --check` and the final diff; confirm no deployment steps changed and unrelated files remain unstaged.
+- [x] Record any checks that require Windows runners or external services and cannot run in this environment.
 
 ---

@@ -479,3 +479,27 @@ for required in 'migration_dir="$(cygpath -w "$PWD/migrations")"' 'source=$migra
     exit 1
   fi
 done
+
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'max-parallel: 3' 'shard: [0, 1, 2]' 'matrix.shard' 'go test -list '\''^(Test|Example|Fuzz)'\''' 'go run ./cmd/test-shard select' '-run "$testRegex" ./internal/app' 'if [ "$BACKEND_TEST_SHARD" = "0" ]' 'if: matrix.shard == 0'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must shard app tests deterministically across three jobs ($required)." >&2
+      exit 1
+    fi
+  done
+  for required in 'stovo-test-postgres-$suffix' 'stovo-test-redis-$suffix' '${{ matrix.shard }}' 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must isolate shard test services and keep dynamic host ports ($required)." >&2
+      exit 1
+    fi
+  done
+done
+
+backend_coverage_contract=$(sed -n '/^  backend-coverage:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'needs: backend-ci' 'runs-on: [self-hosted, tests, Windows]' 'name: Detect available shell' 'pattern: backend-coverage-shard-*' 'merge-multiple: true' 'go run ./cmd/test-shard merge' 'name: backend-coverage' 'go tool cover -func=coverage.out'; do
+  if ! grep -Fq -- "$required" <<< "$backend_coverage_contract"; then
+    echo "Master backend CI must merge atomic shard profiles into the existing coverage summary and artifact ($required)." >&2
+    exit 1
+  fi
+done

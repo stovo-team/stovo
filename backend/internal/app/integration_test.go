@@ -248,6 +248,30 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 			t.Fatalf("truncate public test tables: %v", err)
 		}
 	}
+	if _, err := db.Exec(`
+		INSERT INTO public.intelligence_source_v2_backup_inventory_state (inventory_id, verified_at, complete)
+		VALUES ('global', NULL, false)
+		ON CONFLICT (inventory_id) DO UPDATE SET verified_at = NULL, complete = false
+	`); err != nil {
+		t.Fatalf("reset backup inventory singleton: %v", err)
+	}
+	if _, err := db.Exec(`
+		INSERT INTO public.intelligence_source_v2_restore_gate (
+			gate_id, blocked, restore_epoch, active_restore_id, backup_created_at,
+			ledger_started_at, ledger_verified_at, updated_at
+		)
+		VALUES ('global', false, 'uninitialized', NULL, NULL, now(), NULL, now())
+		ON CONFLICT (gate_id) DO UPDATE SET
+			blocked = false,
+			restore_epoch = 'uninitialized',
+			active_restore_id = NULL,
+			backup_created_at = NULL,
+			ledger_started_at = now(),
+			ledger_verified_at = NULL,
+			updated_at = now()
+	`); err != nil {
+		t.Fatalf("reset restore gate singleton: %v", err)
+	}
 
 	redisOptions, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -2238,6 +2262,12 @@ func TestResetTestRuntimeClearsDataWithoutDroppingSchema(t *testing.T) {
 	if err := redisClient.Set(context.Background(), "test-runtime-reset-probe", "present", 0).Err(); err != nil {
 		t.Fatalf("set Redis probe key: %v", err)
 	}
+	if _, err := db.Exec(`UPDATE public.intelligence_source_v2_restore_gate SET blocked=true,restore_epoch='probe-epoch' WHERE gate_id='global'`); err != nil {
+		t.Fatalf("mutate restore gate probe: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE public.intelligence_source_v2_backup_inventory_state SET complete=true,verified_at=now() WHERE inventory_id='global'`); err != nil {
+		t.Fatalf("mutate backup inventory probe: %v", err)
+	}
 
 	resetTestRuntime(t, databaseURL, redisURL)
 
@@ -2247,6 +2277,21 @@ func TestResetTestRuntimeClearsDataWithoutDroppingSchema(t *testing.T) {
 	}
 	if !tableExists {
 		t.Fatal("reset removed the probe table schema")
+	}
+	var restoreBlocked bool
+	var restoreEpoch string
+	if err := db.QueryRow(`SELECT blocked,restore_epoch FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global'`).Scan(&restoreBlocked, &restoreEpoch); err != nil {
+		t.Fatalf("read restored singleton gate row: %v", err)
+	}
+	if restoreBlocked || restoreEpoch != "uninitialized" {
+		t.Fatalf("restore gate after reset = blocked %t, epoch %q; want false/uninitialized", restoreBlocked, restoreEpoch)
+	}
+	var backupComplete bool
+	if err := db.QueryRow(`SELECT complete FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global'`).Scan(&backupComplete); err != nil {
+		t.Fatalf("read restored singleton inventory row: %v", err)
+	}
+	if backupComplete {
+		t.Fatal("backup inventory after reset is complete, want false")
 	}
 	var rowCount int
 	if err := db.QueryRow(`SELECT count(*) FROM ` + probeTable).Scan(&rowCount); err != nil {
