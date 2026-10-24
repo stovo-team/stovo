@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,12 +55,12 @@ func defaultChatTypes() ChatTypesConfig {
 }
 
 type ServerRecord struct {
-	ID        int           `json:"id"`
-	Slug      string        `json:"slug"`
-	Name      string        `json:"name"`
-	CreatedAt time.Time     `json:"created_at"`
-	Status    string        `json:"status"`
-	NavTabs   NavTabsConfig `json:"nav_tabs"`
+	ID        int             `json:"id"`
+	Slug      string          `json:"slug"`
+	Name      string          `json:"name"`
+	CreatedAt time.Time       `json:"created_at"`
+	Status    string          `json:"status"`
+	NavTabs   NavTabsConfig   `json:"nav_tabs"`
 	ChatTypes ChatTypesConfig `json:"chat_types"`
 }
 
@@ -182,11 +183,20 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create server database"})
 		return
 	}
-	// Create MinIO bucket
+	// Create the tenant bucket in the configured S3-compatible storage.
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
 	minioSecretKey := os.Getenv("MINIO_SECRET_KEY")
-	mc, err := minio.New(minioEndpoint, &minio.Options{Creds: credentials.NewStaticV4(minioAccessKey, minioSecretKey, ""), Secure: false})
+	if !strings.EqualFold(os.Getenv("STORAGE_PROVIDER"), "s3") {
+		minioAccessKey = os.Getenv("MINIO_ROOT_USER")
+		minioSecretKey = os.Getenv("MINIO_ROOT_PASSWORD")
+	}
+	secure, _ := strconv.ParseBool(os.Getenv("MINIO_SECURE"))
+	mc, err := minio.New(minioEndpoint, &minio.Options{
+		Creds:        credentials.NewStaticV4(minioAccessKey, minioSecretKey, ""),
+		Secure:       secure,
+		BucketLookup: minio.BucketLookupPath,
+	})
 	if err == nil {
 		bucketName := fmt.Sprintf("stovo-%s", req.Slug)
 		ctx := context.Background()
@@ -618,8 +628,15 @@ func (o *Orchestrator) attachProxyNetwork(ctx context.Context, containerID, slug
 func backendContainerEnv(slug string, get func(key, fallback string) string) []string {
 	pgUser := get("POSTGRES_USER", "postgres")
 	pgPass := get("POSTGRES_PASSWORD", "postgres")
+	storageProvider := get("STORAGE_PROVIDER", "minio")
+	minioEndpoint := get("MINIO_ENDPOINT", "minio:9000")
+	minioSecure := get("MINIO_SECURE", "false")
 	minioUser := get("MINIO_ROOT_USER", "stovo_minio_root")
 	minioPass := get("MINIO_ROOT_PASSWORD", "stovo_minio_pass")
+	if strings.EqualFold(storageProvider, "s3") {
+		minioUser = get("MINIO_ACCESS_KEY", "")
+		minioPass = get("MINIO_SECRET_KEY", "")
+	}
 	masterSecret := get("MASTER_SYSTEM_SECRET", "")
 	turnHost := get("TURN_HOST", get("PUBLIC_HOST", get("PUBLIC_IP", "")))
 	appURL := strings.TrimRight(get("APP_URL", "http://localhost:8000"), "/")
@@ -653,8 +670,9 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("POSTGRES_PASSWORD=%s", pgPass),
 		fmt.Sprintf("POSTGRES_DB=stovo_db_%s", slug),
 		fmt.Sprintf("REDIS_URL=%s", redisURL),
-		fmt.Sprintf("STORAGE_PROVIDER=%s", get("STORAGE_PROVIDER", "minio")),
-		"MINIO_ENDPOINT=minio:9000",
+		fmt.Sprintf("STORAGE_PROVIDER=%s", storageProvider),
+		fmt.Sprintf("MINIO_ENDPOINT=%s", minioEndpoint),
+		fmt.Sprintf("MINIO_SECURE=%s", minioSecure),
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", minioUser),
 		fmt.Sprintf("MINIO_SECRET_KEY=%s", minioPass),
 		fmt.Sprintf("MINIO_FILES_BUCKET=stovo-%s", slug),
