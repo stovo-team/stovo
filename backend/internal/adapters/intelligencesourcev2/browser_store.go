@@ -24,7 +24,7 @@ type OIDCBrowserSessionExpectation struct {
 	RedirectURIAllowed bool
 }
 
-type OIDCBrowserAuthorization struct { UserID, RedirectURI, State string }
+type OIDCBrowserAuthorization struct { UserID, ClientID, RedirectURI, State string }
 
 type SourceV2BrowserAuthorization struct {
 	TicketHash, CodeHash []byte
