@@ -9,5 +9,8 @@ const rule = (selector: string) => {
 
 it("keeps the profile chevron slightly inset from the profile bar edge", () => {
   expect(rule(".settings-profile-open")).toContain("padding: 18px 22px 18px 126px;");
-  expect(rule(".settings-profile-open > svg")).toContain("right: 24px;");
+  const chevron = rule(".settings-profile-open > svg");
+  expect(chevron).toContain("right: 23px;");
+  expect(chevron).toContain("height: 18px;");
+  expect(chevron).toContain("width: 18px;");
 });
