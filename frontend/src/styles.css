@@ -19248,7 +19248,6 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .chat-info-member-invite {
   align-items: center;
-  font-size: var(--font-size-small);
   background: transparent;
   border: 0;
   border-top: 1px solid color-mix(in oklab, var(--color-palette-f2074b6cef37) 6%, transparent);
@@ -19256,7 +19255,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   cursor: pointer;
   display: flex;
   font: inherit;
-  font-size: var(--font-size-button);
+  font-size: var(--font-size-small);
   font-weight: var(--font-weight-semibold);
   gap: 12px;
   min-height: 56px;

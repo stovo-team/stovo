@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readTextFile } from "../../../testUtils/readTextFile";
 
 const styles = readTextFile("src/styles.css");
+const chatDetailsPanel = readTextFile("src/features/chats/details/ChatDetailsPanel.tsx");
 
 function mediaRuleContaining(selector: string, maxWidth: number) {
   const mediaQuery = `@media (max-width: ${maxWidth}px)`;
@@ -91,8 +92,8 @@ describe("mobile chat details sizing", () => {
   });
 
   it("uses a compact font size for the Add people action", () => {
-    expect(styles.includes(".chat-info-member-invite {\n  align-items: center;")).toBe(true);
-    expect(/\.chat-info-member-invite \{[^}]*font-size: var\(--font-size-small\);/.test(styles)).toBe(true);
+    expect(styles).toMatch(/\.chat-info-member-invite \{[^}]*font: inherit;[^}]*font-size: var\(--font-size-small\);/);
+    expect(chatDetailsPanel).toContain('<UserPlus aria-hidden="true" size={16} />');
   });
 
   it("keeps desktop chat details in a compact grid column beside the message pane", () => {
