@@ -432,6 +432,8 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Deploy Frontend via SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          SSH_CLIENT_OS: windows
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -545,6 +547,8 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Deploy Backend via SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          SSH_CLIENT_OS: windows
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
