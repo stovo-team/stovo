@@ -1372,7 +1372,7 @@ export function ChatDetailsPanel({
                 className="chat-info-member-invite"
                 onClick={onOpenAddPeople}
               >
-                <UserPlus aria-hidden="true" size={20} />
+                <UserPlus aria-hidden="true" size={16} />
                 {strings.chats.details.addPeople}
               </button>
             )}

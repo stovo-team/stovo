@@ -69,9 +69,12 @@ services:
       MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET}
       PUBLIC_HOST: ${PUBLIC_HOST}
       APP_URL: ${APP_URL:-http://localhost:8000}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      # Shared by the orchestrator and the tenant backend containers it creates.
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
+      MINIO_ENDPOINT: ${S3_ENDPOINT:-minio:9000}
+      MINIO_SECURE: ${S3_SECURE:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       DOCKER_NETWORK_NAME: stovo_default

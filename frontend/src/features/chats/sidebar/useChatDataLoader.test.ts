@@ -86,6 +86,43 @@ describe("useChatDataLoader", () => {
     }
   });
 
+  it("keeps the previous selection when returning to a loaded chat list", async () => {
+    let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
+    const setSelectedChat = vi.fn();
+
+    function TestComponent() {
+      loaderRef = useChatDataLoader({
+        accessTokenRef: { current: "test-token" }, authRequest: vi.fn() as any,
+        currentUser: { id: "user-1" } as any, chatId: undefined, onError: vi.fn(),
+        setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat,
+        setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(),
+        activeChatIdRef: { current: "chat-1" }, chatsRef: { current: [{ id: "chat-1" }] as any },
+        chatMutationVersionRef: { current: {} }, messageCacheRef: { current: {} },
+        historyCursorRef: { current: {} }, setMessages: vi.fn(), setPinnedMessages: vi.fn(),
+        setPinIndex: vi.fn(), applyMessagesForChat: vi.fn(), markChatRead: vi.fn(() => Promise.resolve())
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT;
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    try {
+      act(() => root.render(createElement(TestComponent)));
+      await act(async () => {
+        await loaderRef?.loadSelectedChat(undefined);
+      });
+
+      expect(setSelectedChat).not.toHaveBeenCalled();
+      act(() => root.unmount());
+    } finally {
+      (globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment;
+      container.remove();
+    }
+  });
+
   it("restores cached pins and leaves them in place when the pin request fails", async () => {
     const cachedPin = {
       chatId: "chat-1",

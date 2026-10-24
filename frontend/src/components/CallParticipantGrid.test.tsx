@@ -32,6 +32,35 @@ function styleRules(css: string, selector: string) {
 }
 
 describe("shared call participant presentation", () => {
+  it("slightly narrows the initial single-user group-call tile", () => {
+    const container = renderGrid({
+      localStream: null,
+      remoteMedia: [],
+      localUserLabel: "You",
+      callType: "video",
+      isGroupCall: true,
+    });
+
+    const grid = container.querySelector<HTMLElement>(".call-grid");
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(grid?.classList.contains("call-grid--single-group-participant")).toBe(true);
+    expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/width:\s*92%/);
+    expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/justify-self:\s*center/);
+  });
+
+  it("keeps regular calls and populated group calls at their current tile size", () => {
+    const regularCall = renderGrid({ localStream: null, remoteMedia: [], callType: "video" });
+    const populatedGroupCall = renderGrid({
+      localStream: null,
+      remoteMedia: [{ userId: "Alex", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      callType: "video",
+      isGroupCall: true,
+    });
+
+    expect(regularCall.querySelector(".call-grid--single-group-participant")).toBeNull();
+    expect(populatedGroupCall.querySelector(".call-grid--single-group-participant")).toBeNull();
+  });
+
   it("leaves the self video unchanged when clicked and disables native video popouts", () => {
     const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
     const focus = vi.fn();

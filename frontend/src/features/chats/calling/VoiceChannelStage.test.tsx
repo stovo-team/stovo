@@ -778,6 +778,31 @@ describe("VoiceChannelStage", () => {
     expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
+  it("closes the Intelligence popover when its button is clicked a second time", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callRoomId: "voice-room-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false,
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+    const button = container.querySelector<HTMLButtonElement>('[aria-label="Stovo Intelligence"]')!;
+    const clickLikeUser = () => {
+      button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      button.click();
+    };
+
+    act(clickLikeUser);
+    expect(document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).not.toBeNull();
+    act(clickLikeUser);
+    expect(document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
+  });
+
   it("shows the shared speaking state and ring on an active voice participant", () => {
     const mockSession = {
       callPhase: "in-call",
