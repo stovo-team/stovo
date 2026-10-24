@@ -251,6 +251,14 @@ describe("message media sizing", () => {
   });
 
   it("reduces bubble and media widths when the chat area is narrow without shrinking message text", () => {
+    const narrowContainerStart = styles.lastIndexOf("@container chat-messages (max-width: 720px)");
+    const narrowContainerRules = styles.slice(
+      narrowContainerStart,
+      styles.indexOf("\n}", narrowContainerStart) + 2
+    );
+    const albumChildStart = styles.indexOf(".message-media-album-cell .message-photo-attachment,");
+    const albumChildRule = styles.slice(albumChildStart, styles.indexOf("}", albumChildStart));
+
     expect(styles).toMatch(/\.messages-panel\s*\{[^}]*container-name: chat-messages;/);
     expect(styles).toMatch(/\.messages-panel\s*\{[^}]*container-type: inline-size;/);
     expect(lastRule(".message-bubble")).toContain("max-width: 82%;");
@@ -262,6 +270,21 @@ describe("message media sizing", () => {
     );
     expect(lastRule(".message-bubble:has(.document-preview-card)")).toContain(
       "width: min(420px, 100%);"
+    );
+    expect(narrowContainerRules).toContain(
+      ':root[data-platform="web"] .messages-panel .message-bubble.has-photo-attachments:has(.message-video-attachment)'
+    );
+    expect(narrowContainerRules).toContain(
+      ':root[data-platform="web"] .messages-panel .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))'
+    );
+    expect(narrowContainerRules).toContain(
+      ':root[data-platform="web"] .messages-panel .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait)'
+    );
+    expect(narrowContainerRules).toContain("width: min(320px, 62%);");
+    expect(rule(".message-media-album")).toContain("width: 100%;");
+    expect(albumChildRule).toContain("width: 100%;");
+    expect(styles).toMatch(
+      /@media \(min-width: 1025px\) \{[\s\S]*?\.message-bubble\.has-photo-attachments:has\(\.message-video-attachment\),[\s\S]*?width: min\(420px, 84%\);/
     );
     expect(rule(".message-bubble")).toContain(
       "font-size: calc(var(--font-size-body) * var(--message-scale));"
