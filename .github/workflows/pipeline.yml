@@ -434,6 +434,8 @@ jobs:
     needs: [changes, frontend-ci, solid-boundaries]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, tests, Windows]
+    env:
+      SSH_CLIENT_OS: windows
     environment: production
 
     steps:
@@ -547,6 +549,8 @@ jobs:
     needs: [changes, backend-ci, solid-boundaries]
     if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests, Windows]
+    env:
+      SSH_CLIENT_OS: windows
     environment: production
 
     steps:
