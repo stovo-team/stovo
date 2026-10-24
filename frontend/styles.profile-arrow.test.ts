@@ -7,7 +7,7 @@ const rule = (selector: string) => {
   return start < 0 ? "" : styles.slice(start, styles.indexOf("}", start));
 };
 
-it("aligns the profile chevron with the settings rows using the same right inset", () => {
+it("keeps the profile chevron slightly inset from the profile bar edge", () => {
   expect(rule(".settings-profile-open")).toContain("padding: 18px 22px 18px 126px;");
-  expect(rule(".settings-profile-open > svg")).toContain("margin-left: auto;");
+  expect(rule(".settings-profile-open > svg")).toContain("right: 20px;");
 });
