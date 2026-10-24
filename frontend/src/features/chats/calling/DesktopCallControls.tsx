@@ -224,6 +224,7 @@ export function DesktopCallControls() {
               callAudioSettings.cameraFacingMode === "user"
             }
             callType={callType}
+            isGroupCall={isGroupCall}
             isLocalSpeaking={isLocalSpeaking}
             isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}

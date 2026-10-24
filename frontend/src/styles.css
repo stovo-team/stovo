@@ -819,6 +819,11 @@
   align-content: stretch;
 }
 
+.call-grid--single-group-participant > .call-grid__tile--local {
+  width: 92%;
+  justify-self: center;
+}
+
 .call-grid--screen-share {
   grid-template-columns: minmax(0, 1fr) minmax(112px, min(16%, 168px));
   grid-template-rows: minmax(0, 1fr);
