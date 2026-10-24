@@ -3,11 +3,13 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { useCallFeatureContext } from "./CallFeatureContext";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 type CallPopupAudioStageProps = { activeChat: Chat | null };
 type GroupParticipant = { userId: string; state?: string };
 
 export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
+  const copy = useStrings().sharedUi;
   const { session, members, currentUser, isMobileViewport } = useCallFeatureContext();
   const {
     callPhase,
@@ -36,6 +38,8 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
     hasRemoteVideo ||
     callRemoteMedia.length > 1 ||
     hasScreenShare ||
+    callAudioSettings.screenSharing ||
+    Boolean(session.mockScreenShareUserId) ||
     Boolean(localScreenStream) ||
     (callPhase !== "in-call" && !(isGroupCall && callPhase === "connecting")) ||
     isMobileViewport
@@ -67,7 +71,7 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
       : "9";
 
     return (
-      <div className={`call-popup-group-participants voice-room-grid voice-grid--${gridTier}`} role="list" aria-label="Group call participants">
+      <div className={`call-popup-group-participants voice-room-grid voice-grid--${gridTier}`} role="list" aria-label={copy.groupCallParticipants}>
         {participantIds.map((userId) => {
           const isSelf = userId === currentUser?.id;
           const member = members.find((candidate) => candidate.id === userId) ??
@@ -95,7 +99,7 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
                   file={member?.profilePhoto ?? null}
                   label={member?.displayName ?? (isSelf ? currentUser?.displayName ?? "You" : "Member")}
                 />
-                {isMuted && <span className="voice-card-muted-badge" aria-label="Muted"><MicOff size={14} aria-hidden="true" /></span>}
+                {isMuted && <span className="voice-card-muted-badge" aria-label={copy.muted}><MicOff size={14} aria-hidden="true" /></span>}
               </div>
               <div className="voice-participant-meta">
                 <span className="voice-participant-name">{displayName}</span>

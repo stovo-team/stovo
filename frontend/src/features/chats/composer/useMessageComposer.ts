@@ -265,7 +265,7 @@ export function useMessageComposer({
 
   const { focusInput, handleAttachButtonClick, handleEditMessage, cancelEditMode } = useComposerUiActions({
     inputRef: composerInputRef,
-    setAttachmentSheetOpen: setIsAttachmentSheetOpen,
+    setAttachmentSheetOpen: setIsAttachmentSheetOpen, setAttachmentSheetInitialTab,
     closeEmojiPicker,
     setEditTargetMessage,
     setMessageContextMenu

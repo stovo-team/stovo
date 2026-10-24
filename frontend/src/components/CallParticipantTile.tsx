@@ -8,7 +8,7 @@ const videoStyle: CSSProperties = {
   height: "100%",
   objectFit: "contain",
   display: "block",
-  background: "#000",
+  background: "var(--color-palette-7b2817bf9b80)",
 };
 
 const screenVideoStyle: CSSProperties = {
@@ -22,8 +22,8 @@ const avatarStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "#ccc",
-  fontSize: "1.25rem",
+  color: "var(--color-palette-f1147865f078)",
+  fontSize: "var(--font-size-avatar-initials)",
   letterSpacing: "0.02em",
 };
 
@@ -32,10 +32,10 @@ const labelStyle: CSSProperties = {
   left: 8,
   bottom: 8,
   padding: "2px 8px",
-  borderRadius: 4,
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  fontSize: 12,
+  borderRadius: "var(--radius-small)",
+  background: "var(--color-palette-e16ece2e238b)",
+  color: "var(--color-palette-f2074b6cef37)",
+  fontSize: "var(--font-size-caption)",
   zIndex: 3,
 };
 
@@ -69,6 +69,7 @@ export function CallParticipantTile({
   isConnected = true,
   accessToken,
   profilePhoto,
+  onVideoMetadata,
 }: {
   label: string;
   stream: MediaStream | null;
@@ -88,6 +89,7 @@ export function CallParticipantTile({
   isConnected?: boolean;
   accessToken?: string | null;
   profilePhoto?: FamilyFile | null;
+  onVideoMetadata?: (width: number, height: number) => void;
 }) {
   return (
     <div
@@ -121,8 +123,12 @@ export function CallParticipantTile({
           }}
           autoPlay
           playsInline
+          disablePictureInPicture
+          disableRemotePlayback
+          controlsList="nofullscreen noremoteplayback"
           muted
           ref={(el) => bindStream(el, stream)}
+          onLoadedMetadata={(event) => onVideoMetadata?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
         />
       ) : localVideoPlaceholder ? (
         localVideoPlaceholder

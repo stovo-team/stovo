@@ -11,6 +11,25 @@ function ruleFor(selector: string) {
 }
 
 describe("meeting intelligence popover design", () => {
+  it("renders a filled record circle for both start actions", () => {
+    expect(component.match(/<Circle size=\{17\} fill="currentColor"/g)).toHaveLength(2);
+  });
+  it("uses equally sized dots and a visible circular outline for both actions", () => {
+    const actionDot = ruleFor(".meeting-intel-toggle-btn > svg.lucide-circle");
+    expect(actionDot).toMatch(/width:\s*12px/);
+    expect(actionDot).toMatch(/height:\s*12px/);
+    expect(actionDot).toMatch(/flex:\s*0 0 12px/);
+    const actionButton = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
+    expect(actionButton).toMatch(/width:\s*24px/);
+    expect(actionButton).toMatch(/height:\s*24px/);
+    expect(actionButton).toMatch(/display:\s*inline-flex/);
+    expect(actionButton).toMatch(/align-items:\s*center/);
+    expect(actionButton).toMatch(/justify-content:\s*center/);
+    const sharedActionRing = styles.match(/(?:^|\n)\.meeting-intel-toggle-btn::before\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(sharedActionRing).toMatch(/inset:\s*2px/);
+    expect(sharedActionRing).toMatch(/border:\s*1px solid color-mix/);
+    expect(sharedActionRing).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+  });
   it("removes the subtitle and card descriptions and tightens header-to-content spacing", () => {
     expect(component).not.toContain("meeting-intel-subtitle");
     expect(component).not.toContain("Meeting AI & Recording");
@@ -27,30 +46,39 @@ describe("meeting intelligence popover design", () => {
     expect(ruleFor(".meeting-intel-card + .meeting-intel-card")).not.toMatch(/border/);
   });
 
-  it("uses labeled rectangular controls and a collapsed Intelligence section in the mobile menu", () => {
+  it("uses circular icon controls and matching typography in the collapsed mobile Intelligence section", () => {
     expect(component).toContain('className="meeting-intel-inline-toggle"');
     expect(component).toContain('aria-expanded={isExpanded}');
     expect(component).toContain('{isExpanded && <div className="meeting-intel-content">');
-    expect(component).toContain('isNotesActive ? "Stop"');
-    expect(component).toContain('isRecActive ? "Stop"');
+    expect(component).toContain("isNotesActive ? <Square");
+    expect(component).toContain("isRecActive ? <Square");
+    expect(component).toContain("<Circle size={17}");
     const button = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
-    expect(button).toMatch(/border-radius:\s*9px/);
-    expect(button).toMatch(/min-width:\s*58px/);
-    expect(button).toMatch(/flex:\s*0 0 auto/);
+    expect(button).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+    expect(button).toMatch(/min-width:\s*24px/);
+    expect(button).toMatch(/flex:\s*0 0 24px/);
+    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/width:\s*24px/);
+    expect(ruleFor(".meeting-intel-toggle-btn")).toMatch(/height:\s*24px/);
+    expect(ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-inline-toggle")).toMatch(/padding:\s*0 12px/);
+    const titleRules = Array.from(styles.matchAll(/\.meeting-intel-popover--inline-menu \.meeting-intel-name\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(titleRules.at(-1)).toMatch(/font-size:\s*var\(--font-size-small\)/);
   });
 
   it("keeps Live Captions disabled and places its Premium badge beside the switch", () => {
     const captionsCard = component.slice(component.indexOf("{/* Live Captions"));
-    expect(captionsCard).toContain('aria-label="Live Captions unavailable"');
+    expect(captionsCard).toContain("aria-label={copy.liveCaptionsUnavailable}");
     expect(captionsCard).toContain("defaultChecked={false}");
     expect(captionsCard).toContain("disabled");
     expect(captionsCard).toContain('aria-disabled="true"');
     expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-title')).toMatch(/color:\s*var\(--text-muted\)/);
     expect(ruleFor('.meeting-intel-card[aria-disabled="true"] .meeting-intel-card-icon')).toMatch(/color:\s*var\(--text-muted\)/);
-    expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf('aria-label="Premium feature"'));
+    expect(captionsCard.indexOf("meeting-intel-switch-slider")).toBeLessThan(captionsCard.indexOf("aria-label={copy.premiumFeature}"));
     expect(captionsCard).not.toContain("Caption translation");
     expect(captionsCard).not.toContain("meeting-intel-card-subbar");
-    expect(ruleFor('.meeting-intel-restricted-badge[aria-label="Premium feature"]')).toMatch(/#bfdbfe/);
+    const badgeRules = Array.from(styles.matchAll(/\.meeting-intel-restricted-badge\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(badgeRules.at(-1)).toContain("color: var(--color-premium-text)");
+    expect(badgeRules.at(-1)).toContain("background: var(--color-premium-surface)");
+    expect(badgeRules.at(-1)).toContain("var(--color-premium-border)");
   });
 
   it("centers the AI Notes preparation toast in the viewport", () => {

@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { App as CapacitorApp } from "@capacitor/app";
 import { LockKeyhole } from "lucide-react";
+import { PopupButton } from "./components/ui/PopupButton";
 
 import {
   authenticateAppLock,
   isAndroidAppLockAvailablePlatform
 } from "./native/appLockPlugin";
 import { readDevicePreferences } from "./settings/devicePreferences";
+import { useStrings } from "./i18n/LanguageContext";
 
 /**
  * Full-screen gate that locks the Android app behind device PIN / biometrics
  * whenever App Lock is enabled in device preferences.
  */
 export default function AppLockGate() {
+  const strings = useStrings().security.appLock;
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export default function AppLockGate() {
     return isAndroidAppLockAvailablePlatform() && readDevicePreferences().appLockEnabled;
   }, []);
 
-  const unlock = useCallback(async (reason = "Unlock Stovo") => {
+  const unlock = useCallback(async (reason = strings.unlockReason) => {
     if (authenticatingRef.current) return;
     authenticatingRef.current = true;
     setIsAuthenticating(true);
@@ -35,20 +38,20 @@ export default function AppLockGate() {
         setIsLocked(true);
       }
     } catch {
-      setError("Could not unlock. Try again.");
+      setError(strings.unlockFailed);
       setIsLocked(true);
     } finally {
       authenticatingRef.current = false;
       setIsAuthenticating(false);
     }
-  }, []);
+  }, [strings]);
 
   useEffect(() => {
     if (!isAndroidAppLockAvailablePlatform()) return;
 
     if (shouldLock()) {
       setIsLocked(true);
-      void unlock("Unlock Stovo");
+      void unlock(strings.unlockReason);
     }
 
     let disposed = false;
@@ -65,7 +68,7 @@ export default function AppLockGate() {
           setIsLocked(true);
           return;
         }
-        void unlock("Unlock Stovo");
+        void unlock(strings.unlockReason);
       });
       if (disposed) {
         void listener.remove();
@@ -76,29 +79,29 @@ export default function AppLockGate() {
       disposed = true;
       void listener?.remove();
     };
-  }, [shouldLock, unlock]);
+  }, [shouldLock, strings.unlockReason, unlock]);
 
   if (!isLocked || !isAndroidAppLockAvailablePlatform()) {
     return null;
   }
 
   return (
-    <div className="app-lock-gate" role="dialog" aria-modal="true" aria-label="App locked">
+    <div className="app-lock-gate" role="dialog" aria-modal="true" aria-label={strings.locked}>
       <div className="app-lock-gate-card">
         <span className="app-lock-gate-icon" aria-hidden="true">
           <LockKeyhole size={28} />
         </span>
-        <h1>Stovo is locked</h1>
-        <p>Use your device PIN, pattern, password, or biometrics to continue.</p>
+        <h1>{strings.title}</h1>
+        <p>{strings.unlockHelp}</p>
         {error && <p className="error-text">{error}</p>}
-        <button
+        <PopupButton
           type="button"
-          className="primary-button"
+          variant="primary"
           disabled={isAuthenticating}
-          onClick={() => void unlock("Unlock Stovo")}
+          onClick={() => void unlock(strings.unlockReason)}
         >
-          {isAuthenticating ? "Waiting…" : "Unlock"}
-        </button>
+          {isAuthenticating ? strings.waiting : strings.unlock}
+        </PopupButton>
       </div>
     </div>
   );

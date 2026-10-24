@@ -143,7 +143,7 @@ describe("QuickSwitcherModal", () => {
     });
 
     expect(document.querySelector(".quick-switcher-modal")).not.toBeNull();
-    const input = document.querySelector<HTMLInputElement>(".quick-switcher-input");
+    const input = document.querySelector<HTMLInputElement>(".popup-field__input");
     expect(input).not.toBeNull();
 
     // Allow promise resolution
@@ -176,7 +176,7 @@ describe("QuickSwitcherModal", () => {
       await Promise.resolve();
     });
 
-    const input = document.querySelector<HTMLInputElement>(".quick-switcher-input");
+    const input = document.querySelector<HTMLInputElement>(".popup-field__input");
     expect(input).not.toBeNull();
 
     await act(async () => {
@@ -203,7 +203,7 @@ describe("QuickSwitcherModal", () => {
       await Promise.resolve();
     });
 
-    const input = document.querySelector<HTMLInputElement>(".quick-switcher-input");
+    const input = document.querySelector<HTMLInputElement>(".popup-field__input");
     expect(input).not.toBeNull();
 
     // # Channels
@@ -259,7 +259,7 @@ describe("QuickSwitcherModal", () => {
     const searchBar = document.querySelector(".quick-switcher-search-bar");
     expect(searchBar).not.toBeNull();
 
-    const closeBtn = document.querySelector<HTMLButtonElement>(".quick-switcher-close-button");
+    const closeBtn = document.querySelector<HTMLButtonElement>(".popup-close");
     expect(closeBtn).not.toBeNull();
     expect(closeBtn?.querySelector("svg")).not.toBeNull();
 

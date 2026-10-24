@@ -132,8 +132,8 @@ services:
       APP_ENV: staging
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.32.0.2/32}
       APP_URL: ${APP_URL:-http://localhost:8081}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-capacitor://localhost}
-      NATIVE_CLIENT_ORIGINS: ${NATIVE_CLIENT_ORIGINS:-capacitor://localhost}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://localhost,capacitor://localhost}
+      NATIVE_CLIENT_ORIGINS: ${NATIVE_CLIENT_ORIGINS:-https://localhost,capacitor://localhost}
       API_URL: ${API_URL:-http://localhost:8081}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8081}
       POSTGRES_HOST: postgres

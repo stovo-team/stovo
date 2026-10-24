@@ -11,6 +11,7 @@ export type MockCallSnapshot = {
   callType: "audio" | "video";
   callerId: string;
   participants: MockCallParticipant[];
+  screenShareUserId: string | null;
   status: "ringing" | "active" | "ended";
   version: number;
   createdAt: string;
@@ -66,7 +67,13 @@ function parseMockCallSnapshot(raw: string | null): MockCallSnapshot | null {
       (value.status !== "ringing" && value.status !== "active" && value.status !== "ended")
     ) return null;
     if (Date.now() - Date.parse(value.updatedAt) > MAX_MOCK_CALL_AGE_MS) return null;
-    return value;
+    const screenShareUserId = typeof value.screenShareUserId === "string" && value.screenShareUserId.trim()
+      ? value.screenShareUserId
+      : null;
+    const hasConnectedOwner = value.status !== "ended" && screenShareUserId !== null && value.participants.some((participant) =>
+      participant?.userId === screenShareUserId && participant.state === "connected",
+    );
+    return { ...value, screenShareUserId: hasConnectedOwner ? screenShareUserId : null };
   } catch {
     return null;
   }
@@ -84,6 +91,8 @@ function withUpdatedParticipant(
   return {
     ...call,
     participants,
+    screenShareUserId: state === "connected" ? call.screenShareUserId :
+      call.screenShareUserId === userId ? null : call.screenShareUserId,
     version: call.version + 1,
     updatedAt: new Date().toISOString(),
   };
@@ -101,6 +110,7 @@ export function createMockCall(input: CreateMockCallInput): MockCallSnapshot {
       { userId: input.callerId, state: "connected" },
       ...inviteeIds.map((userId) => ({ userId, state: "ringing" as const })),
     ],
+    screenShareUserId: null,
     status: inviteeIds.length ? "ringing" : "active",
     version: 1,
     createdAt,
@@ -120,7 +130,9 @@ export function declineMockCall(call: MockCallSnapshot, userId: string): MockCal
   if (!next) return null;
   const hasRingingInvitee = next.participants.some((item) => item.state === "ringing");
   const hasConnectedInvitee = next.participants.some((item) => item.userId !== next.callerId && item.state === "connected");
-  return !hasRingingInvitee && !hasConnectedInvitee ? { ...next, status: "ended" } : next;
+  return !hasRingingInvitee && !hasConnectedInvitee
+    ? { ...next, screenShareUserId: null, status: "ended" }
+    : next;
 }
 
 export function inviteMockCallUsers(call: MockCallSnapshot, userIds: string[]): MockCallSnapshot | null {
@@ -134,7 +146,7 @@ export function inviteMockCallUsers(call: MockCallSnapshot, userIds: string[]): 
   return {
     ...call,
     participants: [...call.participants, ...newParticipants],
-    status: "ringing",
+    status: call.status,
     version: call.version + 1,
     updatedAt,
   };
@@ -146,9 +158,56 @@ export function leaveMockCall(call: MockCallSnapshot, userId: string): MockCallS
   const connectedCount = next.participants.filter((participant) => participant.state === "connected").length;
   const hasRingingInvitee = next.participants.some((participant) => participant.state === "ringing");
   if (connectedCount === 0 || (connectedCount <= 1 && !hasRingingInvitee)) {
-    return { ...next, status: "ended" };
+    return { ...next, screenShareUserId: null, status: "ended" };
   }
-  return { ...next, status: connectedCount <= 1 ? "ringing" : "active" };
+  return {
+    ...next,
+    status: call.status === "active" || connectedCount > 1 ? "active" : "ringing",
+  };
+}
+
+export function getMockCallScreenShareOwnerForParticipant(
+  call: MockCallSnapshot,
+  viewerUserId: string,
+): string | null {
+  if (call.status !== "active") return null;
+  const viewer = call.participants.find((participant) => participant.userId === viewerUserId);
+  if (viewer?.state !== "connected" || !call.screenShareUserId) return null;
+  return call.participants.some((participant) =>
+    participant.userId === call.screenShareUserId && participant.state === "connected",
+  ) ? call.screenShareUserId : null;
+}
+
+export function startMockCallScreenShare(
+  call: MockCallSnapshot,
+  userId: string,
+  now = new Date(),
+): MockCallSnapshot | null {
+  const participant = call.participants.find((item) => item.userId === userId);
+  if (call.status !== "active" || participant?.state !== "connected") return null;
+  if (call.screenShareUserId && call.screenShareUserId !== userId) return null;
+  if (call.screenShareUserId === userId) return call;
+  return {
+    ...call,
+    screenShareUserId: userId,
+    version: call.version + 1,
+    updatedAt: now.toISOString(),
+  };
+}
+
+export function stopMockCallScreenShare(
+  call: MockCallSnapshot,
+  userId: string,
+  now = new Date(),
+): MockCallSnapshot | null {
+  const participant = call.participants.find((item) => item.userId === userId);
+  if (call.status !== "active" || call.screenShareUserId !== userId || participant?.state !== "connected") return null;
+  return {
+    ...call,
+    screenShareUserId: null,
+    version: call.version + 1,
+    updatedAt: now.toISOString(),
+  };
 }
 
 export function endMockCall(call: MockCallSnapshot): MockCallSnapshot {
@@ -157,6 +216,7 @@ export function endMockCall(call: MockCallSnapshot): MockCallSnapshot {
     participants: call.participants.map((participant) =>
       participant.state === "declined" ? participant : { ...participant, state: "left" },
     ),
+    screenShareUserId: null,
     status: "ended",
     version: call.version + 1,
     updatedAt: new Date().toISOString(),

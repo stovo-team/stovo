@@ -1,5 +1,6 @@
 import React from "react";
 import type { User } from "../../../api/auth";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type GroupCallActiveBannerProps = {
   chatTitle?: string | null;
@@ -18,21 +19,22 @@ export function GroupCallActiveBanner({
   members,
   onOpenPreJoin,
 }: GroupCallActiveBannerProps) {
+  const copy = useStrings().sharedUi;
   const participants = (activeCall.participants as Array<Record<string, any>>) || [];
   const activeCount = participants.filter(
     (p) => p.state === "connecting" || p.state === "in-call" || p.state === "joined"
   ).length;
 
-  const countDisplay = activeCount > 0 ? `${activeCount} in call` : "Call in progress";
-  const callType = activeCall.callType === "video" ? "Video Call" : "Audio Call";
+  const countDisplay = activeCount > 0 ? `${activeCount} · ${copy.callInProgress}` : copy.callInProgress;
+  const callType = activeCall.callType === "video" ? copy.videoCall : copy.audioCall;
 
   return (
-    <div className="group-call-active-banner" role="region" aria-label="Group call in progress">
+    <div className="group-call-active-banner" role="region" aria-label={copy.groupCallInProgress}>
       <div className="group-call-banner-info">
         <span className="group-call-banner-pulse" aria-hidden="true" />
         <div className="group-call-banner-text">
           <span className="group-call-banner-title">
-            Live {callType} · {countDisplay}
+            {copy.live} {callType} · {countDisplay}
           </span>
           {chatTitle && <span className="group-call-banner-subtitle">{chatTitle}</span>}
         </div>
@@ -42,7 +44,7 @@ export function GroupCallActiveBanner({
         type="button"
         className="group-call-banner-join-btn"
         onClick={onOpenPreJoin}
-        aria-label="Join group call"
+        aria-label={copy.joinGroupCall}
       >
         <svg
           className="group-call-join-svg"
@@ -59,7 +61,7 @@ export function GroupCallActiveBanner({
           <polyline points="15 3 21 3 21 9" />
           <line x1="10" y1="14" x2="21" y2="3" />
         </svg>
-        <span>Join</span>
+        <span>{copy.join}</span>
       </button>
     </div>
   );

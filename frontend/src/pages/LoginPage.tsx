@@ -21,16 +21,18 @@ import { useAuth } from "../auth/AuthContext";
 import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
 import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, scanAndroidLoginQR } from "../native/androidQrScanner";
 import StovoLogo from "../components/StovoLogo";
+import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 
 export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
   if (setupRequired === false) {
     return null;
   }
   const prefix = getClusterPrefix();
+  const strings = useStrings();
 
   return (
     <p className="secondary-link">
-      New space? <Link to={`${prefix}/setup`}>Create owner account</Link>
+      {strings.auth.newServer} <Link to={`${prefix}/setup`}>{strings.auth.createOwnerAccount}</Link>
     </p>
   );
 }
@@ -69,6 +71,8 @@ function safeFallbackPath(fallback: string): string {
 }
 
 export default function LoginPage() {
+  const strings = useStrings();
+  const language = useResolvedLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, login, acceptAuthResponse } = useAuth();
@@ -157,7 +161,7 @@ export default function LoginPage() {
       await login({ username: loginValue, password });
       navigate(postLoginPath, { replace: true });
     } catch (err) {
-      const detail = err instanceof ApiError ? String(err.message) : "Invalid credentials";
+      const detail = err instanceof ApiError ? String(err.message) : strings.auth.invalidCredentials;
       setError(detail);
     } finally {
       setIsSubmitting(false);
@@ -172,7 +176,7 @@ export default function LoginPage() {
       await requestDeviceLoginCode(loginValue);
       setCodeRequested(true);
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not send verification code");
+      setError(err instanceof ApiError ? String(err.message) : strings.auth.sendCodeFailed);
     } finally { setIsSubmitting(false); }
   }
 
@@ -184,14 +188,14 @@ export default function LoginPage() {
       acceptAuthResponse(await verifyDeviceLoginCode(loginValue, deviceCode));
       navigate(postLoginPath, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Invalid verification code");
+      setError(err instanceof ApiError ? String(err.message) : strings.auth.invalidVerificationCode);
     } finally { setIsSubmitting(false); }
   }
 
   async function handlePasskeyLogin() {
     setError(null);
     if (!isSecureContext || typeof window.PublicKeyCredential === "undefined") {
-      setError("Passkeys require a secure connection and a supported browser");
+      setError(strings.auth.secureBrowserRequired);
       return;
     }
     setIsSubmitting(true);
@@ -202,7 +206,7 @@ export default function LoginPage() {
       navigate(postLoginPath, { replace: true });
     } catch (err) {
       if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setError(err instanceof ApiError ? String(err.message) : "Passkey sign-in failed. Try again or use your password.");
+        setError(err instanceof ApiError ? String(err.message) : strings.auth.signInFailed);
       }
     } finally {
       setIsSubmitting(false);
@@ -219,7 +223,7 @@ export default function LoginPage() {
     } catch (err) {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
         ? ANDROID_QR_SCANNER_INSTALLING_MESSAGE
-        : "Could not scan a desktop sign-in QR code. Try again or use your password.");
+        : strings.auth.scanQrFailed);
     } finally { setIsSubmitting(false); }
   }
 
@@ -250,7 +254,7 @@ export default function LoginPage() {
       const image = await QRCode.toDataURL(request.scanUrl, { width: 240, margin: 1 });
       setQrLogin({ requestId: request.requestId, image, expiresAt: request.expiresAt, status: "pending" });
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not start QR sign-in");
+      setError(err instanceof ApiError ? String(err.message) : strings.auth.qrStartFailed);
       setAuthView("password");
     } finally {
       setIsSubmitting(false);
@@ -270,7 +274,7 @@ export default function LoginPage() {
         {(isDeviceLogin || authView === "password") && (
           <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
             <label>
-              Nickname
+              {strings.auth.nickname}
               <input
                 required
                 autoComplete="username"
@@ -279,84 +283,84 @@ export default function LoginPage() {
               />
             </label>
             {!isDeviceLogin && <label>
-              Password
+              {strings.auth.password}
               <span className="password-input-wrap">
                 <input required type={isPasswordVisible ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-                <button type="button" className="password-visibility-button" aria-label={isPasswordVisible ? "Hide password" : "Show password"} onClick={() => setIsPasswordVisible((value) => !value)}>
+                <button type="button" className="password-visibility-button" aria-label={isPasswordVisible ? strings.auth.hidePassword : strings.auth.showPassword} onClick={() => setIsPasswordVisible((value) => !value)}>
                   {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </span>
             </label>}
-            {isDeviceLogin && codeRequested && <label>Verification code<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deviceCode} onChange={(event) => setDeviceCode(event.target.value.replace(/\D/g, ""))} /></label>}
+            {isDeviceLogin && codeRequested && <label>{strings.auth.verificationCode}<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deviceCode} onChange={(event) => setDeviceCode(event.target.value.replace(/\D/g, ""))} /></label>}
             {isDeviceLogin ? (
-              codeRequested ? <button type="submit" disabled={isSubmitting || deviceCode.length !== 6}>{isSubmitting ? "Verifying…" : "Verify and log in"}</button> : <button type="button" disabled={isSubmitting || !loginValue.trim()} onClick={() => void handleRequestDeviceCode()}>{isSubmitting ? "Sending…" : "Send code to Message Archive"}</button>
-            ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in…" : "Sign In"}</button>}
+              codeRequested ? <button type="submit" disabled={isSubmitting || deviceCode.length !== 6}>{isSubmitting ? strings.auth.verifying : strings.auth.verifyAndLogIn}</button> : <button type="button" disabled={isSubmitting || !loginValue.trim()} onClick={() => void handleRequestDeviceCode()}>{isSubmitting ? strings.auth.sending : strings.auth.sendCodeToArchive}</button>
+            ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? strings.auth.signingIn : strings.auth.signIn}</button>}
           </form>
         )}
         {error && <p className="error-text auth-error" role="alert">{error}</p>}
-        {isDeviceLogin && <p className="muted-copy">Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.</p>}
+        {isDeviceLogin && <p className="muted-copy">{strings.auth.deviceCodeHint}</p>}
         {!isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
           {authView === "qr" ? <>
             <div className="qr-login-panel" aria-live="polite">
-              {!qrLogin ? <p>Preparing your QR code…</p> : qrLogin.status === "pending" ? <>
-                <img src={qrLogin.image} alt="QR code to approve this browser sign-in with Stovo" />
-                <p>Scan this code with Stovo</p>
-                <p className="muted-copy">Waiting for approval · Expires {new Date(qrLogin.expiresAt).toLocaleTimeString()}</p>
-              </> : <p>{qrLogin.status === "approved" ? "Signed in" : qrLogin.status === "rejected" ? "Sign-in request rejected" : "QR code expired"}</p>}
+              {!qrLogin ? <p>{strings.auth.qrPreparing}</p> : qrLogin.status === "pending" ? <>
+                <img src={qrLogin.image} alt={strings.auth.qrApproveAlt} />
+                <p>{strings.auth.qrScanWithStovo}</p>
+                <p className="muted-copy">{strings.auth.qrWaiting} {new Date(qrLogin.expiresAt).toLocaleTimeString(language)}</p>
+              </> : <p>{qrLogin.status === "approved" ? strings.auth.signedIn : qrLogin.status === "rejected" ? strings.auth.requestRejected : strings.auth.qrExpired}</p>}
             </div>
             <div className="auth-divider" role="separator" aria-label="or">
               <svg aria-hidden="true" viewBox="0 0 100 2" preserveAspectRatio="none" focusable="false">
                 <path d="M0 1h43M57 1h43" />
               </svg>
-              <span>or</span>
+              <span>{strings.auth.or}</span>
             </div>
             <div className="auth-method-grid">
               <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-                <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+                <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
               </button>
               <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => { setAuthView("password"); setQrLogin(null); }}>
-                <span>Sign in with Password</span>
+                <span>{strings.auth.signInWithPassword}</span>
               </button>
             </div>
-            {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
+            {!isSecureContext && <p className="muted-copy">{strings.auth.secureContextRequired}</p>}
           </> : <>
             <div className="auth-divider" role="separator" aria-label="or">
               <svg aria-hidden="true" viewBox="0 0 100 2" preserveAspectRatio="none" focusable="false">
                 <path d="M0 1h43M57 1h43" />
               </svg>
-              <span>or</span>
+              <span>{strings.auth.or}</span>
             </div>
             <div className="auth-method-grid">
               <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-                <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+                <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
               </button>
               <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
-                <QrCode aria-hidden="true" size={18} /> <span>Sign in with QR code</span>
+                <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.signInWithQr}</span>
               </button>
             </div>
-            {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
+            {!isSecureContext && <p className="muted-copy">{strings.auth.secureContextRequired}</p>}
           </>}
         </div>}
         {!isDeviceLogin && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
           <div className="auth-method-options">
             <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-              <KeyRound aria-hidden="true" size={18} /> <span>Sign in with Passkey</span>
+              <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
             </button>
-            {!isSecureContext ? <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">Passkeys require a supported Android WebView. Update Android System WebView or use your password or QR.</p>}
-            {androidQR ? <div className="qr-login-panel" role="region" aria-label="Confirm scanned server">
-              <p>Sign in to <strong>{new URL(androidQR.apiUrl).host}</strong>?</p>
-              <p className="muted-copy">Confirm that this is your space address: {androidQR.apiUrl}</p>
-              <button type="button" disabled={isSubmitting} onClick={() => void handleConfirmAndroidQR()}>Confirm sign-in</button>
-              <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => setAndroidQR(null)}>Cancel</button>
+            {!isSecureContext ? <p className="muted-copy">{strings.auth.secureContextRequired}</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">{strings.auth.supportedAndroidWebView}</p>}
+            {androidQR ? <div className="qr-login-panel" role="region" aria-label={strings.auth.confirmScannedServer}>
+              <p>{strings.auth.signInTo} <strong>{new URL(androidQR.apiUrl).host}</strong>?</p>
+              <p className="muted-copy">{strings.auth.confirmSpaceAddress} {androidQR.apiUrl}</p>
+              <button type="button" disabled={isSubmitting} onClick={() => void handleConfirmAndroidQR()}>{strings.auth.confirmSignIn}</button>
+              <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => setAndroidQR(null)}>{strings.auth.cancel}</button>
             </div> : <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
-              <QrCode aria-hidden="true" size={18} /> <span>Scan desktop QR</span>
+              <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.scanDesktopQr}</span>
             </button>}
           </div>
         )}
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">
-            <Link to="/server-setup">Change space address</Link>
+            <Link to="/server-setup">{strings.auth.changeServerAddress}</Link>
           </p>
         )}
       </section>

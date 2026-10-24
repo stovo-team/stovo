@@ -1,5 +1,6 @@
 import { User, UserRole } from "./auth";
 import { apiRequest } from "./client";
+import { normalizePasskeyOptions } from "./passkeyOptions";
 
 export function inviteUrlForServer(inviteUrl: string, serverUrl: string): string {
   try {
@@ -21,6 +22,7 @@ export interface Family {
   name: string;
   storageLimitMb?: number | null;
   minimizedChatLayout: boolean;
+  defaultMessageEncryptionProtocol: "end_to_end" | "server_at_rest" | "legacy_plaintext";
   defaultProfileVisibility: "everyone" | "nobody";
   defaultLastSeenVisibility: "everyone" | "nobody";
   defaultReadReceiptsEnabled: boolean;
@@ -99,7 +101,7 @@ export function beginInvitePasskeyRegistration(token: string, nickname: string) 
   return apiRequest<InvitePasskeyOptions>(`/api/invites/${encodeURIComponent(token)}/passkey/options`, {
     method: "POST",
     body: { nickname },
-  });
+  }).then(normalizePasskeyOptions);
 }
 
 export function acceptInviteWithPasskey(token: string, payload: { nickname: string; ceremonyId: string; response: object }) {

@@ -3,6 +3,7 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VoiceChannelStage } from "./VoiceChannelStage";
+import { CALL_CONTROLS_REVEAL_EVENT } from "./SharedCallControlPanel";
 import type { Chat } from "../../../api/chats";
 import type { User } from "../../../api/auth";
 import type { CallSessionApi } from "./useCallSession";
@@ -102,6 +103,25 @@ const mockCurrentUser: User = {
 };
 
 describe("VoiceChannelStage", () => {
+  it("reveals hidden call controls when the pointer moves over the voice stage", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false, activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+    } as unknown as CallSessionApi;
+    const onReveal = vi.fn();
+    window.addEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    act(() => container.querySelector<HTMLElement>(".voice-room-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
+    expect(onReveal).toHaveBeenCalledOnce();
+    window.removeEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
+  });
+
   it("exposes a voice call expand control with the current expanded state", () => {
     const onToggleExpanded = vi.fn();
     const mockSession = {
@@ -138,6 +158,57 @@ describe("VoiceChannelStage", () => {
     const shareButton = dock?.querySelector('[aria-label="Share Screen"]');
     expect(dock).not.toBeNull();
     expect(shareButton).not.toBeNull();
+  });
+
+  it("renders a remote mock presenter in the voice-channel presentation stage", () => {
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callRoomId: "mock-call-voice",
+      callType: "audio",
+      callParticipantIds: ["user-1", "user-2"],
+      mockScreenShareUserId: "user-2",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callRemoteMedia: [{
+        userId: "user-2",
+        stream: { getVideoTracks: () => [] } as unknown as MediaStream,
+        screenStream: null,
+        hasVideo: false,
+        hasAudio: true,
+        hasScreenShare: true,
+        isMuted: true,
+      }],
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false,
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    expect(container.querySelector('[role="img"][aria-label="Bob\'s shared screen"]')).not.toBeNull();
+    expect(container.querySelector(".call-grid__tile--screen")?.getAttribute("style")).toContain("aspect-ratio: 16 / 9");
+  });
+
+  it("does not show a mock presenter while this voice channel is inactive", () => {
+    const session = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callRoomId: "mock-call-voice",
+      callType: "audio",
+      callParticipantIds: [],
+      mockScreenShareUserId: "user-2",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callRemoteMedia: [],
+      activeGroupCalls: {},
+      applyCallAudioPatch: vi.fn(), toggleScreenShare: vi.fn(), endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(), isPeerSpeaking: false,
+    } as unknown as CallSessionApi;
+    const container = renderComponent(
+      <VoiceChannelStage chat={mockVoiceChat} session={session} members={mockVoiceChat.members as unknown as User[]} currentUser={mockCurrentUser} accessToken="test-token" />
+    );
+
+    expect(container.querySelector('[role="img"][aria-label="Bob\'s shared screen"]')).toBeNull();
   });
 
   it("renders when disconnected with active participants and allows user to join with exactly one button", () => {

@@ -71,8 +71,8 @@ describe("supervisor space management", () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     expect(container.textContent).toContain("Ваши Space");
     expect(container.querySelector('[aria-label="Настройки: Alpha"]')?.textContent).toBe("");
-    expect(container.querySelector('[aria-label="Пригласить: Alpha"]')?.textContent).toBe("");
-    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Дополнительные действия: Alpha"]')?.click(); });
+    expect(container.querySelector('[aria-label="Пригласить в Alpha"]')?.textContent).toBe("");
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Другие действия: Alpha"]')?.click(); });
     expect(container.querySelector('[role="menu"]')?.textContent).toContain("Ghost Token");
     expect(container.querySelector('[role="menu"]')?.textContent).toContain("Удалить");
   });
@@ -94,10 +94,10 @@ describe("supervisor space management", () => {
     expect(mocks.updateTenantAiSettings).toHaveBeenCalledWith("test-token", "alpha", expect.objectContaining({ translationEnabled: false }));
   });
 
-  it("closes the settings modal from the large close control", async () => {
+  it("closes the settings modal from the shared close control", async () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Настройки: Alpha"]')?.click(); });
-    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Close settings"]')?.click(); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Close dialog"]')?.click(); });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });

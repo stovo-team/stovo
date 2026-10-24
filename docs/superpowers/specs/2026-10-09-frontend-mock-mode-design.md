@@ -1,3 +1,8 @@
+---
+title: "Local Frontend Mock Mode Design"
+type: specification
+---
+
 # Local Frontend Mock Mode Design
 
 **Status:** Approved

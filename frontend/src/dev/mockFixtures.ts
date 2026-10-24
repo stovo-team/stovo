@@ -42,6 +42,7 @@ const family: Family = {
   name: "Stovo Demo",
   storageLimitMb: 10240,
   minimizedChatLayout: false,
+  defaultMessageEncryptionProtocol: "server_at_rest",
   defaultProfileVisibility: "everyone",
   defaultLastSeenVisibility: "everyone",
   defaultReadReceiptsEnabled: true,
@@ -219,7 +220,7 @@ const messages: Record<string, Message[]> = {
         { userId: demoAlex.id, status: "sent", createdAt: "2026-10-08T08:10:00.000Z" },
         { userId: demoOwner.id, status: "read", createdAt: "2026-10-08T08:15:00.000Z" },
       ],
-      reactions: [{ emoji: "👍", count: 2, userIds: [demoOwner.id, demoMaya.id], reacted: true }],
+      reactions: [{ emoji: "👍", count: 4, userIds: [demoOwner.id, demoMaya.id, demoAlex.id, demoSam.id], reacted: true }],
     }),
     message({
       id: "msg-planning-owner-reply",

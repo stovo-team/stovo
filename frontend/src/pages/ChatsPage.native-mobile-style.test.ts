@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("native mobile chat styling", () => {
+  it("removes vertical padding from the pinned message banner", () => {
+    expect(stylesSource).toMatch(/\.pinned-banner \{[^{}]*padding:\s*0(?:\s+14px)?;/);
+  });
+
   it("shares the mobile-web floating chat chrome on Android", () => {
     expect(stylesSource).toMatch(
       /:root\[data-platform="native"\] \.messenger-shell\.chat-list-view \.chat-sidebar-header[\s\S]*?position:\s*absolute;/
@@ -25,7 +29,7 @@ describe("native mobile chat styling", () => {
 
   it("hides chat rows behind the mobile filter chrome with an opaque black fade", () => {
     expect(stylesSource).toMatch(
-      /\.messenger-shell\.chat-list-view \.chat-sidebar-header::after \{[\s\S]*?background:\s*linear-gradient\(to bottom, #000 0%, #000 90%, transparent 100%\);/
+      /\.messenger-shell\.chat-list-view \.chat-sidebar-header::after \{[\s\S]*?background:\s*linear-gradient\(to bottom, var\(--color-palette-7b2817bf9b80\) 0%, var\(--color-palette-7b2817bf9b80\) 90%, transparent 100%\);/
     );
     expect(stylesSource).toMatch(
       /\.messenger-shell\.chat-list-view \.chat-sidebar-header \{[\s\S]*?isolation:\s*isolate;/

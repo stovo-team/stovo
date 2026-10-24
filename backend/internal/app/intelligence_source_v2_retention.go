@@ -2,9 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -23,35 +20,29 @@ type intelligenceSourceV2RetentionResult struct {
 	BackupsPruned    int64
 }
 
-// IntelligenceSourceV2RestoreTombstone contains metadata-only invalidation
-// data a restore coordinator must replay before source routes reopen.
+// IntelligenceSourceV2RestoreTombstone describes a metadata-only invalidation
+// entry; it does not contain source content.
 type IntelligenceSourceV2RestoreTombstone struct {
-	EventID      string
-	ConnectionID string
-	ResourceID   string
-	RevisionID   string
-	ChatID       string
-	Sequence     int64
-	Reason       string
-	CreatedAt    time.Time
+	EventID      string    `json:"event_id"`
+	ConnectionID string    `json:"connection_id"`
+	ResourceID   string    `json:"resource_id"`
+	RevisionID   string    `json:"revision_id"`
+	ChatID       string    `json:"chat_id"`
+	Sequence     int64     `json:"sequence"`
+	Reason       string    `json:"reason"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 func (s *Server) requireIntelligenceSourceV2RestoreReady(ctx context.Context) error {
-	if s.sqlDB == nil {
+	if s.intelligenceSourceV2Persistence() == nil {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	expectedEpoch := strings.TrimSpace(s.cfg.IntelligenceSourceV2RestoreEpoch)
 	if expectedEpoch == "" {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
-	var blocked bool
-	var restoreEpoch string
-	err := s.sqlDB.QueryRowContext(ctx, `
-		SELECT blocked,restore_epoch FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global'`).Scan(&blocked, &restoreEpoch)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if errors.Is(err, sql.ErrNoRows) {
+	blocked, restoreEpoch, err := s.intelligenceSourceV2Persistence().RestoreStatus(ctx)
+	if err != nil {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	if blocked {
@@ -68,166 +59,41 @@ func (s *Server) requireIntelligenceSourceV2RestoreReady(ctx context.Context) er
 // path and stays closed until the restore coordinator verifies replay.
 func (s *Server) initializeIntelligenceSourceV2RestoreEpoch(ctx context.Context) error {
 	expectedEpoch := strings.TrimSpace(s.cfg.IntelligenceSourceV2RestoreEpoch)
-	if s.sqlDB == nil || expectedEpoch == "" {
+	if s.intelligenceSourceV2Persistence() == nil || expectedEpoch == "" {
 		return nil
 	}
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var currentEpoch string
-	if err := tx.QueryRowContext(ctx, `SELECT restore_epoch FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global' FOR UPDATE`).Scan(&currentEpoch); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if currentEpoch != "uninitialized" {
-		return nil
-	}
-	var hasSourceHistory bool
-	if err := tx.QueryRowContext(ctx, `
-		SELECT EXISTS(SELECT 1 FROM public.intelligence_source_v2_connections)
-		    OR EXISTS(SELECT 1 FROM public.intelligence_source_v2_events)
-		    OR EXISTS(SELECT 1 FROM public.intelligence_source_v2_tombstone_ledger)`).Scan(&hasSourceHistory); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if hasSourceHistory {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch=$1,updated_at=$2 WHERE gate_id='global' AND restore_epoch='uninitialized'`, expectedEpoch, s.intelligenceOIDCNow()); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if err := tx.Commit(); err != nil {
+	if err := s.intelligenceSourceV2Persistence().InitializeRestoreEpoch(ctx, expectedEpoch, s.intelligenceOIDCNow()); err != nil {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return nil
 }
 
-func emitIntelligenceSourceV2ScopeTombstone(ctx context.Context, tx *sql.Tx, connectionID, chatID, reason string, purgePayloads bool) error {
-	var eventID string
-	err := tx.QueryRowContext(ctx, `
-		SELECT public.intelligence_source_v2_emit_acl_tombstone($1,$2,$3,$4,$5)`,
-		connectionID, chatID, "chat:"+chatID, reason, purgePayloads).Scan(&eventID)
-	if err != nil || eventID == "" {
-		return httptransport.ErrIntelligenceSourceV2ConsentUnavailable
-	}
-	return nil
+func (s *Server) intelligenceSourceV2Operations() *IntelligenceSourceV2Operations {
+	return newIntelligenceSourceV2Operations(s.intelligenceSourceV2Persistence(), s.intelligenceOIDCNow)
 }
 
 // RegisterIntelligenceSourceV2BackupHorizon records one backup's actual
 // creation and last-restorable timestamps from the backup controller.
 func (s *Server) RegisterIntelligenceSourceV2BackupHorizon(ctx context.Context, backupID string, backupCreatedAt, restorableUntil time.Time) error {
-	if s.sqlDB == nil || backupID == "" || len(backupID) > 256 || backupCreatedAt.IsZero() || restorableUntil.Before(backupCreatedAt) || restorableUntil.After(backupCreatedAt.Add(intelligenceSourceV2ContentRetention)) {
-		return httptransport.ErrIntelligenceSourceInvalidRequest
-	}
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	var inventoryID string
-	if err := tx.QueryRowContext(ctx, `SELECT inventory_id FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global' FOR UPDATE`).Scan(&inventoryID); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	result, err := tx.ExecContext(ctx, `
-		INSERT INTO public.intelligence_source_v2_backup_horizons(backup_id,backup_created_at,restorable_until)
-		VALUES($1,$2,$3) ON CONFLICT (backup_id) DO NOTHING`, backupID, backupCreatedAt.UTC(), restorableUntil.UTC())
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if affected, err := result.RowsAffected(); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	} else if affected == 0 {
-		var currentCreated, currentRestorable time.Time
-		if err := tx.QueryRowContext(ctx, `SELECT backup_created_at,restorable_until FROM public.intelligence_source_v2_backup_horizons WHERE backup_id=$1`, backupID).Scan(&currentCreated, &currentRestorable); err != nil {
-			return httptransport.ErrIntelligenceSourceUnavailable
-		}
-		if !currentCreated.Equal(backupCreatedAt.UTC()) || !currentRestorable.Equal(restorableUntil.UTC()) {
-			return httptransport.ErrIntelligenceSourceInvalidRequest
-		}
-	} else {
-		// A newly declared backup changes the restorable inventory. Invalidate
-		// the previous completeness checkpoint before the backup is created.
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE public.intelligence_source_v2_backup_inventory_state
-			SET complete=false,verified_at=NULL WHERE inventory_id='global'`); err != nil {
-			return httptransport.ErrIntelligenceSourceUnavailable
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	return nil
+	return s.intelligenceSourceV2Operations().RegisterIntelligenceSourceV2BackupHorizon(ctx, backupID, backupCreatedAt, restorableUntil)
 }
 
 // MarkIntelligenceSourceV2BackupInventoryVerified records a complete backup
 // inventory from the external backup controller. Tombstone pruning remains
 // disabled until this checkpoint is current.
 func (s *Server) MarkIntelligenceSourceV2BackupInventoryVerified(ctx context.Context, verifiedAt time.Time) error {
-	if s.sqlDB == nil || verifiedAt.IsZero() || verifiedAt.After(s.intelligenceOIDCNow().Add(time.Minute)) {
-		return httptransport.ErrIntelligenceSourceInvalidRequest
-	}
-	result, err := s.sqlDB.ExecContext(ctx, `
-		UPDATE public.intelligence_source_v2_backup_inventory_state
-		SET complete=true,verified_at=$1 WHERE inventory_id='global'`, verifiedAt.UTC())
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	return nil
+	return s.intelligenceSourceV2Operations().MarkIntelligenceSourceV2BackupInventoryVerified(ctx, verifiedAt)
 }
 
 func (s *Server) cleanupIntelligenceSourceV2Retention(ctx context.Context, now time.Time) (intelligenceSourceV2RetentionResult, error) {
-	if s.sqlDB == nil || now.IsZero() {
+	if s.intelligenceSourceV2Persistence() == nil || now.IsZero() {
 		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
+	stored, err := s.intelligenceSourceV2Persistence().CleanupRetention(ctx, now, s.intelligenceOIDCNow().UTC())
 	if err != nil {
 		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	defer func() { _ = tx.Rollback() }()
-	var result intelligenceSourceV2RetentionResult
-	var restoreBlocked bool
-	err = tx.QueryRowContext(ctx, `SELECT blocked FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global' FOR UPDATE`).Scan(&restoreBlocked)
-	if err != nil {
-		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	var inventoryCurrent bool
-	inventoryNow := s.intelligenceOIDCNow().UTC()
-	err = tx.QueryRowContext(ctx, `
-		SELECT complete AND verified_at IS NOT NULL AND verified_at >= ($1::timestamptz-interval '24 hours')
-		FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global' FOR UPDATE`, inventoryNow).Scan(&inventoryCurrent)
-	if err != nil {
-		return intelligenceSourceV2RetentionResult{}, fmt.Errorf("%w: read verified backup inventory: %v", httptransport.ErrIntelligenceSourceUnavailable, err)
-	}
-	if !restoreBlocked && inventoryCurrent {
-		tombstones, err := tx.ExecContext(ctx, `
-			DELETE FROM public.intelligence_source_v2_tombstone_ledger tombstone
-			WHERE tombstone.retain_until<=$1
-			  AND NOT EXISTS (
-				SELECT 1 FROM public.intelligence_source_v2_backup_horizons backup
-				WHERE backup.backup_created_at<=tombstone.created_at
-				  AND backup.restorable_until+interval '7 days'>$1
-			  )`, now.UTC())
-		if err != nil {
-			return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-		if result.TombstonesPruned, err = tombstones.RowsAffected(); err != nil {
-			return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-		backups, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_source_v2_backup_horizons WHERE restorable_until+interval '7 days'<=$1`, now.UTC())
-		if err != nil {
-			return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-		if result.BackupsPruned, err = backups.RowsAffected(); err != nil {
-			return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return intelligenceSourceV2RetentionResult{}, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	return result, nil
+	return intelligenceSourceV2RetentionResult{TombstonesPruned: stored.TombstonesPruned, BackupsPruned: stored.BackupsPruned}, nil
 }
 
 // BeginIntelligenceSourceV2Restore blocks all v2 source routes. Reopening is
@@ -235,22 +101,10 @@ func (s *Server) cleanupIntelligenceSourceV2Retention(ctx context.Context, now t
 // consumer scope reset is integrated; Messenger database state alone can roll
 // back with the content backup and cannot prove tombstone freshness.
 func (s *Server) BeginIntelligenceSourceV2Restore(ctx context.Context, restoreID string, backupCreatedAt time.Time) ([]IntelligenceSourceV2RestoreTombstone, error) {
-	if s.sqlDB == nil || restoreID == "" || len(restoreID) > 256 || backupCreatedAt.IsZero() || strings.TrimSpace(s.cfg.IntelligenceSourceV2RestoreEpoch) == "" {
+	if s.intelligenceSourceV2Persistence() == nil || restoreID == "" || len(restoreID) > 256 || backupCreatedAt.IsZero() || strings.TrimSpace(s.cfg.IntelligenceSourceV2RestoreEpoch) == "" {
 		return nil, httptransport.ErrIntelligenceSourceInvalidRequest
 	}
-	tx, err := s.sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	defer func() { _ = tx.Rollback() }()
-	result, err := tx.ExecContext(ctx, "UPDATE public.intelligence_source_v2_restore_gate SET blocked=true,active_restore_id=$1,backup_created_at=$2,ledger_verified_at=NULL,updated_at=$3 WHERE gate_id='global'", restoreID, backupCreatedAt.UTC(), s.intelligenceOIDCNow())
-	if err != nil {
-		return nil, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
-		return nil, httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if err := tx.Commit(); err != nil {
+	if err := s.intelligenceSourceV2Persistence().BeginRestore(ctx, restoreID, backupCreatedAt, s.intelligenceOIDCNow()); err != nil {
 		return nil, httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return nil, httptransport.ErrIntelligenceSourceUnavailable

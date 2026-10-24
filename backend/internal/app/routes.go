@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"stovo-messenger/backend/internal/cache"
+	featurechattransfer "stovo-messenger/backend/internal/features/chattransfer"
 	featurefamily "stovo-messenger/backend/internal/features/family"
 	"stovo-messenger/backend/internal/features/identity"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
@@ -771,6 +772,35 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 		}),
 		GetChat: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			chatReadHandlerForUser(s, user).GetChat(w, r)
+		}),
+		GetChatTransferSource: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			httptransport.NewChatTransferHandler(httptransport.ChatTransferOperations{
+				ExportSource: func(ctx context.Context, chatID string) (any, error) { return s.chatTransferSource(ctx, user, chatID) },
+				StatusFor:    domainErrorStatus,
+				DetailFor: func(err error) string {
+					if errors.Is(err, errNotFound) {
+						return "Chat not found"
+					}
+					if value, ok := err.(statusError); ok {
+						return value.Message
+					}
+					return "Could not load chat export source"
+				},
+			}).GetSource(w, r)
+		}),
+		ImportChat: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			httptransport.NewChatTransferHandler(httptransport.ChatTransferOperations{
+				Import: func(ctx context.Context, key string, archive featurechattransfer.Archive, prepared map[string]featurechattransfer.StoredMessageContent) (any, int, error) {
+					return s.commitChatImport(ctx, user, key, archive, prepared)
+				},
+				StatusFor: domainErrorStatus,
+				DetailFor: func(err error) string {
+					if value, ok := err.(statusError); ok {
+						return value.Message
+					}
+					return "Could not import chat"
+				},
+			}).Import(w, r)
 		}),
 		UpdateChat: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			chatMutation(user).Update(w, r)

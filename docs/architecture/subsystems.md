@@ -1,3 +1,8 @@
+---
+title: "Backend and frontend subsystem map"
+type: architecture
+---
+
 # Backend and frontend subsystem map
 
 This is a navigation guide to the main feature boundaries in the current source tree, not a promise that each directory is an independently deployable service. The backend is built and deployed as one Go application. The frontend is a single React app.

@@ -1,7 +1,7 @@
 import { ArrowLeft, FileText, Info, Scale, ShieldCheck } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getClusterPrefix } from "../api/client";
-import { useLanguage } from "../i18n/LanguageContext";
+import { useLanguage, useStrings } from "../i18n/LanguageContext";
 import {
   getLegalDocument,
   getLegalDocuments,
@@ -19,12 +19,13 @@ const documentIcons = {
 
 function DocumentBody({ id }: { id: LegalDocumentId }) {
   const { resolvedLanguage } = useLanguage();
+  const strings = useStrings();
   const document = getLegalDocument(resolvedLanguage, id);
 
   return (
     <article className="legal-document">
       <header className="legal-document__header">
-        <p className="legal-document__meta">Stovo · {document.updatedLabel}</p>
+        <p className="legal-document__meta">{strings.brand.name} · {document.updatedLabel}</p>
         <h1>{document.title}</h1>
         <p>{document.summary}</p>
       </header>

@@ -215,6 +215,27 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("omits the file-type header from an inline Storage document preview", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const file: FamilyFile = {
+      id: "inline-markdown-preview", familyId: "family-1", uploadedBy: "member-1", chatId: null,
+      chatTitle: null, chatType: null, originMessageId: null, accessScope: "family",
+      storageProvider: "local", originalName: "notes.md", mimeType: "text/markdown", sizeBytes: 64,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} inlinePreview hideActions />));
+
+      expect(container.querySelector(".document-preview-card--inline")).not.toBeNull();
+      expect(container.querySelector(".document-preview-header")).toBeNull();
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
+  });
+
   it("renders Markdown as formatted document content instead of raw source", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);

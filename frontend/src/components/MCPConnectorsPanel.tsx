@@ -1,9 +1,12 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Settings, X } from "lucide-react";
+import { Settings } from "lucide-react";
 
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import { useStrings } from "../i18n/LanguageContext";
+import { PopupDialog } from "./ui/Popup";
+import { PopupButton } from "./ui/PopupButton";
+import { PopupField } from "./ui/PopupField";
 import {
   MCP_PERMISSION_KEYS,
   MCPConnector,
@@ -696,38 +699,21 @@ export default function MCPConnectorsPanel({
       </div>
 
       {editing && (
-        <div
-          className="modal-overlay"
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSaving) setEditing(null);
-          }}
-        >
-          <div className="modal-card mcp-edit-modal" role="dialog" aria-modal="true" aria-labelledby="mcp-modal-title">
+        <PopupDialog className="mcp-edit-modal" ariaLabelledBy="mcp-modal-title" onClose={isSaving ? undefined : () => setEditing(null)} closeOnBackdrop={!isSaving} size="lg">
             <header className="modal-header">
               <div>
                 <h3 id="mcp-modal-title">{copy.configureNamed(editing.name)}</h3>
                 <p className="muted-text">{copy.changesApplyNextCall}</p>
               </div>
-              <button
-                type="button"
-                className="icon-button modal-close-button"
-                onClick={() => setEditing(null)}
-                disabled={isSaving}
-                aria-label={copy.close}
-              >
-                <X size={18} />
-              </button>
             </header>
             <form className="mcp-connector-form" onSubmit={saveEdit}>
-              <label>{copy.connectionName}<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
-              <label>{copy.maxHistoryMessages}<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
+              <PopupField label={copy.connectionName} value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} />
+              <PopupField label={copy.maxHistoryMessages} type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} />
               <fieldset className="mcp-tag-fieldset"><legend>{copy.chatScope}</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong></label>)}</div></fieldset>
               <fieldset className="mcp-tag-fieldset"><legend>{copy.permissions}</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{permissionLabels[key]}</strong></label>)}</div></fieldset>
-              <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? copy.saving : copy.saveSettings}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>{copy.cancel}</button></div>
+              <div className="public-access-actions"><PopupButton type="submit" variant="primary" disabled={isSaving || !editName.trim()}>{isSaving ? copy.saving : copy.saveSettings}</PopupButton><PopupButton type="button" variant="secondary" disabled={isSaving} onClick={() => setEditing(null)}>{copy.cancel}</PopupButton></div>
             </form>
-          </div>
-        </div>
+        </PopupDialog>
       )}
     </section>
   );

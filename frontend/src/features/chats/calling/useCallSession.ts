@@ -1,3 +1,5 @@
+import { saveRecentChatHistory, saveRecentChatHistoryToLocalStorage } from "../../../chatHistoryCache";
+import { applyCallEndToChat, maskLocalCallEnd, projectLocalCallEnd } from "./localCallEndProjection";
 import {
   Dispatch,
   RefObject,
@@ -39,6 +41,8 @@ import { useMockCallSession } from "./useMockCallSession";
 import { useCallSessionSurface } from "./useCallSessionSurface";
 
 export type UseCallSessionParams = {
+  onChatsUpdate?: Dispatch<SetStateAction<Chat[]>>;
+  chatMutationVersionRef?: RefObject<Record<string, number>>;
   accessToken: string | null;
   currentUser: User | null;
   selectedChat: Chat | null;
@@ -73,7 +77,7 @@ export type UseCallSessionParams = {
  * `useChatRealtime`.
  */
 export function useCallSession({
-  accessToken,
+  onChatsUpdate, chatMutationVersionRef, accessToken,
   currentUser,
   selectedChat,
   chats,
@@ -134,7 +138,7 @@ export function useCallSession({
     canUseAutoGainControl: false,
     canUseVoiceEnhancement: false,
     canUseCamera: false,
-    canShareScreen: false
+    canShareScreen: import.meta.env.DEV && import.meta.env.MODE === "mock"
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
@@ -153,11 +157,18 @@ export function useCallSession({
   const [activeGroupCalls, setActiveGroupCalls] = useState<Record<string, Record<string, any>>>({});
   const [preJoinChatId, setPreJoinChatId] = useState<string | null>(null);
 
+  const locallyEndedRoomsRef = useRef(new Set<string>());
+  const locallyLeftRoomsRef = useRef(new Map<string, string>());
   useEffect(() => {
+    onChatsUpdate?.((current) => {
+      const masked = current.map((chat) => maskLocalCallEnd(chat, locallyEndedRoomsRef.current, locallyLeftRoomsRef.current));
+      return masked.some((chat, index) => chat !== current[index]) ? masked : current;
+    });
     setActiveGroupCalls((prev) => {
       let changed = false;
       const next: Record<string, Record<string, any>> = {};
-      for (const c of chats) {
+      for (const snapshot of chats) {
+        const c = maskLocalCallEnd(snapshot, locallyEndedRoomsRef.current, locallyLeftRoomsRef.current);
         if (c.activeCall) {
           next[c.id] = c.activeCall;
         }
@@ -217,7 +228,7 @@ export function useCallSession({
     remoteAudioRef,
     remoteVideoRef,
     localVideoRef,
-    toggleScreenShare
+    toggleScreenShare: toggleMediaScreenShare
   } = useCallMedia({
     audioCallRef,
     callPhase,
@@ -487,6 +498,10 @@ export function useCallSession({
       setIsLocalSpeaking, setIsPeerSpeaking, setSpeakingUserIds, setCallAudioSettings, setCallNotice,
     },
   });
+  const toggleScreenShare = () => {
+    if (mockCallSession.toggleScreenShare()) return;
+    return toggleMediaScreenShare();
+  };
 
   const sendCallInvites = useCallInviteControls({
     audioCallRef,
@@ -545,6 +560,7 @@ export function useCallSession({
   });
 
   async function acceptIncomingCall() {
+    locallyLeftRoomsRef.current.delete(callRoomIdRef.current ?? "");
     if (mockCallSession.acceptIncomingCall()) return;
     const socket = socketRef.current;
     if (!socket || !activeCallChatId || !callPeerUserId) {
@@ -607,6 +623,7 @@ export function useCallSession({
     activeCall: Record<string, any>,
     settings: { micMuted: boolean; cameraEnabled: boolean }
   ) {
+    locallyLeftRoomsRef.current.delete(activeCall.roomId);
     if (mockCallSession.joinOngoingGroupCall(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
@@ -681,6 +698,7 @@ export function useCallSession({
     targetChat: Chat,
     settings: { micMuted?: boolean; cameraEnabled?: boolean } = { micMuted: false, cameraEnabled: false }
   ) {
+    locallyLeftRoomsRef.current.delete(targetChat.activeCall?.roomId ?? activeGroupCalls[targetChat.id]?.roomId ?? "");
     if (mockCallSession.joinVoiceChannel(targetChat)) return;
     const socket = socketRef.current;
     if (!socket || !targetChat.id) {
@@ -757,47 +775,33 @@ export function useCallSession({
   }
 
   async function endActiveCall() {
-    if (mockCallSession.endActiveCall()) return;
-    if (!socketRef.current || !activeCallChatId) {
+    const endingChatId = activeCallChatId ?? activeCallChatIdRef.current;
+    if (!endingChatId) {
       return;
     }
-    callStartupGenerationRef.current += 1;
+    const endingChat = chatsRef.current.find((chat) => chat.id === endingChatId) ?? selectedChat;
+    if (endingChat?.id === endingChatId && currentUser) {
+      const endingRoomId = callRoomIdRef.current ?? activeGroupCalls[endingChatId]?.roomId ?? endingChat.activeCall?.roomId ?? null;
+      const projection = projectLocalCallEnd({ chat: endingChat, user: currentUser, phase: callPhaseRef.current, callType: callTypeRef.current, roomId: endingRoomId, peerId: callPeerUserId, duration: callTimer, activeCall: activeGroupCalls[endingChatId] ?? endingChat.activeCall });
+      if (endingRoomId) { if (projection.activeCall) locallyLeftRoomsRef.current.set(endingRoomId, currentUser.id); else locallyEndedRoomsRef.current.add(endingRoomId); }
+      if (projection.message) {
+        const next = [...(messageCacheRef.current[endingChatId] ?? []).filter((message) => message.id !== projection.message!.id), projection.message];
+        messageCacheRef.current[endingChatId] = next;
+        saveRecentChatHistoryToLocalStorage(currentUser.id, endingChatId, next);
+        void saveRecentChatHistory(currentUser.id, endingChatId, next);
+        if (activeChatIdRef.current === endingChatId) setMessages(next);
+      }
+      if (chatMutationVersionRef) chatMutationVersionRef.current[endingChatId] = (chatMutationVersionRef.current[endingChatId] ?? 0) + 1;
+      onChatsUpdate?.((current) => current.map((chat) => chat.id === endingChatId ? applyCallEndToChat(chat, projection) : chat));
+      setSelectedChat((current) => current?.id === endingChatId ? applyCallEndToChat(current, projection) : current);
+      setActiveGroupCalls((current) => { const next = { ...current }; if (projection.activeCall) next[endingChatId] = projection.activeCall; else delete next[endingChatId]; return next; });
+    }
+    if (mockCallSession.endActiveCall()) return;
     const terminationEvent = callTerminationEvent(callPhaseRef.current);
-    setCallNotice("Ending call...");
-    stopCallRingtone();
-    playCallEndSound();
-    callPhaseRef.current = "idle";
-    activeCallSessionIdRef.current = null;
-    activeCallChatIdRef.current = null;
-    callTypeRef.current = "audio";
-    pictureInPictureActiveRef.current = false;
-    socketRef.current.emit(terminationEvent, { chatId: activeCallChatId });
-    // serverAlreadyNotified=true: we just sent the phase-appropriate termination
-    // event above, so cleanup must not send a second call:end.
-    await audioCallRef.current?.cleanup(true).catch(() => undefined);
-    setCallPhase("idle");
-    setActiveCallChatId(null);
-    setCallPeerUserId(null);
-    setCallPeerDisplayName(null);
-    setHasRemoteVideo(false);
-    setLocalVideoStream(null);
-    setLocalScreenStream(null);
-    setRemoteVideoStream(null);
-    setCallType("audio");
-    setCallAudioSettings((cur) => ({
-      ...cur,
-      micMuted: false,
-      soundDisabled: false,
-      cameraEnabled: false,
-      screenSharing: false
-    }));
-    setIsCallSettingsMenuOpen(false);
-    setIsCallAudioPopupOpen(false);
-    setIsCallMinimized(false);
-    setCallTrackStatus(null);
-    setCallAudioWarning(null);
-    setIsPeerSpeaking(false);
-    setCallNotice(null);
+    socketRef.current?.emit(terminationEvent, { chatId: endingChatId });
+    // resetCallState publishes idle locally before awaiting controller cleanup.
+    // The signaling event above already notified the server.
+    await resetCallState(undefined, true);
   }
 
   /**
@@ -857,6 +861,7 @@ export function useCallSession({
     setCallType,
     callAudioSettings,
     setCallAudioSettings,
+    mockScreenShareUserId: mockCallSession.mockScreenShareUserId,
     isCallSettingsMenuOpen,
     setIsCallSettingsMenuOpen,
     isCallAudioPopupOpen,

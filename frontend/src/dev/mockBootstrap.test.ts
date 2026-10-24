@@ -35,6 +35,15 @@ describe("local mock session bootstrap", () => {
     expect(active).toMatchObject({ url: "http://127.0.0.1:5174", name: "Stovo Demo", user: { displayName: "Stovo Demo" } });
   });
 
+  it("allows a separate loopback preview port to run its own synchronized mock tabs", () => {
+    expect(() => seedMockSession("http://127.0.0.1:5175", "user-alex-rivera")).not.toThrow();
+    const state = loadServerState();
+    expect(Object.values(state.servers).find((server) => server.url === "http://127.0.0.1:5175")).toMatchObject({
+      url: "http://127.0.0.1:5175",
+      user: { id: "user-alex-rivera", displayName: "Alex Rivera" },
+    });
+  });
+
   it("enables mock behavior only in Vite development mode named mock", () => {
     expect(isMockMode(true, "mock")).toBe(true);
     expect(isMockMode(true, "development")).toBe(false);

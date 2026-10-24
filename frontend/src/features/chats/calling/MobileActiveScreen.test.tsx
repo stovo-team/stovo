@@ -95,7 +95,7 @@ describe("MobileActiveScreen", () => {
     expect(controlsRule).toMatch(/flex-wrap:\s*nowrap/);
     expect(buttonRule).toMatch(/width:\s*40px/);
     expect(buttonRule).toMatch(/height:\s*40px/);
-    expect(buttonRule).toMatch(/border-radius:\s*50%/);
+    expect(buttonRule).toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
 
   it("keeps screen sharing in the standard More toggle without a separate Stop banner button", () => {
@@ -169,7 +169,7 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector(".mobile-active-screenshare-bar")).not.toBeNull();
   });
 
-  it("fits portrait screen content inside the shared 16:9 presentation frame", () => {
+  it("preserves a portrait screen source ratio and contains its content", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -191,7 +191,7 @@ describe("MobileActiveScreen", () => {
     );
 
     const presentationTile = container.querySelector(".call-grid__tile--screen") as HTMLDivElement;
-    expect(presentationTile.style.aspectRatio).toBe("16 / 9");
+    expect(Number.parseFloat(presentationTile.style.aspectRatio)).toBeCloseTo(9 / 16);
     expect(presentationTile.querySelector<HTMLVideoElement>("video")?.style.objectFit).toBe("contain");
   });
 

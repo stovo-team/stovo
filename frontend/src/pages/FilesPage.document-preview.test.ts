@@ -5,13 +5,13 @@ const styles = readFileSync("src/styles.css", "utf8");
 
 function rule(selector: string): string {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return styles.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  const matches = [...styles.matchAll(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`, "g"))];
+  return matches.map((match) => match[1]).join("\n");
 }
 
 describe("storage document preview sizing", () => {
-  it("stretches the preview grid track to fill the details panel", () => {
-    expect(rule(".storage-page .storage-preview:has(.document-preview-card)")).toContain(
-      "grid-template-columns: minmax(0, 1fr);",
-    );
+  it("gives inline document previews a bounded scrollable viewport", () => {
+    expect(rule(".storage-page .storage-preview-media:has(.document-preview-card)")).toContain("max-height: min(64dvh, 720px);");
+    expect(rule(".storage-page .storage-preview-media:has(.document-preview-card)")).toContain("overflow: auto;");
   });
 });

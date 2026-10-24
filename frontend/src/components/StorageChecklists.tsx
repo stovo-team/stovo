@@ -6,8 +6,9 @@ import { getClusterPrefix } from "../api/client";
 import { getChecklist, getStorageChecklists, type Checklist } from "../api/checklist";
 import { loadCachedStorageItemsFromLocalStorage, saveCachedStorageItems } from "../fileLibraryCache";
 import type { StorageFilter } from "../pages/storageLibrary";
+import { useStrings } from "../i18n/LanguageContext";
 
-function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
+function ChecklistTilePreview({ checklist, copy }: { checklist: Checklist; copy: ReturnType<typeof useStrings>["files"]["storageItems"] }) {
   const items = checklist.items || [];
   const total = checklist.totalItems || items.length;
   const completed = checklist.completedItems ?? items.filter((it) => it.completed).length;
@@ -22,9 +23,9 @@ function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
   };
 
   const categoryLabel = (category: string) => {
-    if (category === "groceries" || category === "grocery") return "Groceries";
-    if (category === "errands" || category === "errand") return "Errands";
-    return "Checklist";
+    if (category === "groceries" || category === "grocery") return copy.groceries;
+    if (category === "errands" || category === "errand") return copy.errands;
+    return copy.checklist;
   };
 
   return (
@@ -78,7 +79,7 @@ function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
             <div className="checklist-mock-circle" />
             <div className="checklist-mock-line w-short" />
           </div>
-          <div className="checklist-preview-empty-text">Empty checklist</div>
+      <div className="checklist-preview-empty-text">{copy.emptyChecklist}</div>
         </div>
       )}
     </div>
@@ -100,6 +101,7 @@ export function StorageChecklists({
   userId?: string;
   onChecklistsChange?: (checklists: Checklist[]) => void;
 }) {
+  const copy = useStrings().files.storageItems;
   const navigate = useNavigate();
   const [checklists, setChecklists] = useState<Checklist[]>(() =>
     userId ? loadCachedStorageItemsFromLocalStorage<Checklist>(userId, "checklists") ?? [] : []
@@ -183,15 +185,15 @@ export function StorageChecklists({
   if (visible.length === 0 && filter !== "checklists" && !isExtensionOnly) return null;
 
   const categoryLabel = (category: string) => {
-    if (category === "groceries" || category === "grocery") return "Groceries";
-    if (category === "errands" || category === "errand") return "Errands";
-    return "Checklist";
+    if (category === "groceries" || category === "grocery") return copy.groceries;
+    if (category === "errands" || category === "errand") return copy.errands;
+    return copy.checklist;
   };
 
   return (
-    <section className="storage-canvas-section" aria-label="Checklists">
+    <section className="storage-canvas-section" aria-label={copy.checklists}>
       <div className="storage-files-heading">
-        <h2>Checklists</h2>
+        <h2>{copy.checklists}</h2>
       </div>
       {visible.length > 0 ? (
         <div className="storage-grid">
@@ -204,11 +206,11 @@ export function StorageChecklists({
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`)
               }
             >
-              <ChecklistTilePreview checklist={checklist} />
+              <ChecklistTilePreview checklist={checklist} copy={copy} />
               <div className="storage-tile-info">
                 <strong>{checklist.title}</strong>
                 <small>
-                  {categoryLabel(checklist.category)} • {checklist.completedItems}/{checklist.totalItems} done
+                  {categoryLabel(checklist.category)} • {copy.itemsDone(checklist.completedItems, checklist.totalItems)}
                 </small>
               </div>
             </button>
@@ -217,7 +219,7 @@ export function StorageChecklists({
       ) : (
         <div className="empty-state storage-empty-state">
           <CheckSquare size={30} />
-          <strong>No checklists yet</strong>
+          <strong>{copy.noChecklists}</strong>
         </div>
       )}
     </section>

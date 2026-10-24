@@ -19,6 +19,7 @@ func TestRegisterChatRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 	RegisterChatRoutes(router, ChatRoutes{
 		ListChats: handler("list"), CreateDirectChat: handler("direct"), CreateGroupChat: handler("group"),
 		CreateChannelChat: handler("channel"), CreateVoiceChat: handler("voice"), GetChat: handler("get-chat"),
+		GetChatTransferSource: handler("transfer-source"), ImportChat: handler("import-chat"),
 		UpdateChat: handler("update-chat"), AddChatMembers: handler("members"), UpdateChatPreferences: handler("preferences"),
 		GetMessages: handler("messages"), SendMessage: handler("send"), GetMessage: handler("message"),
 		AttachMessageFiles: handler("attachments"), GetPins: handler("pins"), PinMessage: handler("pin"),
@@ -34,6 +35,8 @@ func TestRegisterChatRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 		{stdhttp.MethodPost, "/api/chats/channel", "channel"},
 		{stdhttp.MethodPost, "/api/chats/voice", "voice"},
 		{stdhttp.MethodGet, "/api/chats/chat-1", "get-chat"},
+		{stdhttp.MethodGet, "/api/chats/chat-1/transfer-source", "transfer-source"},
+		{stdhttp.MethodPost, "/api/chat-imports", "import-chat"},
 		{stdhttp.MethodPatch, "/api/chats/chat-1", "update-chat"},
 		{stdhttp.MethodPost, "/api/chats/chat-1/members", "members"},
 		{stdhttp.MethodPatch, "/api/chats/chat-1/preferences", "preferences"},
@@ -61,5 +64,27 @@ func TestRegisterChatRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 				t.Fatalf("status=%d route=%q, want status=%d route=%q", recorder.Code, recorder.Header().Get("X-Route"), stdhttp.StatusNoContent, request.want)
 			}
 		})
+	}
+	transferRouteCounts := map[string]int{"GET /api/chats/{chatId}/transfer-source": 0, "POST /api/chat-imports": 0}
+	if err := chi.Walk(router, func(method, route string, _ stdhttp.Handler, _ ...func(stdhttp.Handler) stdhttp.Handler) error {
+		key := method + " " + route
+		if _, ok := transferRouteCounts[key]; ok {
+			transferRouteCounts[key]++
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for route, count := range transferRouteCounts {
+		if count != 1 {
+			t.Fatalf("route %q registered %d times, want once", route, count)
+		}
+	}
+	for _, request := range []struct{ method, path string }{{stdhttp.MethodPost, "/api/chats/chat-1/transfer-source"}, {stdhttp.MethodGet, "/api/chat-imports"}} {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(request.method, request.path, nil))
+		if recorder.Code != stdhttp.StatusMethodNotAllowed {
+			t.Fatalf("%s %s status=%d, want %d", request.method, request.path, recorder.Code, stdhttp.StatusMethodNotAllowed)
+		}
 	}
 }

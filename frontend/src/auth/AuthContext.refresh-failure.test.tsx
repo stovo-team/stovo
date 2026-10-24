@@ -87,6 +87,29 @@ describe("AuthProvider refresh failure", () => {
     expect(mocks.apiRequest).not.toHaveBeenCalled();
   });
 
+  it("keeps the cached session when refresh is forbidden by the cookie CSRF check", async () => {
+    const user = { id: "user-a", username: "a" };
+    mocks.registry.servers = {
+      a: { id: "a", url: "https://a.example.test", name: "A", accessToken: "token-a", refreshToken: null, user, healthStatus: "online", unreadCount: 0 },
+    };
+    mocks.registry.activeServerId = "a";
+    mocks.refreshSession.mockRejectedValueOnce(new ApiError(403, "Cross-origin cookie request is not allowed"));
+    function Probe() {
+      auth = useAuth();
+      return createElement("span", null, `${auth.currentUser?.id ?? "signed-out"}:${auth.isOffline ? "offline" : "online"}`);
+    }
+
+    await act(async () => {
+      root.render(createElement(AuthProvider, null, createElement(Probe)));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(host.textContent).toBe("user-a:offline");
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
+  });
+
   it("does not repeat a failed refresh after a protected request receives 401", async () => {
     mocks.refreshSession
       .mockResolvedValueOnce({

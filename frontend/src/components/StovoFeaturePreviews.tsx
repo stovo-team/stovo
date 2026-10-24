@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useStrings } from "../i18n/LanguageContext";
 import {
   Check,
   CheckSquare,
@@ -29,18 +30,19 @@ import {
 } from "lucide-react";
 
 export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files" }) {
+  const copy = useStrings().previews;
   if (kind === "voice") {
     const people = [
-      { name: "Alex", role: "Speaking", avatar: "/avatars/user-alex.webp", active: true },
-      { name: "Mira", role: "Listening", avatar: "/avatars/user-mira.webp", active: false },
-      { name: "Noah", role: "Muted", avatar: "/avatars/user-noah.webp", active: false },
+      { name: copy.alex, role: copy.speaking, avatar: "/avatars/user-alex.webp", active: true },
+      { name: copy.mira, role: copy.listening, avatar: "/avatars/user-mira.webp", active: false },
+      { name: copy.noah, role: copy.muted, avatar: "/avatars/user-noah.webp", active: false },
     ];
     return (
-      <div className="stovo-feature-preview stovo-voice-preview" aria-label="Stovo voice channel preview">
+      <div className="stovo-feature-preview stovo-voice-preview" aria-label={copy.voicePreview}>
         <header>
           <span className="stovo-feature-dot" />
-          <strong>Raid planning</strong>
-          <small>Voice channel</small>
+          <strong>{copy.raidPlanning}</strong>
+          <small>{copy.voiceChannel}</small>
           <MoreHorizontal size={15} />
         </header>
         <div className="stovo-voice-stage">
@@ -53,9 +55,9 @@ export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files
           ))}
         </div>
         <footer>
-          <button aria-label="Mute microphone"><Mic size={15} /></button>
-          <button aria-label="Start camera"><Video size={15} /></button>
-          <button className="hangup">Leave</button>
+          <button aria-label={copy.muteMicrophone}><Mic size={15} /></button>
+          <button aria-label={copy.startCamera}><Video size={15} /></button>
+          <button className="hangup">{copy.leave}</button>
         </footer>
       </div>
     );
@@ -63,29 +65,29 @@ export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files
 
   if (kind === "files") {
     return (
-      <div className="stovo-feature-preview stovo-files-mini" aria-label="Stovo storage preview">
+      <div className="stovo-feature-preview stovo-files-mini" aria-label={copy.storagePreview}>
         <header>
-          <strong>Storage</strong>
-          <span>Family space</span>
-          <button>Upload</button>
+          <strong>{copy.storage}</strong>
+          <span>{copy.familySpace}</span>
+          <button>{copy.upload}</button>
         </header>
         <div className="stovo-files-mini-grid">
           <article className="photo has-thumb">
             <div className="stovo-file-thumb-container">
-              <img src="/avatars/album-weekend.webp" alt="Weekend" className="stovo-file-thumb" />
+              <img src="/avatars/album-weekend.webp" alt={copy.weekend} className="stovo-file-thumb" />
             </div>
-            <b>Weekend</b>
-            <small>24 photos</small>
+            <b>{copy.weekend}</b>
+            <small>{copy.photoCount}</small>
           </article>
           <article className="document">
             <FileText size={21} />
-            <b>School forms</b>
+            <b>{copy.schoolForms}</b>
             <small>PDF</small>
           </article>
           <article className="folder">
             <Folder size={21} />
-            <b>Documents</b>
-            <small>8 files</small>
+            <b>{copy.documents}</b>
+            <small>{copy.fileCount}</small>
           </article>
         </div>
       </div>
@@ -94,20 +96,20 @@ export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files
 
   const workspaceChats = [
     {
-      name: "General",
-      meta: "4 members",
+      name: copy.general,
+      meta: copy.memberCount,
       avatar: "/avatars/chat-general.webp",
       active: false,
     },
     {
-      name: "Design review",
-      meta: "Mira: I shared the latest draft",
+      name: copy.designReview,
+      meta: copy.sharedLatestDraft,
       avatar: "/avatars/chat-design.webp",
       active: true,
     },
     {
-      name: "Launch checklist",
-      meta: "2 new messages",
+      name: copy.launchChecklist,
+      meta: copy.newMessages,
       avatar: "/avatars/chat-launch.webp",
       badge: 2,
       active: false,
@@ -115,15 +117,15 @@ export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files
   ];
 
   return (
-    <div className="stovo-feature-preview stovo-workspace-mini" aria-label="Stovo workspace preview">
+    <div className="stovo-feature-preview stovo-workspace-mini" aria-label={copy.workspacePreview}>
       <header>
-        <img src="/avatars/studio.webp" alt="Studio" className="stovo-space-avatar" />
-        <strong>Studio</strong>
-        <span className="stovo-online">3 online</span>
+        <img src="/avatars/studio.webp" alt={copy.studio} className="stovo-space-avatar" />
+        <strong>{copy.studio}</strong>
+        <span className="stovo-online">{copy.onlineCount}</span>
       </header>
       <label>
         <Search size={14} />
-        <span>Search chats</span>
+        <span>{copy.searchChats}</span>
       </label>
       {workspaceChats.map((chat) => (
         <div className={`stovo-mini-chat ${chat.active ? "active" : ""}`} key={chat.name}>
@@ -140,22 +142,23 @@ export function AudiencePreview({ kind }: { kind: "workspace" | "voice" | "files
 }
 
 export function StoragePreview() {
+  const copy = useStrings().previews;
   const [activeTab, setActiveTab] = useState<"all" | "docs" | "canvas">("all");
   const [selectedSource, setSelectedSource] = useState<"engineering" | "all" | "vault">("engineering");
 
   return (
-    <div className="stovo-storage-preview-window" aria-label="Stovo Storage preview">
+    <div className="stovo-storage-preview-window" aria-label={copy.storageWindow}>
       {/* Top window chrome */}
       <div className="storage-preview-titlebar">
         <div className="storage-preview-dots">
           <span className="dot dot-red" />
           <span className="dot dot-amber" />
           <span className="dot dot-green" />
-          <span className="storage-preview-path">stovo.internal // storage-vault // #engineering</span>
+          <span className="storage-preview-path">{copy.storagePath}</span>
         </div>
         <div className="storage-preview-status-tags">
-          <span className="tag-s3">● MinIO S3 Online</span>
-          <span className="tag-vault">AES-256 Vault</span>
+          <span className="tag-s3">{copy.minioOnline}</span>
+          <span className="tag-vault">{copy.encryptedVault}</span>
         </div>
       </div>
 
@@ -164,7 +167,7 @@ export function StoragePreview() {
         {/* Left sources sidebar */}
         <aside className="storage-preview-sidebar">
           <div className="sidebar-group">
-            <span className="sidebar-label">Connected Chats</span>
+            <span className="sidebar-label">{copy.connectedChats}</span>
             <button
               type="button"
               className={`sidebar-item ${selectedSource === "engineering" ? "active" : ""}`}
@@ -173,7 +176,7 @@ export function StoragePreview() {
               <Hash size={13} className="item-icon channel-hash" />
               <div className="item-meta">
                 <strong>#engineering</strong>
-                <small>3 files shared</small>
+                <small>{copy.sharedFiles}</small>
               </div>
             </button>
             <button
@@ -183,14 +186,14 @@ export function StoragePreview() {
             >
               <MessageSquare size={13} className="item-icon" />
               <div className="item-meta">
-                <strong>All conversations</strong>
-                <small>59 files total</small>
+                <strong>{copy.allConversations}</strong>
+                <small>{copy.totalFiles}</small>
               </div>
             </button>
           </div>
 
           <div className="sidebar-group">
-            <span className="sidebar-label">Vault Folders</span>
+            <span className="sidebar-label">{copy.vaultFolders}</span>
             <button
               type="button"
               className={`sidebar-item ${selectedSource === "vault" ? "active" : ""}`}
@@ -199,20 +202,20 @@ export function StoragePreview() {
               <Folder size={13} className="item-icon folder-gold" />
               <div className="item-meta">
                 <strong>/Projects/Docs</strong>
-                <small>Auto-synced vault</small>
+                <small>{copy.syncedVault}</small>
               </div>
             </button>
           </div>
 
           <div className="sidebar-quota-box">
             <div className="quota-row">
-              <span>S3 Quota</span>
-              <strong>1.4 TB / 4 TB</strong>
+              <span>{copy.s3Quota}</span>
+              <strong>{copy.quota}</strong>
             </div>
             <div className="quota-bar-track">
               <div className="quota-bar-fill" style={{ width: "35%" }} />
             </div>
-            <small>MinIO distributed cluster</small>
+            <small>{copy.minioCluster}</small>
           </div>
         </aside>
 
@@ -223,14 +226,14 @@ export function StoragePreview() {
             <div className="origin-avatar">AK</div>
             <div className="origin-copy">
               <div className="origin-header">
-                <strong>Alex Kim</strong>
-                <span className="origin-channel">in #engineering</span>
-                <time>10:44 AM</time>
+                <strong>{copy.alexKim}</strong>
+                <span className="origin-channel">{copy.inEngineering}</span>
+                <time>{copy.messageTime}</time>
               </div>
-              <p>“Attaching the updated Architecture specification and launch canvas for review.”</p>
+              <p>{copy.attachedMessage}</p>
             </div>
             <span className="origin-sync-badge">
-              <Check size={11} /> Auto-Saved
+              <Check size={11} /> {copy.autoSaved}
             </span>
           </div>
 
@@ -238,7 +241,7 @@ export function StoragePreview() {
           <div className="storage-preview-toolbar">
             <label className="storage-preview-search">
               <Search size={14} />
-              <input placeholder="Search files in #engineering..." readOnly />
+              <input placeholder={copy.searchEngineeringFiles} readOnly />
             </label>
             <div className="storage-preview-filters">
               <button
@@ -246,21 +249,21 @@ export function StoragePreview() {
                 className={activeTab === "all" ? "active" : ""}
                 onClick={() => setActiveTab("all")}
               >
-                All (3)
+                {copy.allCount}
               </button>
               <button
                 type="button"
                 className={activeTab === "docs" ? "active" : ""}
                 onClick={() => setActiveTab("docs")}
               >
-                Documents (2)
+                {copy.documentsCount}
               </button>
               <button
                 type="button"
                 className={activeTab === "canvas" ? "active" : ""}
                 onClick={() => setActiveTab("canvas")}
               >
-                Canvases (1)
+                {copy.canvasesCount}
               </button>
             </div>
           </div>
@@ -275,7 +278,7 @@ export function StoragePreview() {
                     <FileText size={12} /> PDF
                   </span>
                   <span className="tile-vault-badge">
-                    <Shield size={10} /> Synced
+                    <Shield size={10} /> {copy.synced}
                   </span>
                 </div>
 
@@ -302,9 +305,9 @@ export function StoragePreview() {
                 </div>
 
                 <div className="tile-footer-info">
-                  <strong>Architecture.pdf</strong>
+                  <strong>{copy.architecturePdf}</strong>
                   <div className="tile-meta-row">
-                    <span>2.4 MB · 14 pages</span>
+                    <span>{copy.architectureMeta}</span>
                     <span className="tile-origin-pill">#engineering</span>
                   </div>
                 </div>
@@ -319,30 +322,30 @@ export function StoragePreview() {
                     <StickyNote size={12} /> CANVAS
                   </span>
                   <span className="tile-vault-badge">
-                    <Check size={10} /> Live
+                    <Check size={10} /> {copy.live}
                   </span>
                 </div>
 
                 {/* The canvas board layout preview - matching hero demo */}
                 <div className="stovo-canvas-board-viewport">
                   <div className="stovo-canvas-mini-node node-indigo">
-                    <b># Release Gate</b>
-                    <p>Security verified</p>
+                    <b>{copy.releaseGate}</b>
+                    <p>{copy.securityVerified}</p>
                   </div>
                   <div className="stovo-canvas-mini-node node-cyan">
-                    <b># Telemetry</b>
-                    <p>99.99% sync</p>
+                    <b>{copy.telemetry}</b>
+                    <p>{copy.syncPercentage}</p>
                   </div>
                   <div className="stovo-canvas-mini-node node-emerald">
-                    <b># Client Audit</b>
-                    <p>EU residency</p>
+                    <b>{copy.clientAudit}</b>
+                    <p>{copy.euResidency}</p>
                   </div>
                 </div>
 
                 <div className="tile-footer-info">
-                  <strong>Launch readiness.canvas</strong>
+                  <strong>{copy.launchCanvas}</strong>
                   <div className="tile-meta-row">
-                    <span>18 cards · 6 editors</span>
+                    <span>{copy.canvasMeta}</span>
                     <span className="tile-origin-pill">#engineering</span>
                   </div>
                 </div>
@@ -357,7 +360,7 @@ export function StoragePreview() {
                     <FileText size={12} /> PDF
                   </span>
                   <span className="tile-vault-badge">
-                    <Shield size={10} /> Synced
+                    <Shield size={10} /> {copy.synced}
                   </span>
                 </div>
 
@@ -384,9 +387,9 @@ export function StoragePreview() {
                 </div>
 
                 <div className="tile-footer-info">
-                  <strong>stovo-sec-audit-2026.pdf</strong>
+                  <strong>{copy.auditPdf}</strong>
                   <div className="tile-meta-row">
-                    <span>4.2 MB · 28 pages</span>
+                    <span>{copy.auditMeta}</span>
                     <span className="tile-origin-pill">/Projects/Docs</span>
                   </div>
                 </div>
@@ -398,9 +401,9 @@ export function StoragePreview() {
           <div className="storage-preview-footer">
             <span className="footer-left">
               <Shield size={12} />
-              <span>Files from conversations are encrypted at rest with zero cloud lock-in</span>
+              <span>{copy.encryptedFiles}</span>
             </span>
-            <span className="footer-right">Local S3 · MinIO</span>
+            <span className="footer-right">{copy.localMinio}</span>
           </div>
         </main>
       </div>
@@ -409,38 +412,39 @@ export function StoragePreview() {
 }
 
 export function TranscriptPreview() {
+  const copy = useStrings().previews;
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeSegment, setActiveSegment] = useState<number>(0);
   const [tasks, setTasks] = useState([
     {
       id: 1,
-      text: "Share revised mobile drawer screens & specs",
-      assignee: "Mira Chen",
-      role: "Design Lead",
+      text: copy.shareScreens,
+      assignee: copy.miraChen,
+      role: copy.designLead,
       avatar: "/avatars/user-mira.webp",
       done: true,
-      tag: "Linear #142",
-      due: "Wed 5 PM",
+      tag: copy.linearTag,
+      due: copy.transcriptTasks[0].due,
     },
     {
       id: 2,
-      text: "Schedule final cross-platform review for Thursday",
-      assignee: "Noah Vance",
-      role: "Product Lead",
+      text: copy.scheduleReview,
+      assignee: copy.noahVance,
+      role: copy.productLead,
       avatar: "/avatars/user-noah.webp",
       done: false,
-      tag: "Cal Sync",
-      due: "Thu 11 AM",
+      tag: copy.calendarTag,
+      due: copy.transcriptTasks[1].due,
     },
     {
       id: 3,
-      text: "Publish signed meeting notes & push to shared vault",
-      assignee: "Ivan",
-      role: "Core Team",
+      text: copy.publishNotes,
+      assignee: copy.ivan,
+      role: copy.coreTeam,
       avatar: "/avatars/user-alex.webp",
       done: false,
-      tag: "MinIO Vault",
-      due: "Thu 2 PM",
+      tag: copy.vaultTag,
+      due: copy.transcriptTasks[2].due,
     },
   ]);
 
@@ -458,30 +462,30 @@ export function TranscriptPreview() {
   ];
 
   return (
-    <div className="stovo-transcript-preview" aria-label="Stovo AI Notes preview">
+    <div className="stovo-transcript-preview" aria-label={copy.aiNotesPreview}>
       {/* Header bar */}
       <header className="stovo-transcript-header">
         <div className="stovo-transcript-header-left">
-          <img src="/avatars/chat-design.webp" alt="Design review" className="stovo-transcript-avatar" />
+          <img src="/avatars/chat-design.webp" alt={copy.designReview} className="stovo-transcript-avatar" />
           <div className="stovo-transcript-header-meta">
             <div className="stovo-transcript-header-title-row">
-              <strong>Design review</strong>
-              <span className="stovo-call-ended-pill">Call ended · 38m 14s</span>
+              <strong>{copy.designReview}</strong>
+              <span className="stovo-call-ended-pill">{copy.callEnded}</span>
             </div>
             <div className="stovo-transcript-header-sub">
-              <span className="stovo-attendee-count">4 participants</span>
+              <span className="stovo-attendee-count">{copy.participantCount}</span>
               <div className="stovo-participants-stack">
-                <img src="/avatars/user-mira.webp" alt="Mira" title="Mira Chen" />
-                <img src="/avatars/user-noah.webp" alt="Noah" title="Noah Vance" />
-                <img src="/avatars/user-alex.webp" alt="Alex" title="Alex Kim" />
-                <span className="stovo-participant-bubble" title="Ivan">IV</span>
+                <img src="/avatars/user-mira.webp" alt={copy.mira} title={copy.miraChen} />
+                <img src="/avatars/user-noah.webp" alt={copy.noah} title={copy.noahVance} />
+                <img src="/avatars/user-alex.webp" alt={copy.alex} title={copy.alexKim} />
+                <span className="stovo-participant-bubble" title={copy.ivan}>IV</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="stovo-transcript-header-right">
-          <button className="stovo-transcript-action-btn" aria-label="Call options">
+          <button className="stovo-transcript-action-btn" aria-label={copy.callOptions}>
             <MoreVertical size={16} />
           </button>
         </div>
@@ -494,9 +498,9 @@ export function TranscriptPreview() {
           <div className="stovo-col-header">
             <div className="stovo-col-title">
               <Headphones size={14} className="stovo-accent-icon" />
-              <span>Call Audio &amp; Transcript</span>
+              <span>{copy.callAudioTranscript}</span>
             </div>
-            <span className="stovo-col-badge">Audio Synced</span>
+            <span className="stovo-col-badge">{copy.audioSynced}</span>
           </div>
 
           {/* Interactive audio player card */}
@@ -506,9 +510,9 @@ export function TranscriptPreview() {
                 type="button"
                 className={`stovo-play-btn ${isPlaying ? "playing" : ""}`}
                 onClick={() => setIsPlaying(!isPlaying)}
-                aria-label={isPlaying ? "Pause call audio" : "Play call audio"}
+                aria-label={isPlaying ? copy.pauseCallAudio : copy.playCallAudio}
               >
-                {isPlaying ? <Pause size={14} fill="#ffffff" /> : <Play size={14} fill="#ffffff" style={{ marginLeft: "2px" }} />}
+                {isPlaying ? <Pause size={14} fill="var(--color-palette-f2074b6cef37)" /> : <Play size={14} fill="var(--color-palette-f2074b6cef37)" style={{ marginLeft: "2px" }} />}
               </button>
               <div className="stovo-player-time">
                 <strong>{isPlaying ? "14:28" : "00:00"}</strong>
@@ -516,7 +520,7 @@ export function TranscriptPreview() {
               </div>
               <div className="stovo-speaker-current">
                 <span className="stovo-speaker-dot" />
-                <span>Mira Chen speaking</span>
+                <span>{copy.miraSpeaking}</span>
               </div>
             </div>
 
@@ -537,43 +541,43 @@ export function TranscriptPreview() {
             {/* Quote 1: Mira */}
             <article className={`stovo-quote-card ${activeSegment === 0 ? "highlighted" : ""}`}>
               <div className="stovo-quote-author">
-                <img src="/avatars/user-mira.webp" alt="Mira Chen" className="stovo-author-avatar" />
+                <img src="/avatars/user-mira.webp" alt={copy.miraChen} className="stovo-author-avatar" />
                 <div className="stovo-author-info">
                   <div className="stovo-author-row">
-                    <strong>Mira Chen</strong>
-                    <span className="stovo-author-role">Design Lead</span>
+                    <strong>{copy.miraChen}</strong>
+                    <span className="stovo-author-role">{copy.designLead}</span>
                   </div>
                   <span className="stovo-quote-time">14:28</span>
                 </div>
-                <span className="stovo-quote-topic-tag">Navigation</span>
+                <span className="stovo-quote-topic-tag">{copy.navigation}</span>
               </div>
               <p className="stovo-quote-text">
-                “We’ll keep the smaller navigation and move the final review to Thursday.”
+                {copy.navigationQuote}
               </p>
             </article>
 
             {/* Quote 2: Noah */}
             <article className={`stovo-quote-card ${activeSegment === 1 ? "highlighted" : ""}`}>
               <div className="stovo-quote-author">
-                <img src="/avatars/user-noah.webp" alt="Noah Vance" className="stovo-author-avatar" />
+                <img src="/avatars/user-noah.webp" alt={copy.noahVance} className="stovo-author-avatar" />
                 <div className="stovo-author-info">
                   <div className="stovo-author-row">
-                    <strong>Noah Vance</strong>
-                    <span className="stovo-author-role">Product</span>
+                    <strong>{copy.noahVance}</strong>
+                    <span className="stovo-author-role">{copy.product}</span>
                   </div>
                   <span className="stovo-quote-time">22:15</span>
                 </div>
-                <span className="stovo-quote-topic-tag">Files Vault</span>
+                <span className="stovo-quote-topic-tag">{copy.filesVault}</span>
               </div>
               <p className="stovo-quote-text">
-                “The shared Files view will keep every supporting document in context.”
+                {copy.filesQuote}
               </p>
             </article>
           </div>
 
           <div className="stovo-transcript-bottom-row">
             <button type="button" className="stovo-view-all-turns-btn">
-              <span>View full transcript (142 turns)</span>
+              <span>{copy.fullTranscript}</span>
               <span className="stovo-turns-indicator">→</span>
             </button>
           </div>
@@ -586,21 +590,21 @@ export function TranscriptPreview() {
             <div className="stovo-card-header">
               <div className="stovo-card-title">
                 <Sparkles size={14} className="stovo-sparkle-coral" />
-                <h3>Call summary</h3>
+                <h3>{copy.callSummary}</h3>
               </div>
-              <span className="stovo-grounded-pill" aria-label="Grounded">
+              <span className="stovo-grounded-pill" aria-label={copy.grounded}>
                 <Check size={11} strokeWidth={2.5} />
               </span>
             </div>
             <p className="stovo-summary-body">
-              Navigation direction is approved. The team will review the mobile states before launch.
+              {copy.summary}
             </p>
             <div className="stovo-decision-chips">
               <span className="stovo-decision-chip">
-                <Check size={11} className="stovo-chip-check" /> Compact rail approved
+                <Check size={11} className="stovo-chip-check" /> {copy.compactRailApproved}
               </span>
               <span className="stovo-decision-chip">
-                <Check size={11} className="stovo-chip-check" /> Final review Thursday 11 AM
+                <Check size={11} className="stovo-chip-check" /> {copy.finalReview}
               </span>
             </div>
           </div>
@@ -610,10 +614,10 @@ export function TranscriptPreview() {
             <div className="stovo-card-header">
               <div className="stovo-card-title">
                 <CheckSquare size={14} className="stovo-action-icon" />
-                <h4>Action items</h4>
+                <h4>{copy.actionItems}</h4>
               </div>
               <span className="stovo-actions-count">
-                {completedCount} of {tasks.length} done
+                {copy.completedOf(completedCount, tasks.length)}
               </span>
             </div>
 
@@ -635,7 +639,7 @@ export function TranscriptPreview() {
                   <button
                     type="button"
                     className={`stovo-checkbox ${task.done ? "checked" : ""}`}
-                    aria-label={task.done ? "Mark task incomplete" : "Mark task complete"}
+                    aria-label={task.done ? copy.markIncomplete : copy.markComplete}
                   >
                     {task.done && <Check size={11} strokeWidth={3} />}
                   </button>
@@ -661,26 +665,26 @@ export function TranscriptPreview() {
             <div className="stovo-mcp-header">
               <div className="stovo-mcp-title">
                 <Cpu size={13} className="stovo-mcp-icon" />
-                <span>Granular MCP Agent Access</span>
+                <span>{copy.granularMcpAccess}</span>
               </div>
               <span className="stovo-mcp-badge">
-                <span className="stovo-mcp-dot" /> Active
+                <span className="stovo-mcp-dot" /> {copy.active}
               </span>
             </div>
             <div className="stovo-mcp-integrations">
               <div className="stovo-mcp-pill">
                 <span className="mcp-avatar linear">L</span>
                 <div className="mcp-pill-text">
-                  <strong>Linear MCP</strong>
-                  <small>Exported 3 action items</small>
+                  <strong>{copy.linearMcp}</strong>
+                  <small>{copy.exportedActions}</small>
                 </div>
                 <span className="mcp-scope-badge">write:issues</span>
               </div>
               <div className="stovo-mcp-pill">
                 <span className="mcp-avatar claude">C</span>
                 <div className="mcp-pill-text">
-                  <strong>Claude Workspace</strong>
-                  <small>Indexed transcript context</small>
+                  <strong>{copy.claudeWorkspace}</strong>
+                  <small>{copy.indexedTranscript}</small>
                 </div>
                 <span className="mcp-scope-badge">read:notes</span>
               </div>

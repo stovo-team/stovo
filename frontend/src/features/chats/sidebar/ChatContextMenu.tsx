@@ -3,12 +3,15 @@ import {
   Bell,
   BellOff,
   CheckCheck,
+  Download,
   FolderMinus,
   MessageCircle,
-  Star
+  Star,
+  Upload
 } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { ChatFolder } from "./chatFolders";
 
 export type ChatContextMenuState = {
@@ -26,7 +29,11 @@ export function ChatContextMenu({
   onToggleFavorite,
   onRemoveFromFolder,
   onMoveToFolder,
-  onMarkAsRead
+  onMarkAsRead,
+  onImportChat,
+  onExportChat,
+  importChatLabel = "Import chat from file",
+  exportChatLabel = "Export chat"
 }: {
   menu: ChatContextMenuState;
   folders: ChatFolder[];
@@ -37,7 +44,12 @@ export function ChatContextMenu({
   onRemoveFromFolder?: (folder: ChatFolder, chat: Chat) => void;
   onMoveToFolder?: (folder: ChatFolder, chat: Chat) => void;
   onMarkAsRead?: (chat: Chat) => void;
+  onImportChat?: (chat: Chat) => void;
+  onExportChat?: (chat: Chat) => void;
+  importChatLabel?: string;
+  exportChatLabel?: string;
 }) {
+  const strings = useStrings();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const { chat, x, y } = menu;
 
@@ -63,7 +75,7 @@ export function ChatContextMenu({
 
   // Clamp menu inside viewport
   const menuWidth = 220;
-  const menuHeight = 220;
+  const menuHeight = 300;
   const left = Math.min(x, Math.max(12, window.innerWidth - menuWidth - 12));
   const top = Math.min(y, Math.max(12, window.innerHeight - menuHeight - 12));
 
@@ -75,7 +87,7 @@ export function ChatContextMenu({
       ref={menuRef}
       className="action-menu chat-context-menu"
       role="menu"
-      aria-label="Chat options"
+      aria-label={strings.chats.details.chatOptions}
       style={{
         position: "fixed",
         left: `${left}px`,
@@ -95,8 +107,22 @@ export function ChatContextMenu({
         }}
       >
         <MessageCircle size={16} aria-hidden="true" />
-        <span>Open chat</span>
+        <span>{strings.chats.details.openChat}</span>
       </button>
+
+      {onImportChat && (
+        <button type="button" role="menuitem" onClick={() => { onImportChat(chat); onClose(); }}>
+          <Download size={16} aria-hidden="true" />
+          <span>{importChatLabel}</span>
+        </button>
+      )}
+
+      {onExportChat && (
+        <button type="button" role="menuitem" onClick={() => { onExportChat(chat); onClose(); }}>
+          <Upload size={16} aria-hidden="true" />
+          <span>{exportChatLabel}</span>
+        </button>
+      )}
 
       {chat.unreadCount > 0 && onMarkAsRead && (
         <button
@@ -108,7 +134,7 @@ export function ChatContextMenu({
           }}
         >
           <CheckCheck size={16} aria-hidden="true" />
-          <span>Mark as read</span>
+          <span>{strings.chats.details.markAsRead}</span>
         </button>
       )}
 
@@ -121,7 +147,7 @@ export function ChatContextMenu({
         }}
       >
         {chat.isMuted ? <Bell size={16} aria-hidden="true" /> : <BellOff size={16} aria-hidden="true" />}
-        <span>{chat.isMuted ? "Unmute notifications" : "Mute notifications"}</span>
+        <span>{chat.isMuted ? strings.chats.details.unmuteNotificationsAction : strings.chats.details.muteNotificationsAction}</span>
       </button>
 
       <button
@@ -133,7 +159,7 @@ export function ChatContextMenu({
         }}
       >
         <Star size={16} aria-hidden="true" fill={chat.isFavorite ? "currentColor" : "none"} />
-        <span>{chat.isFavorite ? "Remove from favorites" : "Add to favorites"}</span>
+        <span>{chat.isFavorite ? strings.chats.details.removeFromFavorites : strings.chats.details.addToFavorites}</span>
       </button>
 
       {containingFolders.map((folder) => (
@@ -147,7 +173,7 @@ export function ChatContextMenu({
           }}
         >
           <FolderMinus size={16} aria-hidden="true" />
-          <span>Remove from {folder.name}</span>
+          <span>{strings.chats.details.removeFromFolder(folder.name)}</span>
         </button>
       ))}
     </div>

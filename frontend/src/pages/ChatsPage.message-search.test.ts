@@ -18,7 +18,7 @@ const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf
 
 describe("ChatsPage message search controls", () => {
   it("uses a direct header search button instead of the overflow menu", () => {
-    expect(chatHeaderSource).toContain('aria-label="Search messages"');
+    expect(chatHeaderSource).toContain("aria-label={headerCopy.searchMessages}");
   });
 
   it("keeps the header search control plain and omits the encryption label", () => {
@@ -30,8 +30,8 @@ describe("ChatsPage message search controls", () => {
   });
 
   it("exposes independent whole-word and case-sensitive search options", () => {
-    expect(conversationPanelSource).toContain('aria-label="Match whole words"');
-    expect(conversationPanelSource).toContain('aria-label="Match case"');
+    expect(conversationPanelSource).toContain("aria-label={copy.wholeWords}");
+    expect(conversationPanelSource).toContain("aria-label={copy.matchCase}");
     expect(useMessageThreadSource).toContain("messageMatchesSearch");
     expect(conversationPanelSource).toMatch(/>\s*W\s*<\/button>/);
     expect(stylesSource).toMatch(/\.message-search-option\s*\{[\s\S]*?flex:\s*0 0 auto;/);

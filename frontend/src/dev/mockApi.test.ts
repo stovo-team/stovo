@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiRequest } from "../api/client";
 import type { AuthResponse } from "../api/auth";
+import type { FamilyFile } from "../api/files";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import { sendMessage } from "../api/chats";
+import { appendCanvasDocumentUpdate, createCanvas, getCanvas, getCanvasDocument, getStorageCanvases, renameCanvas } from "../api/canvas";
 import { deleteFile, downloadFileBlob, getFile, getFiles, uploadFile, updateFilePreferences } from "../api/files";
 import { resetMockFileStore } from "./mockFileStore";
 import { installMockApi, resetMockData } from "./mockApi";
@@ -34,6 +36,92 @@ afterEach(() => {
 });
 
 describe("local mock chat API", () => {
+  it("lists a seeded canvas and returns its document", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const canvases = await getStorageCanvases("local-mock-access-token");
+
+    expect(canvases).toEqual([expect.objectContaining({
+      id: "mock-canvas-planning",
+      familyId: expect.any(String),
+      originChatId: FIRST_CHAT_ID,
+      title: "Planning Notes",
+      linkedChatIds: [],
+      canManage: true,
+    })]);
+    await expect(getCanvasDocument("local-mock-access-token", "mock-canvas-planning")).resolves.toEqual({ updates: [] });
+  });
+
+  it("creates a canvas and appends document updates in sequence", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const created = await createCanvas("local-mock-access-token", FIRST_CHAT_ID, "Test Canvas", "initial-update");
+    const loaded = await getCanvas("local-mock-access-token", created.id);
+    const appended = await appendCanvasDocumentUpdate("local-mock-access-token", created.id, "second-update");
+    const document = await getCanvasDocument("local-mock-access-token", created.id);
+
+    expect(loaded).toMatchObject({ id: created.id, originChatId: FIRST_CHAT_ID, title: "Test Canvas" });
+    expect(appended).toMatchObject({ sequence: 2, update: "second-update" });
+    expect(document.updates.map(({ sequence, update }) => ({ sequence, update }))).toEqual([
+      { sequence: 1, update: "initial-update" },
+      { sequence: 2, update: "second-update" },
+    ]);
+  });
+
+  it("renames a canvas and reset restores the seeded canvas", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const created = await createCanvas("local-mock-access-token", FIRST_CHAT_ID, "Temporary Canvas");
+    const renamed = await renameCanvas("local-mock-access-token", created.id, "Renamed Canvas");
+
+    expect(renamed.title).toBe("Renamed Canvas");
+    resetMockData();
+
+    await expect(getCanvas("local-mock-access-token", created.id)).rejects.toMatchObject({ status: 404 });
+    await expect(getStorageCanvases("local-mock-access-token")).resolves.toEqual([
+      expect.objectContaining({ id: "mock-canvas-planning", title: "Planning Notes" }),
+    ]);
+  });
+
+  it("returns an empty plans collection so the mock Plans page renders without an API error", async () => {
+    const { response, body } = await request<unknown[]>("/api/plans?start=2026-10-17T00%3A00%3A00.000Z&end=2026-10-18T00%3A00%3A00.000Z");
+    expect(response.status).toBe(200);
+    expect(body).toEqual([]);
+  });
+
+  it("provides ephemeral preview files without an upload", async () => {
+    const { response, body } = await request<FamilyFile[]>("/api/files");
+
+    expect(response.status).toBe(200);
+    expect(body.map((file) => file.originalName)).toEqual([
+      "Storage preview photo.svg",
+      "Storage preview video.webm",
+      "Storage preview report.pdf",
+      "Storage preview notes.md",
+    ]);
+
+    const markdownResponse = await fetch(`${MOCK_ORIGIN}/api/files/${body[3].id}/download`);
+    await expect(markdownResponse.text()).resolves.toContain("# Storage preview notes");
+    const pdfResponse = await fetch(`${MOCK_ORIGIN}/api/files/${body[2].id}/download`);
+    const pdf = await pdfResponse.text();
+    expect(pdf).toContain("xref\n0 6");
+    expect(pdf).toContain("Storage preview demo");
+    await expect(request<unknown[]>("/api/collections").then((result) => result.body)).resolves.toEqual([
+      expect.objectContaining({ id: "mock-storage-preview-folder", title: "Storage preview folder", displayKind: "folder", itemCount: 1, accessLevel: "editor" }),
+    ]);
+    await expect(request<unknown[]>("/api/family/roles").then((result) => result.body)).resolves.toEqual([]);
+  });
+
+  it("opens the demo folder with its PDF and removes the file through the mock API", async () => {
+    const files = await request<FamilyFile[]>("/api/files");
+    expect(files.body.map((file) => file.id)).toContain("mock-storage-preview-report");
+
+    const folderItems = await request<FamilyFile[]>("/api/collections/mock-storage-preview-folder/items");
+    expect(folderItems.response.status).toBe(200);
+    expect(folderItems.body).toEqual([expect.objectContaining({ id: "mock-storage-preview-report", originalName: "Storage preview report.pdf" })]);
+
+    const removeResponse = await fetch(`${MOCK_ORIGIN}/api/collections/mock-storage-preview-folder/items/mock-storage-preview-report`, { method: "DELETE" });
+    expect(removeResponse.status).toBe(204);
+    await expect(request<FamilyFile[]>("/api/collections/mock-storage-preview-folder/items").then((result) => result.body)).resolves.toEqual([]);
+  });
+
   it("returns a refresh session for the synthetic Stovo Demo user", async () => {
     const { response, body } = await request<AuthResponse>("/api/auth/refresh", { method: "POST" });
 
@@ -82,7 +170,12 @@ describe("local mock chat API", () => {
     expect(favorited.isFavorite).toBe(true);
     await deleteFile("local-mock-access-token", uploaded.id);
     await expect(getFile("local-mock-access-token", uploaded.id)).rejects.toMatchObject({ status: 404 });
-    await expect(getFiles("local-mock-access-token")).resolves.toEqual([]);
+    await expect(getFiles("local-mock-access-token")).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "mock-storage-preview-photo" }),
+      expect.objectContaining({ id: "mock-storage-preview-video" }),
+      expect.objectContaining({ id: "mock-storage-preview-report" }),
+      expect.objectContaining({ id: "mock-storage-preview-notes" }),
+    ]));
   });
 
   it("uses the tab-selected fixture user for refresh and sent messages", async () => {

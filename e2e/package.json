@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:mock": "E2E_MODE=mock E2E_BASE_URL=http://127.0.0.1:5180 playwright test tests/storage-plans-ui-regressions.spec.ts",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
+    "test:visual": "playwright test tests/visual-regression.spec.ts tests/local-mock-mode.spec.ts",
+    "test:visual:update": "playwright test tests/visual-regression.spec.ts tests/local-mock-mode.spec.ts --update-snapshots",
     "test:ci": "playwright test --reporter=github,html,junit",
     "test:production": "playwright test tests/production-smoke.spec.ts --reporter=github,html,junit",
     "report": "playwright show-report"

@@ -94,3 +94,7 @@ export function useStrings(): AppStrings {
   }
   return context.strings;
 }
+
+export function useResolvedLanguage(): ResolvedLanguage {
+  return useContext(LanguageContext)?.resolvedLanguage ?? getSystemLanguage();
+}

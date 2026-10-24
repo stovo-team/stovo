@@ -1,3 +1,7 @@
 # Atlas hashes migration bytes. Keep them identical in every checkout.
 backend/migrations/*.sql text eol=lf
 backend/migrations/atlas.sum text eol=lf
+
+# Frontend source-text tests compare authored files; keep their checkout bytes
+# stable on Windows and Unix runners.
+frontend/** text eol=lf

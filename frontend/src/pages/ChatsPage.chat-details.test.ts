@@ -30,7 +30,7 @@ describe("chat details controls", () => {
     expect(styles).toContain("inset-inline-start: 100%;");
     expect(styles).toContain(".chat-info-title-inline-actions {");
     expect(styles).toContain(".chat-info-title-save:hover:not(:disabled),");
-    expect(styles).toContain("border-radius: 9999px;");
+    expect(styles).toContain("border-radius: var(--radius-pill);");
   });
 
   it("does not show archive or encryption labels in the chat details hero", () => {
@@ -127,9 +127,9 @@ describe("chat details controls", () => {
   });
 
   it("styles chat wallpaper upload button as fully rounded and radio buttons as modern", () => {
-    expect(styles).toContain("border-radius: 9999px;");
+    expect(styles).toContain("border-radius: var(--radius-pill);");
     expect(styles).toContain(".chat-info-permission-option input[type=\"radio\"]");
-    expect(styles).toContain("border-radius: 50%;");
+    expect(styles).toContain("border-radius: var(--radius-circle);");
     expect(styles).toContain("radial-gradient(circle at center, var(--accent-primary");
   });
 
@@ -176,7 +176,7 @@ describe("chat details controls", () => {
 
     // Quiet hours
     expect(chatDetailsPanel).toContain("chat-info-quiet-hours-inputs");
-    expect(chatDetailsPanel).toContain("chat-info-time-input");
+    expect(chatDetailsPanel).toContain("PopupField");
 
     // Notification scope & sender picker
     expect(chatDetailsPanel).toContain('name="chatNotificationScope"');

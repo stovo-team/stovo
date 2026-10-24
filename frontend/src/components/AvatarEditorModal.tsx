@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Minus, Plus, RotateCcw, RotateCw, X } from "lucide-react";
-import { strings } from "../config/strings";
+import { Check, Minus, Plus, RotateCcw, RotateCw } from "lucide-react";
+import { useStrings } from "../i18n/LanguageContext";
+import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
 interface AvatarEditorModalProps {
   file: File;
@@ -21,6 +22,7 @@ export function AvatarEditorModal({
   onSave,
   onClose
 }: AvatarEditorModalProps) {
+  const strings = useStrings();
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
 
@@ -210,13 +212,8 @@ export function AvatarEditorModal({
   };
 
   return createPortal(
-    <div
-      className="avatar-editor-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title || strings.avatarEditor.title}
-    >
-      <div className="avatar-editor-modal">
+    <PopupBackdrop className="avatar-editor-backdrop">
+      <div className="avatar-editor-modal" role="dialog" aria-modal="true" aria-label={title || strings.avatarEditor.title}>
         {/* Header */}
         <header className="avatar-editor-header">
           <div className="avatar-editor-title">
@@ -235,14 +232,7 @@ export function AvatarEditorModal({
             >
               <RotateCcw size={18} />
             </button>
-            <button
-              type="button"
-              className="avatar-editor-close-btn"
-              onClick={onClose}
-              aria-label={strings.avatarEditor.cancel}
-            >
-              <X size={20} />
-            </button>
+            <PopupCloseButton className="avatar-editor-close-btn" onClick={onClose} ariaLabel={strings.avatarEditor.cancel} />
           </div>
         </header>
 
@@ -259,7 +249,7 @@ export function AvatarEditorModal({
             <div className="avatar-editor-image-layer">
               <img
                 src={previewUrl}
-                alt="Profile Preview"
+                alt={strings.sharedUi.profilePreview}
                 className="avatar-editor-preview-img"
                 draggable={false}
                 style={{
@@ -360,7 +350,7 @@ export function AvatarEditorModal({
           </button>
         </footer>
       </div>
-    </div>,
+    </PopupBackdrop>,
     document.body
   );
 }

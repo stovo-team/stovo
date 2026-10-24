@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Call UI · real component preview</title>
+    <link rel="stylesheet" href="/src/design-system/tokens.css" />
     <link rel="stylesheet" href="/src/styles.css" />
     <style>
       /* Only preview framing is local; the call stage, tiles, statuses, buttons,
@@ -82,6 +83,9 @@
       .call-preview-focus-participant > strong { position:absolute; left:6px; right:6px; bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; text-align:left; }
       .call-preview-focus-close { grid-column:1 / -1; justify-self:center; min-height:38px; padding:0 16px; border:1px solid #465166; border-radius:999px; color:#fff; background:#232b37; cursor:pointer; }
       .call-preview-panel { position:relative; }
+      .call-preview-panel[data-voice-channel="true"] { min-height:min(700px,calc(100vh - 110px)); overflow:hidden; padding:0; }
+      .call-preview-panel[data-voice-channel="true"] > .call-preview-header { position:absolute; top:12px; left:18px; right:18px; z-index:40; }
+      .call-preview-voice-room { flex:1 1 auto; height:auto; min-height:0; border:1px solid var(--border-default,#333); border-radius:12px; }
       .call-preview-mobile-stage { position:relative; flex:1; min-height:460px; overflow:hidden; border-radius:12px; background:#030406; }
       .call-preview-stage-primary { position:absolute; inset:0; display:grid; align-content:center; justify-items:center; gap:12px; width:100%; border:0; border-radius:0; background:linear-gradient(145deg,#1a2633,#090c12 68%); color:#fff; }
       .call-preview-stage-primary > strong,.call-preview-stage-primary > span { position:relative; z-index:2; }

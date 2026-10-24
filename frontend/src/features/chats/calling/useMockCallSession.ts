@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import type { User } from "../../../api/auth";
@@ -9,11 +10,14 @@ import {
   acceptMockCall,
   createMockCall,
   declineMockCall,
+  getMockCallScreenShareOwnerForParticipant,
   inviteMockCallUsers,
   leaveMockCall,
   publishMockCallSnapshot,
   readMockCallSnapshot,
   subscribeToMockCallChanges,
+  startMockCallScreenShare,
+  stopMockCallScreenShare,
   type MockCallSnapshot,
 } from "../../../dev/mockCallBroker";
 
@@ -83,15 +87,22 @@ export function useMockCallSession({
   refs,
   setters,
 }: MockCallSessionParams) {
+  const copy = useStrings().sharedUi;
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
+  const [mockScreenShareUserId, setMockScreenShareUserId] = useState<string | null>(null);
   const applySnapshotRef = useRef<(call: MockCallSnapshot | null) => void>(() => undefined);
 
   applySnapshotRef.current = (call) => {
-    if (!call) return;
+    if (!call) {
+      setMockScreenShareUserId(null);
+      setters.setCallAudioSettings((current) => current.screenSharing ? { ...current, screenSharing: false } : current);
+      return;
+    }
     const isCurrentCall =
       refs.activeCallSessionIdRef.current === call.id || refs.callRoomIdRef.current === call.id;
     if (call.status === "ended") {
+      setMockScreenShareUserId(null);
       setters.setActiveGroupCalls((current) => {
         if (!current[call.chatId]) return current;
         const next = { ...current };
@@ -103,15 +114,24 @@ export function useMockCallSession({
     }
 
     const activeUser = currentUserRef.current;
-    if (!activeUser) return;
+    if (!activeUser) {
+      setMockScreenShareUserId(null);
+      return;
+    }
     const self = call.participants.find((participant) => participant.userId === activeUser.id);
-    if (!self) return;
+    if (!self) {
+      setMockScreenShareUserId(null);
+      return;
+    }
     if (self.state === "declined" || self.state === "left") {
+      setMockScreenShareUserId(null);
       if (isCurrentCall) {
         void resetCallState(self.state === "declined" ? "Call declined" : "Call ended", true, false);
       }
       return;
     }
+    const screenShareUserId = getMockCallScreenShareOwnerForParticipant(call, activeUser.id);
+    setMockScreenShareUserId(screenShareUserId);
 
     const callChat = chatsRef.current.find((chat) => chat.id === call.chatId);
     if (!callChat) return;
@@ -157,7 +177,7 @@ export function useMockCallSession({
       screenStream: null,
       hasVideo: false,
       hasAudio: false,
-      hasScreenShare: false,
+      hasScreenShare: screenShareUserId === userId,
       isMuted: true,
     })));
     setters.setHasRemoteVideo(call.callType === "video" && remoteUsers.length > 0);
@@ -165,16 +185,12 @@ export function useMockCallSession({
     setters.setIsLocalSpeaking(false);
     setters.setIsPeerSpeaking(false);
     setters.setSpeakingUserIds([]);
-    if (isNewCall) {
-      setters.setCallAudioSettings((current) => ({
-        ...current,
-        micMuted: true,
-        soundDisabled: true,
-        cameraEnabled: false,
-        screenSharing: false,
-      }));
-      setters.setCallNotice("Mock call: audio and camera devices are disabled");
-    }
+    setters.setCallAudioSettings((current) => ({
+      ...current,
+      ...(isNewCall ? { micMuted: true, soundDisabled: true, cameraEnabled: false } : {}),
+      screenSharing: screenShareUserId === activeUser.id,
+    }));
+    if (isNewCall) setters.setCallNotice("Mock call: audio and camera devices are disabled");
     if (isGroupCall) {
       setters.setActiveGroupCalls((current) => ({
         ...current,
@@ -222,7 +238,7 @@ export function useMockCallSession({
     }
     if (!callChat) return true;
     if (peers.length === 0 && callChat.type !== "group" && callChat.type !== "family") {
-      setError("This chat has no other members to call.");
+      setError(copy.membersToCallEmpty);
       return true;
     }
     const invitees = inviteUserIds && inviteUserIds.length > 0
@@ -312,8 +328,20 @@ export function useMockCallSession({
     return true;
   };
 
+  const toggleScreenShare = (): boolean => {
+    if (!isLocalMockCallMode || !currentUser) return false;
+    const call = readMockCallSnapshot();
+    if (!call || call.id !== refs.callRoomIdRef.current) return true;
+    const updated = call.screenShareUserId === currentUser.id
+      ? stopMockCallScreenShare(call, currentUser.id)
+      : startMockCallScreenShare(call, currentUser.id);
+    if (updated) publishMockCallSnapshot(updated);
+    return true;
+  };
+
   return {
     isEnabled: isLocalMockCallMode,
+    mockScreenShareUserId,
     startDirectCall,
     sendInvites,
     acceptIncomingCall,
@@ -321,5 +349,6 @@ export function useMockCallSession({
     joinVoiceChannel,
     declineIncomingCall,
     endActiveCall,
+    toggleScreenShare,
   };
 }

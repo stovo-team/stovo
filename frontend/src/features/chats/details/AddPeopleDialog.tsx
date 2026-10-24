@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 
 import type { User } from "../../../api/auth";
+import { PopupDialog } from "../../../components/ui/Popup";
+import { PopupField } from "../../../components/ui/PopupField";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { RealAvatar } from "../sidebar/RealAvatar";
 
@@ -38,24 +39,23 @@ export function AddPeopleDialog({ accessToken, members, onAdd, onClose }: AddPeo
   }
 
   return createPortal(
-    <div className="new-chat-modal-backdrop" onMouseDown={onClose}>
-      <div onMouseDown={(event) => event.stopPropagation()}>
-        <section className="new-chat-screen add-people-dialog" aria-modal="true" aria-labelledby="add-people-title" role="dialog">
+    <PopupDialog
+      className="new-chat-screen add-people-dialog"
+      ariaLabelledBy="add-people-title"
+      onClose={onClose}
+      closeOnBackdrop
+      closeOnEscape={false}
+      closeLabel={strings.chats.details.cancel}
+      size="md"
+      backdropClassName="new-chat-modal-backdrop"
+    >
           <header className="new-chat-screen-header">
             <span className="new-chat-screen-spacer" />
             <h2 id="add-people-title">{strings.chats.details.addPeople}</h2>
-            <button
-              type="button"
-              className="new-chat-screen-close"
-              aria-label={strings.chats.details.cancel}
-              onClick={onClose}
-            >
-              <X aria-hidden="true" />
-            </button>
           </header>
-          <input
+          <PopupField
+            label={strings.chats.details.addPeopleSearchPlaceholder}
             autoFocus
-            className="new-chat-screen-search"
             type="search"
             value={search}
             placeholder={strings.chats.details.addPeopleSearchPlaceholder}
@@ -89,9 +89,7 @@ export function AddPeopleDialog({ accessToken, members, onAdd, onClose }: AddPeo
               ))
             )}
           </ul>
-        </section>
-      </div>
-    </div>,
+    </PopupDialog>,
     document.body
   );
 }

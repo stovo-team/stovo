@@ -8,9 +8,10 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, FileText, Globe, Sparkles, Video } from "lucide-react";
+import { Check, ChevronDown, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type MeetingIntelligencePopoverProps = {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export type MeetingIntelligencePopoverProps = {
 
 /** A transient, call-level confirmation for work that continues server-side. */
 export function MeetingBackgroundToast({ message, onDismiss }: { message: string | null; onDismiss: (message: null) => void }) {
+  const copy = useStrings().auditUi;
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function MeetingBackgroundToast({ message, onDismiss }: { message: string
   return (
     <div className="meeting-intel-background-toast" role="status" aria-live="polite">
       <span className="meeting-intel-background-toast-icon"><Sparkles size={17} aria-hidden="true" /></span>
-      <span><strong>{message}</strong><small>The result will appear in this chat when ready.</small></span>
+      <span><strong>{message}</strong><small>{copy.intelligenceResultInChat}</small></span>
     </div>
   );
 }
@@ -79,6 +81,7 @@ export function MeetingIntelligencePopover({
   isMobile = false,
   inlineMenu = false,
 }: MeetingIntelligencePopoverProps) {
+  const copy = useStrings().auditUi;
   const popoverRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLElement | null>(null);
   const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(null);
@@ -88,7 +91,7 @@ export function MeetingIntelligencePopover({
 
   const handleToggleNotes = () => {
     if (notesState === "recording") {
-      setBackgroundToastMessage("AI Notes are being prepared");
+      setBackgroundToastMessage(copy.aiNotesPreparing);
       onClose();
     }
     onToggleNotes();
@@ -96,7 +99,7 @@ export function MeetingIntelligencePopover({
 
   const handleToggleRecording = () => {
     if (recordingState === "recording") {
-      setBackgroundToastMessage("Recording is being processed");
+      setBackgroundToastMessage(copy.recordingProcessing);
       onClose();
     }
     onToggleRecording();
@@ -187,21 +190,21 @@ export function MeetingIntelligencePopover({
       className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}${inlineMenu ? " meeting-intel-popover--inline-menu" : ""}${anchoredPosition ? " meeting-intel-popover--anchored" : ""}`}
       style={anchoredPosition ? { position: "fixed", left: anchoredPosition.left, top: anchoredPosition.top, transform: "none" } : undefined}
       role={inlineMenu ? "group" : "dialog"}
-      aria-label={inlineMenu ? "Meeting features" : "Meeting Intelligence Controls"}
+      aria-label={inlineMenu ? copy.meetingFeatures : copy.meetingIntelControls}
     >
       {/* Header */}
       <div className="meeting-intel-header">
         {inlineMenu ? (
-        <button type="button" className="meeting-intel-inline-toggle" aria-label="Stovo Intelligence" aria-expanded={isExpanded} onClick={() => setIsExpanded((expanded) => !expanded)}>
+        <button type="button" className="meeting-intel-inline-toggle" aria-label={copy.intelligence} aria-expanded={isExpanded} onClick={() => setIsExpanded((expanded) => !expanded)}>
           <img src="/stovo-brain-color.svg" width={20} height={20} className="meeting-intel-logo" alt="" />
-          <span className="meeting-intel-name">Stovo Intelligence</span>
+          <span className="meeting-intel-name">{copy.intelligence}</span>
           <ChevronDown size={16} aria-hidden="true" />
         </button>
         ) : (
         <div className="meeting-intel-title-row">
           <img src="/stovo-brain-color.svg" width={20} height={20} className="meeting-intel-logo" alt="" />
           <div className="meeting-intel-title-copy">
-            <span className="meeting-intel-name">Stovo Intelligence</span>
+            <span className="meeting-intel-name">{copy.intelligence}</span>
           </div>
         </div>
         )}
@@ -215,7 +218,7 @@ export function MeetingIntelligencePopover({
               <FileText size={18} />
             </div>
             <div className="meeting-intel-card-info">
-              <div className="meeting-intel-card-title">AI Notes</div>
+              <div className="meeting-intel-card-title">{copy.aiNotes}</div>
             </div>
             <div className="meeting-intel-card-action">
               {isNotesAllowed ? (
@@ -226,17 +229,15 @@ export function MeetingIntelligencePopover({
                   }`}
                   onClick={handleToggleNotes}
                   disabled={isNotesProcessing}
-                  aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
+                  aria-label={isNotesActive ? copy.stopAiNotes : isNotesProcessing ? copy.aiNotesProcessing : copy.startAiNotes}
                 >
-                  {isNotesActive ? "Stop" : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : "Start"}
+                  {isNotesActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={17} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
                   className="meeting-intel-restricted-badge"
-                  title={notesDisabledReason || "Host only"}
-                >
-                  Host only
-                </span>
+                  title={notesDisabledReason || copy.hostOnly}
+                >{copy.hostOnly}</span>
               )}
             </div>
           </div>
@@ -250,9 +251,7 @@ export function MeetingIntelligencePopover({
                   onClose();
                 }}
               >
-                <Sparkles size={14} />
-                View Generated Notes
-              </button>
+                <Sparkles size={14} />{copy.viewGeneratedNotes}</button>
             </div>
           )}
         </div>
@@ -264,7 +263,7 @@ export function MeetingIntelligencePopover({
               <Video size={18} />
             </div>
             <div className="meeting-intel-card-info">
-              <div className="meeting-intel-card-title">Video Recording</div>
+              <div className="meeting-intel-card-title">{copy.videoRecording}</div>
               {isRecActive && <span className="meeting-intel-rec-timer">REC {recordingTimer}</span>}
             </div>
             <div className="meeting-intel-card-action">
@@ -276,17 +275,15 @@ export function MeetingIntelligencePopover({
                   }`}
                   onClick={handleToggleRecording}
                   disabled={isRecStopping}
-                  aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
+                  aria-label={isRecActive ? copy.stopRecording : isRecStopping ? copy.savingRecording : copy.startRecording}
                 >
-                  {isRecActive ? "Stop" : isRecStopping ? <Check size={16} aria-hidden="true" /> : "Start"}
+                  {isRecActive ? <Square size={14} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={17} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
                   className="meeting-intel-restricted-badge"
-                  title={recordingDisabledReason || "Host only"}
-                >
-                  Host only
-                </span>
+                  title={recordingDisabledReason || copy.hostOnly}
+                >{copy.hostOnly}</span>
               )}
             </div>
           </div>
@@ -299,7 +296,7 @@ export function MeetingIntelligencePopover({
               <Globe size={18} />
             </div>
             <div className="meeting-intel-card-info">
-              <div className="meeting-intel-card-title">Live Captions</div>
+              <div className="meeting-intel-card-title">{copy.liveCaptions}</div>
             </div>
             <div className="meeting-intel-card-action">
               <label className="meeting-intel-switch">
@@ -307,11 +304,11 @@ export function MeetingIntelligencePopover({
                   type="checkbox"
                   defaultChecked={false}
                   disabled
-                  aria-label="Live Captions unavailable"
+                  aria-label={copy.liveCaptionsUnavailable}
                 />
                 <span className="meeting-intel-switch-slider" />
               </label>
-              <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>
+              <span className="meeting-intel-restricted-badge" aria-label={copy.premiumFeature}>{copy.premium}</span>
             </div>
           </div>
         </div>

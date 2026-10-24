@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "providerId": "stovo",
+    "profileId": "stovo-chat-archive-v1"
+  },
+  "exportedAt": "2026-10-11T00:00:00.000Z",
+  "conversation": {
+    "sourceId": "chat-source-1",
+    "title": "Project room"
+  },
+  "participants": [
+    {
+      "sourceId": "user-source-1",
+      "displayName": "Amina"
+    }
+  ],
+  "messages": [
+    {
+      "sourceId": "message-source-1",
+      "authorId": "user-source-1",
+      "timestamp": "2026-10-10T12:30:00.000Z",
+      "kind": "text",
+      "text": "Hello",
+      "attachmentIds": ["attachment-1"],
+      "metadata": {}
+    }
+  ],
+  "attachments": [
+    {
+      "id": "attachment-1",
+      "path": "attachments/report.pdf",
+      "filename": "report.pdf",
+      "mimeType": "application/pdf",
+      "size": 4,
+      "checksum": "sha256:abcd"
+    }
+  ],
+  "warnings": []
+}

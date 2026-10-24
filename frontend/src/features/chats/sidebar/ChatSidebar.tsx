@@ -52,6 +52,7 @@ export function ChatSidebar({
     setChatFilter,
     filteredChats,
     chatsBySection,
+    refreshChats,
     openNewChatScreen
   } = overview;
 
@@ -101,7 +102,7 @@ export function ChatSidebar({
   }, []);
 
   return (
-    <aside className="chat-sidebar" aria-label="Chats sidebar">
+    <aside className="chat-sidebar" aria-label={strings.chats.sidebar.ariaLabel}>
       <div className={`chat-sidebar-header${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
         <div className={`sidebar-title-row chat-list-title${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
           <span className="chat-list-brand-mark" aria-label="Stovo">
@@ -125,7 +126,7 @@ export function ChatSidebar({
               </button>
 
               {isServerMenuOpen && (
-                <div className="action-menu server-switcher-menu" role="menu" aria-label="Spaces">
+                <div className="action-menu server-switcher-menu" role="menu" aria-label={strings.chats.sidebar.spaces}>
                   {validServers.length > 0 ? (
                     validServers.map((server) => {
                       const isActive = activeServer?.id === server.id;
@@ -153,7 +154,7 @@ export function ChatSidebar({
                             <button
                               type="button"
                               className="server-switcher-delete-btn"
-                              title={`Remove ${server.name}`}
+                              title={strings.chats.sidebar.removeSpace(server.name)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 removeServer(server.id);
@@ -170,7 +171,6 @@ export function ChatSidebar({
                       <Server aria-hidden="true" size={16} />
                       <span>
                         <strong>{displayFamilyName}</strong>
-                        <small>{strings.spaceSwitcher.currentSpace}</small>
                       </span>
                     </button>
                   )}
@@ -196,8 +196,8 @@ export function ChatSidebar({
               <button
                 type="button"
                 className="icon-button subtle"
-                aria-label="Create invitation"
-                title="Invite"
+                aria-label={strings.chats.sidebar.createInvitation}
+                title={strings.chats.sidebar.invite}
                 onClick={onOpenFamilyInvite}
               >
                 <UserPlus aria-hidden="true" size={20} />
@@ -210,8 +210,8 @@ export function ChatSidebar({
           <div className="shared-files-ready" role="status">
             <Paperclip aria-hidden="true" size={20} />
             <span>
-              <strong>Shared {incomingSharedFiles.files.length === 1 ? "file" : "files"} ready to send</strong>
-              <small>Select a chat to add {incomingSharedFiles.files.length === 1 ? "it" : "them"}.</small>
+              <strong>{strings.chats.sidebar.sharedFilesReady(incomingSharedFiles.files.length)}</strong>
+              <small>{strings.chats.sidebar.selectChatToAdd(incomingSharedFiles.files.length)}</small>
             </span>
           </div>
         )}
@@ -251,6 +251,7 @@ export function ChatSidebar({
         hasLoadedOverview={hasLoadedOverview}
         chatsBySection={chatsBySection}
         filteredChats={filteredChats}
+        refreshChats={refreshChats}
         chatFilter={chatFilter}
         familyId={familyId}
         canManageFolders={canManageFolders}
@@ -273,8 +274,8 @@ export function ChatSidebar({
       <button
         type="button"
         className="compose-fab"
-        aria-label="Start a chat"
-        title="Start a chat"
+            aria-label={strings.chats.sidebar.startChat}
+            title={strings.chats.sidebar.startChat}
         onClick={openNewChatScreen}
       >
         <Plus aria-hidden={true} size={16} />

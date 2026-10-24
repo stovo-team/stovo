@@ -187,6 +187,7 @@ export function Composer({
   }) => void | Promise<void>;
 }) {
   const strings = useStrings();
+  const composerCopy = strings.chats.composer;
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const [isSendSubmenuOpen, setIsSendSubmenuOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -769,7 +770,7 @@ export function Composer({
               }}
             />
             {mentionCandidates.length > 0 && (
-              <div className="composer-mention-menu" role="listbox" aria-label="Mention a member">
+              <div className="composer-mention-menu" role="listbox" aria-label={composerCopy.mentionMember}>
                 {mentionCandidates.map((member, index) => {
                   const isSelected = index === selectedMentionIndex;
                   return (
@@ -791,12 +792,12 @@ export function Composer({
               </div>
             )}
             {isSlashActive && (
-              <div className="composer-mention-menu composer-slash-menu" role="listbox" aria-label="Slash commands">
+              <div className="composer-mention-menu composer-slash-menu" role="listbox" aria-label={composerCopy.slashCommands}>
                 {slashCandidates.length > 0 ? (
                   <>
                     <div className="slash-menu-header">
-                      <span>Available Commands</span>
-                      <small>Press Enter or click to use</small>
+                      <span>{composerCopy.availableCommands}</span>
+                      <small>{composerCopy.slashInstructions}</small>
                     </div>
                     {slashCandidates.map((item, index) => {
                       const isSelected = index === selectedMentionIndex;
@@ -826,10 +827,10 @@ export function Composer({
                   <div className="slash-menu-unrecognized">
                     <div className="slash-unrecognized-header">
                       <HelpCircle size={16} />
-                      <span>Unrecognized command "/{slashQuery}"</span>
+                      <span>{composerCopy.unrecognizedCommand(slashQuery)}</span>
                     </div>
                     <div className="slash-unrecognized-body">
-                      <span>Available commands:</span>
+                      <span>{composerCopy.availableCommandsLabel}</span>
                       <div className="slash-unrecognized-actions">
                         {ALL_SLASH_COMMANDS.map((cmd) => (
                           <button

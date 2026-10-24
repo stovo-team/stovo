@@ -8,11 +8,13 @@ import { formatFileSize, saveFileToDisk } from "../../api/files";
 import InviteModal from "../../components/InviteModal";
 import ImageLightbox from "../../components/ImageLightbox";
 import { MessageEnlargeModal } from "../../components/MessageEnlargeModal";
+import { PopupDialog } from "../../components/ui/Popup";
 import { NewChatDialog } from "./sidebar/NewChatDialog";
 import type { ChatOverviewController } from "./sidebar/types";
 import type { Chat } from "../../api/chats";
 import { GuestMeetingLinkControl } from "./calling/GuestMeetingLinkControl";
 import { GuestMeetingSelect } from "./calling/GuestMeetingSelect";
+import { useStrings } from "../../i18n/LanguageContext";
 
 import type { PendingLocalAttachment } from "./shared/types";
 
@@ -75,6 +77,7 @@ export function ChatOverlays({
   onAddAttachments,
   onSendMessage
 }: ChatOverlaysProps) {
+  const copy = useStrings().sharedUi;
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const meetingChats = chats.filter((chat) => chat.type === "family" || chat.type === "group" || chat.type === "direct");
   const [meetingChatId, setMeetingChatId] = useState("");
@@ -117,8 +120,16 @@ export function ChatOverlays({
     <>
       {isNewChatOpen &&
         createPortal(
-          <div className="new-chat-modal-backdrop" onMouseDown={closeNewChatScreen}>
-            <div onMouseDown={(event) => event.stopPropagation()}>
+          <PopupDialog
+            className="new-chat-screen"
+            ariaLabelledBy={newChatScreen === "pick" ? "new-chat-title" : "new-chat-compose-title"}
+            onClose={closeNewChatScreen}
+            closeOnBackdrop
+            closeOnEscape={false}
+            showCloseButton={false}
+            size="lg"
+            backdropClassName="new-chat-modal-backdrop"
+          >
               <NewChatDialog
                 accessToken={accessToken}
                 currentUser={currentUser}
@@ -138,18 +149,54 @@ export function ChatOverlays({
                 onCreateVoiceChannel={(event) => void handleCreateVoiceChat(event)}
                 onPlanGuestMeeting={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true ? () => { setMeetingChatId(meetingChats[0]?.id ?? ""); setNewMeetingChatTitle(""); setMeetingTitle(""); setMeetingCalendarRange({}); setIsMeetingPlannerOpen(true); closeNewChatScreen(); } : undefined}
               />
-            </div>
-          </div>,
+          </PopupDialog>,
           document.body
         )}
 
       {isMeetingPlannerOpen && createPortal(
-        <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
-          <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
-            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""} onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined} onQueueAnnouncement={onQueueChatMessage} newChatTitle={newMeetingChatTitle} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">Select a chat above.</p>}</div>
-          </section>
-        </div>, document.body)}
+        <PopupDialog
+          className="guest-meeting-planner"
+          ariaLabel={copy.planGuestMeeting}
+          onClose={() => setIsMeetingPlannerOpen(false)}
+          closeLabel={copy.close}
+          size="md"
+        >
+          <div className="guest-meeting-planner-header">
+            <h2>{copy.createMeetingLink}</h2>
+          </div>
+          <div className="guest-meeting-planner-body">
+            <label className="guest-link-field">
+              <span>{copy.meetingChat}</span>
+              <GuestMeetingSelect
+                ariaLabel={copy.meetingChat}
+                value={meetingChatId}
+                onChange={setMeetingChatId}
+                options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? copy.untitledChat }))}
+                newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""}
+                onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined}
+              />
+            </label>
+            {meetingChatId ? (
+              <GuestMeetingLinkControl
+                accessToken={accessToken}
+                chatId={meetingChatId}
+                sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null}
+                onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined}
+                onQueueAnnouncement={onQueueChatMessage}
+                newChatTitle={newMeetingChatTitle}
+                currentUserId={currentUser?.id}
+                enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true}
+                initialTitle={meetingTitle}
+                calendarStart={meetingCalendarRange.start}
+                calendarEnd={meetingCalendarRange.end}
+              />
+            ) : (
+              <p className="muted-copy">{copy.selectChatAbove}</p>
+            )}
+          </div>
+        </PopupDialog>,
+        document.body
+      )}
 
       {accessToken && canCreateFamilyInvite && (
         <InviteModal

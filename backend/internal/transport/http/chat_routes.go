@@ -17,6 +17,8 @@ type ChatRoutes struct {
 	CreateChannelChat       stdhttp.Handler
 	CreateVoiceChat         stdhttp.Handler
 	GetChat                 stdhttp.Handler
+	GetChatTransferSource   stdhttp.Handler
+	ImportChat              stdhttp.Handler
 	UpdateChat              stdhttp.Handler
 	AddChatMembers          stdhttp.Handler
 	UpdateChatPreferences   stdhttp.Handler
@@ -54,6 +56,8 @@ func RegisterChatRoutes(router chi.Router, routes ChatRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/chats/channel", routes.CreateChannelChat)
 	router.Method(stdhttp.MethodPost, "/api/chats/voice", routes.CreateVoiceChat)
 	router.Method(stdhttp.MethodGet, "/api/chats/{chatId}", routes.GetChat)
+	router.Method(stdhttp.MethodGet, "/api/chats/{chatId}/transfer-source", routes.GetChatTransferSource)
+	router.Method(stdhttp.MethodPost, "/api/chat-imports", routes.ImportChat)
 	router.Method(stdhttp.MethodPatch, "/api/chats/{chatId}", routes.UpdateChat)
 	router.Method(stdhttp.MethodPost, "/api/chats/{chatId}/members", routes.AddChatMembers)
 	router.Method(stdhttp.MethodPatch, "/api/chats/{chatId}/preferences", routes.UpdateChatPreferences)

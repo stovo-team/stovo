@@ -4,6 +4,7 @@ import { Maximize2 } from "lucide-react";
 import type { CallPhase } from "../shared/types";
 import type { RemoteMedia } from "../../../realtime/CallController";
 import { CallControlButton } from "./CallControlButton";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 type Props = {
   peerName: string;
@@ -34,6 +35,7 @@ const hasVideo = (stream: MediaStream | null) => stream?.getVideoTracks().some(
 
 /** The single minimized surface for every call type, kept mounted to remember speakers. */
 export function MinimizedCallBar({ visible = true, ...props }: Props) {
+  const copy = useStrings().sharedUi;
   const { remoteMedia, localVideoStream, localScreenStream, localUserId } = props;
   const floating = useFloatingCallPanel<HTMLElement>(visible && props.callPhase !== "idle", props.anchorChatId);
   const [lastSpeaker, setLastSpeaker] = useState<string | null>(null);
@@ -70,10 +72,10 @@ export function MinimizedCallBar({ visible = true, ...props }: Props) {
   const status = props.callPhase === "in-call" ? props.callTimer :
     props.callPhase === "incoming" ? "Incoming…" : props.callPhase === "outgoing" ? "Calling…" : "Connecting…";
   return (
-    <section {...floating} className={`minimized-call${preview ? " minimized-call--video" : ""}`} role="status" aria-label="Minimized call">
+    <section {...floating} className={`minimized-call${preview ? " minimized-call--video" : ""}`} role="status" aria-label={copy.minimizedCall}>
       {preview && <video ref={videoRef} className={mirrored ? "is-mirrored" : ""} autoPlay playsInline muted />}
       <div className="minimized-call-heading">
-        <button type="button" className="minimized-call-button" aria-label="Restore call" onClick={props.onExpand}>
+        <button type="button" className="minimized-call-button" aria-label={copy.restoreCall} onClick={props.onExpand}>
           <Maximize2 size={18} aria-hidden="true" />
         </button>
         <div className="minimized-call-metadata" data-call-drag-handle role="button" tabIndex={0}

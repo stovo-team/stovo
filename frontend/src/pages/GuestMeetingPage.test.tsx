@@ -80,6 +80,7 @@ class FakeMediaStream {
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
+const originalInnerWidth = window.innerWidth;
 
 async function renderPage() {
   const { default: GuestMeetingPage } = await import("./GuestMeetingPage");
@@ -96,6 +97,7 @@ async function renderPage() {
 beforeEach(() => {
   auth.accessToken = null;
   auth.currentUser = null;
+  Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
   vi.stubGlobal("MediaStream", FakeMediaStream);
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
@@ -118,11 +120,31 @@ afterEach(async () => {
   host?.remove();
   root = null;
   host = null;
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+  Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+  localStorage.removeItem("stovo.call-ui-preferences");
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
-describe("GuestMeetingPage pre-join controls", () => {
+describe("GuestMeetingPage pre-join controls", { timeout: 30000 }, () => {
+  it("renders pre-join actions in Russian for a Russian device locale", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(host?.textContent).toContain("Ваше имя");
+    expect(host?.querySelector<HTMLInputElement>('input[placeholder="Введите имя"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Присоединиться к встрече");
+    expect(host?.textContent).not.toContain("Join meeting");
+  });
+  it("renders pre-join actions in Russian for a Russian device locale", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(host?.textContent).toContain("Ваше имя");
+    expect(host?.querySelector<HTMLInputElement>('input[placeholder="Введите имя"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Присоединиться к встрече");
+    expect(host?.textContent).not.toContain("Join meeting");
+  });
+
   it("keeps the joining screen as an unboxed black loading state with the Stovo link at the bottom", async () => {
     api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joining", state: "admitted" });
     api.getGuestMeetingToken.mockReturnValueOnce(new Promise<{ url: string; token: string; roomName: string }>(() => undefined));
@@ -149,7 +171,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const connectingPageRule = css.match(/\.guest-meeting-page--connecting\s*\{([^}]*)\}/)?.[1] ?? "";
     const connectingLinkRule = css.match(/\.guest-meeting-page--connecting \.guest-stovo-marketing\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(connectingPageRule).toMatch(/background:\s*#000/);
+    expect(connectingPageRule).toContain("background: var(--color-palette-7b2817bf9b80)");
     expect(connectingLinkRule).toMatch(/position:\s*fixed/);
     expect(connectingLinkRule).toMatch(/bottom:/);
   });
@@ -192,6 +214,34 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(header).not.toBeNull();
     expect(header?.querySelector('button[aria-label*="Minimize"], button[title*="Minimize"], .call-preview-minimize')).toBeNull();
     expect(host?.querySelector('[aria-label="Minimize call"], [aria-label="Shrink call"]')).toBeNull();
+  });
+
+  it("reveals auto-hidden controls when a mobile guest taps the call stage", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: true, cameraFit: "fit" }));
+    api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-mobile", state: "admitted" });
+    await renderPage();
+    await act(async () => {
+      const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Mobile guest");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const room = host?.querySelector<HTMLElement>(".guest-call-room");
+    const controls = host?.querySelector<HTMLElement>(".shared-call-control-panel");
+    expect(controls?.getAttribute("data-visible")).toBe("false");
+    await act(async () => {
+      room?.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+      await Promise.resolve();
+    });
+    expect(controls?.getAttribute("data-visible")).toBe("true");
   });
 
   it("passes the signed-in account token when creating a meeting session", async () => {
@@ -323,7 +373,8 @@ describe("GuestMeetingPage pre-join controls", () => {
       await Promise.resolve();
     });
 
-    expect(host?.querySelector('[role="status"]')?.textContent).toContain("Could not switch cameras");
+    const cameraError = document.body.querySelector<HTMLElement>('.call-device-error-toast[role="alert"]');
+    expect(cameraError?.textContent).toContain("Could not switch cameras");
     expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
   });
 
@@ -365,7 +416,9 @@ describe("GuestMeetingPage pre-join controls", () => {
     const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Open device settings"]');
     await act(async () => { trigger?.click(); });
 
-    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).not.toBeNull();
+    expect(host?.querySelector('[role="dialog"][aria-label="Call settings"]')).not.toBeNull();
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="call-settings-panel-audio"]')?.click(); });
+    expect(host?.querySelector('[role="region"][aria-label="Audio settings"]')).not.toBeNull();
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Input gain"]')?.value).toBe("100");
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("100");
     expect(host?.textContent).toContain("Microphone test");
@@ -379,8 +432,9 @@ describe("GuestMeetingPage pre-join controls", () => {
     });
 
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
-    expect(host?.querySelector('[role="dialog"][aria-label="Audio settings"]')).toBeNull();
+    expect(host?.querySelector('[role="dialog"][aria-label="Call settings"]')).toBeNull();
     await act(async () => { trigger?.click(); });
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[role="tab"][aria-controls="call-settings-panel-audio"]')?.click(); });
     expect(host?.querySelector<HTMLInputElement>('[aria-label="Output volume"]')?.value).toBe("35");
   });
 
@@ -392,8 +446,8 @@ describe("GuestMeetingPage pre-join controls", () => {
 
     const css = readFileSync("src/styles.css", "utf8");
     const rule = css.match(/\.guest-call-controls \.guest-device-control > button\s*\{([^}]*)\}/s)?.[1] ?? "";
-    expect(rule).toMatch(/border-radius:\s*999px\s+0\s+0\s+999px/);
-    expect(rule).not.toMatch(/border-radius:\s*50%/);
+    expect(rule).toMatch(/border-radius:\s*var\(--radius-pill\)\s+0\s+0\s+var\(--radius-pill\)/);
+    expect(rule).not.toMatch(/border-radius:\s*var\(--radius-circle\)/);
   });
 
 });

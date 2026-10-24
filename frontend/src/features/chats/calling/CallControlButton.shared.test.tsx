@@ -23,6 +23,11 @@ function renderControl(props: React.ComponentProps<typeof CallControlButton>) {
   return host;
 }
 
+function lastStyleRule(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).at(-1) ?? "";
+}
+
 describe("shared call control button", () => {
   it("uses the same microphone icon component across DM/group, mobile, voice and guest surfaces", () => {
     const desktop = renderControl({ action: "microphone", label: "Mute", state: "active", onClick: vi.fn() });
@@ -70,8 +75,8 @@ describe("shared call control button", () => {
     const mutedMicButton = micMuted.querySelector("button")!;
     const speakerOnButton = speakerOn.querySelector("button")!;
     const speakerOffButton = speakerOff.querySelector("button")!;
-    const mutedRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-muted,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
-    const activeRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-active,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
+    const mutedRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-muted");
+    const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
     const mutedColor = mutedRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
     const activeColor = activeRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
 
@@ -86,7 +91,10 @@ describe("shared call control button", () => {
     expect(speakerOffButton.classList.contains("is-muted")).toBe(true);
     expect(activeColor).toBeTruthy();
     expect(mutedColor).toBeTruthy();
-    expect(mutedColor).not.toBe(activeColor);
+    expect(mutedColor).toBe(activeColor);
+    const mutedBackground = mutedRules.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim();
+    const activeBackground = activeRules.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim();
+    expect(mutedBackground).toBe(activeBackground);
   });
 
   it("switches camera and screen-share icons with their states", () => {
@@ -120,5 +128,27 @@ describe("shared call control button", () => {
     expect(endCallRules).toMatch(/transform:\s*none/);
     expect(endCallRules).not.toMatch(/transform:\s*scale/);
     expect(endCallRules).not.toMatch(/background:\s*(?:#b91c1c|rgba\(255,\s*255,\s*255)/i);
+  });
+
+  it("keeps end-call red while other controls use a neutral surface", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const endRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.end-btn");
+    const activeRules = lastStyleRule(css, ".shared-call-controls .call-ctrl-btn.is-active");
+    expect(endRules).toMatch(/background(?:-color)?:\s*var\(--color-palette-3871da342003\)/i);
+    expect(endRules).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
+    expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
+  });
+
+  it("outlines the grouped microphone, speaker, and camera controls", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const rules = Array.from(css.matchAll(/\.guest-call-controls \.guest-device-control\s*\{([^}]*)\}/g), (match) => match[1]);
+    expect(rules.some((rule) => /border:\s*1px solid var\(--border-default/.test(rule))).toBe(true);
+  });
+
+  it("removes the mouse activation halo while retaining a visible keyboard focus ring", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus-visible")).toBe(true);
+    expect(css.includes(".shared-call-controls .call-ctrl-btn:focus:not(:focus-visible)")).toBe(true);
+    expect(css).toMatch(/\.shared-call-controls \.call-ctrl-btn:focus-visible,?[^}]*\{[^}]*outline:\s*2px solid var\(--focus-ring\)/s);
   });
 });
