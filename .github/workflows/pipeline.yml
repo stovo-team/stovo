@@ -148,7 +148,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only
     runs-on: [self-hosted, tests, Windows]
     env:
-      TEST_DATABASE_URL: postgres://family_user:family_password@localhost:5432/family_messenger_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable
       TEST_REDIS_URL: redis://localhost:6379/0
       ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable
     defaults:
