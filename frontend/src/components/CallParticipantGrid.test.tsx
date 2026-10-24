@@ -32,6 +32,27 @@ function styleRules(css: string, selector: string) {
 }
 
 describe("shared call participant presentation", () => {
+  it("keeps a lone participant tile compact on a large call stage", () => {
+    const stage = { width: 1365, height: 756 };
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        const rect = { x: 0, y: 0, top: 0, left: 0, width: stage.width, height: stage.height, right: stage.width, bottom: stage.height, toJSON: () => ({}) } as DOMRectReadOnly;
+        const entry = { target, contentRect: rect, borderBoxSize: [], contentBoxSize: [], devicePixelContentBoxSize: [] } as unknown as ResizeObserverEntry;
+        this.callback([entry], this as unknown as ResizeObserver);
+      }
+      disconnect() {}
+    });
+
+    const container = renderGrid({ localStream: null, remoteMedia: [], callType: "audio" });
+    const grid = container.querySelector<HTMLElement>(".call-grid")!;
+    const width = Number.parseFloat(grid.style.getPropertyValue("--gallery-width"));
+    const height = Number.parseFloat(grid.style.getPropertyValue("--gallery-height"));
+
+    expect(width).toBeLessThanOrEqual(560);
+    expect(width / height).toBeCloseTo(16 / 9);
+  });
+
   it("leaves the self video unchanged when clicked and disables native video popouts", () => {
     const stream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
     const focus = vi.fn();
