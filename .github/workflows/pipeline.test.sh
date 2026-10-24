@@ -446,16 +446,30 @@ if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_
   exit 1
 fi
 
-backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  frontend-ci:/p' .github/workflows/pipeline.yml)
-for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV' 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"'; do
-  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
-    echo "Backend CI must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+      exit 1
+    fi
+  done
+  for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must use the dynamically allocated test service ports ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Fq -- '--publish 5432:5432' <<< "$backend_ci_contract" || grep -Fq -- '--publish 6379:6379' <<< "$backend_ci_contract"; then
+    echo "Backend CI in $workflow must not bind fixed host ports for test services." >&2
     exit 1
   fi
 done
-for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
+
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
   if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
-    echo "Backend CI must use the dynamically allocated service ports in test and Atlas URLs ($required)." >&2
+    echo "Master backend CI must run Atlas in the PostgreSQL container network namespace ($required)." >&2
     exit 1
   fi
 done
