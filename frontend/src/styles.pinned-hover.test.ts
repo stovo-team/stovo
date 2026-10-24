@@ -1,14 +1,18 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 
-it("lets the pinned-message action cover the full banner for hover and click", () => {
+it("keeps the pinned-message action clickable without hover feedback", () => {
   const css = readFileSync("src/styles.css", "utf8");
   const banner = css.match(/^\.pinned-banner\s*\{([^}]*)\}/m)?.[1] ?? "";
   const action = css.match(/\.pinned-banner-click-area\s*\{([^}]*)\}/)?.[1] ?? "";
+  const hoverFeedback = css.match(/\.pinned-banner-click-area[^{}]*:hover[^{}]*\{([^}]*)\}/);
+  const focusFeedback = css.match(/\.pinned-banner-click-area:focus-visible\s*\{([^}]*)\}/)?.[1] ?? "";
   expect(banner).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
   expect(banner).toMatch(/padding:\s*0;/);
   expect(action).toMatch(/min-height:\s*0/);
   expect(action).toMatch(/border-radius:\s*inherit/);
+  expect(hoverFeedback).toBeNull();
+  expect(focusFeedback).toMatch(/background:\s*var\(--surface-hover\)/);
 });
 
 it("matches the pinned preview font and active chat header dimensions", () => {

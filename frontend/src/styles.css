@@ -32731,7 +32731,7 @@ button.minimized-call-button--end:active:not(:disabled) {
     width: 100%;
   }
 }
-.pinned-banner-click-area:is(:hover, :focus-visible) {
+.pinned-banner-click-area:focus-visible {
   background: var(--surface-hover);
 }
 .storage-collection-file-grid .collection-file-tile > .collection-file-open {
