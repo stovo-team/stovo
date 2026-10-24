@@ -248,8 +248,7 @@ export function DesktopCallControls({
               callAudioSettings.mirrorLocalVideo &&
               callAudioSettings.cameraFacingMode === "user"
             }
-            callType={callType}
-            isGroupCall={isGroupCall}
+            callType={callType} isGroupCall={isGroupCall}
             isLocalSpeaking={isLocalSpeaking}
             isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
