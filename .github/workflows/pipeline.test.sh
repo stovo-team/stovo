@@ -426,8 +426,22 @@ for deployment in deploy-frontend-web deploy-backend-web; do
     echo "$deployment must target the Windows tests runners." >&2
     exit 1
   fi
+  if grep -Fq 'uses: appleboy/ssh-action@' <<< "$deployment_contract"; then
+    echo "$deployment must not use the SSH action that requests a nonexistent extensionless Windows binary." >&2
+    exit 1
+  fi
+  if ! grep -Fq 'ssh -i "$key_file"' <<< "$deployment_contract" ||
+     ! grep -Fq "'bash -s'" <<< "$deployment_contract" ||
+     ! grep -Fq 'StrictHostKeyChecking=accept-new' <<< "$deployment_contract" ||
+     ! grep -Fq 'chmod 600 "$key_file"' <<< "$deployment_contract" ||
+     ! grep -Fq "Join-Path \$gitRoot 'usr\\bin\\ssh.exe'" <<< "$deployment_contract" ||
+     ! grep -Fq 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)' <<< "$deployment_contract" ||
+     ! grep -Fq 'shell: bash' <<< "$deployment_contract"; then
+    echo "$deployment must use Git for Windows OpenSSH to stream its remote Bash script with a protected key file and host-key checking." >&2
+    exit 1
+  fi
   if ! awk '/^    env:$/ { getline; if ($0 == "      SSH_CLIENT_OS: windows") found = 1 } END { exit !found }' <<< "$deployment_contract"; then
-    echo "$deployment must expose the SSH platform override at job scope for appleboy/ssh-action composite steps." >&2
+    echo "$deployment must expose the Windows SSH platform override at job scope." >&2
     exit 1
   fi
 done

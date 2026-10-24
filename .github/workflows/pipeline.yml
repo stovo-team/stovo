@@ -434,6 +434,7 @@ jobs:
     needs: [changes, frontend-ci, solid-boundaries]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
     runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 35
     env:
       SSH_CLIENT_OS: windows
     environment: production
@@ -449,22 +450,36 @@ jobs:
             throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
           }
 
+          $ssh = Join-Path $gitRoot 'usr\bin\ssh.exe'
+          if (-not (Test-Path $ssh)) {
+            throw "Git for Windows OpenSSH was not found at '$ssh'. Install Git for Windows on the self-hosted runner."
+          }
+
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)
       - name: Deploy Frontend via SSH
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          command_timeout: 30m
-          script_stop: true
-          script: |
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$DEPLOY_SSH_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          {
+            printf 'DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            printf 'TARGET_SHA=%q\n' "$GITHUB_SHA"
+            cat <<'REMOTE'
             set -eu
             exec 9>/tmp/stovo-deploy.lock
             flock -x 9
 
-            cd '${{ secrets.DEPLOY_PATH }}'
+            cd "$DEPLOY_PATH"
 
             # Fetch latest git master
             fetch_git() {
@@ -479,8 +494,8 @@ jobs:
               if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
                 return 0
               fi
-              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
-                echo "Repo is already at target commit ${{ github.sha }}."
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "$TARGET_SHA" ]; then
+                echo "Repo is already at target commit $TARGET_SHA."
                 return 0
               fi
               return 1
@@ -543,12 +558,15 @@ jobs:
             fi
 
             echo "Frontend web deployment finished successfully!"
+          REMOTE
+          } | ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=120 -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s'
 
   deploy-backend-web:
     name: Deploy Backend Web
     needs: [changes, backend-ci, solid-boundaries]
     if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 35
     env:
       SSH_CLIENT_OS: windows
     environment: production
@@ -564,22 +582,36 @@ jobs:
             throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
           }
 
+          $ssh = Join-Path $gitRoot 'usr\bin\ssh.exe'
+          if (-not (Test-Path $ssh)) {
+            throw "Git for Windows OpenSSH was not found at '$ssh'. Install Git for Windows on the self-hosted runner."
+          }
+
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)
       - name: Deploy Backend via SSH
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          command_timeout: 30m
-          script_stop: true
-          script: |
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$DEPLOY_SSH_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          {
+            printf 'DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            printf 'TARGET_SHA=%q\n' "$GITHUB_SHA"
+            cat <<'REMOTE'
             set -eu
             exec 9>/tmp/stovo-deploy.lock
             flock -x 9
 
-            cd '${{ secrets.DEPLOY_PATH }}'
+            cd "$DEPLOY_PATH"
 
             # Fetch latest git master
             fetch_git() {
@@ -594,8 +626,8 @@ jobs:
               if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
                 return 0
               fi
-              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
-                echo "Repo is already at target commit ${{ github.sha }}."
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "$TARGET_SHA" ]; then
+                echo "Repo is already at target commit $TARGET_SHA."
                 return 0
               fi
               return 1
@@ -908,6 +940,8 @@ jobs:
             fi
 
             echo "Backend web deployment finished successfully!"
+          REMOTE
+          } | ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=120 -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s'
 
   deploy-android:
     name: Android Release
