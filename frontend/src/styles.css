@@ -19396,6 +19396,13 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 }
 
+@media (min-width: 769px) and (max-width: 1200px) {
+  .chat-info-screen.chat-details-panel {
+    box-sizing: border-box;
+    width: min(400px, calc(100vw - var(--nav-rail-width) - var(--float-outer-gap) - var(--float-outer-gap) - var(--float-panel-gap) - 320px - 32px));
+  }
+}
+
 @media (min-width: 1025px) {
   .chat-info-screen.chat-details-panel {
     overflow: hidden;

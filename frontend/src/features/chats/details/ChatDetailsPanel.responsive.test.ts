@@ -81,6 +81,11 @@ describe("mobile chat details sizing", () => {
     expect(styles.includes("@media (min-width: 769px) and (max-width: 1200px) {\n  .chat-layout.details-open {\n    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);" )).toBe(true);
   });
 
+  it("keeps the tablet details popup within the space beside the chat list", () => {
+    expect(styles.lastIndexOf("@media (min-width: 769px) and (max-width: 1200px)")).toBeGreaterThan(styles.lastIndexOf("@media (max-width: 1200px)"));
+    expect(styles).toMatch(/@media \(min-width: 769px\) and \(max-width: 1200px\) \{[\s\S]*?\.chat-info-screen\.chat-details-panel \{[^}]*box-sizing: border-box;[^}]*width: min\(400px, calc\(100vw - var\(--nav-rail-width\) - var\(--float-outer-gap\) - var\(--float-outer-gap\) - var\(--float-panel-gap\) - 320px - 32px\)\);/);
+  });
+
   it("keeps tablet navigation and chat layout below the popup breakpoint", () => {
     expect(styles.includes("@media (max-width: 768px) {\n  .app-frame {\n    display: block;")).toBe(true);
   });
