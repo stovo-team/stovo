@@ -152,9 +152,6 @@ jobs:
       needs.changes.outputs.backend == 'true'
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 45
-    env:
-      TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable
-      TEST_REDIS_URL: redis://localhost:6379/0
     defaults:
       run:
         working-directory: backend
@@ -232,7 +229,7 @@ jobs:
           $redisContainer = "stovo-test-redis-$suffix"
 
           docker rm -f $postgresContainer $redisContainer 2>$null | Out-Null
-          docker run --detach --name $postgresContainer --publish 5432:5432 `
+          docker run --detach --name $postgresContainer --publish 127.0.0.1::5432 `
             --env POSTGRES_USER=family_user `
             --env POSTGRES_PASSWORD=family_password `
             --env POSTGRES_DB=family_messenger_test `
@@ -240,7 +237,7 @@ jobs:
             --health-interval 5s --health-timeout 5s --health-retries 10 postgres:16
           if ($LASTEXITCODE -ne 0) { throw 'Failed to start the PostgreSQL test container.' }
 
-          docker run --detach --name $redisContainer --publish 6379:6379 `
+          docker run --detach --name $redisContainer --publish 127.0.0.1::6379 `
             --health-cmd 'redis-cli ping' `
             --health-interval 5s --health-timeout 5s --health-retries 10 redis:7
           if ($LASTEXITCODE -ne 0) { throw 'Failed to start the Redis test container.' }
@@ -257,6 +254,21 @@ jobs:
               Start-Sleep -Seconds 2
             } while ($true)
           }
+
+          $postgresPortBinding = docker port $postgresContainer 5432/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the PostgreSQL host port.' }
+          $postgresPortMatch = [regex]::Match([string]$postgresPortBinding, ':(\d+)$')
+          if (-not $postgresPortMatch.Success) { throw "Unexpected PostgreSQL host port binding: $postgresPortBinding" }
+          $postgresPort = $postgresPortMatch.Groups[1].Value
+
+          $redisPortBinding = docker port $redisContainer 6379/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the Redis host port.' }
+          $redisPortMatch = [regex]::Match([string]$redisPortBinding, ':(\d+)$')
+          if (-not $redisPortMatch.Success) { throw "Unexpected Redis host port binding: $redisPortBinding" }
+          $redisPort = $redisPortMatch.Groups[1].Value
+
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/family_messenger_test?sslmode=disable"
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$redisPort/0"
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod

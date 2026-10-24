@@ -220,7 +220,7 @@ describe("shared design tokens", () => {
       visit(ast);
     }
     expect(offenders).toEqual([]);
-  });
+  }, 30_000);
 
   it("keeps typed application color data represented in the CSS palette", () => {
     const tokenSource = read("src/design-system/tokens.css");

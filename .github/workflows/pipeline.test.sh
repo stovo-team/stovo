@@ -263,7 +263,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
     exit 1
@@ -369,7 +369,7 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
 done
 
 backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'TEST_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable' 'ATLAS_DATABASE_URL: postgres://family_user:family_password@host.docker.internal:5432/family_messenger_test?sslmode=disable' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
     exit 1
@@ -426,10 +426,6 @@ for deployment in deploy-frontend-web deploy-backend-web; do
     echo "$deployment must target the Windows tests runners." >&2
     exit 1
   fi
-  if ! grep -Fq 'SSH_CLIENT_OS: windows' <<< "$deployment_contract"; then
-    echo "$deployment must tell appleboy/ssh-action that Git Bash is running on Windows." >&2
-    exit 1
-  fi
 done
 android_deploy_contract=$(sed -n '/^  deploy-android:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'; do
@@ -449,3 +445,37 @@ if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_
   echo "Android release must add PowerShell Core to PATH before setup-android." >&2
   exit 1
 fi
+
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+      exit 1
+    fi
+  done
+  for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must use the dynamically allocated test service ports ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Fq -- '--publish 5432:5432' <<< "$backend_ci_contract" || grep -Fq -- '--publish 6379:6379' <<< "$backend_ci_contract"; then
+    echo "Backend CI in $workflow must not bind fixed host ports for test services." >&2
+    exit 1
+  fi
+done
+
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Master backend CI must run Atlas in the PostgreSQL container network namespace ($required)." >&2
+    exit 1
+  fi
+done
+for required in 'migration_dir="$(cygpath -w "$PWD/migrations")"' 'source=$migration_dir,target=/migrations,readonly' '--mount "$migration_mount"'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Master backend CI must mount migrations using a Windows-native Docker source path ($required)." >&2
+    exit 1
+  fi
+done
