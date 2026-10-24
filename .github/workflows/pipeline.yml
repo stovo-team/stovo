@@ -991,6 +991,42 @@ jobs:
             find "$HOME/.android/sdk" -maxdepth 4 -type d -empty -delete 2>/dev/null || true
           fi
 
+      - name: Ensure PowerShell Core is available for Android SDK setup
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $existingPwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+          if ($existingPwsh) {
+            Write-Host "Using PowerShell Core at $($existingPwsh.Source)"
+            exit 0
+          }
+
+          $version = '7.6.6'
+          $installDirectory = Join-Path $env:RUNNER_TOOL_CACHE "PowerShell\$version\x64"
+          $pwshPath = Join-Path $installDirectory 'pwsh.exe'
+          if (-not (Test-Path -LiteralPath $pwshPath)) {
+            $archivePath = Join-Path $env:RUNNER_TEMP "PowerShell-$version-win-x64.zip"
+            $archiveUrl = "https://github.com/PowerShell/PowerShell/releases/download/v$version/PowerShell-$version-win-x64.zip"
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath -UseBasicParsing
+
+            $expectedHash = '02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860'
+            $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+            if ($actualHash -ne $expectedHash) {
+              throw "PowerShell $version archive checksum mismatch: expected $expectedHash, got $actualHash"
+            }
+
+            New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $installDirectory)
+          }
+
+          if (-not (Test-Path -LiteralPath $pwshPath)) {
+            throw "PowerShell Core was not installed at '$pwshPath'."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $installDirectory
+          & $pwshPath -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
         with:
