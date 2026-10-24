@@ -434,3 +434,14 @@ for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'
     exit 1
   fi
 done
+android_pwsh_setup_contract=$(sed -n '/      - name: Ensure PowerShell Core is available for Android SDK setup/,/      - name: Setup Android SDK/p' .github/workflows/pipeline.yml)
+for required in 'PowerShell-$version-win-x64.zip' 'Get-FileHash' '02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860' 'pwsh.exe' 'GITHUB_PATH'; do
+  if ! grep -Fq "$required" <<< "$android_pwsh_setup_contract"; then
+    echo "Android release must make a verified PowerShell Core executable available before setup-android ($required)." >&2
+    exit 1
+  fi
+done
+if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_contract" != *"Setup Android SDK"* ]]; then
+  echo "Android release must add PowerShell Core to PATH before setup-android." >&2
+  exit 1
+fi
