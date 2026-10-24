@@ -2,9 +2,10 @@ package app
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"strings"
 
+	"stovo-messenger/backend/internal/adapters/canvasstore"
 	"github.com/google/uuid"
 )
 
@@ -37,51 +38,22 @@ func (s *Server) createCanvas(ctx context.Context, user userPublic, request crea
 		}
 		id = parsed.String()
 	}
-	// Commit the document and its initial state together. A conflicting insert
-	// waits for the original transaction, so retries never observe half a seed.
-	tx, err := s.canvasDB.BeginTx(ctx, nil)
-	if err != nil {
-		return canvasPublic{}, err
+	var ciphertext, nonce string
+	if request.InitialUpdate != "" {
+		ciphertext, nonce, err = s.encryptServerAtRest(user.FamilyID, request.InitialUpdate)
+		if err != nil { return canvasPublic{}, err }
 	}
-	defer func() { _ = tx.Rollback() }()
-	result, err := tx.ExecContext(ctx, `INSERT INTO canvases (id,family_id,origin_chat_id,created_by,title) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING`, id, user.FamilyID, chat.ID, user.ID, title)
-	if err != nil {
-		return canvasPublic{}, err
-	}
-	inserted, err := result.RowsAffected()
-	if err != nil {
-		return canvasPublic{}, err
-	}
-	if inserted == 0 {
-		var familyID, originChatID, createdBy string
-		var deletedAt sql.NullTime
-		if err := tx.QueryRowContext(ctx, `SELECT family_id,origin_chat_id,created_by,deleted_at FROM canvases WHERE id=$1`, id).Scan(&familyID, &originChatID, &createdBy, &deletedAt); err != nil {
-			return canvasPublic{}, err
-		}
+	// Persistence owns the transaction so the document and its initial state
+	// commit together; retries never observe half a seed.
+	_, err = s.canvasPersistence().Create(ctx, canvasstore.CreateInput{ID: id, FamilyID: user.FamilyID, ChatID: chat.ID, UserID: user.ID, Title: title, InitialCiphertext: ciphertext, InitialNonce: nonce})
+	if errors.Is(err, canvasstore.ErrOwnershipConflict) {
 		// Visibility alone is insufficient: another member cannot claim an
 		// existing shared document as the result of their own create request.
-		if familyID != user.FamilyID || createdBy != user.ID || originChatID != chat.ID || deletedAt.Valid {
-			return canvasPublic{}, errForbidden
-		}
-	} else {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO canvas_chat_links (canvas_id,chat_id,created_by) VALUES ($1,$2,$3)`, id, chat.ID, user.ID); err != nil {
-			return canvasPublic{}, err
-		}
-		if request.InitialUpdate != "" {
-			ciphertext, nonce, err := s.encryptServerAtRest(user.FamilyID, request.InitialUpdate)
-			if err != nil {
-				return canvasPublic{}, err
-			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO canvas_updates (canvas_id,ciphertext,nonce,created_by) VALUES ($1,$2,$3,$4)`, id, ciphertext, nonce, user.ID); err != nil {
-				return canvasPublic{}, err
-			}
-		}
+		return canvasPublic{}, errForbidden
 	}
-	if err := tx.Commit(); err != nil {
-		return canvasPublic{}, err
-	}
-	var cardExists bool
-	if err := s.canvasDB.QueryRowContext(ctx, `SELECT card_message_id IS NOT NULL FROM canvas_chat_links WHERE canvas_id=$1 AND chat_id=$2`, id, chat.ID).Scan(&cardExists); err != nil {
+	if err != nil { return canvasPublic{}, err }
+	cardExists, err := s.canvasPersistence().CanvasCardExists(ctx, id, chat.ID)
+	if err != nil {
 		return canvasPublic{}, err
 	}
 	if !cardExists {
@@ -105,10 +77,7 @@ func (s *Server) createCanvasCardWithOperationID(ctx context.Context, canvasID, 
 	if err != nil {
 		return err
 	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_cards (message_id,canvas_id) VALUES ($1,$2) ON CONFLICT (message_id) DO NOTHING`, message.ID, canvasID); err != nil {
-		return err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `UPDATE canvas_chat_links SET card_message_id=$3 WHERE canvas_id=$1 AND chat_id=$2`, canvasID, chat.ID, message.ID); err != nil {
+	if err := s.canvasPersistence().CreateCard(ctx, message.ID, canvasID, chat.ID); err != nil {
 		return err
 	}
 	if !replayed {

@@ -2,75 +2,44 @@ package app
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 )
 
 // IntelligenceSourceV2Operations coordinates backup inventory updates using
 // the same database state as the source server.
 type IntelligenceSourceV2Operations struct {
-	db  *sql.DB
-	now func() time.Time
+	store *adapterintelligencesourcev2.Store
+	now   func() time.Time
 }
 
-// NewIntelligenceSourceV2Operations constructs a database-backed coordinator
-// whose freshness checks use the UTC wall clock.
-func NewIntelligenceSourceV2Operations(db *sql.DB) *IntelligenceSourceV2Operations {
-	return newIntelligenceSourceV2Operations(db, func() time.Time { return time.Now().UTC() })
+// NewIntelligenceSourceV2Operations constructs a backup coordinator whose
+// persistence is supplied by the PostgreSQL adapter.
+func NewIntelligenceSourceV2Operations(store *adapterintelligencesourcev2.Store) *IntelligenceSourceV2Operations {
+	return newIntelligenceSourceV2Operations(store, func() time.Time { return time.Now().UTC() })
 }
 
-func newIntelligenceSourceV2Operations(db *sql.DB, now func() time.Time) *IntelligenceSourceV2Operations {
+func newIntelligenceSourceV2Operations(store *adapterintelligencesourcev2.Store, now func() time.Time) *IntelligenceSourceV2Operations {
 	if now == nil {
 		now = func() time.Time { return time.Now().UTC() }
 	}
-	return &IntelligenceSourceV2Operations{db: db, now: now}
+	return &IntelligenceSourceV2Operations{store: store, now: now}
 }
 
 // RegisterIntelligenceSourceV2BackupHorizon records one backup's actual
 // creation and last-restorable timestamps from the backup controller.
 func (o *IntelligenceSourceV2Operations) RegisterIntelligenceSourceV2BackupHorizon(ctx context.Context, backupID string, backupCreatedAt, restorableUntil time.Time) error {
-	if o.db == nil || backupID == "" || len(backupID) > 256 || backupCreatedAt.IsZero() || restorableUntil.Before(backupCreatedAt) || restorableUntil.After(backupCreatedAt.Add(intelligenceSourceV2ContentRetention)) {
+	if o.store == nil || backupID == "" || len(backupID) > 256 || backupCreatedAt.IsZero() || restorableUntil.Before(backupCreatedAt) || restorableUntil.After(backupCreatedAt.Add(intelligenceSourceV2ContentRetention)) {
 		return httptransport.ErrIntelligenceSourceInvalidRequest
 	}
-	tx, err := o.db.BeginTx(ctx, nil)
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
+	err := o.store.RegisterBackupHorizon(ctx, backupID, backupCreatedAt, restorableUntil)
+	if errors.Is(err, adapterintelligencesourcev2.ErrBackupHorizonConflict) {
+		return httptransport.ErrIntelligenceSourceInvalidRequest
 	}
-	defer func() { _ = tx.Rollback() }()
-	var inventoryID string
-	if err := tx.QueryRowContext(ctx, `SELECT inventory_id FROM public.intelligence_source_v2_backup_inventory_state WHERE inventory_id='global' FOR UPDATE`).Scan(&inventoryID); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	result, err := tx.ExecContext(ctx, `
-		INSERT INTO public.intelligence_source_v2_backup_horizons(backup_id,backup_created_at,restorable_until)
-		VALUES($1,$2,$3) ON CONFLICT (backup_id) DO NOTHING`, backupID, backupCreatedAt.UTC(), restorableUntil.UTC())
-	if err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
-	if affected, err := result.RowsAffected(); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	} else if affected == 0 {
-		var currentCreated, currentRestorable time.Time
-		if err := tx.QueryRowContext(ctx, `SELECT backup_created_at,restorable_until FROM public.intelligence_source_v2_backup_horizons WHERE backup_id=$1`, backupID).Scan(&currentCreated, &currentRestorable); err != nil {
-			return httptransport.ErrIntelligenceSourceUnavailable
-		}
-		if !currentCreated.Equal(backupCreatedAt.UTC()) || !currentRestorable.Equal(restorableUntil.UTC()) {
-			return httptransport.ErrIntelligenceSourceInvalidRequest
-		}
-	} else {
-		// A newly declared backup changes the restorable inventory. Invalidate
-		// the previous completeness checkpoint before the backup is created.
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE public.intelligence_source_v2_backup_inventory_state
-			SET complete=false,verified_at=NULL WHERE inventory_id='global'`); err != nil {
-			return httptransport.ErrIntelligenceSourceUnavailable
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return httptransport.ErrIntelligenceSourceUnavailable
-	}
+	if err != nil { return httptransport.ErrIntelligenceSourceUnavailable }
 	return nil
 }
 
@@ -78,16 +47,14 @@ func (o *IntelligenceSourceV2Operations) RegisterIntelligenceSourceV2BackupHoriz
 // inventory from the external backup controller. Tombstone pruning remains
 // disabled until this checkpoint is current.
 func (o *IntelligenceSourceV2Operations) MarkIntelligenceSourceV2BackupInventoryVerified(ctx context.Context, verifiedAt time.Time) error {
-	if o.db == nil || verifiedAt.IsZero() || verifiedAt.After(o.now().Add(time.Minute)) {
+	if o.store == nil || verifiedAt.IsZero() || verifiedAt.After(o.now().Add(time.Minute)) {
 		return httptransport.ErrIntelligenceSourceInvalidRequest
 	}
-	result, err := o.db.ExecContext(ctx, `
-		UPDATE public.intelligence_source_v2_backup_inventory_state
-		SET complete=true,verified_at=$1 WHERE inventory_id='global'`, verifiedAt.UTC())
+	updated, err := o.store.MarkInventoryVerified(ctx, verifiedAt)
 	if err != nil {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
-	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
+	if !updated {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return nil
