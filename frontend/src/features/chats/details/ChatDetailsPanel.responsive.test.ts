@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readTextFile } from "../../../testUtils/readTextFile";
 
 const styles = readTextFile("src/styles.css");
+const chatDetailsPanel = readTextFile("src/features/chats/details/ChatDetailsPanel.tsx");
 
 function mediaRuleContaining(selector: string, maxWidth: number) {
   const mediaQuery = `@media (max-width: ${maxWidth}px)`;
@@ -81,13 +82,18 @@ describe("mobile chat details sizing", () => {
     expect(styles.includes("@media (min-width: 769px) and (max-width: 1200px) {\n  .chat-layout.details-open {\n    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);" )).toBe(true);
   });
 
+  it("keeps the tablet details popup within the space beside the chat list", () => {
+    expect(styles.lastIndexOf("@media (min-width: 769px) and (max-width: 1200px)")).toBeGreaterThan(styles.lastIndexOf("@media (max-width: 1200px)"));
+    expect(styles).toMatch(/@media \(min-width: 769px\) and \(max-width: 1200px\) \{[\s\S]*?\.chat-info-screen\.chat-details-panel \{[^}]*box-sizing: border-box;[^}]*width: min\(400px, calc\(100vw - var\(--nav-rail-width\) - var\(--float-outer-gap\) - var\(--float-outer-gap\) - var\(--float-panel-gap\) - 320px - 32px\)\);/);
+  });
+
   it("keeps tablet navigation and chat layout below the popup breakpoint", () => {
     expect(styles.includes("@media (max-width: 768px) {\n  .app-frame {\n    display: block;")).toBe(true);
   });
 
   it("uses a compact font size for the Add people action", () => {
-    expect(styles.includes(".chat-info-member-invite {\n  align-items: center;")).toBe(true);
-    expect(/\.chat-info-member-invite \{[^}]*font-size: var\(--font-size-small\);/.test(styles)).toBe(true);
+    expect(styles).toMatch(/\.chat-info-member-invite \{[^}]*font: inherit;[^}]*font-size: var\(--font-size-small\);/);
+    expect(chatDetailsPanel).toContain('<UserPlus aria-hidden="true" size={16} />');
   });
 
   it("keeps desktop chat details in a compact grid column beside the message pane", () => {

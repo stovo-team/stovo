@@ -653,7 +653,7 @@ export function ChatList({
                       <ChatListItem
                         key={chat.id}
                         chat={chat}
-                        isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
+                        isActive={!isDraftsAndScheduledActive && chat.id === (activeChatId ?? selectedChatId)}
                         isTransitionSource={selectedChatId === chat.id}
                         accessToken={accessToken}
                         currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
@@ -744,7 +744,7 @@ export function ChatList({
                   <ChatListItem
                     key={chat.id}
                     chat={chat}
-                    isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
+                    isActive={!isDraftsAndScheduledActive && chat.id === (activeChatId ?? selectedChatId)}
                     isTransitionSource={selectedChatId === chat.id}
                     accessToken={accessToken}
                     currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}

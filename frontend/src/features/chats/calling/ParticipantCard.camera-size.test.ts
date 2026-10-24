@@ -18,7 +18,7 @@ it("fits the two-row voice layout within the same stage height budget", () => {
 it("scopes vertical voice-row fitting to voice rooms, preserving two-column group-call galleries", () => {
   const styles=readFileSync("src/styles.css","utf8");
   const start=styles.indexOf("/* Fit whole voice rows");
-  const end=styles.indexOf("/* Preserve source-list widths", start);
+  const end=styles.indexOf("@media", start);
   const fitting=styles.slice(styles.indexOf("\n", start) + 1, end);
   const selectors=[...fitting.matchAll(/(?:^|\n)([^{}\n]+)\s*\{/g)].map(match=>match[1].trim());
   expect(selectors).toHaveLength(4);
