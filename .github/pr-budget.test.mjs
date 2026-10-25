@@ -10,7 +10,7 @@ const extract = (source = budgetWorkflow) => {
   return match[1].split(/\r?\n/).map(line => line.replace(/^          /, '')).join('\n');
 };
 test('extracts the PR budget from a Windows CRLF checkout', () => {
-  assert.ok(extract(budgetWorkflow.replace(/\n/g, '\r\n')).length > 0);
+  assert.ok(extract(budgetWorkflow.replace(/\r?\n/g, '\r\n')).length > 0);
 });
 function run(additions, deletions, override = {}, status = 200) {
   const payload = { additions, deletions, head: { sha: 'a'.repeat(40) }, ...override };
