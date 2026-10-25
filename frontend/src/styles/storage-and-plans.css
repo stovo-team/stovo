@@ -115,7 +115,7 @@
   display: grid;
   column-gap: 36px;
   row-gap: 16px;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: var(--storage-source-width, 300px) 12px minmax(0, 1fr);
   max-width: 100%;
   min-width: 0;
   width: 100%;

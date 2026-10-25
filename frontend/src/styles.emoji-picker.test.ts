@@ -291,6 +291,39 @@ describe("message media sizing", () => {
       "font-size: calc(var(--font-size-body) * var(--message-scale));"
     );
   });
+
+  it("uses compact media and document preview widths below the 1600px centered chat layout", () => {
+    const belowWideLayoutStart = styles.lastIndexOf(
+      "@media (min-width: 681px) and (max-width: 1599px)"
+    );
+    expect(belowWideLayoutStart).toBeGreaterThan(-1);
+    const belowWideLayoutRules = styles.slice(
+      belowWideLayoutStart,
+      styles.indexOf("\n}", belowWideLayoutStart) + 2
+    );
+
+    expect(belowWideLayoutRules).toContain(".message-bubble.has-photo-attachments");
+    expect(belowWideLayoutRules).toContain("max-width: min(420px, 78%);");
+    expect(belowWideLayoutRules).toContain(
+      ".message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))"
+    );
+    expect(belowWideLayoutRules).toContain("width: min(420px, 78%);");
+    expect(belowWideLayoutRules).toContain(".message-bubble:has(.document-preview-card)");
+    expect(belowWideLayoutRules).toContain("width: min(420px, 100%);");
+    expect(belowWideLayoutRules).toContain("object-fit: contain;");
+    expect(belowWideLayoutRules).toContain("height: auto;");
+    expect(belowWideLayoutRules).toContain("max-height: none;");
+    expect(belowWideLayoutRules).toContain(".document-inline-preview");
+    expect(belowWideLayoutRules).toContain("aspect-ratio: auto;");
+    expect(belowWideLayoutRules).toContain("overflow: visible;");
+    expect(belowWideLayoutRules).toContain("width: min(320px, 62%);");
+    expect(belowWideLayoutRules).toContain(
+      ':root[data-platform="web"] .messages-panel .message-bubble.has-photo-attachments:has(.message-video-attachment)'
+    );
+    expect(styles).toMatch(
+      /@media \(min-width: 1600px\) \{[\s\S]*?\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\) > \.chat-detail/
+    );
+  });
 });
 
 describe("native fullscreen video player", () => {
