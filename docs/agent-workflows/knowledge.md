@@ -57,14 +57,14 @@ are reported by OKF; inspect them for the pages changed by the task.
 
 All outputs under `.okf-index/` and `.okf/changes/current.md` are disposable and
 ignored. Open `.okf-index/wiki.md` for navigation to every canonical docs page
-and the generated repository wiki. `okf-agent docs serve .` serves the repository
+and a source map with checkout-relative links. `okf-agent docs serve .` serves the repository
 knowledge pages and code map; its current renderer does not include `docs/` pages.
 The separate docs bundle provides their full-text search and backlinks.
 
 ## Git refresh
 
 The maintained `.githooks/post-checkout` and `post-merge` hooks refresh knowledge
-when enabled through the repository's local `core.hooksPath`. They warn on failure;
+when enabled through the repository's local `core.hooksPath`; pre-commit refreshes and blocks stale or malformed knowledge. They warn on failure;
 a task must still complete the explicit start/finish checks. Git hooks do not run
 when an existing chat receives another task, so agent startup instructions remain
 necessary. Preserve an existing hook manager; integrate these hooks into it.

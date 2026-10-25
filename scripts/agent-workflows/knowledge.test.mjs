@@ -6,7 +6,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const script = path.resolve('scripts/agent-workflows/prepare-knowledge.mjs');
-const git = spawnSync('which', ['git'], { encoding: 'utf8' }).stdout.trim();
+const locate = name => spawnSync(process.platform === 'win32' ? 'where.exe' : 'which', [name], {encoding:'utf8'}).stdout?.trim().split(/\r?\n/)[0] || name;
+const git = locate('git'), shell = locate('bash');
 const available = spawnSync('okf-agent', ['--help']).status === 0;
 function fixture(t) {
   const root = mkdtempSync(path.join(tmpdir(), 'stovo-knowledge-'));
@@ -34,6 +35,7 @@ test('task start bootstraps both indexes and a checked wiki without changing hos
   assert.ok(existsSync(path.join(root, '.okf-index/knowledge.sqlite3')));
   assert.ok(existsSync(path.join(root, '.okf-index/site/index.md')));
   assert.match(readFileSync(path.join(root, '.okf-index/wiki.md'), 'utf8'), /\(\.\.\/docs\/guide.md\)/);
+  assert.match(readFileSync(path.join(root,'.okf-index/code-map.md'),'utf8'), /\(\.\.\/app\.js\)/);
   assert.equal(search(root, 'initialneedle')[0].path, 'guide.md');
   assert.equal(readFileSync(path.join(root, 'AGENTS.md'), 'utf8'), '# Existing instructions\n');
   assert.ok(!existsSync(path.join(root, 'CLAUDE.md')));
@@ -78,8 +80,8 @@ test('check reports stale wiki and malformed canonical documentation', { skip: !
 test('missing OKF fails explicitly before writing knowledge', t => {
   const root = fixture(t), bin = path.join(root, 'bin');
   mkdirSync(bin);
-  symlinkSync(git, path.join(bin, 'git'));
-  const result = run(root, 'start', { ...process.env, PATH: bin });
+  // Restrict PATH to Git's directory, excluding the separately installed OKF CLI.
+  const result = run(root, 'start', { ...process.env, PATH: path.dirname(git) });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /okf-agent.*unavailable/i);
   assert.ok(!existsSync(path.join(root, '.okf')));
@@ -97,7 +99,7 @@ test('Git branch checkout and merge hooks prepare the current worktree', { skip:
     const root = fixture(t);
     mkdirSync(path.join(root, 'scripts/agent-workflows'), { recursive: true });
     for (const name of ['prepare-knowledge.mjs', 'common.mjs']) cpSync(path.join(path.dirname(script), name), path.join(root, 'scripts/agent-workflows', name));
-    const result = spawnSync('/bin/sh', [path.resolve('.githooks', name), 'old', 'new', '1'], { cwd: root, encoding: 'utf8' });
+    const result = spawnSync(shell, [path.resolve('.githooks', name), 'old', 'new', '1'], { cwd: root, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     assert.ok(existsSync(path.join(root, '.okf-index/wiki.md')));
   }
@@ -105,12 +107,12 @@ test('Git branch checkout and merge hooks prepare the current worktree', { skip:
 
 test('file checkout skips refresh and failed branch refresh warns without blocking Git', t => {
   const root = fixture(t), hook = path.resolve('.githooks/post-checkout');
-  const skipped = spawnSync('/bin/sh', [hook, 'old', 'new', '0'], { cwd: root, encoding: 'utf8' });
+  const skipped = spawnSync(shell, [hook, 'old', 'new', '0'], { cwd: root, encoding: 'utf8' });
   assert.equal(skipped.status, 0, skipped.stderr);
   assert.ok(!existsSync(path.join(root, '.okf-index')));
   mkdirSync(path.join(root, 'scripts/agent-workflows'), { recursive: true });
   for (const name of ['prepare-knowledge.mjs', 'common.mjs']) cpSync(path.join(path.dirname(script), name), path.join(root, 'scripts/agent-workflows', name));
-  const result = spawnSync('/bin/sh', [hook, 'old', 'new', '1'], { cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '' } });
+  const result = spawnSync(shell, [hook, 'old', 'new', '1'], { cwd: root, encoding: 'utf8', env: { ...process.env, PATH: '' } });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stderr, /Knowledge refresh failed/);
 });
@@ -122,4 +124,15 @@ test('successful preparation exposes link diagnostics for maintenance', { skip: 
   assert.equal(result.status, 0, result.stderr);
   assert.ok(Array.isArray(JSON.parse(result.stdout).diagnostics), 'preparation must expose diagnostics');
   assert.ok(JSON.parse(result.stdout).diagnostics.some(item => item.path === 'guide.md' && item.message.includes('missing.md')));
+});
+
+
+test('pre-commit refreshes knowledge and rejects malformed maintained docs', {skip:!available}, t => {
+  const root=fixture(t);mkdirSync(path.join(root,'scripts/agent-workflows'),{recursive:true});
+  for(const name of ['prepare-knowledge.mjs','common.mjs'])cpSync(path.join(path.dirname(script),name),path.join(root,'scripts/agent-workflows',name));
+  const hook=path.resolve('.githooks/pre-commit');
+  assert.equal(spawnSync(shell,[hook],{cwd:root}).status,0);
+  assert.ok(existsSync(path.join(root,'.okf-index/wiki.md')));
+  writeFileSync(path.join(root,'docs/guide.md'),'# Missing metadata\n');
+  assert.notEqual(spawnSync(shell,[hook],{cwd:root}).status,0);
 });

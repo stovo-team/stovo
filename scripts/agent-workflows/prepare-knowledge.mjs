@@ -1,4 +1,4 @@
-import { readdirSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { main, argumentsOf } from './common.mjs';
@@ -37,8 +37,10 @@ export function prepareKnowledge({ root = '.', phase = 'start' } = {}) {
       }
     }
     visit('docs');
+    const codeMap = readFileSync(path.join(root,'.okf-index/site/code-map.md'),'utf8').replace(/\]\((?![a-z]+:|\/|#)([^)]+)\)/gi, '](../$1)');
+    writeFileSync(path.join(root,'.okf-index/code-map.md'),codeMap);
     const wiki = '# Stovo documentation wiki\n\nGenerated navigation; edit the linked Markdown sources.\n\n' +
-      '- [Repository knowledge and code map](site/index.md)\n\n' +
+      '- [Maintained knowledge](../.okf/index.md)\n- [Source code map](code-map.md)\n\n' +
       pages.map(name => `- [${name.replace(/[\[\]]/g, '')}](../${name.split('/').map(encodeURIComponent).join('/')})`).join('\n') + '\n';
     writeFileSync(path.join(root, '.okf-index/wiki.md'), wiki);
   }

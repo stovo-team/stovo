@@ -54,17 +54,11 @@ Run the focused checks required by the applicable workflow and relevant commands
 - Use the shared typography, weight, line-height, radius, and CSS color tokens in `frontend/src/design-system/tokens.css`. For static colors that must be passed as data to canvas, QR, or persisted color controls, reuse `frontend/src/design-system/palette.ts`; its values must have matching palette entries in `tokens.css`. Theme presets stay in `frontend/src/config/colors/`, and plugin-owned themes stay with the plugin. Do not add raw color literals or one-off font sizes, weights, or radii to production UI styles.
 - Run `npm run check:i18n` and `npm test -- --run src/design-system/tokens.test.ts` from `frontend` after UI copy or shared style changes. See [Frontend UI conventions](docs/engineering/frontend-ui-conventions.md) for token names and examples.
 
-## Optional documentation search
+## Knowledge lifecycle
 
-The canonical human-readable documentation lives in `docs/`. When a question spans several documentation areas and `okf-agent` is installed, use its standalone bundle profile to search the existing pages:
+At the start of every task, run `node scripts/agent-workflows/prepare-knowledge.mjs start` in its checkout and read [.okf/index.md](.okf/index.md). Retrieve relevant pages through OKF bundle search before editing; trace facts back to current source.
 
-```sh
-okf-agent bundle index --root docs --index-root .okf-index/docs
-okf-agent bundle search "backup restore" --root docs --index-root .okf-index/docs
-okf-agent bundle backlinks architecture/subsystems.md --root docs --index-root .okf-index/docs
-```
-
-Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild the local index after documentation changes. It is disposable and ignored by Git; edit the Markdown source pages instead.
+Before delivery run `prepare-knowledge.mjs finish` and `prepare-knowledge.mjs check` through the same `node scripts/agent-workflows/` path. Update canonical documentation for changed behavior, interfaces, configuration and ownership. Follow [knowledge maintenance](docs/agent-workflows/knowledge.md) for pinned setup, wiki navigation and Git hooks. A missing tool or failed check is a reported blocker, never an inferred pass.
 
 ## Active pull requests
 

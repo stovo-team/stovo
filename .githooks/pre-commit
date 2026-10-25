@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+if [[ -f scripts/agent-workflows/prepare-knowledge.mjs ]]; then
+  node scripts/agent-workflows/prepare-knowledge.mjs finish >/dev/null
+  git diff --quiet -- .okf || { echo 'Review and stage refreshed .okf knowledge before committing.' >&2; exit 1; }
+fi
+
 # Git pre-commit hook to prevent commits that break SOLID architecture boundaries.
 echo "🔍 Running SOLID architecture boundaries check..."
 

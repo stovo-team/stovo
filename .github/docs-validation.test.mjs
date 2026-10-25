@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import {tmpdir} from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -41,7 +42,7 @@ function markdownFiles(directory, found = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (!['.git', 'node_modules', 'dist', 'coverage', 'artifacts'].includes(entry.name)) markdownFiles(file, found);
+      if (!['.git', '.okf-index', 'node_modules', 'dist', 'coverage', 'artifacts'].includes(entry.name)) markdownFiles(file, found);
     } else if (entry.isFile() && entry.name.endsWith('.md')) found.push(file);
   }
   return found;
@@ -437,4 +438,14 @@ test('Design issue form requires a description, screenshot, and suggested fix', 
   assert.doesNotMatch(reproduceField[0], /required:\s*true/, 'reproduction steps must be optional');
 
   assert.match(read('CONTRIBUTING.md'), /design issues/);
+});
+
+
+test('canonical Markdown discovery excludes disposable OKF wiki output', () => {
+  const dir=mkdtempSync(path.join(tmpdir(),'stovo-doc-source-'));
+  try {
+    mkdirSync(path.join(dir,'.okf-index'));writeFileSync(path.join(dir,'.okf-index/generated.md'),'[Generated route](source/missing.go)');
+    writeFileSync(path.join(dir,'source.md'),'# Canonical');
+    assert.deepEqual(markdownFiles(dir).map(p=>path.relative(dir,p)),['source.md']);
+  } finally {rmSync(dir,{recursive:true,force:true});}
 });

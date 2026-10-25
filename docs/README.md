@@ -41,7 +41,7 @@ type: index
 
 ## Optional local search index
 
-Install [`okf-agent`](https://github.com/left-try/okf-agent) with `pipx` if you want full-text search and backlinks across these Markdown pages:
+Every agent task follows [knowledge maintenance](agent-workflows/knowledge.md) to refresh the project wiki, full-text search and backlinks. Install the pinned [`okf-agent`](https://github.com/left-try/okf-agent) with `pipx` when missing:
 
 ```sh
 pipx install "git+https://github.com/left-try/okf-agent.git@ed3a192d0e44437a446d51d02781a3fa9a5cda93"
