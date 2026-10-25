@@ -644,8 +644,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   max-height: 84px;
-  scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+  scrollbar-width: thin; scrollbar-width: var(--scrollbar-size);
 }
 .call-grid--mobile-presentation-many .call-grid__mobile-participant-row {
   flex-wrap: nowrap;
@@ -653,8 +652,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   max-height: 84px;
-  scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+  scrollbar-width: thin; scrollbar-width: var(--scrollbar-size);
 }
 .call-grid__mobile-participant-row > .call-grid__tile,
 .call-grid__mobile-participant-row > [data-participant-id] {
