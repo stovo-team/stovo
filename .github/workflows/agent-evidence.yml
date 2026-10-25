@@ -45,11 +45,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: '3.12'
       - name: Install pinned OKF and validate maintained knowledge
         run: |
+          python -c "import sys; assert sys.version_info >= (3, 11), 'OKF requires Python 3.11+ on this runner'"
           python -m pip install "git+https://github.com/left-try/okf-agent.git@ed3a192d0e44437a446d51d02781a3fa9a5cda93"
           node scripts/agent-workflows/prepare-knowledge.mjs start
       - name: Validate workflow tools and policy links

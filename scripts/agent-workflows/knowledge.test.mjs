@@ -138,3 +138,5 @@ test('pre-commit refreshes knowledge and rejects malformed maintained docs', {sk
 });
 
 test('Git lifecycle hooks are executable in the tracked checkout',()=>{for(const hook of ['pre-commit','commit-msg','post-checkout','post-merge'])assert.match(spawnSync(git,['ls-files','--stage','--',`.githooks/${hook}`],{encoding:'utf8'}).stdout,/^100755 /);});
+
+test('CI requires compatible Python before real OKF checks without disallowed setup actions',()=>{const workflow=readFileSync('.github/workflows/agent-evidence.yml','utf8');assert.doesNotMatch(workflow,/uses: actions\/setup-python/);assert.match(workflow,/sys.version_info >= \(3, 11\)/);assert.match(workflow,/pip install.*okf-agent/);});

@@ -11,6 +11,7 @@ alongside code. Preserve curated content outside `okf:generated` blocks.
 
 ## Setup
 
+The runner and local environment require Python 3.11 or newer. CI checks this before installation.
 Install the repository's pinned CLI when it is missing:
 
 ```sh
