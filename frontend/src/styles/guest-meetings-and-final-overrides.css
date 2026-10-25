@@ -1906,21 +1906,6 @@ button.minimized-call-button--end:active:not(:disabled) {
   border-radius: var(--radius-surface);
 }
 
-.admin-page .public-access-actions > .mcp-icon-button,
-.mcp-connectors-panel button.mcp-icon-button {
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius-circle);
-  box-sizing: border-box;
-  flex: 0 0 34px;
-  height: 34px;
-  max-height: 34px;
-  max-width: 34px;
-  min-height: 34px;
-  min-width: 34px;
-  padding: 0;
-  width: 34px;
-}
-
 .multi-admin-dialog { max-width: 520px; width: min(100%, 520px); }
 .multi-admin-dialog h2 { padding-right: 44px; }
 

@@ -142,15 +142,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
   width: 34px;
   height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  max-width: 34px;
-  max-height: 34px;
-  aspect-ratio: 1 / 1;
-  flex: 0 0 34px;
   border-radius: var(--radius-circle);
   border: 1px solid var(--color-palette-93908647eee7);
   background: var(--color-palette-753dc8ad09f2);
