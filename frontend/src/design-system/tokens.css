@@ -39,7 +39,7 @@
   --popup-backdrop-color: rgb(0 0 0 / 56%);
   --popup-dialog-shadow: 0 20px 56px rgb(0 0 0 / 24%);
   --radius-pill: 9999px;
-  --scrollbar-size: 4px;
+  --scrollbar-size: 1px;
 
   --color-text-primary: var(--text-primary, var(--color-palette-dd15e6f7d489));
   --color-text-secondary: var(--text-secondary, var(--color-palette-66341b70b395));

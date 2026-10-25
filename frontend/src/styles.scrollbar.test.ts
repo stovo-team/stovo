@@ -19,7 +19,7 @@ describe("shared application scrollbars", () => {
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("height: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("width: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar-thumb")).toContain("border-radius: var(--radius-pill);");
-    expect(tokens).toContain("--scrollbar-size: 4px;");
+    expect(tokens).toContain("--scrollbar-size: 1px;");
   });
 
   it("retains explicit opt-outs for intentionally hidden scrollers", () => {
