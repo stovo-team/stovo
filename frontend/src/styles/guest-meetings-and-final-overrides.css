@@ -2285,6 +2285,117 @@ button.minimized-call-button--end:active:not(:disabled) {
     width: min(420px, 100%);
   }
 
+  .message-bubble:has(.document-preview-card) .document-inline-preview {
+    aspect-ratio: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-inline-preview > * {
+    inset: auto;
+    position: relative;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx,
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx .document-viewer-docx,
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx .docx-wrapper {
+    height: auto;
+    overflow: visible;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-viewer-pdf-page {
+    height: auto !important;
+    max-width: 100%;
+    width: 100% !important;
+  }
+
+  /* Web video caps are more specific than the generic rules above. */
+  :root[data-platform="web"] .messages-panel .message-bubble.has-photo-attachments:has(.message-video-attachment),
+  :root[data-platform="web"] .messages-panel .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+    max-width: min(420px, 78%);
+    width: min(420px, 78%);
+  }
+
+  :root[data-platform="web"] .messages-panel .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait),
+  :root[data-platform="web"] .messages-panel .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait) {
+    max-width: min(320px, 62%);
+    width: min(320px, 62%);
+  }
+}
+
+/* Mid-size screens lack the centered 1600px chat pane. Keep media and document
+   previews on the same compact caps used for narrow message containers. */
+@media (min-width: 681px) and (max-width: 1599px) {
+  .message-bubble.has-photo-attachments {
+    max-width: min(420px, 78%);
+  }
+
+  /* Shrink the width, then let height follow the media ratio. Cover plus a
+     fixed min/max height crops the picture instead of scaling it. */
+  .message-bubble.has-photo-attachments:not(:has(.message-media-album)) {
+    width: min(420px, 78%);
+  }
+
+  .message-bubble.has-photo-attachments:not(:has(.message-media-album)) .message-photo-attachment,
+  .message-bubble.has-photo-attachments:not(:has(.message-media-album)) .message-photo-attachment img {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    object-fit: contain;
+    width: 100%;
+  }
+
+  .message-bubble .video-player {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-media-album) {
+    max-width: min(420px, 78%);
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-video-attachment),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+    max-width: min(420px, 78%);
+    width: min(420px, 78%);
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait) {
+    max-width: min(320px, 62%);
+    width: min(320px, 62%);
+  }
+
+  .message-bubble:has(.document-preview-card) {
+    max-width: min(420px, 100%);
+    width: min(420px, 100%);
+  }
+
+  .message-bubble:has(.document-preview-card) .document-inline-preview {
+    aspect-ratio: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-inline-preview > * {
+    inset: auto;
+    position: relative;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx,
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx .document-viewer-docx,
+  .message-bubble:has(.document-preview-card) .document-inline-preview-docx .docx-wrapper {
+    height: auto;
+    overflow: visible;
+  }
+
+  .message-bubble:has(.document-preview-card) .document-viewer-pdf-page {
+    height: auto !important;
+    max-width: 100%;
+    width: 100% !important;
+  }
+
   /* Web video caps are more specific than the generic rules above. */
   :root[data-platform="web"] .messages-panel .message-bubble.has-photo-attachments:has(.message-video-attachment),
   :root[data-platform="web"] .messages-panel .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
