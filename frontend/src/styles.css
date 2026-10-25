@@ -11053,11 +11053,13 @@ span.message-spoiler.is-revealed {
 .settings-profile-open > svg {
   color: var(--color-palette-f2074b6cef37);
   flex-shrink: 0;
+  height: 18px;
   margin-left: auto;
   position: absolute;
-  right: 12px;
+  right: 22px;
   top: 50%;
   transform: translateY(-50%);
+  width: 18px;
 }
 
 .settings-profile-tile .profile-photo-control {
