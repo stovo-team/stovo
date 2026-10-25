@@ -37,6 +37,11 @@ export async function watchPr({read, required=[], sleep=delay, interval=15000, t
 
 const requiredChecks = ['PR size','Pipeline Contract','Agent workflow gate'];
 const execute = (tool,args) => execFileSync(tool,args,{encoding:'utf8',timeout:60000});
+function readPrChecks(repo, pr, run=execute) {
+  const result=JSON.parse(run('gh',['pr','view',String(pr),'--repo',repo,'--json','headRefOid,statusCheckRollup'])), seen=new Set();
+  for(const w of JSON.parse(run('gh',['run','list','--repo',repo,'--commit',result.headRefOid,'--limit','100','--json','workflowName,conclusion,url']))) { if(seen.has(w.workflowName))continue;seen.add(w.workflowName);if(w.conclusion==='startup_failure')(result.statusCheckRollup??=[]).push({name:`Workflow: ${w.workflowName}`,workflowName:w.workflowName,status:'COMPLETED',conclusion:'STARTUP_FAILURE',detailsUrl:w.url}); }
+  return result;
+}
 export async function deliverPr({repo,branch,title,bodyFile,base='master',run=execute,onPublished=()=>{},...watchOptions}) {
   const actual=JSON.parse(run('gh',['repo','view','--json','nameWithOwner'])).nameWithOwner;
   if (repo !== actual) throw Error(`Target repository is ${actual}, not ${repo}`);
@@ -52,7 +57,7 @@ export async function deliverPr({repo,branch,title,bodyFile,base='master',run=ex
   else url=run('gh',['pr','create','--repo',repo,'--base',base,'--head',branch,'--title',title,'--body-file',bodyFile]).trim();
   if (!/^https:\/\/github\.com\//.test(url)) throw Error('Missing usable PR URL');
   onPublished(url);
-  const read=()=>JSON.parse(run('gh',['pr','view',url,'--repo',repo,'--json','headRefOid,statusCheckRollup']));
+  const read=()=>readPrChecks(repo,url,run);
   return {url,...await watchPr({...watchOptions,read,required:requiredChecks})};
 }
 
@@ -65,7 +70,7 @@ main(import.meta.url, async args => {
     const result=await deliverPr({repo:o.repo,branch:o.branch,base:o.base??'master',title:o.title,bodyFile:o['body-file'],timeout:seconds*1000,interval:interval*1000,onPublished:url=>console.error(`PR: ${url}`),onUpdate:r=>console.error(JSON.stringify(r))});
     return {...result,ok:result.state==='passed'};
   }
-  const read = () => JSON.parse(execFileSync('gh', ['pr','view',String(o.pr),'--repo',String(o.repo),'--json','headRefOid,statusCheckRollup'], {encoding:'utf8',timeout:30000}));
+  const read = () => readPrChecks(String(o.repo),o.pr);
   const required=requiredChecks;
   const result = o.once ? classifyChecks(read(),required) : await watchPr({read,required,timeout:seconds*1000,interval:interval*1000,onUpdate:r=>console.error(JSON.stringify(r))});
   return {...result,ok:result.state === 'passed'};
