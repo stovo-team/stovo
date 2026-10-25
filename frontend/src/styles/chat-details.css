@@ -300,9 +300,9 @@
 }
 
 .popup-dialog.new-chat-screen {
-  max-width: 640px;
+  max-width: 640px; min-width: 640px;
   padding: 12px;
-  width: min(100%, 640px);
+  width: 640px;
 }
 
 @media (max-width: 767px) {
@@ -315,7 +315,7 @@
     padding: 0;
     border-radius: 0;
     height: 100vh;
-    max-width: none;
+    max-width: none; min-width: 0;
     width: 100%;
   }
 

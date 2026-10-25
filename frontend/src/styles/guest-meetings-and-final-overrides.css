@@ -276,15 +276,15 @@
 .quick-access-panel-empty strong { color: var(--text-primary); margin-top: 10px; }
 .quick-access-panel-empty p { font-size: var(--font-size-small); margin: 5px 0 0; }
 
-/* Quick Access entries use the same plain leading marker as channel rows. */
-.quick-access-item.chat-list-item { border-radius: var(--radius-panel); gap: 10px; grid-template-columns: 16px minmax(0, 1fr); min-height: 42px; padding: 5px 8px; }
-.quick-access-item .quick-access-icon { align-items: center; background: transparent !important; border-radius: 0; color: var(--text-muted) !important; display: inline-flex; height: 16px; justify-content: center; width: 16px; }
-.quick-access-item .quick-access-icon svg { height: 16px; width: 16px; }
+/* Quick Access matches chat-row metrics in full layout; minimized stays compact. */
+.quick-access-item.chat-list-item { border-radius: var(--radius-panel); gap: 10px; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 0; padding: 9px; }
+.quick-access-item .quick-access-icon { align-items: center; background: var(--accent-primary) !important; border-radius: var(--radius-circle); color: var(--color-palette-f2074b6cef37) !important; display: inline-flex; height: 44px; justify-content: center; width: 44px; }
+.quick-access-item .quick-access-icon svg { height: 21px; width: 21px; }
 .quick-access-item > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
 .quick-access-item strong { font-size: var(--font-size-body); line-height: normal; }
 .quick-access-item small { font-size: var(--font-size-caption); }
 .messenger-shell--minimized-chat-layout .quick-access-item--minimized { grid-template-columns: 16px minmax(0, 1fr); min-height: 42px; padding: 5px 8px; }
-.messenger-shell--minimized-chat-layout .quick-access-item--minimized .quick-access-icon { height: 16px; width: 16px; }
+.messenger-shell--minimized-chat-layout .quick-access-item--minimized .quick-access-icon { background: transparent !important; border-radius: 0; color: var(--text-muted) !important; height: 16px; width: 16px; }
 .messenger-shell--minimized-chat-layout .quick-access-item--minimized .quick-access-icon svg { height: 16px; width: 16px; }
 .messenger-shell--minimized-chat-layout .quick-access-item--minimized .chat-list-preview { display: none; }
 .messenger-shell--minimized-chat-layout .quick-access-item--minimized .chat-list-copy { gap: 0; }
@@ -1919,11 +1919,10 @@ button.minimized-call-button--end:active:not(:disabled) {
   outline: none !important;
   box-shadow: none !important;
 }
-/* Storage file details are a viewport-sized preview dialog; the grid keeps its full width underneath. */
-.storage-page .storage-layout,
-.storage-page:has(.storage-tile.selected) .storage-layout {
-  grid-template-columns: 300px minmax(0, 1fr);
-}
+/* Storage file details are a viewport-sized preview dialog. Keep the same
+   source | resizer | main tracks underneath — do not reintroduce a two-column
+   template here. Lightning CSS production minify rewrites comma + :has()
+   selectors into :is(), which would outrank the real three-column layout. */
 .storage-page .storage-details-backdrop {
   background: var(--color-palette-638a4c750aa4);
   border: 0;

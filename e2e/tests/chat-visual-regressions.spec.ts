@@ -55,6 +55,27 @@ test.describe("chat visual regressions in mock mode", () => {
     expect(emojiGeometry.lastEmojiMarginRight).toBe("0px");
   });
 
+  test("keeps the pinned banner visually unchanged on hover", async ({ page }) => {
+    const clickArea = page.locator(".pinned-banner-click-area");
+    await expect(clickArea).toBeVisible();
+
+    const beforeHover = await clickArea.evaluate((button) => {
+      const { backgroundColor, borderColor, boxShadow } = getComputedStyle(button);
+      return { backgroundColor, borderColor, boxShadow };
+    });
+    await clickArea.hover();
+    const afterHover = await clickArea.evaluate((button) => {
+      const { backgroundColor, borderColor, boxShadow } = getComputedStyle(button);
+      return { backgroundColor, borderColor, boxShadow };
+    });
+    expect(afterHover).toEqual(beforeHover);
+    expect(afterHover.backgroundColor).toMatch(/^rgba?\(0,\s*0,\s*0,\s*0\)$|^transparent$/);
+
+    await page.locator(".pinned-banner").screenshot({
+      path: "../artifacts/agent-workflows/pinned-banner-no-hover/pinned-banner-hover-dark.png",
+    });
+  });
+
   test("keeps chat details actions rounded and uses the same avatar initials across chat screens", async ({ page }) => {
     const headerAvatar = page.locator(".chat-title-group .chat-avatar");
     await expect(headerAvatar).toBeVisible();
