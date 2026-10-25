@@ -136,3 +136,5 @@ test('pre-commit refreshes knowledge and rejects malformed maintained docs', {sk
   writeFileSync(path.join(root,'docs/guide.md'),'# Missing metadata\n');
   assert.notEqual(spawnSync(shell,[hook],{cwd:root}).status,0);
 });
+
+test('Git lifecycle hooks are executable in the tracked checkout',()=>{for(const hook of ['pre-commit','commit-msg','post-checkout','post-merge'])assert.match(spawnSync(git,['ls-files','--stage','--',`.githooks/${hook}`],{encoding:'utf8'}).stdout,/^100755 /);});
