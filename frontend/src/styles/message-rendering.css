@@ -1522,7 +1522,6 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding: 6px 1px 6px 4px;
-  scrollbar-width: thin; scrollbar-width: 1px;
 }
 
 .emoji-picker .epr-cat-btn {

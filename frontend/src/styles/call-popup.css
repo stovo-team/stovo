@@ -1271,12 +1271,7 @@
   max-height: calc(100vh - 80px);
   overflow-y: auto;
   width: 340px;
-  scrollbar-width: thin;
-  scrollbar-width: 1px;
-  scrollbar-color: var(--border-default) transparent;
 }
-.call-audio-popup::-webkit-scrollbar { width: var(--scrollbar-size); }
-.call-audio-popup::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: var(--radius-pill); }
 .call-audio-popup-header {
   align-items: center;
   border-bottom: 1px solid var(--border-default);

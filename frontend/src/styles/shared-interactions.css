@@ -134,8 +134,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Shared app scrollbars match the understated chat treatment. Individual
-   components can still opt out with their more-specific hidden/custom rules. */
+/* One visible scrollbar style. Components may only hide a scroller. */
 :where(*) {
   scrollbar-color: var(--border-default) transparent;
   scrollbar-width: thin;

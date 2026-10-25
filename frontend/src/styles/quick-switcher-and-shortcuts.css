@@ -272,26 +272,6 @@ input.quick-switcher-input:focus-visible {
   overflow-y: auto;
   padding: 4px 10px 8px;
   min-height: 80px;
-  scrollbar-width: thin;
-  scrollbar-width: 1px;
-  scrollbar-color: var(--color-palette-b92166deed41) transparent;
-}
-
-.quick-switcher-content::-webkit-scrollbar {
-  width: var(--scrollbar-size);
-}
-
-.quick-switcher-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.quick-switcher-content::-webkit-scrollbar-thumb {
-  background: var(--color-palette-b92166deed41);
-  border-radius: var(--radius-pill);
-}
-
-.quick-switcher-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-palette-bc32a3790a35);
 }
 
 .quick-switcher-list {

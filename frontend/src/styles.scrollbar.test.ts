@@ -22,6 +22,13 @@ describe("shared application scrollbars", () => {
     expect(tokens).toContain("--scrollbar-size: 1px;");
   });
 
+  it("keeps one visible scrollbar color and thumb", () => {
+    const colors = [...styles.matchAll(/scrollbar-color:\s*([^;]+);/g)].map((match) => match[1].trim());
+    expect(colors).toEqual(["var(--border-default) transparent"]);
+    const thumbs = [...styles.matchAll(/::-webkit-scrollbar-thumb(?!:hover)[^{]*\{[^}]*?background:\s*([^;]+);/g)].map((match) => match[1].trim());
+    expect(thumbs).toEqual(["var(--border-default)"]);
+  });
+
   it("retains explicit opt-outs for intentionally hidden scrollers", () => {
     expect(lastRule(".filter-chip-row")).toContain("scrollbar-width: none;");
     expect(lastRule(".filter-chip-row::-webkit-scrollbar")).toContain("display: none;");
