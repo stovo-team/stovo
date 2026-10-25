@@ -1900,10 +1900,25 @@ button.minimized-call-button--end:active:not(:disabled) {
   .wrapped-metrics > div { padding: 10px; }
 }
 
-.mcp-connectors-panel button:not(.popup-button):not(.popup-close),
-.mcp-connector-form button:not(.popup-button),
+.mcp-connectors-panel button:not(.popup-button):not(.popup-close):not(.mcp-icon-button),
+.mcp-connector-form button:not(.popup-button):not(.mcp-icon-button),
 .mcp-connector-form input:not([type="checkbox"]):not([type="radio"]):not(.popup-field__input) {
   border-radius: var(--radius-surface);
+}
+
+.admin-page .public-access-actions > .mcp-icon-button,
+.mcp-connectors-panel button.mcp-icon-button {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-circle);
+  box-sizing: border-box;
+  flex: 0 0 34px;
+  height: 34px;
+  max-height: 34px;
+  max-width: 34px;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  width: 34px;
 }
 
 .multi-admin-dialog { max-width: 520px; width: min(100%, 520px); }
