@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "status": "approved",
-  "source": "Human approved all 12 Windows screenshot candidates in this Codex chat on 2026-10-25 for PR 189.",
-  "sourceRevision": "e1df16f7ae8583f60a7a5e2bc815fcf79888783e",
+  "source": "Human asked to fix the red visual CI in this Cursor chat on 2026-10-25 for PR 306. Windows screenshots V-01, V-02, V-03, V-04, V-09, V-11, and V-12 were replaced with that run's captures of the restored full quick-access rows.",
+  "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f",
   "environment": {
     "node": "v22.23.3",
     "platform": "win32",
@@ -12,19 +12,19 @@
   "files": [
     {
       "path": "V-01.png",
-      "sha256": "533bef1cb1665e07f553c604e2407c4d69e3b81e12e5d4d061e9bdb7f6808389"
+      "sha256": "731299fada95b0d94d81890b4d27a89c37e37bd1757811540c679b11d43c4e78"
     },
     {
       "path": "V-02.png",
-      "sha256": "053acfa7d6bb548f1c6063febea71074d947f0264220c643f2fd1579529c09e7"
+      "sha256": "5f060045f7160c01a24ed57d188464b56dd11d89012419bd36ece340ae292ecb"
     },
     {
       "path": "V-03.png",
-      "sha256": "3fc52926dc3dcb1c98992796afc28a27835f7136acefb0d5115de1e011a09ce2"
+      "sha256": "e099e716e386b8f2ad6dfa72b228b3e8c78741cbcd76e12eeaa1c8a673213c19"
     },
     {
       "path": "V-04.png",
-      "sha256": "5b506eab2ea093eb42470e8e0beba7c06c62b3a379dd2b4d4a21dca658b8f174"
+      "sha256": "75df354f8744492277c4394ffd221adb846139efab1fb59865648475c7f73eab"
     },
     {
       "path": "V-05.png",
@@ -44,7 +44,7 @@
     },
     {
       "path": "V-09.png",
-      "sha256": "71ce7126eac2372d1e56129822ed4b75999ba455e4f2e4abb3b2307def2b5e1d"
+      "sha256": "2068946e24f953b18ca8df1fefbc28d2ebc857a9ecff324dc2e642e5db0f1d34"
     },
     {
       "path": "V-10.png",
@@ -52,11 +52,11 @@
     },
     {
       "path": "V-11.png",
-      "sha256": "bd735dfb111e1bf70e323f004a62380df9ab32c8b3160d5c0c4ba2df4a9902f0"
+      "sha256": "ff5e274c0ba86fc1fb43140ee3282eac568203f099367739105b3278ce5db42f"
     },
     {
       "path": "V-12.png",
-      "sha256": "5b8fa4c0d63d58e69a68eae6191a342458ad6e4d8d42778e93adca4d433c1830"
+      "sha256": "beb1098c418751d1e12d1b77dae6159c8f8e5e5d2ebb012d3ae910e8b55d2b7b"
     }
   ]
 }
