@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -5,7 +6,7 @@ const source = readFileSync("src/pages/SettingsPage.tsx", "utf8");
 const dashboard = readFileSync("src/pages/settings/SettingsDashboard.tsx", "utf8");
 const profileSettingsTab = readFileSync("src/pages/settings/ProfileSettingsTab.tsx", "utf8");
 const appearanceControls = readFileSync("src/pages/settings/AppearanceControls.tsx", "utf8");
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 
 describe("SettingsPage redesign", () => {
   it("does not expose the space name in Profile settings", () => {

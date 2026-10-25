@@ -1,9 +1,10 @@
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readTextFile } from "./testUtils/readTextFile";
+import { readCssSource } from "./test/cssSource";
 
 const appSource = readTextFile(resolve(process.cwd(), "src/App.tsx"));
-const styles = readTextFile(resolve(process.cwd(), "src/styles.css"));
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("native tab transition layer", () => {
   it("animates page content smoothly with carousel transitions while keeping fixed navigation stable", () => {

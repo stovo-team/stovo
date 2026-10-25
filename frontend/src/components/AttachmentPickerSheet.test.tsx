@@ -1,7 +1,8 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 const attachmentSheetSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
 const mediaPickerSource = readFileSync("src/components/attachment-picker/useMediaPicker.ts", "utf8");
 const mediaGridSource = readFileSync("src/components/attachment-picker/MediaGalleryGrid.tsx", "utf8");

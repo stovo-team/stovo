@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { parse } from "postcss";
 import { expect, it } from "vitest";
 
 it("parses global styles and keeps independent call, settings and storage rules at the root", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const root = parse(css);
   for (const selector of [
     ".meeting-intel-toggle-btn > svg.lucide-circle",

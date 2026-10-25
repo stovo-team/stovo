@@ -1,8 +1,9 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/pages/ChecklistPage.tsx", "utf8");
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 
 describe("ChecklistPage surface layout", () => {
   it("uses the page-surface checklist-page-surface classes", () => {

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
-import { readTextFile } from "./testUtils/readTextFile";
+import { readCssSource } from "./test/cssSource";
 
-const css = readTextFile("src/styles.css");
+const css = readCssSource("src/styles.css");
 const ruleFor = (selector: string) => {
   const matches = [...css.matchAll(new RegExp(`${selector}\\s*\\{([^}]*)\\}`, "g"))];
   return matches.at(-1)?.[1] ?? "";

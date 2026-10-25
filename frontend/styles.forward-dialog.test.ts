@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./src/test/cssSource";
 import { expect, it } from "vitest";
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 it("uses the popup surface for the forwarding modal", () => {
   expect(/\.forward-dialog\s*\{[^}]*background:\s*var\(--chat-popup-surface\)/.test(styles)).toBe(true);
 });

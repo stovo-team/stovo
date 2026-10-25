@@ -1,9 +1,10 @@
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readTextFile } from "./testUtils/readTextFile";
+import { readCssSource } from "./test/cssSource";
 import { avatarInitials } from "./utils/avatarInitials";
 
-const styles = readTextFile(resolve(process.cwd(), "src/styles.css"));
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const attachmentPicker = readTextFile(resolve(process.cwd(), "src/components/AttachmentPickerSheet.tsx"));
 const settingsAvatar = readTextFile(resolve(process.cwd(), "src/pages/settings/SettingsAvatar.tsx"));
 const appearanceEditor = readTextFile(resolve(process.cwd(), "src/pages/settings/AppearanceEditor.tsx"));

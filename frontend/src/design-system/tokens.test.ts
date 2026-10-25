@@ -5,6 +5,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import postcss from "postcss";
 import { readTextFile } from "../testUtils/readTextFile";
+import { readCssSource } from "../test/cssSource";
 
 const cssFiles = [
   "src/styles.css",
@@ -44,7 +45,7 @@ describe("shared design tokens", () => {
   });
 
   it("uses compact text for chat detail tabs and member invitation", () => {
-    const styles = read("src/styles.css");
+    const styles = readCssSource("src/styles.css");
     const rule = (selector: string) => styles.match(new RegExp(`${selector}\\s*\\{([^}]+)\\}`))?.[1] ?? "";
 
     expect(rule("\\.chat-info-tab")).toContain("font-size: var(--font-size-caption)");

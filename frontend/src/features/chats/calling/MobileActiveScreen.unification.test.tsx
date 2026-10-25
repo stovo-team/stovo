@@ -1,5 +1,5 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act, useState } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MobileActiveScreen } from "./MobileActiveScreen";
@@ -112,7 +112,7 @@ describe("mobile call UI unification", () => {
   });
 
   it("keeps mobile call controls round and fixed-size inside the floating panel", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel")).toMatch(/width:\s*max-content/);
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel > .mobile-active-controls")).toMatch(/background:\s*transparent/);
     expect(styleRules(styles, ".mobile-active-screen .shared-call-control-panel .mobile-active-ctrl-btn")).toMatch(/flex:\s*0 0/);
@@ -124,7 +124,7 @@ describe("mobile call UI unification", () => {
   });
 
   it("keeps the mobile participant toggle anchored to the presentation edge", () => {
-    const styles = readFileSync("src/styles.css", "utf8");
+    const styles = readCssSource("src/styles.css");
     expect(styleRules(styles, ".shared-call-participants-toggle")).toMatch(/position:\s*absolute/);
     expect(styleRules(styles, ".mobile-active-video-stage .shared-call-participants-toggle")).toMatch(/left:\s*0/);
   });
@@ -646,7 +646,7 @@ describe("mobile call UI unification", () => {
   });
 
   it("keeps the mobile camera PiP rectangular, with Flip available only while camera video is shown", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const pipRule = styleRules(css, ".mobile-active-pip");
     expect(pipRule).toMatch(/border-radius:\s*var\(--radius-control\)/);
     expect(pipRule).not.toMatch(/border-radius:\s*var\(--radius-circle\)/);
@@ -662,7 +662,7 @@ describe("mobile call UI unification", () => {
     const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
     expect(menu?.closest(".mobile-active-more-anchor")).not.toBeNull();
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const rule = styleRules(css, ".mobile-active-more-menu");
     expect(rule).toMatch(/left:\s*0/);
     expect(rule).toMatch(/right:\s*auto/);
@@ -747,7 +747,7 @@ describe("mobile call UI unification", () => {
       const landscapeMenu = container.querySelector<HTMLElement>(".mobile-active-more-menu");
       expect(landscape).not.toBeNull();
       expect(landscapeMenu?.style.left).toBe("0px");
-      const css = readFileSync("src/styles.css", "utf8");
+      const css = readCssSource("src/styles.css");
       const rule = styleRules(css, ".mobile-active-screen--landscape .mobile-active-more-menu");
       expect(rule).toMatch(/width:\s*min\(336px,\s*calc\(100dvh\s*-\s*32px\)\)/);
       expect(rule).toMatch(/max-width:\s*min\(336px,\s*calc\(100dvh\s*-\s*32px\)\)/);

@@ -1,9 +1,10 @@
+import { readCssSource } from "../../../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const callFeature = readFileSync("src/features/chats/calling/CallFeature.tsx", "utf8");
 const audioSettingsPopup = readFileSync("src/features/chats/calling/CallAudioSettingsPopup.tsx", "utf8");
-const styles = readFileSync("src/styles.css", "utf8").replace(/\r\n/g, "\n");
+const styles = readCssSource("src/styles.css").replace(/\r\n/g, "\n");
 
 function rule(selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

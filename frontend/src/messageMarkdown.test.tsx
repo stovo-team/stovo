@@ -1,10 +1,10 @@
+import { readCssSource } from "./test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAppStrings } from "./config/strings";
 // @ts-ignore Vitest supplies Node built-ins while the browser app omits Node typings.
-import { readFileSync } from "node:fs";
 
 import {
   isSafeMessageUrl,
@@ -17,7 +17,7 @@ import {
 vi.mock("./i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru") }));
 
 // @ts-ignore Vitest runs from the frontend project root.
-const messageStyles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
+const messageStyles = readCssSource(`${process.cwd()}/src/styles.css`);
 
 const mountedRoots: Root[] = [];
 

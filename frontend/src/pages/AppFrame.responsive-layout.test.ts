@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { parse } from "postcss";
 import { expect, it } from "vitest";
 
 it("keeps app pages beside the nav rail and chat list plain at tablet widths", () => {
-  const stylesheet = parse(readFileSync("src/styles.css", "utf8"));
+  const stylesheet = parse(readCssSource("src/styles.css"));
   const tabletLayout = stylesheet.nodes?.find(
     node => node.type === "atrule"
       && node.name === "media"

@@ -1,6 +1,6 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -70,7 +70,7 @@ describe("AdminRolesPage Russian localization and Premium locks", () => {
   });
 
   it("styles Premium role controls as muted and non-interactive", () => {
-    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
     const premiumRule = css.match(/\.admin-role-premium-group\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(premiumRule).toMatch(/filter:\s*grayscale\(1\)/);
     expect(premiumRule).toMatch(/opacity:/);

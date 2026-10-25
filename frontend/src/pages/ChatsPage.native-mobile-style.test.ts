@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const stylesSource = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("native mobile chat styling", () => {
   it("keeps the narrow web sidebar header in flow while a chat is open", () => {

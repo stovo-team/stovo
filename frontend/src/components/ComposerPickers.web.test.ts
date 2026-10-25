@@ -1,7 +1,8 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 const composerSource = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
 const useComposerUiActionsSource = readFileSync(
   "src/features/chats/composer/useComposerUiActions.ts",

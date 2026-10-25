@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -25,7 +25,7 @@ import type { FamilyFile } from "../api/files";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 const { renderDocxMock, navigateMock, createCanvasMock, appendCanvasDocumentUpdateMock, getChatsMock } = vi.hoisted(() => ({
   renderDocxMock: vi.fn(),
   navigateMock: vi.fn(),

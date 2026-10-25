@@ -1,8 +1,9 @@
+import { readCssSource } from "../../../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const popupStyles = readFileSync(resolve(process.cwd(), "src/components/ui/Popup.css"), "utf8");
 const dialogSource = readFileSync(resolve(process.cwd(), "src/features/chats/transfer/ChatTransferDialog.tsx"), "utf8");
 

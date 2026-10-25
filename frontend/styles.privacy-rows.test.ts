@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
-import { readTextFile } from "./src/testUtils/readTextFile";
-const styles = readTextFile("src/styles.css");
+import { readCssSource } from "./src/test/cssSource";
+const styles = readCssSource("src/styles.css");
 const rule = (selector: string) => {
   const start = styles.indexOf(`${selector} {`);
   return start < 0 ? "" : styles.slice(start, styles.indexOf("}", start));

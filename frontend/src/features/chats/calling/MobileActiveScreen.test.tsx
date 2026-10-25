@@ -1,6 +1,6 @@
+import { readCssSource } from "../../../test/cssSource";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import React, { act } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, Root } from "react-dom/client";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 
@@ -85,7 +85,7 @@ describe("MobileActiveScreen", () => {
     expect(controls?.dataset.noWrap).toBe("true");
     expect(controls?.querySelectorAll("button")).toHaveLength(5);
 
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const controlsRule = styleRules(css, ".mobile-active-controls");
     const buttonRule = styleRules(css, ".mobile-active-ctrl-btn");
     expect(controlsRule).toMatch(/grid-template-columns:\s*repeat\(5,/);

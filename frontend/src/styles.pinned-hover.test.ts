@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "./test/cssSource";
 import { expect, it } from "vitest";
 
 it("keeps the pinned-message action clickable without hover feedback", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const banner = css.match(/^\.pinned-banner\s*\{([^}]*)\}/m)?.[1] ?? "";
   const action = css.match(/\.pinned-banner-click-area\s*\{([^}]*)\}/)?.[1] ?? "";
   const hoverFeedback = css.match(/\.pinned-banner-click-area[^{}]*:hover[^{}]*\{([^}]*)\}/);
@@ -16,13 +16,13 @@ it("keeps the pinned-message action clickable without hover feedback", () => {
 });
 
 it("keeps the pinned banner click area visually unchanged on hover", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   expect(css).not.toMatch(/\.pinned-banner-click-area:is\([^)]*:hover/);
   expect(css).toMatch(/\.pinned-banner-click-area:focus-visible\s*\{[^}]*background:\s*var\(--surface-hover\)/);
 });
 
 it("matches the pinned preview font and active chat header dimensions", () => {
-  const css = readFileSync("src/styles.css", "utf8");
+  const css = readCssSource("src/styles.css");
   const preview = css.match(/\.pinned-banner-preview\s*\{([^}]*)\}/)?.[1] ?? "";
   const bannerRules = [...css.matchAll(/\.messenger-shell\.has-active-chat \.pinned-banner\s*\{([^}]*)\}/g)];
   const banner = bannerRules.at(-1)?.[1] ?? "";

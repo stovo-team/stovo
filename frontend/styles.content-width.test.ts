@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
-import { readTextFile } from "./src/testUtils/readTextFile";
+import { readCssSource } from "./src/test/cssSource";
 
 it("caps the main chat and plans panes while letting Storage use wide screens", () => {
-  const styles = readTextFile("src/styles.css");
+  const styles = readCssSource("src/styles.css");
   const wideScreenRule = styles.match(/@media \(min-width: 1600px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
   expect(wideScreenRule).toContain(".messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail");
   expect(wideScreenRule).toContain(".plans-page .plans-content");

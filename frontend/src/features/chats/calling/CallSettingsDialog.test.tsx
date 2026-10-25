@@ -1,5 +1,5 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallSettingsDialog } from "./CallSettingsDialog";
@@ -20,7 +20,7 @@ describe("CallSettingsDialog", () => {
     expect(host.querySelector('.call-audio-toggle-switch .call-audio-toggle-slider')).toBeTruthy();
   });
   it("uses a fixed-height settings shell with a scrollable active tab panel", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
     const layout = css.match(/\.call-settings-dialog-layout\s*\{([^}]*)\}/)?.[1] ?? "";
     const panel = css.match(/\.call-settings-panel-wrap\s*\{([^}]*)\}/)?.[1] ?? "";
@@ -30,7 +30,7 @@ describe("CallSettingsDialog", () => {
   });
 
   it("anchors the shared close button to the settings dialog", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(dialog).toMatch(/position:\s*relative/);
   });
