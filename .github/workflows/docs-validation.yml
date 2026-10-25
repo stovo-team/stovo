@@ -29,9 +29,20 @@ on:
 
 jobs:
   docs-and-deployment:
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Linux","tests"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Windows","tests"]') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Ensure Git Bash is available on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -48,10 +59,16 @@ jobs:
 
           compose_dir="${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins"
           mkdir -p "$compose_dir"
-          curl --fail --location --retry 3 \
-            https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64 \
-            --output "$compose_dir/docker-compose"
-          chmod +x "$compose_dir/docker-compose"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            curl --fail --location --retry 3 \
+              https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-windows-x86_64.exe \
+              --output "$compose_dir/docker-compose.exe"
+          else
+            curl --fail --location --retry 3 \
+              https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-linux-x86_64 \
+              --output "$compose_dir/docker-compose"
+            chmod +x "$compose_dir/docker-compose"
+          fi
           docker compose version
       - name: Validate docs, Compose, and Helm chart
         run: node --test .github/docs-validation.test.mjs
