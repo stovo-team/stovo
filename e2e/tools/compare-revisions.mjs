@@ -6,6 +6,7 @@ export function freezeHarness(root,target,paths){
  for(const relative of paths){visit(relative);mkdirSync(path.dirname(path.join(target,relative)),{recursive:true});cpSync(path.join(root,relative),path.join(target,relative),{recursive:true});}
  return sha256(JSON.stringify(entries));
 }
+export function linkNodeModules({source,destination,platform=process.platform,link=symlinkSync}){link(source,destination,platform==='win32'?'junction':'dir');}
 export function validateComparison({base,head}){if(!/^[a-f0-9]{40}$/.test(base??'')||!/^[a-f0-9]{40}$/.test(head??'')||base===head)throw Error('comparison requires distinct exact commit IDs');return {ok:true,base,head};}
 export function compareRevisions({root,base,head,output,taskId,grep}){
  validateComparison({base,head});root=path.resolve(root);output=path.resolve(output);if(!/^[a-z0-9][a-z0-9-]*$/.test(taskId??''))throw Error('invalid task identity');
@@ -18,7 +19,7 @@ export function compareRevisions({root,base,head,output,taskId,grep}){
   const checkout=path.join(temp,side);command('git',['worktree','add','--detach',checkout,sha]);owned.push(checkout);
   // A standalone CLI has no native Codex worktree API. Only its exact temporary checkouts are removed below.
   for(const relative of harnessPaths){mkdirSync(path.dirname(path.join(checkout,relative)),{recursive:true});cpSync(path.join(harness,relative),path.join(checkout,relative),{recursive:true});}
-  for(const folder of ['frontend','e2e']){if(hashFile(path.join(root,folder,'package-lock.json'))===hashFile(path.join(checkout,folder,'package-lock.json')))symlinkSync(path.join(root,folder,'node_modules'),path.join(checkout,folder,'node_modules'),'dir');else command('npm',['ci'],path.join(checkout,folder));}
+  for(const folder of ['frontend','e2e']){if(hashFile(path.join(root,folder,'package-lock.json'))===hashFile(path.join(checkout,folder,'package-lock.json')))linkNodeModules({source:path.join(root,folder,'node_modules'),destination:path.join(checkout,folder,'node_modules')});else command('npm',['ci'],path.join(checkout,folder));}
   const destination=path.join(output,side);const r=spawnSync(process.execPath,[path.join(checkout,'e2e/tools/capture-evidence.mjs'),'--task',taskId,'--output',destination,...(grep?['--grep',grep]:[])],{cwd:checkout,encoding:'utf8',timeout:240000});
   let capture;try{capture=JSON.parse(readFileSync(path.join(destination,'capture.json'),'utf8'));}catch{throw Error(`missing ${side} capture: ${r.stderr}`);}
   for(const s of capture.screenshots??[]){const absolute=path.resolve(checkout,s.path);s.path=path.relative(root,absolute);s.side=side;}
