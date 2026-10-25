@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../test/cssSource";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-const stylesheet = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const stylesheet = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const storageGridRules = Array.from(stylesheet.matchAll(/\.storage-page \.storage-grid\s*\{[^}]+\}/g)).map((match) => match[0]);
 const removalButtonRule = Array.from(stylesheet.matchAll(/\.storage-collection-file-grid \.collection-file-tile > button:not\(\.collection-file-open\) \{[^}]+\}/g))
   .map((match) => match[0])

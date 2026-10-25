@@ -1,8 +1,9 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readTextFile } from "../testUtils/readTextFile";
+import { readCssSource } from "../test/cssSource";
 
-const styles = readTextFile(resolve(process.cwd(), "src/styles.css"));
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 function rule(selector: string) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -25,7 +26,7 @@ describe("Storage collapse and Plans resize layout styles", () => {
   });
 
   it("keeps the Plans resize handle invisible and styles its collapsed expand button brightly", () => {
-    const plansSource = readTextFile(resolve(process.cwd(), "src/pages/PlansPage.tsx"));
+    const plansSource = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
     const button = rule(".sidebar-collapse-button");
     expect(button).toContain("left: 100%;");
     expect(button).toContain("top: 50%;");

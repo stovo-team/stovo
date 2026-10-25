@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readTextFile } from "../../../testUtils/readTextFile";
+import { readCssSource } from "../../../test/cssSource";
 
-const styles = readTextFile("src/styles.css");
+const styles = readCssSource("src/styles.css");
 const chatDetailsPanel = readTextFile("src/features/chats/details/ChatDetailsPanel.tsx");
 
 function mediaRuleContaining(selector: string, maxWidth: number) {

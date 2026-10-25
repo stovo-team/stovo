@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readCssSource } from "../../../test/cssSource";
 import { expect, it } from "vitest";
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readCssSource("src/styles.css");
 it("centers the last card of an incomplete two-column participant row", () => {
   const start = styles.indexOf('.voice-grid--4 > .voice-participant-card:last-child:nth-child(odd),');
   expect(start).toBeGreaterThan(-1);

@@ -1,5 +1,5 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CallParticipantGrid from "./CallParticipantGrid";
@@ -63,7 +63,7 @@ describe("shared call participant presentation", () => {
     });
 
     const grid = container.querySelector<HTMLElement>(".call-grid");
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     expect(grid?.classList.contains("call-grid--single-group-participant")).toBe(true);
     expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/width:\s*92%/);
     expect(styleRules(css, ".call-grid--single-group-participant > .call-grid__tile--local")).toMatch(/justify-self:\s*center/);
@@ -119,7 +119,7 @@ describe("shared call participant presentation", () => {
     expect(remote?.style.aspectRatio).toBe("16 / 9");
     expect(remote?.querySelector(".call-grid__avatar")).not.toBeNull();
 
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:/);
     expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:\s*minmax\(0,\s*5fr\)\s+minmax\(112px,\s*1fr\)/);
     expect(styleRules(css, ".call-grid--screen-share > .call-grid__tile--screen")).toMatch(/grid-column:\s*1/);
@@ -152,7 +152,7 @@ describe("shared call participant presentation", () => {
     const presenter = container.querySelector<HTMLElement>(".call-grid--mobile-presentation > .call-grid__tile--screen");
     expect(presenter).not.toBeNull();
     expect(Number.parseFloat(presenter?.style.aspectRatio ?? "0")).toBeCloseTo(4 / 3);
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     expect(styleRules(css, ".mobile-active-video-stage .call-grid--mobile-presentation > .call-grid__tile--screen")).toMatch(/aspect-ratio:\s*var\(--screen-aspect-ratio/);
     expect(styleRules(css, ".shared-call-stage-layout[data-sharing=\"true\"][data-participants-collapsed=\"true\"] .call-grid--screen-share > .call-grid__tile--screen")).toMatch(/aspect-ratio:\s*var\(--screen-aspect-ratio/);
     expect(styleRules(css, ".mobile-active-video-stage .call-grid--mobile-presentation")).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/);
@@ -242,7 +242,7 @@ describe("shared call participant presentation", () => {
     expect(grid.classList.contains("call-grid--screen-share")).toBe(true);
     expect(grid.classList.contains("call-grid--screen-share-bottom")).toBe(false);
     expect(grid.querySelector(".call-grid__participant-rail")).not.toBeNull();
-    expect(styleRules(readFileSync("src/styles.css", "utf8"), ".call-grid__participant-rail")).toMatch(/grid-column:\s*2/);
+    expect(styleRules(readCssSource("src/styles.css"), ".call-grid__participant-rail")).toMatch(/grid-column:\s*2/);
 
     stage = { width: 1200, height: 400 };
     act(() => observers.forEach((resize) => resize(stage)));
@@ -278,7 +278,7 @@ describe("shared call participant presentation", () => {
     expect(grid?.style.alignContent).toBe("start");
     expect(grid?.querySelector(".call-grid__participant-rail")).not.toBeNull();
 
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     expect(css).toMatch(/\.shared-call-stage \.call-grid--presenting\.call-grid--screen-share\s*\{[^}]*height:\s*100%\s*!important;[^}]*aspect-ratio:\s*auto/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__tile--screen\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/);
     expect(css).toMatch(/\.call-grid--screen-share-bottom \.call-grid__participant-rail\s*\{[^}]*grid-column:\s*1;[^}]*grid-row:\s*1/);
@@ -331,7 +331,7 @@ describe("shared call participant presentation", () => {
   });
 
   it("adds the speaking halo around avatars and an outline around speaking tiles", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+var\(--color-palette-8b8f7c3d4541\)/);
     expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toContain("box-shadow: 0 0 0 2px var(--color-palette-449c31647178)");
     expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).not.toMatch(/(?:4px|7px)/);

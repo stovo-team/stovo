@@ -1,5 +1,5 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act, useState } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallFeatureProvider } from "./CallFeatureContext";
@@ -239,7 +239,7 @@ describe("DesktopCallControls visibility", () => {
   });
 
   it("styles the group invite actions as accent and outlined pills", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const inviteButton = lastCssRule(css, ".call-invite-modal-actions .action-button.primary");
     const cancelButton = lastCssRule(css, ".call-invite-modal-actions .action-button.subtle");
     expect(inviteButton).toMatch(/border-radius:\s*var\(--radius-pill\)/);
@@ -249,7 +249,7 @@ describe("DesktopCallControls visibility", () => {
   });
 
   it("keeps top stage actions above a collapsed presentation", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const header = lastCssRule(css, ".call-popup.call-popup-group-call.call-popup-fullscreen > .call-popup-header");
     expect(header).toMatch(/position:\s*absolute/);
     expect(header).toMatch(/z-index:\s*\d+/);

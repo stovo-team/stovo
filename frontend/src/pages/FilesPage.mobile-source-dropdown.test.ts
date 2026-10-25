@@ -1,9 +1,10 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const page = readFileSync(resolve(process.cwd(), "src/pages/FilesPage.tsx"), "utf8");
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("Storage mobile source dropdown", () => {
   it("renders a mobile-only source selector with grouped source choices and opens closed by default", () => {

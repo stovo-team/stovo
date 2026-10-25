@@ -1,0 +1,81 @@
+.canvas-card-bubble-subtitle {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-palette-e93a99255bf5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-card-bubble-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-palette-c34f5a2a4d80);
+  border: 1px solid var(--color-palette-b749cc259197);
+  border-radius: var(--radius-pill);
+  padding: 5px 11px;
+  color: var(--color-palette-f2074b6cef37);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  min-height: auto;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.canvas-card-bubble-open-btn:hover {
+  background: var(--accent-primary, var(--color-palette-d7ba43940eb9));
+  border-color: var(--accent-primary, var(--color-palette-d7ba43940eb9));
+  color: var(--color-palette-f2074b6cef37);
+}
+.canvas-card-bubble-open {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  color: inherit;
+}
+.canvas-card-bubble-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  background: var(--color-palette-8d6f5252e02c);
+}
+.canvas-card-bubble-preview .storage-canvas-preview {
+  position: relative;
+  inset: unset;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  border-radius: 0;
+  padding: 16px 18px 26px;
+  background: var(--color-palette-8d6f5252e02c);
+}
+.canvas-card-bubble-preview .canvas-preview-header {
+  display: none;
+}
+.canvas-card-bubble-locked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px 14px;
+  color: var(--color-palette-c5c7a76d7255);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Card bottom title overlay */
+.storage-tile-info {
+  box-sizing: border-box;
+  color: var(--color-palette-f2074b6cef37);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  inset: auto 0 0 0;
+  min-width: 0;
+  padding: 24px 10px 8px;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+}

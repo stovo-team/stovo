@@ -1,3 +1,4 @@
+import { readCssSource } from "./test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -45,7 +46,7 @@ describe("call and meeting popup shared composition", () => {
   });
 
   it("removes pointer triangle pseudo-elements from guest device dropdowns", () => {
-    const styles = source("src/styles.css");
+    const styles = readCssSource("src/styles.css");
     expect(styles).not.toMatch(/\.guest-device-menu::before/);
   });
 });

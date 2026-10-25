@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,7 +10,7 @@ const desktopCallControlsSource = readFileSync(
 const minimizedSource = readFileSync(resolve(process.cwd(), "src/features/chats/calling/MinimizedCallBar.tsx"), "utf8");
 const chatsPageSource = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 const voiceLayoutSnapshotSource = readFileSync(resolve(process.cwd(), "src/pages/voiceCallLayoutSnapshot.ts"), "utf8");
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8").replace(/\r\n/g, "\n");
+const styles = readCssSource(resolve(process.cwd(), "src/styles.css")).replace(/\r\n/g, "\n");
 
 describe("Voice Channel call layout restoration", () => {
   it("captures the expanded state for the active voice chat and restores it after call end", () => {

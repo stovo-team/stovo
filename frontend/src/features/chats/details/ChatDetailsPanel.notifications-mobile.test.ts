@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readTextFile } from "../../../testUtils/readTextFile";
+import { readCssSource } from "../../../test/cssSource";
 
-const styles = readTextFile("src/styles.css");
+const styles = readCssSource("src/styles.css");
 
 describe("chat notification selector on small screens", () => {
   it("anchors its open dropdown to the bottom edge", () => {

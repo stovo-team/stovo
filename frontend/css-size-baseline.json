@@ -1,0 +1,33 @@
+{
+  "files": {
+    "app-shell.css": 2039,
+    "appearance-and-settings.css": 1980,
+    "appearance-editor.css": 681,
+    "attachment-picker.css": 1344,
+    "audio-and-document-previews.css": 882,
+    "call-popup.css": 1406,
+    "chat-details.css": 1627,
+    "chat-responsive.css": 927,
+    "checklists.css": 1908,
+    "composer-and-message-editing.css": 1415,
+    "conversation.css": 621,
+    "foundation.css": 181,
+    "guest-meetings-and-final-overrides.css": 2610,
+    "image-editors.css": 1421,
+    "media-attachments.css": 793,
+    "message-actions.css": 389,
+    "message-rendering.css": 1577,
+    "plugins-and-stats.css": 81,
+    "quick-switcher-and-shortcuts.css": 754,
+    "responsive-and-call-stage.css": 1100,
+    "scheduled-messages.css": 757,
+    "secondary-settings.css": 1724,
+    "shared-interactions.css": 405,
+    "storage-and-admin.css": 2102,
+    "storage-and-plans.css": 1672,
+    "storage-canvas-and-checklist-previews.css": 1000,
+    "theme.css": 389,
+    "voice-channels.css": 1271
+  },
+  "exceptions": {}
+}

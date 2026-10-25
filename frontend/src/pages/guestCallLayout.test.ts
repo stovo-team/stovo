@@ -1,6 +1,7 @@
+import { readCssSource } from "../test/cssSource";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-const css = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const css = readCssSource("src/styles.css").replace(/\/\*[\s\S]*?\*\//g, "");
 const rules = (selector: string) => Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).filter((match) => match[1].trim() === selector).map((match) => match[2]).join("\n");
 
 describe("guest call stage layout", () => {

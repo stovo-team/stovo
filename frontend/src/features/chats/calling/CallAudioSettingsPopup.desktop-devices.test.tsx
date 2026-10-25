@@ -1,5 +1,5 @@
+import { readCssSource } from "../../../test/cssSource";
 import { act } from "react";
-import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CALL_SETTINGS, type CallCapabilities } from "../../../realtime/call/types";
@@ -26,7 +26,7 @@ const capabilities: CallCapabilities = {
 
 describe("desktop call device selection", () => {
   it("uses the theme accent for audio sliders and a fixed fully-rounded bordered close control", () => {
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -264,7 +264,7 @@ describe("desktop call device selection", () => {
     });
     expect(onPatch).toHaveBeenCalledWith({ speakingSensitivity: 5 });
 
-    const css = readFileSync("src/styles.css", "utf8");
+    const css = readCssSource("src/styles.css");
     const toggleRule = css.match(/\.call-audio-toggle-row\s*\{([^}]*)\}/s)?.[1] ?? "";
     expect(toggleRule).toMatch(/border:\s*0(?:\s|;)/);
     expect(toggleRule).toMatch(/background:\s*transparent/);

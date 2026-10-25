@@ -1,0 +1,389 @@
+
+/* Toggle group */
+.call-audio-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.call-audio-toggle-row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.call-audio-toggle-row.disabled {
+  opacity: 0.45;
+}
+.call-audio-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.call-audio-toggle-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  gap: 5px;
+}
+.call-audio-toggle-desc {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+/* iOS-style toggle switch */
+.call-audio-toggle-switch {
+  cursor: pointer;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 20px;
+  position: relative;
+  width: 34px;
+}
+.call-audio-toggle-switch input {
+  height: 0;
+  opacity: 0;
+  width: 0;
+}
+.call-audio-toggle-slider {
+  background: var(--border-default);
+  border-radius: var(--radius-bubble);
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: background 0.18s;
+}
+.call-audio-toggle-slider::after {
+  background: var(--color-palette-f2074b6cef37);
+  border-radius: var(--radius-circle);
+  bottom: 2px;
+  content: "";
+  height: 16px;
+  left: 2px;
+  position: absolute;
+  transition: transform 0.18s;
+  width: 16px;
+}
+.call-audio-toggle-switch input:checked + .call-audio-toggle-slider {
+  background: var(--accent-primary);
+}
+.call-audio-toggle-switch input:checked + .call-audio-toggle-slider::after {
+  transform: translateX(14px);
+}
+
+/* Speaker mode row */
+.call-audio-speaker-row {
+  display: flex;
+  gap: 6px;
+}
+.call-audio-speaker-btn {
+  align-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-small);
+  gap: 6px;
+  padding: 6px 12px;
+}
+.call-audio-speaker-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.call-audio-speaker-btn.active {
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+
+:root[data-accent="purple"] {
+  --accent-primary-light: var(--color-palette-97b1caaa7b50);
+  --accent-primary-hover-light: var(--color-palette-bb741ad5532f);
+  --accent-soft-light: var(--color-palette-9fa6bad44179);
+  --accent-border-soft-light: var(--color-palette-2d796aaf8566);
+  --focus-ring-light: var(--color-palette-41e03ce6bc84);
+  --focus-shadow-light: var(--color-palette-a57f537ad81a);
+  --outline-soft-light: var(--color-palette-6ba38bf3ccb6);
+  --accent-ring-light: var(--color-palette-94622d59b161);
+  --accent-primary-dark: var(--color-palette-13969980f507);
+  --accent-primary-hover-dark: var(--color-palette-50870daaaf89);
+  --accent-soft-dark: var(--color-palette-cf3639b8b3e5);
+  --accent-border-soft-dark: var(--color-palette-97b1caaa7b50);
+  --focus-ring-dark: var(--color-palette-1b4c211748ef);
+  --focus-shadow-dark: var(--color-palette-88cedbb93833);
+  --outline-soft-dark: var(--color-palette-7331a735864c);
+  --accent-ring-dark: var(--color-palette-1b4c211748ef);
+}
+
+:root[data-theme-mode="light"] {
+  --accent-primary: var(--accent-primary-light);
+  --accent-primary-hover: var(--accent-primary-hover-light);
+  --accent-soft: var(--accent-soft-light);
+  --accent-border-soft: var(--accent-border-soft-light);
+  --focus-ring: var(--focus-ring-light);
+  --focus-shadow: var(--focus-shadow-light);
+  --outline-soft: var(--outline-soft-light);
+  --accent-ring: var(--accent-ring-light);
+  --input-text: var(--color-palette-dd15e6f7d489);
+  --input-placeholder: var(--color-palette-177804c22590);
+  --bubble-outgoing: var(--accent-primary);
+  --bubble-incoming: var(--color-palette-f2074b6cef37);
+}
+
+:root[data-theme-mode="dark"] {
+  --background-primary: var(--color-palette-0e684e516035);
+  --background-secondary: var(--color-palette-95b1a9665923);
+  --background-tertiary: var(--color-palette-47ed8310ca0c);
+  --background-panel-accent: var(--color-palette-91d88840c389);
+  --chat-layout-background: var(--color-palette-7b2817bf9b80);
+  --phase-empty-background: var(--color-palette-7b2817bf9b80);
+  --auth-panel-bg-start: var(--color-palette-843c5c8f2422);
+  --auth-panel-bg-end: var(--color-palette-adf76e28fa53);
+  --auth-panel-border: var(--color-palette-63fc91a9cf49);
+  --auth-panel-shadow: var(--color-palette-d7c16d3d16dd);
+  --surface-card: var(--color-palette-95b1a9665923);
+  --text-primary: var(--color-palette-f2074b6cef37);
+  --text-secondary: var(--color-palette-e2442d83b3a8);
+  --text-muted: var(--color-palette-1275593ea057);
+  --border-default: var(--color-palette-9f034e1f1a77);
+  --message-bubble-bg: var(--color-palette-91d88840c389);
+  --message-bubble-border: var(--color-palette-9f034e1f1a77);
+  --date-separator-bg: var(--color-palette-49f24a45cfee);
+  --reaction-pill-bg: var(--color-palette-c5ea62721691);
+  --storage-tile-overlay: var(--color-palette-48eaff5e9bf2);
+  --accent-primary: var(--accent-primary-dark);
+  --accent-primary-hover: var(--accent-primary-hover-dark);
+  --accent-soft: var(--accent-soft-dark);
+  --accent-border-soft: var(--accent-border-soft-dark);
+  --focus-ring: var(--focus-ring-dark);
+  --focus-shadow: var(--focus-shadow-dark);
+  --outline-soft: var(--outline-soft-dark);
+  --accent-ring: var(--accent-ring-dark);
+  --border-strong: var(--color-palette-833631aa325e);
+  --float-shadow: 0 20px 40px var(--color-palette-6190a6c871e7);
+  --float-shadow-soft: 0 8px 24px var(--color-palette-5338a3860b78);
+  --input-text: var(--color-palette-f2074b6cef37);
+  --input-placeholder: var(--color-palette-1275593ea057);
+  --bubble-outgoing: var(--accent-primary);
+  --bubble-incoming: var(--color-palette-47ed8310ca0c);
+  --mobile-glass-surface: color-mix(in oklab, var(--surface-card) 90%, transparent);
+  --mobile-glass-surface-strong: color-mix(in oklab, var(--surface-card) 94%, transparent);
+  --mobile-glass-surface-soft: color-mix(in oklab, var(--surface-card) 84%, transparent);
+  --mobile-glass-border: var(--color-palette-69711893c789);
+  --mobile-glass-highlight: var(--color-palette-d635c939daff);
+  --mobile-glass-shadow: 0 10px 30px var(--color-palette-e4fd90a26093);
+  --nav-pill-shadow:
+    0 14px 32px var(--color-palette-e16ece2e238b),
+    0 4px 12px var(--color-palette-7be18e16198b);
+}
+
+:root[data-theme-mode="amoled"] {
+  --background-primary: var(--color-palette-7b2817bf9b80);
+  --background-secondary: var(--color-palette-95b1a9665923);
+  --background-tertiary: var(--color-palette-47ed8310ca0c);
+  --background-panel-accent: var(--color-palette-6ce08b279482);
+  --chat-layout-background: var(--color-palette-7b2817bf9b80);
+  --phase-empty-background: var(--color-palette-7b2817bf9b80);
+  --auth-panel-bg-start: var(--color-palette-8ac6b39580e3);
+  --auth-panel-bg-end: var(--color-palette-1b55c5ac5a5c);
+  --auth-panel-border: var(--color-palette-3dd5594323fb);
+  --auth-panel-shadow: var(--color-palette-6190a6c871e7);
+  --surface-card: var(--color-palette-95b1a9665923);
+  --text-primary: var(--color-palette-f2074b6cef37);
+  --text-secondary: var(--color-palette-e2442d83b3a8);
+  --text-muted: var(--color-palette-1275593ea057);
+  --border-default: var(--color-palette-655ca22f24e4);
+  --message-bubble-bg: var(--color-palette-e474c801bb04);
+  --message-bubble-border: var(--color-palette-655ca22f24e4);
+  --date-separator-bg: var(--color-palette-08a370ad2aab);
+  --reaction-pill-bg: var(--color-palette-08a370ad2aab);
+  --storage-tile-overlay: var(--color-palette-92b099d6093b);
+  --accent-primary: var(--accent-primary-dark);
+  --accent-primary-hover: var(--accent-primary-hover-dark);
+  --accent-soft: var(--accent-soft-dark);
+  --accent-border-soft: var(--accent-border-soft-dark);
+  --focus-ring: var(--focus-ring-dark);
+  --focus-shadow: var(--focus-shadow-dark);
+  --outline-soft: var(--outline-soft-dark);
+  --accent-ring: var(--accent-ring-dark);
+  --mobile-glass-surface: var(--color-palette-97b2ee282e94);
+  --mobile-glass-surface-strong: var(--color-palette-a3bbfc923f92);
+  --mobile-glass-surface-soft: var(--color-palette-2b48031c5e3c);
+  --mobile-glass-border: var(--color-palette-93d224c54cc7);
+  --mobile-glass-highlight: var(--color-palette-d42bc24bc7a0);
+  --mobile-glass-shadow: 0 10px 30px var(--color-palette-0bcd1015425a);
+  --nav-pill-shadow:
+    0 16px 36px var(--color-palette-1ba7a3e2489d),
+    0 4px 14px var(--color-palette-554de51a1e86);
+  --border-strong: var(--color-palette-9f034e1f1a77);
+  --float-shadow: 0 20px 40px var(--color-palette-6190a6c871e7);
+  --float-shadow-soft: 0 8px 24px var(--color-palette-5338a3860b78);
+  --input-text: var(--color-palette-f2074b6cef37);
+  --input-placeholder: var(--color-palette-1275593ea057);
+  --bubble-outgoing: var(--accent-primary);
+  --bubble-incoming: var(--color-palette-47ed8310ca0c);
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --float-outer-gap: 24px;
+  }
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --float-outer-gap: 16px;
+    --float-panel-gap: 16px;
+    --mobile-edge-inset-x: 14px;
+    --mobile-edge-inset-y: 14px;
+    --mobile-page-inset: 14px;
+    --chat-list-chrome-gap: 16px;
+    --conversation-chrome-inset-x: var(--mobile-edge-inset-x);
+    --nav-pill-inset-x: var(--mobile-edge-inset-x);
+    --nav-pill-inset-bottom: max(var(--mobile-edge-inset-y), env(safe-area-inset-bottom));
+    --fab-offset-right: var(--mobile-edge-inset-x);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--color-palette-7b2817bf9b80);
+  overflow-x: hidden;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--background-secondary, var(--color-palette-7b2817bf9b80));
+  color: var(--text-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.ms-icon {
+  align-items: center;
+  display: inline-flex;
+  font-family: "Material Symbols Outlined";
+  font-size: var(--font-size-heading);
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  justify-content: center;
+  line-height: 1;
+  user-select: none;
+}
+
+.ms-icon--filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.ms-icon--20 {
+  font-size: var(--font-size-heading-small);
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
+}
+
+.ms-icon--20.ms-icon--filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 20;
+}
+
+.ms-icon--22 {
+  font-size: var(--font-size-heading);
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 22;
+}
+
+.ms-icon--22.ms-icon--filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 22;
+}
+
+.ms-icon--24 {
+  font-size: var(--font-size-heading);
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.ms-icon--24.ms-icon--filled {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-bold);
+  gap: 8px;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  /* Capacitor's Android WebView otherwise paints its own rectangular tap flash. */
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+/* Android can retain :hover after a tap. Hover feedback belongs to real pointers only. */
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent-border-soft);
+  }
+}
+
+/* A tap is not a state change: preserve the button appearance on touch devices. */
+@media (hover: none) {
+  button:active:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-input);
+  color: var(--text-primary);
+  min-height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+

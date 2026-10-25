@@ -1,3 +1,4 @@
+import { readCssSource } from "../test/cssSource";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { readFileSync } from "node:fs";
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   currentUser: { role: "owner" } as { role: string; permissions?: string[] }
 }));
 const styles = readFileSync(resolve(process.cwd(), "src/pages/AdminServerSettingsPage.css"), "utf8");
-const globalStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const globalStyles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ accessToken: "owner-token", authRequest: mocks.authRequest, currentUser: mocks.currentUser })
