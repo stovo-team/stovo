@@ -1,12 +1,12 @@
-import {object,nonempty,digest,localFile,hashFile} from './common.mjs';
+import {object,nonempty,digest,localFile,hashFile,readJson} from './common.mjs';
 const revision=x=>typeof x==='string'&&/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(x);
-export function validateEvidence(m,{root=process.cwd(),contract,contractDigest,expectedRevision,requireVisual=false}={}){
+export function validateEvidence(m,{root=process.cwd(),contract,contractDigest,expectedRevision,requireVisual=false,requireBackend=false}={}){
  const errors=[],need=(ok,message)=>{if(!ok)errors.push(message);};
  if(!object(m))return {ok:false,errors:['evidence must be an object']};
  need(m.schemaVersion===1,'unsupported evidence version');need(m.taskId===contract?.taskId,'task identity mismatch');
  need(revision(m.sourceRevision)&&m.sourceRevision===expectedRevision,'stale or invalid source revision');need(revision(m.baseRevision),'invalid base revision');
  need(digest(contractDigest)&&m.contractDigest===contractDigest,'stale contract digest');need(typeof m.dirty==='boolean','dirty flag required');if(m.dirty)need(digest(m.patchDigest),'dirty source requires patch digest');
- need(object(m.environment)&&nonempty(m.environment.platform)&&nonempty(m.environment.browserVersion)&&nonempty(m.environment.timezone),'complete browser environment required');
+ need(object(m.environment)&&nonempty(m.environment.platform)&&nonempty(m.environment.timezone),'complete runtime environment required');if(requireVisual)need(nonempty(m.environment?.browserVersion),'browser version required for visual evidence');
  need(Array.isArray(m.limitations),'limitations must be an array');
  if(!Array.isArray(contract?.checks)||contract.checks.some(c=>!object(c)||!Array.isArray(c.acceptanceIds))||!Array.isArray(m.checks)||m.checks.some(c=>object(c)&&c.artifacts!==undefined&&!Array.isArray(c.artifacts)))return {ok:false,errors:[...errors,'malformed check or artifact collection']};
  const checks=Array.isArray(m.checks)?m.checks:[];need(Array.isArray(m.checks),'checks must be an array');const checkIds=new Set();
@@ -27,5 +27,37 @@ export function validateEvidence(m,{root=process.cwd(),contract,contractDigest,e
   if(!pair.before){need(Array.isArray(m.afterOnly)&&m.afterOnly.some(x=>x?.scenarioId===id&&nonempty(x.reason)&&nonempty(x.source)),`missing before screenshot/reviewed after-only reason: ${id}`);continue;}
   if(pair.after)need(JSON.stringify(pair.before.viewport)===JSON.stringify(pair.after.viewport)&&pair.before.theme===pair.after.theme&&pair.before.locale===pair.after.locale,`screenshot metadata mismatch: ${id}`);
  }
+ const impact=Array.isArray(m.backendImpact)?m.backendImpact:[];
+ need(m.backendImpact===undefined||Array.isArray(m.backendImpact),'backendImpact must be an array');
+ if(requireBackend||contract?.backendImpactRequired)need(impact.length>0,'backend impact evidence required');
+ const impactIds=new Set();
+ const artifact=a=>{try{need(object(a)&&digest(a.sha256)&&hashFile(localFile(root,a.path))===a.sha256,'backend artifact missing or hash mismatch');}catch(e){errors.push(e.message);}};
+ for(const b of impact){
+  if(!object(b)){errors.push('invalid backend observation');continue;}
+  need(nonempty(b.id)&&!impactIds.has(b.id),'invalid/duplicate backend impact id');impactIds.add(b.id);
+  const acceptance=Array.isArray(contract?.acceptance)?contract.acceptance.find(a=>a?.id===b.acceptanceId):undefined;
+  need(!!acceptance&&b.expected===acceptance.expected,'backend expected result differs from acceptance');
+  const check=checks.find(c=>c?.id===b.checkId);
+  need(check?.result==='passed'&&Array.isArray(check.acceptanceIds)&&check.acceptanceIds.includes(b.acceptanceId),'backend observation lacks passing acceptance check');
+  artifact(b.input);
+  for(const side of ['before','after']){
+   const o=b[side];if(!object(o)){errors.push('backend before/after execution required');continue;}
+   need(o.sourceRevision===(side==='before'?m.baseRevision:m.sourceRevision),'backend observation source mismatch');
+   if(side==='after')need(o.patchDigest===(m.dirty?m.patchDigest:undefined),'backend observation patch mismatch');
+   need(['local','stage'].includes(o.environment)&&nonempty(o.target)&&nonempty(o.runtime),'backend isolated environment required');
+   need(Array.isArray(o.command)&&o.command.length>0&&o.command.every(nonempty)&&nonempty(o.executionSource)&&Number.isFinite(Date.parse(o.startedAt)),'backend execution provenance required');
+   need(['api','persistence','trace','measurement'].includes(o.kind)&&nonempty(o.actual),'observable backend result required');artifact(o.artifact);
+   need(digest(o.inputDigest)&&o.inputDigest===b.input?.sha256,'backend execution input mismatch');
+   need(Number.isInteger(o.exitCode)&&(side==='before'||o.exitCode===0),'backend after execution did not pass');
+   need(JSON.stringify(o.command)===JSON.stringify(check?.command),'backend execution command differs from check');
+   try{
+    const receipt=readJson(localFile(root,o.artifact.path));
+    need(object(receipt)&&receipt.schemaVersion===1&&['sourceRevision','patchDigest','inputDigest','startedAt','command','environment','target','runtime','kind','exitCode','actual'].every(k=>JSON.stringify(receipt[k])===JSON.stringify(o[k])),'backend execution receipt mismatch');
+    need(typeof receipt.stdout==='string'&&typeof receipt.stderr==='string'&&o.actual===((receipt.stdout||receipt.stderr).trim()||`exit code ${receipt.exitCode}`),'backend result differs from captured output');
+   }catch(e){errors.push('invalid backend execution receipt: '+e.message);}
+  }
+  if(object(b.before)&&object(b.after))need(['environment','target','runtime','kind','command'].every(k=>JSON.stringify(b.before[k])===JSON.stringify(b.after[k])),'backend before/after conditions differ');
+ }
+ for(const a of Array.isArray(contract?.acceptance)?contract.acceptance:[])if(a?.backend===true)need(impact.some(b=>b?.acceptanceId===a.id),'missing backend acceptance: '+a.id);
  return {ok:errors.length===0,errors};
 }

@@ -130,6 +130,8 @@ jobs:
         run: |
           printf 'Source: `%s`\n\nBase: `%s`\n\n[Evidence artifact](%s)\n' "$SOURCE_REVISION" "$COMPARISON_BASE" "$EVIDENCE_URL" >> "$GITHUB_STEP_SUMMARY"
 
+# This aggregate covers this workflow only. Backend acceptance and independent
+# QA use validate-delivery; repository rules must also require real product CI.
   aggregate:
     name: Agent workflow gate
     if: ${{ always() }}

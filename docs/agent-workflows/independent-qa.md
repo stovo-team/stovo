@@ -14,3 +14,5 @@ Run the headless scripts under [frontend evidence](frontend-evidence.md). Keep a
 The installed Playwright 1.62.1 planner/generator definitions rely on browser-tool navigation/setup; they are optional inputs, not the default here because this workflow uses scripted headless tests. Their scenario-planning guidance is useful. The bundled healer permits marking persistent failures fixme; that conflicts with this repository's mandatory-check contract and must not be adopted as a blanket repair policy. Test-selector/setup repairs preserve original acceptance assertions and have an explained diff.
 
 Follow [approvals](approvals.md) for permissions and [review findings](pr-review-findings.md) for comments/issues. Findings do not authorize remote publication. A local QA record documents who reviewed which contents; readiness remains bound to actual checked source and trusted review evidence.
+
+For backend or deployment behavior, use [backend impact evidence](backend-evidence.md) to compare actual before/after results, bind execution receipts and review their limitations.

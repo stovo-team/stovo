@@ -9,3 +9,35 @@ test('after-only state needs concrete reason and review source',()=>{assert.equa
 test('missing, failed, blocked and skipped required results cannot pass',()=>{for(const change of [f=>f.manifest.checks=[],...['failed','blocked','skipped','not-applicable'].map(status=>f=>f.manifest.checks[0].result=status)])assert.equal(run(change)?.ok,false);});
 test('malformed evidence returns errors rather than throwing',()=>{for(const change of [f=>f.manifest.screenshots=[null],f=>f.manifest.checks={},f=>f.manifest.environment=null])assert.doesNotThrow(()=>assert.equal(run(change)?.ok,false));});
 test('malformed artifact and contract check collections fail without exceptions',()=>{for(const change of [f=>f.manifest.checks[0].artifacts={},f=>f.contract.checks=[null],f=>f.contract.checks[0].acceptanceIds=7])assert.doesNotThrow(()=>assert.equal(run(change)?.ok,false));});
+
+function backend(f){
+ const artifact=name=>{writeFileSync(path.join(f.root,name),name);return {path:name,sha256:sha256(name)};};
+ const observation=(sourceRevision,actual)=>{
+  const receipt={schemaVersion:1,sourceRevision,inputDigest:sha256('request.json'),environment:'local',target:'disposable-api',runtime:'go1.25 postgres16',command:['node','--test'],startedAt:'2026-10-25T01:00:00Z',kind:'api',actual,stdout:actual,stderr:'',exitCode:0};
+  const file=actual+'.json',bytes=JSON.stringify(receipt);writeFileSync(path.join(f.root,file),bytes);
+  return {...receipt,executionSource:'local command transcript',artifact:{path:file,sha256:sha256(bytes)}};
+ };
+ f.manifest.backendImpact=[{id:'B-01',checkId:'unit',acceptanceId:'AC-01',expected:'Retry stores one message',input:artifact('request.json'),before:observation(f.manifest.baseRevision,'duplicates'),after:observation(f.manifest.sourceRevision,'one-message')}];
+ f.contract.acceptance=[{id:'AC-01',expected:'Retry stores one message'}];
+}
+test('backend requirement rejects invented pass without observations',()=>{
+ const result=run(f=>{f.contract.backendImpactRequired=true;});
+ assert.equal(result.ok,false);
+});
+test('backend observations bind same input, source, environment and actual hashed output',()=>{
+ assert.equal(run(backend).ok,true);
+ for(const mutate of [
+  f=>f.manifest.backendImpact[0].after.sourceRevision=f.manifest.baseRevision,
+  f=>f.manifest.backendImpact[0].after.environment='production',
+  f=>f.manifest.backendImpact[0].after.target='another-api',
+  f=>f.manifest.backendImpact[0].after.actual='',
+  f=>f.manifest.backendImpact[0].after.exitCode=7,
+  f=>f.manifest.backendImpact[0].after.inputDigest='f'.repeat(64),
+  f=>{f.manifest.backendImpact[0].before.command=['echo','passed'];f.manifest.backendImpact[0].after.command=['echo','passed'];},
+  f=>f.manifest.backendImpact[0].expected='Changed assertion',
+  f=>f.manifest.backendImpact[0].after.executionSource='',
+  f=>f.manifest.backendImpact[0].before.artifact.sha256='f'.repeat(64),
+  f=>f.manifest.backendImpact[0].input.path='../request.json',
+  f=>f.manifest.backendImpact=[null]
+ ]) assert.equal(run(f=>{backend(f);mutate(f);}).ok,false);
+});

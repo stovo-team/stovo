@@ -15,3 +15,5 @@ type: workflow
 - Report the checks run and their results. State clearly when a required check could not be run.
 
 Map stable acceptance IDs to scenarios, proof layers and expected results using the [test-plan template](templates/test-plan.md). Record blocked/skipped checks honestly and bind results to source contents. Human decision scopes follow [approvals](approvals.md).
+
+For backend or deployment behavior, use [backend impact evidence](backend-evidence.md) to compare actual before/after results, bind execution receipts and review their limitations.

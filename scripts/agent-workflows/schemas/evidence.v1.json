@@ -43,7 +43,6 @@
       "type": "object",
       "required": [
         "platform",
-        "browserVersion",
         "timezone"
       ]
     },
@@ -54,6 +53,9 @@
       "type": "array"
     },
     "limitations": {
+      "type": "array"
+    },
+    "backendImpact": {
       "type": "array"
     },
     "afterOnly": {

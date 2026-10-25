@@ -11,3 +11,26 @@ test('PR CLI stdout contains only the reviewable Markdown body',async()=>{const 
 test('clean evidence cannot cover dirty contents and QA must cover the same patch',()=>{assert.equal(run(f=>f.expectedPatchDigest='f'.repeat(64))?.ok,false);assert.equal(run(f=>{f.expectedPatchDigest='f'.repeat(64);f.evidence.dirty=true;f.evidence.patchDigest=f.expectedPatchDigest;})?.ok,false);assert.equal(run(f=>{f.expectedPatchDigest='f'.repeat(64);f.evidence.dirty=true;f.evidence.patchDigest=f.expectedPatchDigest;f.qa.patchDigest=f.expectedPatchDigest;})?.ok,true);});
 test('caller paths cannot hide actual frontend changes',()=>assert.equal(run(f=>f.actualChangedPaths=['frontend/src/New.tsx'])?.ok,false));
 test('evidence cannot choose its own smaller applicability base',()=>assert.equal(run(f=>f.expectedBaseRevision='3'.repeat(40))?.ok,false));
+
+test('backend changes require observable impact proof and QA of those exact observations',()=>{
+ assert.equal(run(f=>f.changedPaths=['backend/internal/messages.go']).ok,false);
+ assert.equal(run(f=>f.changedPaths=['deploy/migrations/master/001.sql']).ok,false);
+});
+
+function backendDelivery(f){
+ f.changedPaths=['backend/internal/messages.go'];delete f.evidence.environment.browserVersion;writeFileSync(path.join(f.root,'request.json'),'request');
+ const pair={};for(const side of ['before','after']){
+  const receipt={schemaVersion:1,sourceRevision:side==='before'?f.evidence.baseRevision:f.evidence.sourceRevision,inputDigest:sha256('request'),startedAt:'2026-10-25T01:00:00Z',command:['node','--test'],environment:'local',target:'disposable-api',runtime:'node',kind:'api',exitCode:0,actual:side,stdout:side,stderr:''};
+  const bytes=JSON.stringify(receipt);writeFileSync(path.join(f.root,side+'.json'),bytes);pair[side]={...receipt,executionSource:'test receipt',artifact:{path:side+'.json',sha256:sha256(bytes)}};
+ }
+ f.evidence.backendImpact=[{id:'B-01',checkId:'unit',acceptanceId:'AC-01',expected:'Observable',input:{path:'request.json',sha256:sha256('request')},...pair}];
+ f.qa.backendImpactIds=['B-01'];f.qa.evidenceDigest=sha256(JSON.stringify(f.evidence));
+}
+test('backend delivery accepts complete proof but rejects unreviewed or edited observations',()=>{
+ assert.equal(run(backendDelivery).ok,true);
+ for(const mutate of [f=>f.qa.backendImpactIds=[],f=>f.qa.evidenceDigest='f'.repeat(64),f=>f.evidence.backendImpact[0].after.actual='edited'])assert.equal(run(f=>{backendDelivery(f);mutate(f);}).ok,false);
+});
+
+test('missing backend evidence fails without throwing',()=>assert.doesNotThrow(()=>assert.equal(run(f=>{f.changedPaths=['backend/service.go'];f.evidence=undefined;}).ok,false)));
+
+test('contract-required backend proof also requires QA when paths look non-backend',()=>assert.equal(run(f=>{backendDelivery(f);f.changedPaths=['scripts/reproduce.mjs'];f.contract.backendImpactRequired=true;f.qa.backendImpactIds=[];}).ok,false));
