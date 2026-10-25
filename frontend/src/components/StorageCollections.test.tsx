@@ -94,3 +94,21 @@ it("opens a folder file through the preview callback with keyboard and pointer a
   await act(async () => { openFile!.click(); });
   expect(onPreviewFile).toHaveBeenCalledWith(file);
 });
+
+
+it("provides an accessible close control that removes an album photo", async () => {
+  const { getCollectionItems, removeCollectionItem } = await import("../api/collections");
+  const album = { id: "album-remove", familyId: "family", ownerId: "user", title: "Photos", displayKind: "album", contentType: "media", customFileTypes: "", coverFileId: null, itemCount: 1, accessLevel: "editor", createdAt: "2026-10-20", updatedAt: "2026-10-20" } as StorageCollection;
+  const file = { id: "album-photo", originalName: "photo.jpg", mimeType: "image/jpeg", sizeBytes: 100 } as FamilyFile;
+  vi.mocked(getCollections).mockResolvedValue([album]);
+  vi.mocked(getCollectionItems).mockResolvedValue([file]);
+  const host = document.createElement("div"); document.body.appendChild(host);
+  const root = createRoot(host); roots.push(root);
+  await act(async () => { root.render(<MemoryRouter><StorageCollections accessToken="token" files={[file]} filter="all" /></MemoryRouter>); });
+  await act(async () => { host.querySelector<HTMLButtonElement>(".storage-collection-open")!.click(); });
+  const remove = host.querySelector<HTMLButtonElement>('.collection-file-tile button:not(.collection-file-open)[aria-label]');
+  expect(remove?.getAttribute("aria-label")).toContain("photo.jpg");
+  await act(async () => { remove!.click(); });
+  expect(removeCollectionItem).toHaveBeenCalledWith("token", album.id, file.id);
+  expect(host.querySelector(".collection-file-tile")).toBeNull();
+});

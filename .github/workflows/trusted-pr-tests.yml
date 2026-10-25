@@ -1,7 +1,7 @@
 name: CI/CD Pipeline
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [master]
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-latest"]') }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
@@ -28,7 +28,6 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/check-solid-boundaries.ps1'
               - 'docs/engineering/size-baseline.tsv'
               - '.github/workflows/trusted-pr-tests.yml'
               - '.github/workflows/pipeline.yml'
@@ -37,7 +36,6 @@ jobs:
               - 'deploy/migrations/master/**'
               - 'deploy/**'
               - 'scripts/check-solid-boundaries.sh'
-              - 'scripts/check-solid-boundaries.ps1'
               - 'docs/engineering/size-baseline.tsv'
               - '.github/workflows/trusted-pr-tests.yml'
               - '.github/workflows/pipeline.yml'
@@ -45,14 +43,30 @@ jobs:
   pipeline-contract:
     name: Pipeline Contract
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
+      - name: Detect available shell
+        if: contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       - name: Verify pipeline workflow contract
+        shell: bash
         run: bash .github/workflows/pipeline.test.sh
 
   solid-boundaries:
@@ -62,16 +76,28 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
-    runs-on: windows-latest
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
+      - name: Ensure Git Bash is available on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: SOLID architecture boundaries
-        shell: pwsh
-        run: ./scripts/check-solid-boundaries.ps1 all
+        shell: bash
+        run: bash scripts/check-solid-boundaries.sh all
 
   frontend-ci:
     name: Frontend CI
@@ -79,23 +105,42 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 30
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
+      - name: Ensure Git Bash is available on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Install dependencies
+        shell: bash
         working-directory: frontend
         run: npm ci
       - name: Test
+        shell: bash
         working-directory: frontend
         run: npm test
       - name: Build
+        shell: bash
         working-directory: frontend
         run: npm run build
 
@@ -105,34 +150,8 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 45
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: family_user
-          POSTGRES_PASSWORD: family_password
-          POSTGRES_DB: family_messenger_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U family_user -d family_messenger_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgres://family_user:family_password@localhost:5432/family_messenger_test?sslmode=disable
-      TEST_REDIS_URL: redis://localhost:6379/0
     defaults:
       run:
         working-directory: backend
@@ -142,19 +161,169 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
+      - name: Start Docker Desktop for backend test services
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
+          if (-not $dockerCli) {
+            $dockerCliDirectories = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
+            )
+            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
+            if (-not $dockerCliDirectory) {
+              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
+            }
+            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
+            $env:PATH = "$dockerCliDirectory;$env:PATH"
+          }
+
+          docker desktop start --detach 2>$null | Out-Null
+          $desktopStartExitCode = $LASTEXITCODE
+          if ($desktopStartExitCode -ne 0) {
+            $desktopCandidates = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
+            )
+            $dockerDesktop = $desktopCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $dockerDesktop) {
+              throw 'Docker Desktop was not found. Install it for the Windows runner account.'
+            }
+            if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
+              Start-Process -FilePath $dockerDesktop
+            }
+          }
+
+          $deadline = (Get-Date).AddMinutes(3)
+          do {
+            Start-Sleep -Seconds 3
+            $dockerOs = docker info --format '{{.OSType}}' 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+          } while ((Get-Date) -lt $deadline)
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
+          }
+
+          if ($dockerOs -ne 'linux') {
+            docker desktop engine use linux
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Could not switch Docker Desktop to Linux containers. Update Docker Desktop to a version with the desktop CLI and allow the runner account to switch engines.'
+            }
+            $deadline = (Get-Date).AddMinutes(3)
+            do {
+              Start-Sleep -Seconds 3
+              $dockerOs = docker info --format '{{.OSType}}' 2>$null
+              if ($LASTEXITCODE -eq 0 -and $dockerOs -eq 'linux') { break }
+            } while ((Get-Date) -lt $deadline)
+            if ($LASTEXITCODE -ne 0 -or $dockerOs -ne 'linux') {
+              throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
+            }
+          }
+      - name: Start PostgreSQL and Redis test containers
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+          $postgresContainer = "stovo-test-postgres-$suffix"
+          $redisContainer = "stovo-test-redis-$suffix"
+
+          docker rm -f $postgresContainer $redisContainer 2>$null | Out-Null
+          docker run --detach --name $postgresContainer --publish 127.0.0.1::5432 `
+            --env POSTGRES_USER=family_user `
+            --env POSTGRES_PASSWORD=family_password `
+            --env POSTGRES_DB=family_messenger_test `
+            --health-cmd 'pg_isready -U family_user -d family_messenger_test' `
+            --health-interval 5s --health-timeout 5s --health-retries 10 postgres:16
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to start the PostgreSQL test container.' }
+
+          docker run --detach --name $redisContainer --publish 127.0.0.1::6379 `
+            --health-cmd 'redis-cli ping' `
+            --health-interval 5s --health-timeout 5s --health-retries 10 redis:7
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to start the Redis test container.' }
+
+          foreach ($container in @($postgresContainer, $redisContainer)) {
+            $deadline = (Get-Date).AddMinutes(2)
+            do {
+              $health = docker inspect --format '{{.State.Health.Status}}' $container 2>$null
+              if ($LASTEXITCODE -eq 0 -and $health -eq 'healthy') { break }
+              if ((Get-Date) -ge $deadline) {
+                docker logs $container
+                throw "Test container '$container' did not become healthy within 2 minutes."
+              }
+              Start-Sleep -Seconds 2
+            } while ($true)
+          }
+
+          $postgresPortBinding = docker port $postgresContainer 5432/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the PostgreSQL host port.' }
+          $postgresPortMatch = [regex]::Match([string]$postgresPortBinding, ':(\d+)$')
+          if (-not $postgresPortMatch.Success) { throw "Unexpected PostgreSQL host port binding: $postgresPortBinding" }
+          $postgresPort = $postgresPortMatch.Groups[1].Value
+
+          $redisPortBinding = docker port $redisContainer 6379/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the Redis host port.' }
+          $redisPortMatch = [regex]::Match([string]$redisPortBinding, ':(\d+)$')
+          if (-not $redisPortMatch.Success) { throw "Unexpected Redis host port binding: $redisPortBinding" }
+          $redisPort = $redisPortMatch.Groups[1].Value
+
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/family_messenger_test?sslmode=disable"
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$redisPort/0"
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
           cache: false
       - name: Download modules
         run: go mod download
+      - name: Cache golangci-lint binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/golangci-lint/v2.14.0
+          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
+      - name: Install golangci-lint binary
+        shell: powershell
+        run: |
+          $version = '2.14.0'
+          $toolDirectory = Join-Path $env:RUNNER_TEMP 'golangci-lint\v2.14.0'
+          $binaryPath = Join-Path $toolDirectory 'golangci-lint.exe'
+          if (-not (Test-Path $binaryPath)) {
+            New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+            $archivePath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-windows-amd64.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-extract"
+            $downloadUrl = "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-windows-amd64.zip"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+            Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
+            $downloadedBinary = Join-Path $extractPath "golangci-lint-$version-windows-amd64\golangci-lint.exe"
+            if (-not (Test-Path $downloadedBinary)) {
+              throw "The golangci-lint archive did not contain '$downloadedBinary'."
+            }
+
+            Copy-Item -LiteralPath $downloadedBinary -Destination $binaryPath -Force
+            Remove-Item -LiteralPath $archivePath, $extractPath -Force -Recurse
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $toolDirectory
+          & $binaryPath version
+          if ($LASTEXITCODE -ne 0) {
+            throw "golangci-lint $version could not start."
+          }
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
+          install-mode: none
           working-directory: backend
           verify: true
-          skip-cache: true
+          skip-cache: false
           args: --timeout=5m
       - name: Unit and integration tests
         run: go test -count=1 ./...
+      - name: Stop backend test containers
+        if: always()
+        shell: powershell
+        run: |
+          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+            docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+          }

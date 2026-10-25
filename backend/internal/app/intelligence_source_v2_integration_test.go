@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/google/uuid"
@@ -1313,7 +1314,7 @@ func TestIntelligenceSourceV2RetentionPreservesActivePayloadsAndTombstones(t *te
 	}
 	backupCreatedAt := time.Now().UTC()
 	backupRestorableUntil := backupCreatedAt.Add(30 * 24 * time.Hour)
-	operations := NewIntelligenceSourceV2Operations(fixture.server.sqlDB)
+	operations := NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(fixture.server.sqlDB))
 	if err := operations.MarkIntelligenceSourceV2BackupInventoryVerified(ctx, time.Now().UTC()); err != nil {
 		t.Fatalf("mark initial synthetic backup inventory: %v", err)
 	}

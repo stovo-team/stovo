@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const read = (file) => readFileSync(file, 'utf8');
+const normalizeLineEndings = (contents) => contents.replace(/\r\n/g, '\n');
+const read = (file) => normalizeLineEndings(readFileSync(file, 'utf8'));
+
+test('workflow text normalizes Windows CRLF line endings before assertions', () => {
+  assert.equal(
+    normalizeLineEndings('workflow_dispatch:\r\n    inputs:\r\n'),
+    'workflow_dispatch:\n    inputs:\n',
+  );
+});
 
 // Probe both the runner user and the sudo context used by deployment. Some
 // self-hosted runners expose neither Compose plugin, so the config check skips there.
@@ -26,7 +34,22 @@ test('multiserver gateway receives the configured live tenant upstream', { skip:
     encoding: 'utf8', env: { ...process.env, BACKEND_UPSTREAMS: 'stovo-backend-acdcbca1:8000' },
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(JSON.parse(result.stdout).services.caddy.environment.BACKEND_UPSTREAMS, 'stovo-backend-acdcbca1:8000');
+  const config = JSON.parse(result.stdout);
+  assert.equal(config.services.caddy.environment.BACKEND_UPSTREAMS, 'stovo-backend-acdcbca1:8000');
+  assert.equal(config.services.orchestrator.environment.TRUSTED_PROXY_CIDRS, '172.34.0.2/32');
+  assert.equal(config.services.caddy.networks.master_proxy.ipv4_address, '172.34.0.2');
+  assert.equal(config.networks.master_proxy.name, 'stovo-master-members-proxy-v2');
+  assert.deepEqual(config.networks.master_proxy.ipam.config[0], {
+    subnet: '172.34.0.0/24',
+    ip_range: '172.34.0.128/25',
+  });
+});
+
+test('master tenant backends trust Caddy on the reserved proxy address', () => {
+  const compose = read('deploy/compose/production-multiserver.yml');
+  const workflow = read('.github/workflows/pipeline.yml');
+  assert.match(compose, /TRUSTED_PROXY_CIDRS: \${TRUSTED_PROXY_CIDRS:-172\.34\.0\.2\/32}/);
+  assert.equal((workflow.match(/-e "TRUSTED_PROXY_CIDRS=\$\(get_env TRUSTED_PROXY_CIDRS 172\.34\.0\.2\/32\)"/g) || []).length, 2);
 });
 
 test('root routing selects a single tenant and requires an explicit choice for multiple tenants', () => {
@@ -45,7 +68,9 @@ test('backend deploy configures root routing before Caddy starts and checks the 
   const gateway = workflow.indexOf('up -d --build orchestrator caddy coturn');
   const replace = workflow.indexOf('docker rm -f "$existing_container_id"');
   const probe = workflow.indexOf('"https://$app_domain/api/auth/setup-status"');
+  const proxyConnect = workflow.indexOf('bash deploy/scripts/ensure-tenant-proxy-network.sh \"stovo-backend-${server_slug}\"');
   assert.ok(configure >= 0 && configure < gateway, 'root upstream must be set before gateway creation');
+  assert.ok(proxyConnect > replace && proxyConnect < probe, 'tenant backends must join the reserved proxy network before the API check');
   assert.ok(probe > replace, 'root API must be checked after backend replacement');
   assert.ok(probe < workflow.indexOf('Backend web deployment finished successfully!'));
 });
@@ -61,8 +86,9 @@ test('manual backend-only deployment skips CI and frontend while normal deployme
   assert.match(workflow, /frontend: \$\{\{ !inputs.backend_deploy_only &&/);
   assert.match(workflow, /if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only/);
   const backend = workflow.split('  deploy-backend-web:')[1].split('  deploy-android:')[0];
-  assert.match(backend, /needs: \[changes, backend-ci\]/);
+  assert.match(backend, /needs: \[changes, backend-ci, solid-boundaries\]/);
   assert.match(backend, /needs.changes.result == 'success'/);
+  assert.match(backend, /needs.solid-boundaries.result == 'success' \|\| \(github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only\)/);
   assert.match(backend, /needs.backend-ci.result == 'success' \|\| \(github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only\)/);
   assert.match(backend, /!cancelled\(\)/);
 });

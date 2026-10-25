@@ -69,14 +69,17 @@ services:
       MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET}
       PUBLIC_HOST: ${PUBLIC_HOST}
       APP_URL: ${APP_URL:-http://localhost:8000}
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      # Shared by the orchestrator and the tenant backend containers it creates.
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
+      MINIO_ENDPOINT: ${S3_ENDPOINT:-minio:9000}
+      MINIO_SECURE: ${S3_SECURE:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       DOCKER_NETWORK_NAME: stovo_default
-      TRUSTED_PROXY_NETWORK_NAME: stovo-master-members-proxy
-      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS}
+      TRUSTED_PROXY_NETWORK_NAME: stovo-master-members-proxy-v2
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.34.0.2/32}
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_BASE_URL: ${GROQ_BASE_URL}
       GROQ_STT_MODEL: ${GROQ_STT_MODEL}
@@ -114,7 +117,7 @@ services:
     networks:
       default: {}
       master_proxy:
-        ipv4_address: 172.33.0.2
+        ipv4_address: 172.34.0.2
     environment:
       # Supplying a hostname (rather than only :80) lets Caddy obtain a TLS
       # certificate and listen on the published HTTPS port.
@@ -197,8 +200,10 @@ volumes:
 
 networks:
   master_proxy:
-    name: stovo-master-members-proxy
+    name: stovo-master-members-proxy-v2
     driver: bridge
     ipam:
       config:
-        - subnet: 172.33.0.0/24
+        # Keep tenant allocations away from Caddy's fixed .2 address.
+        - subnet: 172.34.0.0/24
+          ip_range: 172.34.0.128/25

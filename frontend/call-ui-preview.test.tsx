@@ -46,6 +46,15 @@ function previewCssRules(selector: string) {
 }
 
 describe("call UI preview interactions", () => {
+  it("loads shared design tokens before production styles", () => {
+    const html = readFileSync("call-ui-preview.html", "utf8");
+    const tokenStylesheet = html.indexOf('/src/design-system/tokens.css');
+    const productionStylesheet = html.indexOf('/src/styles.css');
+
+    expect(tokenStylesheet).toBeGreaterThan(-1);
+    expect(tokenStylesheet).toBeLessThan(productionStylesheet);
+  });
+
   it("switches between General, Audio, and Camera in the settings dialog", () => {
     const container = mountPreview();
     click(container, "Audio settings");

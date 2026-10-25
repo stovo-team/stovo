@@ -1,3 +1,4 @@
+import { isCallDeviceError } from "./CallDeviceErrorToast";
 import {
   Captions,
   ArrowLeft,
@@ -204,7 +205,7 @@ export function DesktopCallControls({
                 : "Audio call"}
             </strong>
             )}
-            {callNotice && (!isVoiceChannel || /failed|failure|error|denied|unsupported|not supported|timed out|offline|could not|unable|not available/i.test(callNotice)) && <span className="call-popup-notice">{callNotice}</span>}
+            {callNotice && !isCallDeviceError(callNotice) && (!isVoiceChannel || /failed|failure|error|denied|unsupported|not supported|timed out|offline|could not|unable|not available/i.test(callNotice)) && <span className="call-popup-notice">{callNotice}</span>}
           </>
         <div className="call-popup-header-actions">
           {isParticipantFocused && !isCallMinimized && (
@@ -247,7 +248,7 @@ export function DesktopCallControls({
               callAudioSettings.mirrorLocalVideo &&
               callAudioSettings.cameraFacingMode === "user"
             }
-            callType={callType}
+            callType={callType} isGroupCall={isGroupCall}
             isLocalSpeaking={isLocalSpeaking}
             isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}

@@ -103,8 +103,23 @@ describe("local mock chat API", () => {
     const pdf = await pdfResponse.text();
     expect(pdf).toContain("xref\n0 6");
     expect(pdf).toContain("Storage preview demo");
-    await expect(request<unknown[]>("/api/collections").then((result) => result.body)).resolves.toEqual([]);
+    await expect(request<unknown[]>("/api/collections").then((result) => result.body)).resolves.toEqual([
+      expect.objectContaining({ id: "mock-storage-preview-folder", title: "Storage preview folder", displayKind: "folder", itemCount: 1, accessLevel: "editor" }),
+    ]);
     await expect(request<unknown[]>("/api/family/roles").then((result) => result.body)).resolves.toEqual([]);
+  });
+
+  it("opens the demo folder with its PDF and removes the file through the mock API", async () => {
+    const files = await request<FamilyFile[]>("/api/files");
+    expect(files.body.map((file) => file.id)).toContain("mock-storage-preview-report");
+
+    const folderItems = await request<FamilyFile[]>("/api/collections/mock-storage-preview-folder/items");
+    expect(folderItems.response.status).toBe(200);
+    expect(folderItems.body).toEqual([expect.objectContaining({ id: "mock-storage-preview-report", originalName: "Storage preview report.pdf" })]);
+
+    const removeResponse = await fetch(`${MOCK_ORIGIN}/api/collections/mock-storage-preview-folder/items/mock-storage-preview-report`, { method: "DELETE" });
+    expect(removeResponse.status).toBe(204);
+    await expect(request<FamilyFile[]>("/api/collections/mock-storage-preview-folder/items").then((result) => result.body)).resolves.toEqual([]);
   });
 
   it("returns a refresh session for the synthetic Stovo Demo user", async () => {

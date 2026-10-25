@@ -1,52 +1,76 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { readTextFile } from "../../../testUtils/readTextFile";
 
-const styles = readFileSync("src/styles.css", "utf8");
+const styles = readTextFile("src/styles.css");
+const chatDetailsPanel = readTextFile("src/features/chats/details/ChatDetailsPanel.tsx");
 
-function mobileChatDetailsStyles() {
-  const avatarRule = styles.lastIndexOf(".chat-info-screen .chat-info-avatar-wrap {");
-  const mediaStart = styles.lastIndexOf("@media (max-width: 1024px)", avatarRule);
-  if (mediaStart < 0) return "";
+function mediaRuleContaining(selector: string, maxWidth: number) {
+  const mediaQuery = `@media (max-width: ${maxWidth}px)`;
+  let mediaStart = 0;
 
-  let depth = 0;
-  for (let index = styles.indexOf("{", mediaStart); index < styles.length; index += 1) {
-    if (styles[index] === "{") depth += 1;
-    if (styles[index] === "}") {
-      depth -= 1;
-      if (depth === 0) return styles.slice(mediaStart, index + 1);
+  while ((mediaStart = styles.indexOf(mediaQuery, mediaStart)) >= 0) {
+    let depth = 0;
+    for (let index = styles.indexOf("{", mediaStart); index < styles.length; index += 1) {
+      if (styles[index] === "{") depth += 1;
+      if (styles[index] === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          const mediaRules = styles.slice(mediaStart, index + 1);
+          if (mediaRules.includes(selector)) return mediaRules;
+          mediaStart = index + 1;
+          break;
+        }
+      }
     }
   }
 
   return "";
 }
 
-describe("mobile chat details sizing", () => {
-  it("uses a compact header, avatar, description control, and action tiles", () => {
-    const mobileStyles = mobileChatDetailsStyles();
+describe("chat details popup sizing", () => {
+  it("uses the compact popup and backdrop at every screen size", () => {
+    const popupRule = styles.match(/\.chat-info-screen\.chat-details-panel\s*\{[^}]*position:\s*fixed;[^}]*\}/)?.[0] ?? "";
+    const layoutRule = styles.match(/(?:^|\n)\.chat-layout\s*\{(?=[^}]*display:\s*grid;)[^}]*\}/)?.[0] ?? "";
 
-    expect(mobileStyles).toContain(".chat-info-avatar-wrap");
-    expect(mobileStyles).toContain("height: 72px;");
-    expect(mobileStyles).toContain("width: 72px;");
-    expect(mobileStyles).toContain(".chat-info-hero h3");
-    expect(mobileStyles).toContain("font-size: var(--font-size-body);");
-    expect(mobileStyles).toContain(".chat-info-add-description-btn");
-    expect(mobileStyles).toContain("padding: 9px 14px;");
-    expect(mobileStyles).toContain(".chat-info-action");
-    expect(mobileStyles).toContain("min-height: 44px;");
-    expect(mobileStyles).toContain("padding: 6px 4px;");
-    expect(mobileStyles).toContain("position: fixed;");
-    expect(mobileStyles).toContain("inset: 0;");
-    expect(mobileStyles).toContain("width: 100%;");
+    expect(popupRule).toContain("position: fixed;");
+    expect(popupRule).toContain("right: 12px;");
+    expect(popupRule).toContain("top: 12px;");
+    expect(popupRule).toContain("bottom: 12px;");
+    expect(popupRule).toContain("width: min(400px, calc(100vw - 32px));");
+    expect(popupRule).toContain("border-radius: var(--radius-panel);");
+    expect(popupRule).toContain("box-shadow: var(--popup-dialog-shadow);");
+    expect(styles).toContain(".chat-layout.details-open::before");
+    expect(styles).toContain("background: var(--popup-backdrop-color);");
+    expect(layoutRule).toContain("position: relative;");
+    expect(mediaRuleContaining(".chat-info-screen.chat-details-panel", 1200)).toBe("");
+    expect(mediaRuleContaining(".chat-layout.details-open::before", 768)).toBe("");
   });
 
-  it("keeps desktop chat details in a compact grid column beside the message pane", () => {
-    expect(styles).toMatch(/\.chat-layout\.details-open\s*\{\s*grid-template-columns:\s*minmax\(280px, 320px\)\s+minmax\(0, 1fr\)\s+minmax\(240px, 280px\);/);
-    expect(styles).toContain(".chat-detail {\n  display: flex;\n  flex-direction: column;\n  min-width: 0;");
-    expect(styles).toContain(".chat-info-avatar-wrap {\n  display: inline-block;\n  height: 80px;");
-    expect(styles).toContain(".chat-info-hero h3 {\n  font-size: var(--font-size-body);");
-    expect(styles).toContain(".chat-info-action {\n  align-items: center;");
-    expect(styles).toContain("min-height: 44px;");
-    expect(styles).toContain(".chat-info-action-icon {\n  color: var(--text-primary);\n  height: 18px;");
+  it("keeps compact controls, scrollable content, and call visibility", () => {
+    expect(styles).toMatch(/\.chat-info-screen \.chat-info-avatar-wrap\s*\{[^}]*height:\s*72px;/);
+    expect(styles).toMatch(/\.chat-info-screen \.chat-info-action\s*\{[^}]*border-radius:\s*var\(--radius-surface\);/);
+    expect(styles).toMatch(/\.chat-info-body\s*\{[^}]*overflow:\s*auto;/);
+    expect(styles).toContain(".voice-call-expanded .chat-details-panel {\n  display: none;");
+  });
+
+  it("keeps chat details from creating a desktop side column", () => {
+    const desktopDetailsColumn = styles.match(/\.chat-layout\.details-open\s*\{\s*grid-template-columns:\s*minmax\(280px, 320px\)\s+minmax\(0, 1fr\)\s+minmax\(240px, 280px\);/);
+    expect(desktopDetailsColumn).toBeNull();
+    expect(styles).not.toContain("@media (min-width: 769px) and (max-width: 1200px) {\n  .chat-layout.details-open {");
+  });
+
+  it("keeps the tablet details popup within the space beside the chat list", () => {
+    expect(styles.lastIndexOf("@media (min-width: 769px) and (max-width: 1200px)")).toBeGreaterThan(styles.lastIndexOf("@media (max-width: 1200px)"));
+    expect(styles).toMatch(/@media \(min-width: 769px\) and \(max-width: 1200px\) \{[\s\S]*?\.chat-info-screen\.chat-details-panel \{[^}]*box-sizing: border-box;[^}]*width: min\(400px, calc\(100vw - var\(--nav-rail-width\) - var\(--float-outer-gap\) - var\(--float-outer-gap\) - var\(--float-panel-gap\) - 320px - 32px\)\);/);
+  });
+
+  it("keeps tablet navigation and chat layout below the popup breakpoint", () => {
+    expect(styles.includes("@media (max-width: 768px) {\n  .app-frame {\n    display: block;")).toBe(true);
+  });
+
+  it("uses a compact font size for the Add people action", () => {
+    expect(styles).toMatch(/\.chat-info-member-invite \{[^}]*font: inherit;[^}]*font-size: var\(--font-size-small\);/);
+    expect(chatDetailsPanel).toContain('<UserPlus aria-hidden="true" size={16} />');
   });
 
   it("reserves space in Details content while a minimized call is present", () => {

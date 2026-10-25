@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { ChangeEvent, type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Download,
@@ -52,6 +52,7 @@ import {
 import ImageLightbox from "../components/ImageLightbox";
 import { VideoPlayer } from "../components/VideoPlayer";
 import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
+import { useResizableSidebar } from "../hooks/useResizableSidebar";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { storagePreviewVideoStyle } from "../components/video-player/storagePreviewStyle";
 import AppNav from "./AppNav";
@@ -284,6 +285,9 @@ export default function FilesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
   const [isSourceSidebarCollapsed, setIsSourceSidebarCollapsed] = useState(false);
+  const collapseSourceSidebar = useCallback(() => setIsSourceSidebarCollapsed(true), []);
+  const { width: sourceSidebarWidth, onPointerDown: startSourceSidebarResize, onKeyDown: resizeSourceSidebarWithKeyboard, resetWidth: resetSourceSidebarWidth } = useResizableSidebar({ onCollapse: collapseSourceSidebar });
+  const restoreSourceSidebar = useCallback(() => { resetSourceSidebarWidth(); setIsSourceSidebarCollapsed(false); }, [resetSourceSidebarWidth]);
   const [isMetadataMenuOpen, setIsMetadataMenuOpen] = useState(false);
   const [isMetadataInformationOpen, setIsMetadataInformationOpen] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
@@ -597,14 +601,19 @@ export default function FilesPage() {
   return (
     <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${selectedFile && !collectionPicker ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
       <AppNav />
-      <section className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`} aria-busy={isLoading || isUploading}>
+      <section
+        className={`page-surface storage-layout${isSourceSidebarCollapsed ? " storage-layout--source-collapsed" : ""}`}
+        style={{ "--storage-source-width": `${sourceSidebarWidth}px` } as CSSProperties}
+        aria-busy={isLoading || isUploading}
+      >
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
           <SidebarCollapseButton
             expanded={!isSourceSidebarCollapsed}
             expandLabel={strings.auditUi.expandStorageSources}
             collapseLabel={strings.auditUi.collapseStorageSources}
-            onToggle={() => setIsSourceSidebarCollapsed((collapsed) => !collapsed)}
+            onToggle={restoreSourceSidebar}
             className="storage-source-collapse"
+            hidden={!isSourceSidebarCollapsed}
           />
           <div className="storage-source-scroll">
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
@@ -702,6 +711,18 @@ export default function FilesPage() {
           ))}
           </div>
         </aside>
+        <div
+          className="storage-source-resizer"
+          role="separator"
+          aria-label="Resize chat list"
+          aria-orientation="vertical"
+          aria-valuemin={180}
+          aria-valuemax={640}
+          aria-valuenow={Math.round(sourceSidebarWidth)}
+          tabIndex={isSourceSidebarCollapsed ? -1 : 0}
+          onPointerDown={(event) => startSourceSidebarResize(event, isSourceSidebarCollapsed)}
+          onKeyDown={(event) => resizeSourceSidebarWithKeyboard(event, isSourceSidebarCollapsed)}
+        />
         <div className="storage-main">
           <header className="section-header">
             <div aria-hidden="true" />

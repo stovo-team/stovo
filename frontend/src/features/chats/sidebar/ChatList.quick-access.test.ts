@@ -8,7 +8,7 @@ const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("ChatList quick access selection", () => {
   it("does not highlight a regular chat while Drafts & scheduled is active", () => {
-    expect(source).toContain("isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}");
+    expect(source).toContain("isActive={!isDraftsAndScheduledActive && chat.id === (activeChatId ?? selectedChatId)}");
   });
 
   it("ensures quick-access-switch overrides button justify-content and sets flex-start alignment", () => {

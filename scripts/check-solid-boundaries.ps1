@@ -28,7 +28,13 @@ if (Test-Path -LiteralPath $baselineFile) {
 function Get-RepositoryRelativePath {
     param([string]$Path)
 
-    return [System.IO.Path]::GetRelativePath($repoRoot, $Path).Replace('\', '/')
+    $repoRootPrefix = $repoRoot.TrimEnd([char[]]@('\', '/')) + [System.IO.Path]::DirectorySeparatorChar
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not $fullPath.StartsWith($repoRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path '$fullPath' is outside the repository root."
+    }
+
+    return $fullPath.Substring($repoRootPrefix.Length).Replace('\', '/')
 }
 
 function Get-ProductionFiles {

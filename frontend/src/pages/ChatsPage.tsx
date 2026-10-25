@@ -19,7 +19,7 @@ import AppNav from "./AppNav";
 import { CallFeature, CallFeatureProvider } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass, displayChatName } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
-import { createCanvas } from "../api/canvas";
+import { createCanvasAndOpen } from "../features/chats/canvasCreation";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
@@ -286,7 +286,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               composer={composerApi}
               accessToken={accessToken}
               currentUser={currentUser}
-              selectedChat={selectedChat}
+              selectedChat={hasActiveChat ? selectedChat : null}
               activeChatId={chatId}
               chats={chats}
               members={members}
@@ -323,8 +323,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               onOpenNewChat={openNewChatScreen}
               onCreateCanvas={() => {
                 if (!accessToken || !selectedChat) return;
-                void createCanvas(accessToken, selectedChat.id)
-                  .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
+                createCanvasAndOpen(accessToken, selectedChat, currentUser?.id ?? "", navigate);
               }}
               onCreateChecklist={async (payload) => {
                 if (!accessToken || !selectedChat) return;

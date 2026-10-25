@@ -12,7 +12,6 @@ import (
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 const (
@@ -40,6 +39,7 @@ type canvasUpdatePublic struct {
 }
 
 type createCanvasRequest struct {
+	CanvasID      string `json:"canvasId"`
 	ChatID        string `json:"chatId"`
 	Title         string `json:"title"`
 	InitialUpdate string `json:"initialUpdate"`
@@ -56,7 +56,7 @@ type canvasDocumentUpdateRequest struct {
 }
 
 func (s *Server) canvasPluginEnabled() bool {
-	if s.canvasDB == nil || s.plugins == nil {
+	if s.canvasPersistence() == nil || s.plugins == nil {
 		return false
 	}
 	p, ok := s.plugins.Get(canvasPluginID)
@@ -234,149 +234,53 @@ func (s *Server) canvasError(w http.ResponseWriter, err error) {
 	}
 }
 
-func (s *Server) createCanvas(ctx context.Context, user userPublic, request createCanvasRequest) (canvasPublic, error) {
-	chatID := strings.TrimSpace(request.ChatID)
-	chat, err := s.buildChatPublic(chatID, user)
-	if err != nil {
-		return canvasPublic{}, errNotFound
-	}
-	title := strings.TrimSpace(request.Title)
-	if title == "" {
-		title = "Untitled canvas"
-	}
-	if len(title) > 160 {
-		return canvasPublic{}, errBadRequest
-	}
-	var initialDecoded []byte
-	if request.InitialUpdate != "" {
-		initialDecoded, err = decodeCanvasUpdate(request.InitialUpdate)
-		if err != nil {
-			return canvasPublic{}, err
-		}
-	}
-	id := uuid.NewString()
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvases (id,family_id,origin_chat_id,created_by,title) VALUES ($1,$2,$3,$4,$5)`, id, user.FamilyID, chat.ID, user.ID, title); err != nil {
-		return canvasPublic{}, err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_chat_links (canvas_id,chat_id,created_by) VALUES ($1,$2,$3)`, id, chat.ID, user.ID); err != nil {
-		return canvasPublic{}, err
-	}
-	if request.InitialUpdate != "" {
-		if _, err := s.saveCanvasUpdate(ctx, id, user, request.InitialUpdate, initialDecoded); err != nil {
-			_, _ = s.canvasDB.ExecContext(ctx, `DELETE FROM canvases WHERE id=$1`, id)
-			return canvasPublic{}, err
-		}
-	}
-	if err := s.createCanvasCard(ctx, id, title, chat, user); err != nil {
-		return canvasPublic{}, err
-	}
-	return s.getCanvasForUser(ctx, id, user)
-}
-
-func (s *Server) createCanvasCard(ctx context.Context, canvasID, title string, chat chatPublic, user userPublic) error {
-	content := "canvas:" + canvasID + "\n" + title
-	message, replayed, err := s.createRESTMessageWithSyncImmediately(ctx, user, chat.ID, sendMessageRequest{Type: "canvas", Content: &content})
-	if err != nil {
-		return err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_cards (message_id,canvas_id) VALUES ($1,$2) ON CONFLICT (message_id) DO NOTHING`, message.ID, canvasID); err != nil {
-		return err
-	}
-	if _, err := s.canvasDB.ExecContext(ctx, `UPDATE canvas_chat_links SET card_message_id=$3 WHERE canvas_id=$1 AND chat_id=$2`, canvasID, chat.ID, message.ID); err != nil {
-		return err
-	}
-	if !replayed {
-		s.notifyCreatedRESTMessage(chat, user, message, sendMessageRequest{Type: "canvas", Content: &content})
-	}
-	return nil
-}
-
 func (s *Server) getCanvasForUser(ctx context.Context, canvasID string, user userPublic) (canvasPublic, error) {
-	if s.canvasDB == nil {
+	if s.canvasPersistence() == nil {
 		return canvasPublic{}, errNotFound
 	}
 	canvasID = strings.TrimSpace(canvasID)
-	var canvas canvasPublic
-	err := s.canvasDB.QueryRowContext(ctx, `
-		SELECT c.id,c.family_id,c.origin_chat_id,c.created_by,c.title,c.created_at,c.updated_at
-		FROM canvases c WHERE c.id=$1 AND c.family_id=$2 AND c.deleted_at IS NULL
-		AND (c.created_by=$3 OR EXISTS (SELECT 1 FROM canvas_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$3))`, canvasID, user.FamilyID, user.ID).
-		Scan(&canvas.ID, &canvas.FamilyID, &canvas.OriginChatID, &canvas.CreatedBy, &canvas.Title, &canvas.CreatedAt, &canvas.UpdatedAt)
+	stored, err := s.canvasPersistence().Get(ctx, canvasID, user.FamilyID, user.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return canvasPublic{}, errNotFound
 	}
 	if err != nil {
 		return canvasPublic{}, err
 	}
-	rows, err := s.canvasDB.QueryContext(ctx, `SELECT chat_id FROM canvas_chat_links WHERE canvas_id=$1 AND deleted_at IS NULL ORDER BY created_at`, canvas.ID)
-	if err != nil {
-		return canvasPublic{}, err
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var chatID string
-		if err := rows.Scan(&chatID); err != nil {
-			return canvasPublic{}, err
-		}
-		canvas.LinkedChatIDs = append(canvas.LinkedChatIDs, chatID)
-	}
+	canvas := canvasPublic{ID: stored.ID, FamilyID: stored.FamilyID, OriginChatID: stored.OriginChatID, CreatedBy: stored.CreatedBy, Title: stored.Title, LinkedChatIDs: stored.LinkedChatIDs, CreatedAt: stored.CreatedAt, UpdatedAt: stored.UpdatedAt}
 	canvas.CanManage = canvas.CreatedBy == user.ID || user.Role == "admin"
-	return canvas, rows.Err()
+	return canvas, nil
 }
 
 func (s *Server) listCanvasesForChat(ctx context.Context, chatID string, user userPublic) ([]canvasPublic, error) {
-	rows, err := s.canvasDB.QueryContext(ctx, `SELECT canvas_id FROM canvas_chat_links WHERE chat_id=$1 AND deleted_at IS NULL ORDER BY created_at DESC`, chatID)
+	ids, err := s.canvasPersistence().ListChatCanvasIDs(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 	result := []canvasPublic{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
+	for _, id := range ids {
 		canvas, err := s.getCanvasForUser(ctx, id, user)
 		if err == nil {
 			result = append(result, canvas)
 		}
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 // listCanvasesForUser exposes Canvas as a first-class Storage item while
 // retaining chat-link permissions as the access boundary.
 func (s *Server) listCanvasesForUser(ctx context.Context, user userPublic) ([]canvasPublic, error) {
-	rows, err := s.canvasDB.QueryContext(ctx, `
-		SELECT c.id
-		FROM canvases c
-		WHERE c.family_id=$1 AND c.deleted_at IS NULL
-		AND (
-			c.created_by=$2
-			OR EXISTS (
-				SELECT 1
-				FROM canvas_chat_links l
-				JOIN chat_members cm ON cm.chat_id=l.chat_id
-				WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2
-			)
-		)
-		ORDER BY c.updated_at DESC`, user.FamilyID, user.ID)
+	ids, err := s.canvasPersistence().ListFamilyCanvasIDs(ctx, user.FamilyID, user.ID)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 	result := []canvasPublic{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
+	for _, id := range ids {
 		canvas, err := s.getCanvasForUser(ctx, id, user)
 		if err == nil {
 			result = append(result, canvas)
 		}
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 func (s *Server) requireCanvasManager(ctx context.Context, canvasID string, user userPublic) (canvasPublic, error) {
@@ -398,7 +302,7 @@ func (s *Server) renameCanvas(ctx context.Context, canvasID string, user userPub
 	if title == "" || len(title) > 160 {
 		return canvasPublic{}, errBadRequest
 	}
-	if _, err := s.canvasDB.ExecContext(ctx, `UPDATE canvases SET title=$2,updated_at=now() WHERE id=$1`, canvasID, title); err != nil {
+	if err := s.canvasPersistence().Rename(ctx, canvasID, title); err != nil {
 		return canvasPublic{}, err
 	}
 	return s.getCanvasForUser(ctx, canvasID, user)
@@ -408,8 +312,7 @@ func (s *Server) deleteCanvas(ctx context.Context, canvasID string, user userPub
 	if _, err := s.requireCanvasManager(ctx, canvasID, user); err != nil {
 		return err
 	}
-	_, err := s.canvasDB.ExecContext(ctx, `UPDATE canvases SET deleted_at=now(),updated_at=now() WHERE id=$1`, canvasID)
-	return err
+	return s.canvasPersistence().Delete(ctx, canvasID)
 }
 
 func (s *Server) linkCanvas(ctx context.Context, canvasID, chatID string, user userPublic) (canvasPublic, error) {
@@ -424,14 +327,14 @@ func (s *Server) linkCanvas(ctx context.Context, canvasID, chatID string, user u
 	if canvas.OriginChatID == chat.ID {
 		return canvas, nil
 	}
-	var active bool
-	if err := s.canvasDB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM canvas_chat_links WHERE canvas_id=$1 AND chat_id=$2 AND deleted_at IS NULL)`, canvasID, chat.ID).Scan(&active); err != nil {
+	active, err := s.canvasPersistence().HasActiveLink(ctx, canvasID, chat.ID)
+	if err != nil {
 		return canvasPublic{}, err
 	}
 	if active {
 		return canvas, nil
 	}
-	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_chat_links (canvas_id,chat_id,created_by,deleted_at) VALUES ($1,$2,$3,NULL) ON CONFLICT (canvas_id,chat_id) DO UPDATE SET deleted_at=NULL,created_by=EXCLUDED.created_by,card_message_id=NULL,created_at=now()`, canvasID, chat.ID, user.ID); err != nil {
+	if err := s.canvasPersistence().Link(ctx, canvasID, chat.ID, user.ID); err != nil {
 		return canvasPublic{}, err
 	}
 	if err := s.createCanvasCard(ctx, canvasID, canvas.Title, chat, user); err != nil {
@@ -448,49 +351,41 @@ func (s *Server) unlinkCanvas(ctx context.Context, canvasID, chatID string, user
 	if canvas.OriginChatID == chatID {
 		return errBadRequest
 	}
-	result, err := s.canvasDB.ExecContext(ctx, `UPDATE canvas_chat_links SET deleted_at=now() WHERE canvas_id=$1 AND chat_id=$2 AND deleted_at IS NULL`, canvasID, chatID)
+	count, err := s.canvasPersistence().Unlink(ctx, canvasID, chatID)
 	if err != nil {
 		return err
 	}
-	if count, _ := result.RowsAffected(); count == 0 {
+	if count == 0 {
 		return errNotFound
 	}
 	return nil
 }
 
 func (s *Server) canvasCardForMessage(ctx context.Context, messageID, viewerID string) *canvasCardPublic {
-	if s.canvasDB == nil {
+	if s.canvasPersistence() == nil {
 		return nil
 	}
-	var card canvasCardPublic
-	err := s.canvasDB.QueryRowContext(ctx, `SELECT c.id,c.title,EXISTS(SELECT 1 FROM canvas_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2) FROM canvas_cards cc JOIN canvases c ON c.id=cc.canvas_id WHERE cc.message_id=$1`, messageID, viewerID).Scan(&card.ID, &card.Title, &card.Available)
-	if err != nil || !card.Available {
+	stored, err := s.canvasPersistence().CardForMessage(ctx, messageID, viewerID)
+	if err != nil || !stored.Available {
 		return &canvasCardPublic{Available: false}
 	}
-	return &card
+	return &canvasCardPublic{ID: stored.ID, Title: stored.Title, Available: stored.Available}
 }
 
 func (s *Server) canvasUpdates(ctx context.Context, canvasID string) ([]canvasUpdatePublic, error) {
-	rows, err := s.canvasDB.QueryContext(ctx, `SELECT u.sequence,u.ciphertext,u.nonce,u.created_by,u.created_at,c.family_id FROM canvas_updates u JOIN canvases c ON c.id=u.canvas_id WHERE u.canvas_id=$1 ORDER BY u.sequence`, canvasID)
+	storedUpdates, err := s.canvasPersistence().Updates(ctx, canvasID)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
 	updates := []canvasUpdatePublic{}
-	for rows.Next() {
-		var item canvasUpdatePublic
-		var ciphertext, nonce, familyID string
-		if err := rows.Scan(&item.Sequence, &ciphertext, &nonce, &item.CreatedBy, &item.CreatedAt, &familyID); err != nil {
-			return nil, err
-		}
-		plain, err := s.decryptServerAtRest(familyID, ciphertext, nonce)
+	for _, stored := range storedUpdates {
+		plain, err := s.decryptServerAtRest(stored.FamilyID, stored.Ciphertext, stored.Nonce)
 		if err != nil {
 			return nil, fmt.Errorf("decrypt Canvas update: %w", err)
 		}
-		item.Update = *plain
-		updates = append(updates, item)
+		updates = append(updates, canvasUpdatePublic{Sequence: stored.Sequence, Update: *plain, CreatedBy: stored.CreatedBy, CreatedAt: stored.CreatedAt})
 	}
-	return updates, rows.Err()
+	return updates, nil
 }
 
 func (s *Server) appendCanvasUpdate(ctx context.Context, canvasID string, user userPublic, update string) (canvasUpdatePublic, error) {
@@ -513,10 +408,7 @@ func (s *Server) saveCanvasUpdate(ctx context.Context, canvasID string, user use
 		return canvasUpdatePublic{}, err
 	}
 	item := canvasUpdatePublic{Update: update, CreatedBy: user.ID}
-	err = s.canvasDB.QueryRowContext(ctx, `INSERT INTO canvas_updates (canvas_id,ciphertext,nonce,created_by) VALUES ($1,$2,$3,$4) RETURNING sequence,created_at`, canvasID, ciphertext, nonce, user.ID).Scan(&item.Sequence, &item.CreatedAt)
-	if err == nil {
-		_, _ = s.canvasDB.ExecContext(ctx, `UPDATE canvases SET updated_at=now() WHERE id=$1`, canvasID)
-	}
+	item.Sequence, item.CreatedAt, err = s.canvasPersistence().SaveUpdate(ctx, canvasID, ciphertext, nonce, user.ID)
 	return item, err
 }
 
@@ -538,29 +430,16 @@ func decodeCanvasUpdate(update string) ([]byte, error) {
 // That prevents a socket which was previously joined from receiving more data
 // after its user loses access to every chat linked to the Canvas.
 func (s *Server) emitCanvasToAuthorizedUsers(ctx context.Context, canvasID, event string, payload any) {
-	if s.canvasDB == nil || s.sockets == nil {
+	if s.canvasPersistence() == nil || s.sockets == nil {
 		return
 	}
-	rows, err := s.canvasDB.QueryContext(ctx, `
-		SELECT DISTINCT cm.user_id
-		FROM canvas_chat_links l
-		JOIN chat_members cm ON cm.chat_id = l.chat_id
-		WHERE l.canvas_id = $1 AND l.deleted_at IS NULL`, canvasID)
+	userIDs, err := s.canvasPersistence().Audience(ctx, canvasID)
 	if err != nil {
 		s.logger.Warnf("realtime.canvas", "resolve Canvas event audience failed canvas_id=%s error=%v", canvasID, err)
 		return
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var userID string
-		if err := rows.Scan(&userID); err != nil {
-			s.logger.Warnf("realtime.canvas", "read Canvas event audience failed canvas_id=%s error=%v", canvasID, err)
-			return
-		}
+	for _, userID := range userIDs {
 		_ = s.sockets.To("user:"+userID).Emit(event, payload)
-	}
-	if err := rows.Err(); err != nil {
-		s.logger.Warnf("realtime.canvas", "iterate Canvas event audience failed canvas_id=%s error=%v", canvasID, err)
 	}
 }
 

@@ -5,6 +5,18 @@ import { describe, expect, it } from "vitest";
 const stylesSource = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("native mobile chat styling", () => {
+  it("keeps the narrow web sidebar header in flow while a chat is open", () => {
+    const narrowWebStylesStart = stylesSource.indexOf("/* Browser-only narrow layout.");
+    const nativeStylesStart = stylesSource.indexOf("/* Capacitor renders the same narrow chat layout", narrowWebStylesStart);
+    const narrowWebStyles = stylesSource.slice(narrowWebStylesStart, nativeStylesStart);
+
+    expect(narrowWebStyles).not.toContain(':root[data-platform="web"] .chat-sidebar-header,');
+  });
+
+  it("removes vertical padding from the pinned message banner", () => {
+    expect(stylesSource).toMatch(/\.pinned-banner \{[^{}]*padding:\s*0(?:\s+14px)?;/);
+  });
+
   it("shares the mobile-web floating chat chrome on Android", () => {
     expect(stylesSource).toMatch(
       /:root\[data-platform="native"\] \.messenger-shell\.chat-list-view \.chat-sidebar-header[\s\S]*?position:\s*absolute;/

@@ -22,6 +22,14 @@ describe("SettingsPage redesign", () => {
     expect(styles).toContain(".settings-tile--statistics");
   });
 
+  it("insets the profile arrow slightly from the right edge of its bar", () => {
+    const arrowRule = styles.match(/\.settings-profile-open\s*>\s*svg\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(arrowRule).toMatch(/position:\s*absolute/);
+    expect(arrowRule).toMatch(/right:\s*22px/);
+    expect(arrowRule).toMatch(/height:\s*18px/);
+    expect(arrowRule).toMatch(/width:\s*18px/);
+  });
+
   it("shows a live theme preview inside the Appearance tile", () => {
     expect(dashboard).toContain('className="settings-appearance-preview"');
     expect(source).toContain("formatAppearanceHelper");

@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 describe("FilesPage source list collapse", () => {
-  it("collapses and restores the source picker without changing the selected chat", async () => {
+  async function renderFilesPage() {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -44,16 +44,89 @@ describe("FilesPage source list collapse", () => {
       root.render(<MemoryRouter><FilesPage /></MemoryRouter>);
       await Promise.resolve();
     });
+    return host;
+  }
 
-    const layout = host.querySelector(".storage-layout");
+  it("keeps the close button hidden initially and resizes the source list by dragging its divider", async () => {
+    const host = await renderFilesPage();
+    const layout = host.querySelector<HTMLElement>(".storage-layout");
     const toggle = host.querySelector<HTMLButtonElement>('[aria-label="Collapse chat list"]');
-    expect(toggle).not.toBeNull();
-    await act(async () => toggle?.click());
-    expect(layout?.classList.contains("storage-layout--source-collapsed")).toBe(true);
-    expect(host.querySelector<HTMLButtonElement>('[aria-label="Expand chat list"]')?.getAttribute("aria-expanded")).toBe("false");
+    const divider = host.querySelector<HTMLElement>('[role="separator"][aria-label="Resize chat list"]');
 
-    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Expand chat list"]')?.click());
+    expect(toggle?.hidden).toBe(true);
+    expect(divider?.getAttribute("aria-valuenow")).toBe("300");
+
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 300 }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 420 }));
+    });
+
+    expect(layout?.style.getPropertyValue("--storage-source-width")).toBe("420px");
     expect(layout?.classList.contains("storage-layout--source-collapsed")).toBe(false);
+  });
+
+  it("supports keyboard resizing through the divider", async () => {
+    const host = await renderFilesPage();
+    const layout = host.querySelector<HTMLElement>(".storage-layout");
+    const divider = host.querySelector<HTMLElement>('[role="separator"][aria-label="Resize chat list"]');
+
+    await act(async () => {
+      divider?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    });
+
+    expect(layout?.style.getPropertyValue("--storage-source-width")).toBe("324px");
+    expect(divider?.getAttribute("aria-valuenow")).toBe("324");
+  });
+
+  it("auto-collapses when the source list is dragged below its minimum width", async () => {
+    const host = await renderFilesPage();
+    const layout = host.querySelector<HTMLElement>(".storage-layout");
+    const divider = host.querySelector<HTMLElement>('[role="separator"][aria-label="Resize chat list"]');
+
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 300 }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 160 }));
+    });
+
+    expect(layout?.classList.contains("storage-layout--source-collapsed")).toBe(true);
+    expect(host.querySelector<HTMLButtonElement>('[aria-label="Expand chat list"]')?.hidden).toBe(false);
+  });
+
+  it("collapses and restores the source picker without changing the selected chat", async () => {
+    const host = await renderFilesPage();
+    const layout = host.querySelector(".storage-layout");
+    const divider = host.querySelector('[role="separator"][aria-label="Resize chat list"]');
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 300 }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 420 }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    });
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 420 }));
+    });
+    await act(async () => {
+      window.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 160 }));
+    });
+
+    expect(layout?.classList.contains("storage-layout--source-collapsed")).toBe(true);
+    const expandButton = host.querySelector<HTMLButtonElement>('[aria-label="Expand chat list"]');
+    expect(expandButton?.hidden).toBe(false);
+    expect(expandButton?.getAttribute("aria-expanded")).toBe("false");
+
+    await act(async () => expandButton?.click());
+    expect(layout?.classList.contains("storage-layout--source-collapsed")).toBe(false);
+    const collapseButton = host.querySelector<HTMLButtonElement>('[aria-label="Collapse chat list"]');
+    expect(collapseButton?.hidden).toBe(true);
+    expect(collapseButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(layout?.getAttribute("style")).toContain("--storage-source-width: 300px");
     expect(host.querySelector(".storage-source.active")?.textContent).toContain("All chats");
   });
 });

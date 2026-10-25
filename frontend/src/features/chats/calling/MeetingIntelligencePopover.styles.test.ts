@@ -14,6 +14,22 @@ describe("meeting intelligence popover design", () => {
   it("renders a filled record circle for both start actions", () => {
     expect(component.match(/<Circle size=\{17\} fill="currentColor"/g)).toHaveLength(2);
   });
+  it("uses equally sized dots and a visible circular outline for both actions", () => {
+    const actionDot = ruleFor(".meeting-intel-toggle-btn > svg.lucide-circle");
+    expect(actionDot).toMatch(/width:\s*12px/);
+    expect(actionDot).toMatch(/height:\s*12px/);
+    expect(actionDot).toMatch(/flex:\s*0 0 12px/);
+    const actionButton = ruleFor(".meeting-intel-popover--inline-menu .meeting-intel-toggle-btn");
+    expect(actionButton).toMatch(/width:\s*24px/);
+    expect(actionButton).toMatch(/height:\s*24px/);
+    expect(actionButton).toMatch(/display:\s*inline-flex/);
+    expect(actionButton).toMatch(/align-items:\s*center/);
+    expect(actionButton).toMatch(/justify-content:\s*center/);
+    const sharedActionRing = styles.match(/(?:^|\n)\.meeting-intel-toggle-btn::before\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(sharedActionRing).toMatch(/inset:\s*2px/);
+    expect(sharedActionRing).toMatch(/border:\s*1px solid color-mix/);
+    expect(sharedActionRing).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+  });
   it("removes the subtitle and card descriptions and tightens header-to-content spacing", () => {
     expect(component).not.toContain("meeting-intel-subtitle");
     expect(component).not.toContain("Meeting AI & Recording");

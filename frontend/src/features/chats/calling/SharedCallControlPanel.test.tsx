@@ -70,9 +70,9 @@ describe("SharedCallControlPanel", () => {
     expect(styles).toMatch(/@media \(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.shared-call-control-panel\s*\{\s*transition:\s*none/);
   });
 
-  it("keeps the floating control box padded, rounded, and translucent over the shared stage", () => {
+  it("keeps the shared control panel free of a surrounding shell", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*var\(--color-palette-a82b3cba7aa1\);[^}]*border-radius:\s*var\(--radius-panel\);[^}]*padding:\s*8px 12px/);
+    expect(styles).toMatch(/\.shared-call-control-panel\s*\{[^}]*background:\s*transparent;[^}]*backdrop-filter:\s*none;[^}]*border:\s*0;[^}]*box-shadow:\s*none;[^}]*padding:\s*0;/);
     expect(styles).toMatch(/\.call-popup\.call-popup-fullscreen \.shared-call-control-panel > \.call-popup-ctrl-row\s*\{[^}]*background:\s*transparent !important;[^}]*padding:\s*0 !important/);
   });
 });

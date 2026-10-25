@@ -10,6 +10,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
 	"stovo-messenger/backend/internal/app"
 	"stovo-messenger/backend/internal/config"
 )
@@ -47,7 +48,7 @@ func runMain() int {
 
 	operationCtx, cancelOperation := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelOperation()
-	operations := app.NewIntelligenceSourceV2Operations(db)
+	operations := app.NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(db))
 	return run(operationCtx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, operations)
 }
 
