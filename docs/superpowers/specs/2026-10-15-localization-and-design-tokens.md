@@ -1,3 +1,8 @@
+---
+title: "Localization and Design Tokens: Audit and Fix Specification"
+type: design
+---
+
 # Localization and Design Tokens: Audit and Fix Specification
 
 ## User need

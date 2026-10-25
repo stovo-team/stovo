@@ -27,3 +27,11 @@ type: workflow
 - Never delete an unmerged branch or a worktree with uncommitted changes.
 - Target cleanup immediately after merge. Treat 30 days without activity as stale and inspect/report it; do not automatically discard unmerged work or data.
 - Retain intentionally open work. If there is no remote pull request or the user asks to keep the result locally, retain the branch and worktree until the user confirms they are no longer needed.
+
+## Review readiness
+
+Use [human approvals](approvals.md) for action scopes and freshness. A delivery includes acceptance coverage, exact checks/results, independent QA where required, and before/after evidence for visual behavior. Prepare a self-contained English PR description and a short manual review scenario before requesting publication. Existing publication authorization applies within its stated scope.
+
+Use [dependency and reusable-code assessment](dependency-and-reuse.md) when substantial capability or extraction is involved.
+
+From the repository root, `node scripts/agent-workflows/validate-delivery.mjs --contract <contract.json> --evidence <evidence.json> --qa <qa.json> --changed-paths <paths.json>` verifies current source-bound readiness. Generate the English description with `node scripts/agent-workflows/render-pr.mjs --packet <packet.json> --output <body.md>`. Both operate locally and perform no publication. Delivery paths are derived from Git against the merge-base with `origin/master` (or an explicitly trusted `--target` ref); evidence cannot select its own smaller base. QA and test evidence must cover the actual dirty patch as well as HEAD. Remote evidence uses actual HTTPS artifact links; keep publication-pending local outputs clearly labelled. Use the [delivery template](templates/delivery-packet.md). Follow [GitHub planning](github-projects.md) for authorized issue, Project, milestone, and branch-ruleset updates.

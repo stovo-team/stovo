@@ -1,0 +1,7 @@
+{
+  "source": "https://fonts.gstatic.com/s/materialsymbolsoutlined/v377/kJF1BvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNU22ZXGJpEpjC_1v-p_4MrImHCIJIZrDCvHOem.ttf",
+  "license": "Apache-2.0",
+  "licenseSource": "https://github.com/google/material-design-icons/blob/master/LICENSE",
+  "sha256": "08a4a6a43de0c568bb338ad248d05545e09d30e5f3b24ae529a15d2c16985904",
+  "purpose": "Offline copy of the existing external Material Symbols stylesheet/font, test-only; production is unchanged."
+}

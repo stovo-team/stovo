@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "source": "Human approved “Yes, update the references” in this Codex chat on 2026-10-25 for PR 189.",
+  "sourceRevision": "d3498c6c565e296918b42b23c1124adec2e93c3e",
+  "environment": {
+    "node": "v22.23.1",
+    "platform": "linux",
+    "browserVersion": "151.0.7922.34",
+    "timezone": "UTC"
+  },
+  "files": [
+    {
+      "path": "V-01.png",
+      "sha256": "ca3d7efe6061b2f5cb6f3c589ea235c8a4ed02480c0906e1ecd9584cc38edd97"
+    },
+    {
+      "path": "V-02.png",
+      "sha256": "011449022f8797a4d64846fd53cb382f55ab9bda40f686586fa5c28755fd7e9d"
+    },
+    {
+      "path": "V-03.png",
+      "sha256": "99f44ac30479dcda1d4ad13b62edebaf97e15ddeded85b50f6b821e047b4c6e1"
+    },
+    {
+      "path": "V-04.png",
+      "sha256": "e263bc9ad48a5cec26891cf37013e21d376f04b80a85eb1f27b9d41e6ebca4e6"
+    },
+    {
+      "path": "V-05.png",
+      "sha256": "79d519b4422e3047b9a001c28b2036b5a7fa6593e1d4b8e01c2fc002c4256577"
+    },
+    {
+      "path": "V-06.png",
+      "sha256": "509319113da8dcf19133f6afae2e7fb0fb12be15c779955f361ab54ef31e41f0"
+    },
+    {
+      "path": "V-07.png",
+      "sha256": "803873c58d9651cb0081bf59f920fc62c3f417917cc1e7baa211047d75fcf758"
+    },
+    {
+      "path": "V-08.png",
+      "sha256": "974970c820038bf32302d6708ef808f71b60390e721e2c840db9892b1ae3deb4"
+    },
+    {
+      "path": "V-09.png",
+      "sha256": "16350ebda28191efd485fa20b0d648e64a7919dc4580581505d5707dc803b8e7"
+    },
+    {
+      "path": "V-10.png",
+      "sha256": "5517540dcaec0905411fbd6a205ef5f7a79eb6e5911a2038491e0116766b517b"
+    },
+    {
+      "path": "V-11.png",
+      "sha256": "65e0752c13a1074b3b3e2af56d53595dcfe8477b491c96dd67dc2e8e470ac0a8"
+    },
+    {
+      "path": "V-12.png",
+      "sha256": "ed3beabef485f3d78aa5570a9f0a18a744eb2ad228351d91e6f1af12057a0382"
+    }
+  ]
+}

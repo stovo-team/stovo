@@ -13,6 +13,7 @@ const requireSecretKey = (yaml, secretName, key) => assert.match(
   new RegExp(`secretKeyRef:[\\s\\S]{0,160}name:\\s*${secretName}[\\s\\S]{0,80}key:\\s*${key}\\b[\\s\\S]{0,50}optional:\\s*false`),
   `must require ${key} from externally managed Secret ${secretName}`,
 );
+const deploymentFieldOf = (bugReport) => bugReport.replace(/\r\n/g, '\n').match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
 
 const slugHeading = (heading) => heading.toLowerCase().trim()
   .replace(/[`*_~]/g, '')
@@ -40,7 +41,7 @@ function markdownFiles(directory, found = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (!['.git', 'node_modules', 'dist', 'coverage'].includes(entry.name)) markdownFiles(file, found);
+      if (!['.git', 'node_modules', 'dist', 'coverage', 'artifacts'].includes(entry.name)) markdownFiles(file, found);
     } else if (entry.isFile() && entry.name.endsWith('.md')) found.push(file);
   }
   return found;
@@ -78,9 +79,9 @@ test('agent instructions link to the PR review findings workflow', () => {
 
 test('bug report deployment choices cover hosted, managed, and local deployments', () => {
   const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
-  const deploymentField = bugReport.match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
+  const deploymentField = deploymentFieldOf(bugReport);
   assert.ok(deploymentField, 'bug report must include a deployment dropdown');
-  const choices = [...deploymentField.matchAll(/^        - (.+)$/gm)].map((match) => match[1]);
+  const choices = [...deploymentField.matchAll(/^        - (.+?)\r?$/gm)].map((match) => match[1]);
   assert.deepEqual(choices, [
     'Cloud based',
     'Managed Instance',
@@ -88,6 +89,12 @@ test('bug report deployment choices cover hosted, managed, and local deployments
     'Local - Kubernetes/Helm',
     'Other',
   ]);
+});
+
+test('bug report deployment dropdown parser accepts Windows CRLF files', () => {
+  const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
+  const windowsBugReport = bugReport.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+  assert.equal(deploymentFieldOf(windowsBugReport), deploymentFieldOf(bugReport));
 });
 
 test('README opens with the approved corporate positioning and tagline', () => {
@@ -253,7 +260,11 @@ test('documented Compose filenames and backticked config names match repository 
   }
   for (const [, name] of allMarkdown.matchAll(/`([A-Z][A-Z0-9_]{2,})`/g)) {
     if (/^(?:HTTP|HTTPS|API|URL|JWT|S3|AWS|GCP|CPU|RAM|TLS|UDP|TCP|DNS|CI|CD|JSON|YAML|SQL|SPA|CSS|MCP|RBAC)$/.test(name)) continue;
-    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
+    // This secret is provisioned by the external Intelligence deployment and
+    // deliberately does not live in this repository's Compose or env files.
+    const externallyProvisioned = name === 'INTELLIGENCE_SOURCE_SECRET_ENCRYPTION_KEYS';
+    const known = externallyProvisioned
+      || composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
       || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name)
       || implementation.includes(name);
     if (!known) errors.push(`unknown config name ${name}`);

@@ -358,3 +358,27 @@ describe("local mock chat API", () => {
     expect((await response.arrayBuffer()).byteLength).toBe(0);
   });
 });
+
+describe('deterministic visual history scenarios', () => {
+  it('provides an empty history only in the explicitly installed mock scenario', async () => {
+    restoreMockApi?.();
+    restoreMockApi = installMockApi({ origin: MOCK_ORIGIN, scenario: 'empty' });
+    const { body } = await request<MessageHistoryPage>(`/api/chats/${FIRST_CHAT_ID}/messages`);
+    expect(body.messages).toEqual([]);
+  });
+  it('exposes a recoverable history error without forwarding a real request', async () => {
+    restoreMockApi?.();
+    restoreMockApi = installMockApi({ origin: MOCK_ORIGIN, scenario: 'history-error' });
+    expect((await request(`/api/chats/${FIRST_CHAT_ID}/messages`)).response.status).toBe(503);
+    expect((await request('/api/dev/visual/recover', { method: 'POST' })).response.status).toBe(200);
+    expect((await request<MessageHistoryPage>(`/api/chats/${FIRST_CHAT_ID}/messages`)).body.messages.length).toBeGreaterThan(0);
+  });
+  it('keeps a loading request pending until aborted', async () => {
+    restoreMockApi?.();
+    restoreMockApi = installMockApi({ origin: MOCK_ORIGIN, scenario: 'loading' });
+    const abort = new AbortController();
+    const pending = fetch(`${MOCK_ORIGIN}/api/chats/${FIRST_CHAT_ID}/messages`, { signal: abort.signal });
+    abort.abort();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});

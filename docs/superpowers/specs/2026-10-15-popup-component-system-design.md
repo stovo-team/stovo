@@ -1,3 +1,8 @@
+---
+title: "Popup Component System Design"
+type: design
+---
+
 # Popup Component System Design
 
 ## Goal

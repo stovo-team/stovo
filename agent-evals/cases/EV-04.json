@@ -1,0 +1,5 @@
+{
+  "id": "EV-04",
+  "kind": "workflow-decision",
+  "prompt": "A local Markdown typo is corrected, with no product/UI behavior change. Existing link/config checks pass."
+}

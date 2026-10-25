@@ -465,6 +465,39 @@ describe("useChatDataLoader", () => {
   });
 });
 
+it.each(['overview', 'history'] as const)('retries the failed %s operation even on a direct chat route', async (kind) => {
+  let failing = true;
+  const requests: string[] = [];
+  const authRequest = vi.fn(async (url: string) => {
+    requests.push(url);
+    if (failing && (kind === 'overview' ? url === '/api/chats' : url.includes('/messages?'))) throw new Error('seeded failure');
+    if (url === '/api/family') return { id: 'family-1', name: 'Test' };
+    if (url === '/api/chats' || url === '/api/family/members' || url.endsWith('/pins')) return [];
+    if (url.includes('/messages?')) return { messages: [], hasMore: false, nextBefore: '' };
+    return { id: 'chat-1', type: 'group', members: [] };
+  });
+  let loader: ReturnType<typeof useChatDataLoader> | undefined;
+  function Harness() {
+    loader = useChatDataLoader({
+      accessTokenRef: { current: 'test-token' }, authRequest: authRequest as any, currentUser: { id: 'user-1' } as any, chatId: 'chat-1',
+      onError: vi.fn(), setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+      setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(), activeChatIdRef: { current: 'chat-1' }, chatsRef: { current: [] },
+      chatMutationVersionRef: { current: {} }, messageCacheRef: { current: {} }, historyCursorRef: { current: {} }, setMessages: vi.fn(), setPinnedMessages: vi.fn(),
+      setPinIndex: vi.fn(), applyMessagesForChat: vi.fn(), markChatRead: vi.fn(async () => {})
+    }); return null;
+  }
+  const container = document.createElement('div'), root = createRoot(container);
+  try {
+    await act(async () => root.render(createElement(Harness)));
+    await act(async () => { await loader!.loadOverview(); await loader!.loadSelectedChat('chat-1'); });
+    const target = kind === 'overview' ? '/api/chats' : '/api/chats/chat-1/messages?limit=10';
+    const before = requests.filter(x => x === target).length;
+    failing = false;
+    await act(async () => { await (loader as any)?.retryFailedLoads?.(); });
+    expect(requests.filter(x => x === target).length).toBeGreaterThan(before);
+  } finally { act(() => root.unmount()); }
+});
+
 it("renders cached archive-group history while its next network refresh is pending", async () => {
   const cached = [makeMessage("saved", "2026-01-01T10:00:00.000Z")];
   let pendingRefresh = false;

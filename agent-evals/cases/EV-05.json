@@ -1,0 +1,5 @@
+{
+  "id": "EV-05",
+  "kind": "workflow-decision",
+  "prompt": "A substantial standard file-format parser would otherwise be hand-written. No installed helper has yet been checked."
+}

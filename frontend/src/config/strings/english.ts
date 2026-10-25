@@ -254,6 +254,7 @@ export const strings = {
     errandItems: [["Drop off return package", "Buy stamps"], ["Pick up prescription", "Vitamins"], ["Light bulbs", "Air filters"], ["Drop off coats", "Pick up shirts"]],
   },
   sharedUi: {
+    retry: "Try again",
     cancel: "Cancel",
     close: "Close",
     accept: "Accept",

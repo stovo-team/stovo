@@ -361,7 +361,7 @@ export function resetMockData(): void {
   nextLocalMessageId = 1;
 }
 
-export function installMockApi(options: { origin?: string } = {}): () => void {
+export function installMockApi(options: { origin?: string; scenario?: string } = {}): () => void {
   const origin = new URL(options.origin ?? window.location.origin).origin;
   const existing = mockGlobal[MOCK_API_STATE_KEY];
   if (existing?.origin === origin && globalThis.fetch === existing.wrappedFetch) {
@@ -370,6 +370,8 @@ export function installMockApi(options: { origin?: string } = {}): () => void {
   if (existing) existing.cleanup();
 
   const previousFetch = globalThis.fetch;
+  const scenario = options.scenario ?? new URLSearchParams(window.location.search).get("mockScenario");
+  let recovered = false;
   const wrappedFetch: typeof fetch = async (input: FetchInput, init?: RequestInit): Promise<Response> => {
     let url: URL;
     try {
@@ -381,6 +383,22 @@ export function installMockApi(options: { origin?: string } = {}): () => void {
     const isApiPath = url.pathname === "/api" || url.pathname.startsWith("/api/");
     if (url.origin !== origin || !isApiPath) return previousFetch(input, init);
     const method = (init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")).toUpperCase();
+    if (url.pathname === "/api/dev/visual/recover" && method === "POST" && scenario === "history-error") {
+      recovered = true;
+      return jsonResponse({ recovered: true });
+    }
+    if (method === "GET" && url.pathname === "/api/chats/chat-planning-team/messages") {
+      if (scenario === "empty") return jsonResponse({ messages: [], nextBefore: "", hasMore: false });
+      if (scenario === "history-error" && !recovered) return errorResponse(503, "Synthetic history error");
+      if (scenario === "loading") {
+        return new Promise<Response>((_resolve, reject) => {
+          const signal = init?.signal ?? (typeof Request !== "undefined" && input instanceof Request ? input.signal : undefined);
+          const abort = () => reject(new DOMException("Mock loading aborted", "AbortError"));
+          if (signal?.aborted) abort();
+          else signal?.addEventListener("abort", abort, { once: true });
+        });
+      }
+    }
     return handleMockRequest(url, method, input, init);
   };
 

@@ -190,6 +190,7 @@ export function useChatDataLoader({
   applyMessagesForChat,
   markChatRead
 }: UseChatDataLoaderParams) {
+  const failedLoads = useRef(new Set<"overview" | "history">());
   const loadOverviewRequestRef = useRef(0);
   const loadChatRequestRef = useRef(0);
   const hasLoadedOverviewRef = useRef(false);
@@ -280,8 +281,10 @@ export function useChatDataLoader({
           );
         }
       }
+      if (isCurrentRequest()) failedLoads.current.delete("overview");
     } catch (err) {
       if (isCurrentRequest()) {
+        failedLoads.current.add("overview");
         onErrorRef.current(err instanceof ApiError ? String(err.message) : "Could not load chats");
       }
     } finally {
@@ -464,8 +467,10 @@ export function useChatDataLoader({
           );
           void markChatReadRef.current(requestedChatId, latestMessage.id);
         }
+        if (isCurrentRequest()) failedLoads.current.delete("history");
       } catch (err) {
         if (isCurrentRequest()) {
+          failedLoads.current.add("history");
           onErrorRef.current(err instanceof ApiError ? String(err.message) : "Could not load messages");
         }
       } finally {
@@ -591,7 +596,14 @@ export function useChatDataLoader({
     };
   }, []);
 
-  return { loadOverview, loadSelectedChat, syncCurrentView, reloadOverview };
+  const retryFailedLoads = async () => {
+    const failed = new Set(failedLoads.current);
+    await Promise.all([
+      ...(failed.has("overview") ? [loadOverview()] : []),
+      ...(failed.has("history") ? [loadSelectedChat(chatId)] : [])
+    ]);
+  };
+  return { loadOverview, loadSelectedChat, syncCurrentView, reloadOverview, retryFailedLoads };
 }
 export type ChatDataLoader = ReturnType<typeof useChatDataLoader>;
 

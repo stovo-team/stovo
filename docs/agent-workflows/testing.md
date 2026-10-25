@@ -13,3 +13,5 @@ type: workflow
 - Never weaken or delete tests to get a passing suite. If expected behavior must change, revisit the contract with the requester.
 - Follow CONTRIBUTING.md for commands and environment setup. Run checks required by the applicable workflow and checks the user requests; avoid unrelated suites.
 - Report the checks run and their results. State clearly when a required check could not be run.
+
+Map stable acceptance IDs to scenarios, proof layers and expected results using the [test-plan template](templates/test-plan.md). Record blocked/skipped checks honestly and bind results to source contents. Human decision scopes follow [approvals](approvals.md).

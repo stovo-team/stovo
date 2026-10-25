@@ -389,9 +389,9 @@ for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 
 done
 
 codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
-for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Windows' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
   if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
-    echo "CodeQL must run serially on the tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
+    echo "CodeQL must run serially on the Windows tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
     exit 1
   fi
 done

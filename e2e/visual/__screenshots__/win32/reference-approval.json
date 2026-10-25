@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "source": "Human approved all 12 Windows screenshot candidates in this Codex chat on 2026-10-25 for PR 189.",
+  "sourceRevision": "e1df16f7ae8583f60a7a5e2bc815fcf79888783e",
+  "environment": {
+    "node": "v22.23.3",
+    "platform": "win32",
+    "browserVersion": "151.0.7922.34",
+    "timezone": "UTC"
+  },
+  "files": [
+    {
+      "path": "V-01.png",
+      "sha256": "533bef1cb1665e07f553c604e2407c4d69e3b81e12e5d4d061e9bdb7f6808389"
+    },
+    {
+      "path": "V-02.png",
+      "sha256": "053acfa7d6bb548f1c6063febea71074d947f0264220c643f2fd1579529c09e7"
+    },
+    {
+      "path": "V-03.png",
+      "sha256": "3fc52926dc3dcb1c98992796afc28a27835f7136acefb0d5115de1e011a09ce2"
+    },
+    {
+      "path": "V-04.png",
+      "sha256": "5b506eab2ea093eb42470e8e0beba7c06c62b3a379dd2b4d4a21dca658b8f174"
+    },
+    {
+      "path": "V-05.png",
+      "sha256": "15e63e454d99aad53119c771fbfba3e5e066c997a95c6a83a4cb6e9ad74deb9c"
+    },
+    {
+      "path": "V-06.png",
+      "sha256": "6a8554ea84340dd75750bbdcd66e4f3327a54af00d21ed5dbd5df0752473fc95"
+    },
+    {
+      "path": "V-07.png",
+      "sha256": "7bf6f205a318fc0a1f09131047d93ec9fd8beab12a082cdf049321e71a7ff635"
+    },
+    {
+      "path": "V-08.png",
+      "sha256": "4d87f33bb3846ee750e072590ce3331674e491cec42a23be8e0e32754e2100eb"
+    },
+    {
+      "path": "V-09.png",
+      "sha256": "71ce7126eac2372d1e56129822ed4b75999ba455e4f2e4abb3b2307def2b5e1d"
+    },
+    {
+      "path": "V-10.png",
+      "sha256": "753273e76f639cb83ddb051c609ab70441bd0b811a656375f9b82c3be94ee08e"
+    },
+    {
+      "path": "V-11.png",
+      "sha256": "bd735dfb111e1bf70e323f004a62380df9ab32c8b3160d5c0c4ba2df4a9902f0"
+    },
+    {
+      "path": "V-12.png",
+      "sha256": "5b8fa4c0d63d58e69a68eae6191a342458ad6e4d8d42778e93adca4d433c1830"
+    }
+  ]
+}

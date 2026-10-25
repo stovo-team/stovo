@@ -1,3 +1,8 @@
+---
+title: "Intelligence Source v2 Backup Operations CLI and Restore Safety"
+type: design
+---
+
 # Intelligence Source v2 Backup Operations CLI and Restore Safety
 
 **Status:** Updated for current-master restore policy

@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+let api={};try{api=await import('./visual-options.mjs');}catch(e){if(e.code!=='ERR_MODULE_NOT_FOUND')throw e;}
+test('visual runner owns only the fixed loopback mock origin',()=>{assert.equal(api.readVisualOptions?.({})?.origin,'http://127.0.0.1:5174');for(const url of ['https://example.com','http://localhost:8080','http://127.0.0.1:5174/app','http://user:pass@127.0.0.1:5174'])assert.throws(()=>api.readVisualOptions?.({STOVO_VISUAL_URL:url}));});
+test('output is explicit and integration E2E URL cannot change mock target',()=>{assert.equal(api.readVisualOptions?.({E2E_BASE_URL:'https://production.invalid',STOVO_VISUAL_OUTPUT:'/tmp/visual'})?.origin,'http://127.0.0.1:5174');assert.equal(api.readVisualOptions?.({STOVO_VISUAL_OUTPUT:'/tmp/visual'})?.output,'/tmp/visual');});

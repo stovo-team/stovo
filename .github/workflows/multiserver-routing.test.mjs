@@ -75,9 +75,14 @@ test('backend deploy configures root routing before Caddy starts and checks the 
   assert.ok(probe < workflow.indexOf('Backend web deployment finished successfully!'));
 });
 
+test('pipeline contract recognizes backend-only dispatch with Windows CRLF', () => {
+  const workflow = read('.github/workflows/pipeline.yml').replace(/\n/g, '\r\n');
+  assert.match(workflow, /workflow_dispatch:\r?\n    inputs:\r?\n      backend_deploy_only:/);
+});
+
 test('manual backend-only deployment skips CI and frontend while normal deployments retain their CI gate', () => {
   const workflow = read('.github/workflows/pipeline.yml');
-  assert.match(workflow, /workflow_dispatch:\n    inputs:\n      backend_deploy_only:/);
+  assert.match(workflow, /workflow_dispatch:\r?\n    inputs:\r?\n      backend_deploy_only:/);
   assert.match(workflow, /frontend: \$\{\{ !inputs.backend_deploy_only &&/);
   assert.match(workflow, /if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only/);
   const backend = workflow.split('  deploy-backend-web:')[1].split('  deploy-android:')[0];

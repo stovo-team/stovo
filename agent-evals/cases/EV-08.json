@@ -1,0 +1,5 @@
+{
+  "id": "EV-08",
+  "kind": "workflow-decision",
+  "prompt": "The approved test-plan file has materially changed after the human decision. The artifact digest no longer matches."
+}

@@ -1,0 +1,5 @@
+{
+  "id": "EV-01",
+  "kind": "workflow-decision",
+  "prompt": "Small existing popup spacing adjustment. Shared PopupDialog and radius tokens already satisfy the requirement. No concrete design/test matrix has yet been reviewed."
+}

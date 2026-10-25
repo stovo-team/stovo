@@ -1,3 +1,8 @@
+---
+title: "Repository Structure Design"
+type: design
+---
+
 # Repository Structure Design
 
 ## Goal

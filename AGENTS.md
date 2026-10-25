@@ -6,6 +6,7 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 
 - Work on a dedicated task branch and worktree. Keep the primary checkout clean and preserve unrelated changes. See [task isolation and delivery](docs/agent-workflows/isolation-and-delivery.md).
 - Every bug or defect issue fix must include a regression test that reproduces the reported problem. Add and run that test before changing behavior; do not mark the issue complete without it. Follow [bug-fix workflow](docs/agent-workflows/bug-fixes.md).
+- Every frontend fix must include screenshot evidence showing the fixed behavior in the affected state. Link the screenshots in the pull request description and state the viewport, theme, locale, and interaction; include before-and-after screenshots when the original behavior can be reproduced safely.
 - If an agent discovers a defect in `okf-agent` itself while using or evaluating it, report it in the [`left-try/okf-agent`](https://github.com/left-try/okf-agent) repository using `gh` outside the sandbox. Follow the reporting steps in the [bug-fix workflow](docs/agent-workflows/bug-fixes.md); do not file `okf-agent` defects in this repository.
 - Never weaken or delete a test to make a change pass.
 - Keep changes focused and preserve unrelated work.
@@ -23,12 +24,19 @@ Adapted from [Ponytail](https://github.com/DietrichGebert/ponytail):
 - Choose the smallest complete solution. Reuse established code and installed dependencies; add abstractions, options, or dependencies only when the task requires them. Include every affected caller, test, fixture, configuration, and document.
 - Keep validation, error handling, security, accessibility, and data-loss protections intact. Follow the repository's stricter bug-fix, testing, and verification workflows above.
 
+Use one applicable Stovo workflow as the task entry point. Project skill wrappers route to these canonical pages; applicable human and higher-priority host instructions take precedence. Generic installed skills remain available for their specific work.
+
 ## Workflows
 
 Read the applicable guide before editing:
 
 | Work | Guide |
 | --- | --- |
+| Evaluating skills, routing or approval decisions | [Workflow evals](docs/agent-workflows/workflow-evals.md) |
+| Independent acceptance or whole-delivery review | [Independent QA](docs/agent-workflows/independent-qa.md) |
+| Frontend behavior, UI copy, layout, or shared styles | [Headless frontend evidence](docs/agent-workflows/frontend-evidence.md) |
+| Substantial dependency choice or cross-project reuse proposal | [Dependency and reuse assessment](docs/agent-workflows/dependency-and-reuse.md) |
+| Human approval, task scope, or changed approved artifacts | [Approvals and contracts](docs/agent-workflows/approvals.md) |
 | New feature or materially new user-visible behavior | [Feature development](docs/agent-workflows/feature-development.md) |
 | Bug, defect, incident, or regression fix | [Bug fixes](docs/agent-workflows/bug-fixes.md) |
 | Test selection and verification expectations | [Testing](docs/agent-workflows/testing.md) |

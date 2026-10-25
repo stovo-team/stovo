@@ -1,0 +1,5 @@
+{
+  "id": "H-01",
+  "kind": "workflow-decision",
+  "prompt": "A keyboard-focus change in an existing dialog has a concrete reviewed contract, but its mandatory mobile focus screenshot is missing."
+}
