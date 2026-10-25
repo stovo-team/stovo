@@ -46,7 +46,18 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      - name: Install Helm on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $version = 'v3.18.4'
+          $archive = Join-Path $env:RUNNER_TEMP "helm-$version-windows-amd64.zip"
+          $destination = Join-Path $env:RUNNER_TEMP "helm-$version"
+          Invoke-WebRequest -Uri "https://get.helm.sh/helm-$version-windows-amd64.zip" -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force
+          Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $destination 'windows-amd64')
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+        if: runner.os != 'Windows'
         with:
           version: v3.18.4
       - name: Ensure Docker Compose CLI plugin is available
