@@ -7,18 +7,21 @@ export function freezeHarness(root,target,paths){
  return sha256(JSON.stringify(entries));
 }
 export function linkNodeModules({source,destination,platform=process.platform,link=symlinkSync}){link(source,destination,platform==='win32'?'junction':'dir');}
+export function detachDependencyLinks(checkout,{lstat=lstatSync,unlink=unlinkSync}={}){
+ const detached=[];
+ for(const folder of ['frontend','e2e']){
+  const linkPath=path.join(checkout,folder,'node_modules');
+  let stat;try{stat=lstat(linkPath);}catch(error){if(error.code==='ENOENT')continue;throw error;}
+  if(!stat.isSymbolicLink())continue;
+  unlink(linkPath);detached.push(linkPath);
+ }
+ return detached;
+}
 export function windowsExtendedPath(value){const resolved=path.resolve(value);return resolved.startsWith('\\\\?\\')?resolved:'\\\\?\\'+resolved.replaceAll('/','\\');}
 export function releaseWorktree({checkout,dependencyLinks=[],platform=process.platform,run,lstat=lstatSync,unlink=unlinkSync,remove=rmSync}={}){
  for(const destination of dependencyLinks){let stat;try{stat=lstat(destination);}catch{continue;}if(stat.isSymbolicLink())unlink(destination);else if(stat.isDirectory())remove(platform==='win32'?windowsExtendedPath(destination):destination,{recursive:true,force:true});}
  const args=platform==='win32'?['-c','core.longpaths=true','worktree','remove','--force',checkout]:['worktree','remove','--force',checkout];
  try{run('git',args);}catch{remove(platform==='win32'?windowsExtendedPath(checkout):checkout,{recursive:true,force:true});run('git',['worktree','prune']);}
-}
-export function detachDependencyLinks(checkout,{lstatSync:stat=lstatSync,rmSync:remove=rmSync}={}){
- for(const folder of ['frontend','e2e']){
-  const destination=path.join(checkout,folder,'node_modules');
-  let info;try{info=stat(destination);}catch(error){if(error.code==='ENOENT')continue;throw error;}
-  if(info.isSymbolicLink())remove(destination,{force:true});
- }
 }
 export function unlinkDependencyLinks(checkout,fs={lstatSync,unlinkSync,rmSync}){for(const folder of ['frontend','e2e']){const target=path.join(checkout,folder,'node_modules');let stat;try{stat=fs.lstatSync(target);}catch(e){if(e.code==='ENOENT')continue;throw e;}if(stat.isSymbolicLink())fs.unlinkSync(target);else fs.rmSync(target,{recursive:true,force:true});}}
 export function validateComparison({base,head}){if(!/^[a-f0-9]{40}$/.test(base??'')||!/^[a-f0-9]{40}$/.test(head??'')||base===head)throw Error('comparison requires distinct exact commit IDs');return {ok:true,base,head};}
