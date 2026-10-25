@@ -13,6 +13,7 @@ const requireSecretKey = (yaml, secretName, key) => assert.match(
   new RegExp(`secretKeyRef:[\\s\\S]{0,160}name:\\s*${secretName}[\\s\\S]{0,80}key:\\s*${key}\\b[\\s\\S]{0,50}optional:\\s*false`),
   `must require ${key} from externally managed Secret ${secretName}`,
 );
+const deploymentFieldOf = (bugReport) => bugReport.replace(/\r\n/g, '\n').match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
 
 const slugHeading = (heading) => heading.toLowerCase().trim()
   .replace(/[`*_~]/g, '')
@@ -78,9 +79,9 @@ test('agent instructions link to the PR review findings workflow', () => {
 
 test('bug report deployment choices cover hosted, managed, and local deployments', () => {
   const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
-  const deploymentField = bugReport.match(/  - type: dropdown\n    id: deployment\n([\s\S]*?)(?=\n  - type:|$)/)?.[1];
+  const deploymentField = deploymentFieldOf(bugReport);
   assert.ok(deploymentField, 'bug report must include a deployment dropdown');
-  const choices = [...deploymentField.matchAll(/^        - (.+)$/gm)].map((match) => match[1]);
+  const choices = [...deploymentField.matchAll(/^        - (.+?)\r?$/gm)].map((match) => match[1]);
   assert.deepEqual(choices, [
     'Cloud based',
     'Managed Instance',
@@ -88,6 +89,12 @@ test('bug report deployment choices cover hosted, managed, and local deployments
     'Local - Kubernetes/Helm',
     'Other',
   ]);
+});
+
+test('bug report deployment dropdown parser accepts Windows CRLF files', () => {
+  const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
+  const windowsBugReport = bugReport.replace(/\n/g, '\r\n');
+  assert.equal(deploymentFieldOf(windowsBugReport), deploymentFieldOf(bugReport));
 });
 
 test('README opens with the approved corporate positioning and tagline', () => {
