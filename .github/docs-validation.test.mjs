@@ -93,7 +93,7 @@ test('bug report deployment choices cover hosted, managed, and local deployments
 
 test('bug report deployment dropdown parser accepts Windows CRLF files', () => {
   const bugReport = read('.github/ISSUE_TEMPLATE/bug_report.yml');
-  const windowsBugReport = bugReport.replace(/\n/g, '\r\n');
+  const windowsBugReport = bugReport.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
   assert.equal(deploymentFieldOf(windowsBugReport), deploymentFieldOf(bugReport));
 });
 
