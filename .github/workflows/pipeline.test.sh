@@ -159,6 +159,10 @@ awk '
 ' .github/workflows/pipeline.yml
 
 notes_retry_contract=$(sed -n '/      - name: Generate release notes/,/      - name: Publish Android release to Telegram/p' .github/workflows/pipeline.yml)
+if grep -Fq 'jq ' <<< "$notes_retry_contract"; then
+  echo "Android release notes must not depend on jq, which is unavailable on the Windows release runner." >&2
+  exit 1
+fi
 for required in 'MAX_ATTEMPTS=3' '-le "$MAX_ATTEMPTS"' 'BASE_DELAY=$((1 << (attempt - 1)))' 'RANDOM' 'sleep "$DELAY"' 'curl -fsSL https://api.openai.com/v1/chat/completions'; do
   if ! grep -Fq -- "$required" <<< "$notes_retry_contract"; then
     echo "Android release notes must retry the OpenAI request up to three times with exponential jittered delays ($required)." >&2

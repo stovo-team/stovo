@@ -1193,18 +1193,22 @@ jobs:
             SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
           else
             PROMPT=$(printf 'Write short release notes for the Stovo family messenger Android app.\nAudience: family members, not developers.\nFormat: plain text, 2-5 bullet points, friendly tone. Match the language of the commits.\nNo markdown headers, no hype.\n\nCommits:\n%s' "$COMMITS")
-            REQUEST_BODY=$(jq -n \
-              --arg model "${MODEL}" \
-              --arg prompt "$PROMPT" \
-              '{
-                model: $model,
-                max_tokens: 280,
-                temperature: 0.4,
-                messages: [
-                  {role: "system", content: "You write concise mobile app release notes."},
-                  {role: "user", content: $prompt}
-                ]
-              }')
+            REQUEST_BODY=$(printf '%s' "$PROMPT" | node -e '
+              let prompt = "";
+              process.stdin.setEncoding("utf8");
+              process.stdin.on("data", chunk => { prompt += chunk; });
+              process.stdin.on("end", () => {
+                process.stdout.write(JSON.stringify({
+                  model: process.argv[1],
+                  max_tokens: 280,
+                  temperature: 0.4,
+                  messages: [
+                    { role: "system", content: "You write concise mobile app release notes." },
+                    { role: "user", content: prompt }
+                  ]
+                }));
+              });
+            ' "$MODEL")
             MAX_ATTEMPTS=3
             attempt=1
             REQUEST_SUCCEEDED=0
@@ -1230,7 +1234,15 @@ jobs:
             done
 
             if [ "$REQUEST_SUCCEEDED" -eq 1 ]; then
-              SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+              SUMMARY=$(printf '%s' "$RESPONSE" | node -e '
+                let response = "";
+                process.stdin.setEncoding("utf8");
+                process.stdin.on("data", chunk => { response += chunk; });
+                process.stdin.on("end", () => {
+                  const content = JSON.parse(response).choices?.[0]?.message?.content;
+                  if (typeof content === "string") process.stdout.write(content);
+                });
+              ')
             else
               echo "OpenAI request failed after ${MAX_ATTEMPTS} attempts — using commit list" >&2
               SUMMARY=""
