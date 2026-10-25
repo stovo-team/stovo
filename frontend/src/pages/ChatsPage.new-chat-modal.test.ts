@@ -21,6 +21,16 @@ describe("new message dialog on web", () => {
     expect(styles).toContain("@media (max-width: 767px)");
   });
 
+  it("keeps the desktop new-chat dialog at the large width in every language", () => {
+    const desktopRule = [...styles.matchAll(
+      /@media \(min-width: 768px\) \{\s*\.popup-dialog\.new-chat-screen \{([^}]*)\}/g
+    )].at(-1)?.[1] ?? "";
+    expect(desktopRule).toMatch(/width:\s*640px;/);
+    expect(desktopRule).toMatch(/min-width:\s*640px;/);
+    expect(desktopRule).toMatch(/max-width:\s*640px;/);
+    expect(desktopRule).not.toMatch(/min\(100%/);
+  });
+
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
     expect(newChatDialog).toContain("<PopupCloseButton");
     expect(newChatDialog).toContain("ariaLabel={strings.chats.newChat.close}");
