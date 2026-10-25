@@ -16,11 +16,17 @@ test('comparison cleanup removes dependency junctions before Git and preserves s
   const checkout=path.join(root,'comparison');git('worktree','add','--detach',checkout,'HEAD');
   const shared=path.join(root,'node_modules');fs.mkdirSync(shared);fs.writeFileSync(path.join(shared,'keep'),'shared dependency');
   for(const folder of ['frontend','e2e']){fs.mkdirSync(path.join(checkout,folder));api.linkNodeModules({source:shared,destination:path.join(checkout,folder,'node_modules')});}
-  api.cleanupComparisonWorktree?.({checkout,command:(bin,args)=>{
+  const longCheckoutPath=path.join(checkout,'frontend',...Array.from({length:5},(_,index)=>`${index}-`.padEnd(52,'x')),'screenshot.png');
+  fs.mkdirSync(path.dirname(longCheckoutPath),{recursive:true});fs.writeFileSync(longCheckoutPath,'long path fixture');
+  assert.ok(longCheckoutPath.length>260);
+  const commands=[];
+  api.cleanupComparisonWorktree?.({checkout,platform:'win32',command:(bin,args)=>{
    // Git for Windows recursively deleting junctions can hit MAX_PATH. Git must receive a checkout without dependencies.
    for(const folder of ['frontend','e2e'])assert.equal(fs.existsSync(path.join(checkout,folder,'node_modules')),false);
+   commands.push({bin,args});
    return execFileSync(bin,args,{cwd:root,encoding:'utf8'});
   }});
+  assert.deepEqual(commands,[{bin:'git',args:['-c','core.longpaths=true','worktree','remove','--force',checkout]}]);
   assert.equal(fs.existsSync(checkout),false);assert.equal(fs.readFileSync(path.join(shared,'keep'),'utf8'),'shared dependency');
   assert.equal(git('worktree','list','--porcelain').includes(checkout),false);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
