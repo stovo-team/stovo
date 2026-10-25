@@ -16,7 +16,7 @@ Write a scenario command that consumes the request/fixture on stdin, asserts the
 Run this from each isolated revision with the same input bytes and environment:
 
 ```sh
-node scripts/agent-workflows/capture-backend.mjs --input artifacts/backend/request.json --output artifacts/backend/after.json --environment local --target disposable-api --runtime 'Go 1.25; PostgreSQL 16; reset fixture v1' --kind api --command '["node","scripts/reproduce-retry.mjs"]'
+node scripts/agent-workflows/capture-backend.mjs --input artifacts/agent-workflows/backend/request.json --output artifacts/agent-workflows/backend/after.json --environment local --target disposable-api --runtime 'Go 1.25; PostgreSQL 16; reset fixture v1' --kind api --command '["node","scripts/reproduce-retry.mjs"]'
 ```
 
 The command is illustrative; use the actual scenario script and installed runtime. Use `before.json` at the base and `after.json` at the changed revision. Capture output must be Git-ignored and new. The recorder runs argv without a shell, feeds the input bytes, preserves stdout/stderr and the actual exit code, hashes the receipt, and rejects source/input mutation during execution. A nonzero before result is retained and the CLI exits unsuccessfully; it must never be relabeled passed. Capture does not decide whether arbitrary output satisfies acceptance.

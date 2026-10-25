@@ -39,6 +39,7 @@ Read the applicable guide before editing:
 | Human approval, task scope, or changed approved artifacts | [Approvals and contracts](docs/agent-workflows/approvals.md) |
 | New feature or materially new user-visible behavior | [Feature development](docs/agent-workflows/feature-development.md) |
 | Bug, defect, incident, or regression fix | [Bug fixes](docs/agent-workflows/bug-fixes.md) |
+| Backend behavior, persistence or deployment impact | [Backend evidence](docs/agent-workflows/backend-evidence.md) |
 | Test selection and verification expectations | [Testing](docs/agent-workflows/testing.md) |
 | Branches, worktrees, pull requests, and cleanup | [Task isolation and delivery](docs/agent-workflows/isolation-and-delivery.md) |
 | Review findings, comment evidence, and follow-up issues | [PR review findings](docs/agent-workflows/pr-review-findings.md) |
