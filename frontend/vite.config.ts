@@ -30,8 +30,8 @@ function bundlePdfJsSupportAssets() {
 export default defineConfig({
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
-    // The Windows CI runner has capacity for three parallel test workers.
-    maxWorkers: process.env.CI ? 3 : undefined,
+    // Self-hosted CI shares memory with other jobs; avoid a worker per CPU.
+    maxWorkers: process.env.CI ? 1 : undefined,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
