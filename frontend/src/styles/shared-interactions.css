@@ -134,12 +134,19 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Shared app scrollbars match the understated chat treatment. Individual
-   components can still opt out with their more-specific hidden/custom rules. */
+/* One visible scrollbar style. Components may only hide a scroller.
+   Firefox keeps the standard properties. A length is unsupported there, so thin remains.
+   Chromium drops ::-webkit-scrollbar sizing once scrollbar-color or scrollbar-width is customized, and its native thin bar is wider than the token. Those engines leave the standard properties at auto and paint the WebKit bar at --scrollbar-size. */
 :where(*) {
   scrollbar-color: var(--border-default) transparent;
   scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+}
+
+@supports selector(::-webkit-scrollbar) {
+  :where(*) {
+    scrollbar-color: auto;
+    scrollbar-width: auto;
+  }
 }
 
 :where(*)::-webkit-scrollbar {

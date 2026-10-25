@@ -68,6 +68,7 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 
 ## Active pull requests
 
+- 4px scrollbars: https://github.com/stovo-team/stovo/pull/316
 - MCP connector settings button circle: https://github.com/stovo-team/stovo/pull/309
 - Quick access layout reset: https://github.com/stovo-team/stovo/pull/306
 - Chat transfer controls follow-up: https://github.com/stovo-team/stovo/pull/174
