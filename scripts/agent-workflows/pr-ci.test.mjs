@@ -42,5 +42,7 @@ test('publication creates/reuses a PR then waits for its actual CI', async () =>
   assert.ok(calls.some(c=>c[1]==='pr'&&c[2]==='create'&&c.includes('feature/parent')));
   assert.ok(calls.some(c=>c[0]==='git'&&c.includes('origin/feature/parent...HEAD')));
   assert.equal(calls.filter(c=>c[1]==='pr'&&c[2]==='view').length,2);
+  await deliverPr({repo:'owner/repo',branch:'feature/demo',title:'Fix: demo',bodyFile:'body.md',run:(tool,args)=>args[0]==='pr'&&args[1]==='list'?'[{"url":"https://github.com/owner/repo/pull/1","isCrossRepository":false}]':run(tool,args),sleep:async()=>{}});
+  assert.ok(calls.some(c=>c[1]==='api'&&c.includes('repos/owner/repo/pulls/1')&&c.includes('body=@body.md')));
   await assert.rejects(()=>deliverPr({repo:'other/repo',branch:'master',run}),/repository|branch/i);
 });

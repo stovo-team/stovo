@@ -48,7 +48,7 @@ export async function deliverPr({repo,branch,title,bodyFile,base='master',run=ex
   run('git',['push','--set-upstream','origin',branch]);
   const existing=JSON.parse(run('gh',['pr','list','--repo',repo,'--head',branch,'--state','open','--json','url,isCrossRepository']));
   let url=existing.find(pr=>pr.isCrossRepository===false)?.url;
-  if (url) run('gh',['pr','edit',url,'--repo',repo,'--base',base,'--title',title,'--body-file',bodyFile]);
+  if (url) run('gh',['api',`repos/${repo}/pulls/${url.split('/').pop()}`,'--method','PATCH','-f',`base=${base}`,'-f',`title=${title}`,'-F',`body=@${bodyFile}`]);
   else url=run('gh',['pr','create','--repo',repo,'--base',base,'--head',branch,'--title',title,'--body-file',bodyFile]).trim();
   if (!/^https:\/\/github\.com\//.test(url)) throw Error('Missing usable PR URL');
   onPublished(url);
