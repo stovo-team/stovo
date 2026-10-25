@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "status": "approved",
-  "source": "Human selected «Принять как текущие эталоны» for gallery http://127.0.0.1:36587 in this Codex chat on 2026-10-19. Known contrast/pointer issues remain documented.",
-  "sourceRevision": "f7559e395c535373e4c1ea27a12174927a527063",
+  "source": "Human approved “Yes, update the references” in this Codex chat on 2026-10-25 for PR 189.",
+  "sourceRevision": "d3498c6c565e296918b42b23c1124adec2e93c3e",
   "environment": {
     "node": "v22.23.1",
     "platform": "linux",
@@ -12,39 +12,39 @@
   "files": [
     {
       "path": "V-01.png",
-      "sha256": "f4618687a51445c1c76e495d3caadf6c5b924d0c376f1bc3ece38293940e0851"
+      "sha256": "ca3d7efe6061b2f5cb6f3c589ea235c8a4ed02480c0906e1ecd9584cc38edd97"
     },
     {
       "path": "V-02.png",
-      "sha256": "2b7093166e282dcc2385913e7d2d7da26f0ac5f59f0ddb24a11ae15ad781d013"
+      "sha256": "011449022f8797a4d64846fd53cb382f55ab9bda40f686586fa5c28755fd7e9d"
     },
     {
       "path": "V-03.png",
-      "sha256": "2902f0705d9d34aeed5215382d0bf08ded8156f7d936cfc87bd406e0f0accbe9"
+      "sha256": "99f44ac30479dcda1d4ad13b62edebaf97e15ddeded85b50f6b821e047b4c6e1"
     },
     {
       "path": "V-04.png",
-      "sha256": "1c98b338d31c471708484ccb0482c2303e8d09cae17a1a90350a8e824dcaa3d6"
+      "sha256": "e263bc9ad48a5cec26891cf37013e21d376f04b80a85eb1f27b9d41e6ebca4e6"
     },
     {
       "path": "V-05.png",
-      "sha256": "a1f272ac578411159d963224e9f3ca6394d1d063533de8c96a563e5c1c6c9b66"
+      "sha256": "79d519b4422e3047b9a001c28b2036b5a7fa6593e1d4b8e01c2fc002c4256577"
     },
     {
       "path": "V-06.png",
-      "sha256": "195a4042b774e0dd1e5755dbfba32ccc0ddda4b10834bcbba4f360de506ebf7b"
+      "sha256": "509319113da8dcf19133f6afae2e7fb0fb12be15c779955f361ab54ef31e41f0"
     },
     {
       "path": "V-07.png",
-      "sha256": "5747f5faa909b783a0dced460d2d7c810cd5352322ca5e1caaa5ce914b8a3155"
+      "sha256": "803873c58d9651cb0081bf59f920fc62c3f417917cc1e7baa211047d75fcf758"
     },
     {
       "path": "V-08.png",
-      "sha256": "940f12d3738f504bda09d0170f16923bd24f39d55f66a3f64302ff47cb9aa0ba"
+      "sha256": "974970c820038bf32302d6708ef808f71b60390e721e2c840db9892b1ae3deb4"
     },
     {
       "path": "V-09.png",
-      "sha256": "a777126942c9fe29aa39009b880d7a5e2b6849213a28cbb956d62cfeaa03444a"
+      "sha256": "16350ebda28191efd485fa20b0d648e64a7919dc4580581505d5707dc803b8e7"
     },
     {
       "path": "V-10.png",
@@ -52,7 +52,7 @@
     },
     {
       "path": "V-11.png",
-      "sha256": "9fc34a21cee286cb6d8173e82787c31db42ecc919c3c3377861e336772375b81"
+      "sha256": "65e0752c13a1074b3b3e2af56d53595dcfe8477b491c96dd67dc2e8e470ac0a8"
     },
     {
       "path": "V-12.png",
