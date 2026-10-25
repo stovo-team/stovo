@@ -32,7 +32,7 @@
 .storage-page .storage-source-copy strong, .storage-page .storage-source-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .storage-page .storage-search { max-width: none; width: 100%; }
 .storage-page .filter-chip { border-radius: var(--radius-pill); min-height: 32px; padding: 5px 12px; }
-.storage-page .storage-grid { align-content: start; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); }
+.storage-page .storage-grid { align-content: start; grid-template-columns: repeat(auto-fill, 180px); }
 .storage-page .storage-tile { border-radius: var(--radius-bubble); }
 .storage-page .storage-preview, .storage-page .storage-details-panel { border-radius: var(--radius-panel); }
 .storage-page .storage-preview-close, .storage-page .storage-preview-actions button { border-radius: var(--radius-pill); }
@@ -79,7 +79,7 @@
     padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);
     width: 100%;
   }
-  .storage-page .storage-grid { box-sizing: border-box; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 100%; min-width: 0; width: 100%; }
+  .storage-page .storage-grid { box-sizing: border-box; grid-template-columns: repeat(auto-fill, 180px); max-width: 100%; min-width: 0; width: 100%; }
   /* Mobile uses the source dropdown only — never the desktop chat source list. */
   .storage-page .storage-source-sidebar { display: block; overflow: visible; padding: 0 0 12px; position: relative; }
   .storage-page .storage-source-sidebar > .eyebrow,

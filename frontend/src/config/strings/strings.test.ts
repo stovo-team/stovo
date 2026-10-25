@@ -55,6 +55,9 @@ describe("i18n strings and language resolution", () => {
     expect(ru.auditUi.joinMeetingAction).toBe("Присоединиться");
     expect(en.auditUi.plansAction).toBe("In Plans");
     expect(ru.auditUi.plansAction).toBe("В планы");
+    expect(ru.auditUi.intelligence).toBe("Stovo Intelligence");
+    expect(ru.auditUi.intelligenceDetails).toContain("Stovo Intelligence");
+    expect(ru.sharedUi.intelligenceA11y).toContain("Stovo Intelligence");
     expect(en.nav.storage).toBe("Files");
     expect(ru.nav.storage).toBe("Файлы");
 

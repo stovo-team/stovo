@@ -85,8 +85,7 @@
     position: relative;
   }
 
-  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header,
-  :root[data-platform="web"] .chat-sidebar-header {
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
     left: 0;
     margin: 0;
     padding: 0 !important;

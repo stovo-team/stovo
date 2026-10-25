@@ -99,6 +99,23 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain(".plans-timeline-content");
   });
 
+  it("keeps the collapsed plans sidebar opener at full opacity on hover", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+
+    expect(styles).toMatch(/\.plans-layout--sidebar-collapsed \.plans-sidebar-collapse:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--accent-primary\);[^}]*border-color:\s*var\(--accent-primary\);[^}]*color:\s*var\(--text-on-accent, var\(--color-palette-f2074b6cef37\)\);[^}]*opacity:\s*1;[^}]*box-shadow:\s*0 0 0 2px color-mix\(in srgb, var\(--accent-primary\) 24%, transparent\);/);
+  });
+
+  it("keeps a 12px resize track between the desktop sidebar and main content", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+
+    expect(styles).toMatch(/\.plans-layout\s*\{[^}]*grid-template-columns:\s*minmax\(220px, var\(--plans-sidebar-width, 300px\)\) 12px minmax\(0, 1fr\)/);
+    expect(styles).toMatch(/\.plans-sidebar-resizer\s*\{[^}]*cursor:\s*col-resize;[^}]*touch-action:\s*none/);
+  });
+
   it("styles the plan description textarea like the dialog fields", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");

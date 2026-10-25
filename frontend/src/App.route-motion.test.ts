@@ -1,9 +1,9 @@
-import { readCssSource } from "./test/cssSource";
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readTextFile } from "./testUtils/readTextFile";
+import { readCssSource } from "./test/cssSource";
 
-const appSource = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
+const appSource = readTextFile(resolve(process.cwd(), "src/App.tsx"));
 const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("native tab transition layer", () => {
@@ -31,10 +31,7 @@ describe("call session route lifetime", () => {
   });
 
   it("keeps minimized call UI outside the hidden chats route and minimizes calls on departure", () => {
-    const callFeatureSource = readFileSync(
-      resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"),
-      "utf8",
-    );
+    const callFeatureSource = readTextFile(resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"));
 
     expect(callFeatureSource).toContain("createPortal");
     expect(callFeatureSource).toContain("useLocation");

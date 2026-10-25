@@ -212,7 +212,7 @@
   max-height: 64px;
   min-height: 48px;
   overflow: hidden;
-  margin: 10px var(--message-gutter-x) 0;
+  margin: 4px var(--message-gutter-x) 0;
   padding: 0;
   position: relative;
   transition:

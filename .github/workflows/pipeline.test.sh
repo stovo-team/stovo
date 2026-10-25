@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+grep -Fq 'frontend/** text eol=lf' .gitattributes || {
+  echo "Frontend sources must keep LF line endings on every runner OS." >&2
+  exit 1
+}
+
 bash .github/workflows/backend-dockerfiles.test.sh
 node .github/workflows/multiserver-routing.test.mjs
+bash deploy/scripts/ensure-tenant-proxy-network.test.sh
 
 awk '
   function fail(message) {
@@ -61,8 +67,25 @@ awk '
     sub(/^    runs-on:[[:space:]]*/, "", runner)
     job_runner[job] = runner
   }
+  job == "changes" && /^      - name: Detect available shell$/ { shell_detection_step = 1 }
+  job == "changes" && shell_detection_step && /^        shell: powershell$/ { shell_detection_shell = 1 }
+  job == "changes" && shell_detection_step && /Get-Command git/ { git_command_lookup = 1 }
+  job == "changes" && shell_detection_step && /bin\\bash\.exe/ { git_bash_path = 1 }
+  job == "changes" && shell_detection_step && /Add-Content.*GITHUB_PATH/ { git_bash_added_to_path = 1 }
+  job == "changes" && shell_detection_step && /^[[:space:]]+fi[[:space:]]*$/ { shell_uses_bash_fi = 1 }
+  job == "changes" && /GIT_CONFIG_COUNT: 2/ { checkout_git_config_count = 1 }
+  job == "changes" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { checkout_autocrlf_key = 1 }
+  job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
+  job == "changes" && /GIT_CONFIG_KEY_1: http\.version/ { checkout_http_version_key = 1 }
+  job == "changes" && /GIT_CONFIG_VALUE_1: HTTP\/1\.1/ { checkout_http_version_http1 = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
+  job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
+  job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
+  job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
   job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
+  job == "changes" && /^[[:space:]]+filter:[[:space:]]+blob:none[[:space:]]*$/ { changes_skips_historical_blobs = 1 }
   (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
   job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
@@ -75,6 +98,7 @@ awk '
     if (!global_contents_read) fail("The workflow token must have read-only contents access by default.")
     if (!changes_contents_read) fail("The changes job must retain contents: read permission.")
     if (!changes_fetches_full_history) fail("Detect Changes must fetch full history so merge pushes can compare against the previous push commit.")
+    if (!changes_skips_historical_blobs) fail("Detect Changes must avoid downloading historical blobs when fetching full history.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
     if (insecure_node_override) fail("The pipeline must not enable the insecure Node.js runtime override.")
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
@@ -86,11 +110,27 @@ awk '
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
     }
-    if (job_runner["backend-ci"] != "[self-hosted, tests]") {
-      fail("Backend CI must stay on the backend CI runner labeled tests.")
+    if (job_runner["changes"] != "[self-hosted, Windows, tests]") {
+      fail("The changes job must use the Windows self-hosted tests runner instead of GitHub-hosted Windows.")
     }
-    if (job_runner["deploy-android"] != "[self-hosted, e2e]") {
-      fail("Android release must stay on the frontend runner labeled e2e.")
+    if (job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
+      fail("Backend CI must use the Windows tests runner because its database services are initialized with Docker Desktop.")
+    }
+    if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
+      fail("The changes job must use built-in Windows PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
+    }
+    if (shell_uses_bash_fi) fail("The PowerShell shell bootstrap must not contain Bash control syntax.")
+    if (!checkout_git_config_count || !checkout_autocrlf_key || !checkout_autocrlf_disabled || !checkout_http_version_key || !checkout_http_version_http1) {
+      fail("The Windows checkout must preserve LF line endings and use HTTP/1.1 for reliable GitHub fetches.")
+    }
+    if (!frontend_git_config_count || !frontend_autocrlf_key || !frontend_autocrlf_disabled) {
+      fail("Frontend CI must disable the Windows autocrlf conversion before checkout.")
+    }
+    if (!pipeline_contract_step || !pipeline_contract_shell) {
+      fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
+    }
+    if (job_runner["deploy-android"] != "[self-hosted, e2e, Windows]") {
+      fail("Android release must target the Windows frontend runner labeled e2e.")
     }
     if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
     if (npm_remote_cache_enabled) fail("Frontend and Android jobs must use the runner-local npm cache, not restore the oversized remote archive.")
@@ -101,8 +141,8 @@ awk '
       fail("Android release must use tags already fetched by checkout instead of fetching them again.")
     }
 
-    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
-    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
+    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\'' && needs.solid-boundaries.result == '\''success'\''"
+    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && (needs.solid-boundaries.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
       fail("Frontend deploy must require a master push and the frontend path filter.")
     }
@@ -155,73 +195,103 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
-if [[ ! -f scripts/check-solid-boundaries.ps1 ]]; then
-  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.ps1." >&2
+if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
+  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
   exit 1
 fi
 solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'runs-on: windows-latest' 'shell: pwsh' 'scripts/check-solid-boundaries.ps1 all'; do
+for required in 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
   if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Trusted PR SOLID boundaries must run on Windows with PowerShell ($required)." >&2
+    echo "Trusted PR SOLID boundaries must run with Bash ($required)." >&2
     exit 1
   fi
 done
-if grep -Fq 'bash scripts/check-solid-boundaries.sh' "$trusted_pr_workflow"; then
-  echo "Trusted PR SOLID boundary checks must not invoke the Bash checker." >&2
+if grep -Fq 'check-solid-boundaries.ps1' "$trusted_pr_workflow"; then
+  echo "Trusted PR SOLID boundaries must use the cross-platform Bash checker." >&2
   exit 1
 fi
-if [[ $(grep -Fc "'scripts/check-solid-boundaries.ps1'" "$trusted_pr_workflow") -ne 2 ]]; then
-  echo "Frontend and backend path filters must trigger the Windows SOLID boundary job for checker changes." >&2
+if [[ $(grep -Fc "'scripts/check-solid-boundaries.sh'" "$trusted_pr_workflow") -ne 2 ]]; then
+  echo "Frontend and backend path filters must trigger the Linux SOLID boundary job for checker changes." >&2
   exit 1
 fi
-grep -Fq '  pull_request:' "$trusted_pr_workflow" || {
-  echo "Trusted PR tests must use pull_request so GitHub can require approval before external PR workflows run." >&2
+grep -Fq '  pull_request_target:' "$trusted_pr_workflow" || {
+  echo "Trusted PR runner selection must come from the base-branch pull_request_target workflow." >&2
   exit 1
 }
+if grep -Fq '  pull_request:' "$trusted_pr_workflow"; then
+  echo "Trusted PR runner selection must not use a PR-controlled pull_request workflow." >&2
+  exit 1
+fi
 grep -Fq 'persist-credentials: false' "$trusted_pr_workflow" || {
   echo "PR checkout must not persist a write-capable GitHub token." >&2
   exit 1
 }
-awk '
-  /^  [[:alnum:]_-]+:$/ {
-    job = $0
-    sub(/^  /, "", job)
-    sub(/:$/, "", job)
-  }
-  /^    runs-on:/ {
-    runner = $0
-    sub(/^    runs-on:[[:space:]]*/, "", runner)
-    job_runner[job] = runner
-  }
-  END {
-    if (job_runner["frontend-ci"] != "ubuntu-latest") {
-      print "Trusted PR frontend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
-      failed = 1
+trusted_pr_job_runner() {
+  awk -v target="$1" '
+    /^  [[:alnum:]_-]+:$/ {
+      job = $0
+      sub(/^  /, "", job)
+      sub(/:$/, "", job)
     }
-    if (job_runner["backend-ci"] != "ubuntu-latest") {
-      print "Trusted PR backend tests must use Ubuntu for Bash and Linux tooling." > "/dev/stderr"
-      failed = 1
+    job == target && /^    runs-on:/ {
+      sub(/^    runs-on:[[:space:]]*/, "")
+      print
+      exit
     }
-    if (failed) exit 1
-  }
-' "$trusted_pr_workflow"
-awk '
-  /^  pipeline-contract:$/ { in_pipeline_contract = 1; next }
-  /^  [[:alnum:]_-]+:$/ && in_pipeline_contract { exit }
-  in_pipeline_contract && /^    runs-on: ubuntu-latest$/ { pipeline_contract_uses_hosted_runner = 1 }
-  in_pipeline_contract && /run: bash \.github\/workflows\/pipeline\.test\.sh/ { pipeline_contract_runs_tests = 1 }
-  END {
-    if (!pipeline_contract_uses_hosted_runner) {
-      print "Pipeline contract tests must run on the GitHub-hosted PR runner." > "/dev/stderr"
-      failed = 1
-    }
-    if (!pipeline_contract_runs_tests) {
-      print "Trusted PR checks must run pipeline.test.sh before merge." > "/dev/stderr"
-      failed = 1
-    }
-    if (failed) exit 1
-  }
-' "$trusted_pr_workflow"
+  ' "$trusted_pr_workflow"
+}
+
+require_trusted_pr_runner() {
+  job="$1"
+  self_hosted_labels="$2"
+  hosted_label="$3"
+  runner=$(trusted_pr_job_runner "$job")
+  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('$self_hosted_labels') || fromJSON('[\"$hosted_label\"]') }}"
+
+  if [[ "$runner" != "$expected_runner" ]]; then
+    echo "Trusted PR $job must use the $self_hosted_labels self-hosted runner for collaborators and $hosted_label for community PRs." >&2
+    exit 1
+  fi
+}
+
+require_trusted_pr_runner changes '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner pipeline-contract '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner frontend-ci '["self-hosted","e2e"]' ubuntu-latest
+backend_runner=$(trusted_pr_job_runner backend-ci)
+if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
+  echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
+  exit 1
+fi
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
+    echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq '    services:' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
+  exit 1
+fi
+require_trusted_pr_runner solid-boundaries '["self-hosted","tests","Windows"]' ubuntu-latest
+
+grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
+  echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
+  exit 1
+}
+
+grep -Fq "github.event.pull_request.author_association" "$trusted_pr_workflow" || {
+  echo "PR workflow must route based on the pull request author's repository association." >&2
+  exit 1
+}
+
+frontend_ci_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' 'run: npm ci' 'run: npm test' 'run: npm run build'; do
+  if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
+    echo "Trusted PR frontend checks must run on Linux and Windows e2e runners with a working Bash shell ($required)." >&2
+    exit 1
+  fi
+done
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
@@ -253,26 +323,26 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-grep -Fq 'install-mode: none' .github/workflows/pipeline.yml || {
-  echo "Backend CI must use the golangci-lint binary preinstalled on its persistent runner." >&2
-  exit 1
-}
-grep -Fq 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' .github/workflows/pipeline.yml || {
-  echo "Backend CI must add the runner-local golangci-lint installation directory to PATH." >&2
-  exit 1
-}
-grep -Fq 'GOLANGCI_LINT_VERSION: 2.14.0' .github/workflows/pipeline.yml || {
-  echo "Backend CI must pin and verify the preinstalled golangci-lint version." >&2
-  exit 1
-}
-grep -Fq 'version="$(golangci-lint --version)"' .github/workflows/pipeline.yml || {
-  echo "Backend CI must check the preinstalled golangci-lint version before running it." >&2
-  exit 1
-}
-grep -Fq 'if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then' .github/workflows/pipeline.yml || {
-  echo "Backend CI must fail when the preinstalled golangci-lint version does not match its pin." >&2
-  exit 1
-}
+backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+  if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
+    echo "Backend CI must run the pinned golangci-lint binary with lint caching enabled ($required)." >&2
+    exit 1
+  fi
+done
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  workflow_backend_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none'; do
+    if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
+      echo "Backend CI in $workflow must download and cache a named Windows golangci-lint archive before invoking the action ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Fq 'install-mode: binary' <<< "$workflow_backend_contract"; then
+    echo "Backend CI in $workflow must not use the action's extensionless Windows ZIP extraction path." >&2
+    exit 1
+  fi
+done
 grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {
   echo "The local installation instructions must use the CI golangci-lint version." >&2
   exit 1
@@ -289,3 +359,141 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
   echo "The backend Makefile must provide config validation locally." >&2
   exit 1
 }
+
+solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
+  if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
+    echo "Master SOLID boundaries must run on the self-hosted tests runner and bootstrap Git Bash on Windows ($required)." >&2
+    exit 1
+  fi
+done
+
+backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
+  if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
+    echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
+  echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
+  exit 1
+fi
+
+docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest'; do
+  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
+    echo "Docs validation must use the tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs ($required)." >&2
+    exit 1
+  fi
+done
+
+codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
+for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Linux' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+  if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
+    echo "CodeQL must run serially on the tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
+    exit 1
+  fi
+done
+
+if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
+   ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
+  echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
+  exit 1
+fi
+frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  solid-boundaries:/p' .github/workflows/pipeline.yml)
+if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
+  echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
+  exit 1
+fi
+for deployment in deploy-frontend-web deploy-backend-web deploy-android; do
+  deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
+  if ! grep -Fq 'solid-boundaries' <<< "$deployment_contract"; then
+    echo "$deployment must depend on the master SOLID boundary phase." >&2
+    exit 1
+  fi
+  for required in 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)'; do
+    if ! grep -Fq "$required" <<< "$deployment_contract"; then
+      echo "$deployment must put Git for Windows Bash ahead of the WSL shim before running deployment steps ($required)." >&2
+      exit 1
+    fi
+  done
+done
+
+for deployment in deploy-frontend-web deploy-backend-web; do
+  deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
+  if ! grep -Fq 'runs-on: [self-hosted, tests, Windows]' <<< "$deployment_contract"; then
+    echo "$deployment must target the Windows tests runners." >&2
+    exit 1
+  fi
+  if grep -Fq 'uses: appleboy/ssh-action@' <<< "$deployment_contract"; then
+    echo "$deployment must not use the SSH action that requests a nonexistent extensionless Windows binary." >&2
+    exit 1
+  fi
+  if ! grep -Fq 'ssh -i "$key_file"' <<< "$deployment_contract" ||
+     ! grep -Fq "'bash -s'" <<< "$deployment_contract" ||
+     ! grep -Fq 'StrictHostKeyChecking=accept-new' <<< "$deployment_contract" ||
+     ! grep -Fq 'chmod 600 "$key_file"' <<< "$deployment_contract" ||
+     ! grep -Fq "Join-Path \$gitRoot 'usr\\bin\\ssh.exe'" <<< "$deployment_contract" ||
+     ! grep -Fq 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)' <<< "$deployment_contract" ||
+     ! grep -Fq 'shell: bash' <<< "$deployment_contract"; then
+    echo "$deployment must use Git for Windows OpenSSH to stream its remote Bash script with a protected key file and host-key checking." >&2
+    exit 1
+  fi
+  if ! awk '/^    env:$/ { getline; if ($0 == "      SSH_CLIENT_OS: windows") found = 1 } END { exit !found }' <<< "$deployment_contract"; then
+    echo "$deployment must expose the Windows SSH platform override at job scope." >&2
+    exit 1
+  fi
+done
+android_deploy_contract=$(sed -n '/^  deploy-android:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'; do
+  if ! grep -Fq "$required" <<< "$android_deploy_contract"; then
+    echo "Android release must run with Git Bash on a Windows e2e runner ($required)." >&2
+    exit 1
+  fi
+done
+android_pwsh_setup_contract=$(sed -n '/      - name: Ensure PowerShell Core is available for Android SDK setup/,/      - name: Setup Android SDK/p' .github/workflows/pipeline.yml)
+for required in 'PowerShell-$version-win-x64.zip' 'Get-FileHash' '02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860' 'pwsh.exe' 'GITHUB_PATH'; do
+  if ! grep -Fq "$required" <<< "$android_pwsh_setup_contract"; then
+    echo "Android release must make a verified PowerShell Core executable available before setup-android ($required)." >&2
+    exit 1
+  fi
+done
+if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_contract" != *"Setup Android SDK"* ]]; then
+  echo "Android release must add PowerShell Core to PATH before setup-android." >&2
+  exit 1
+fi
+
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+      exit 1
+    fi
+  done
+  for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/'; do
+    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+      echo "Backend CI in $workflow must use the dynamically allocated test service ports ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Fq -- '--publish 5432:5432' <<< "$backend_ci_contract" || grep -Fq -- '--publish 6379:6379' <<< "$backend_ci_contract"; then
+    echo "Backend CI in $workflow must not bind fixed host ports for test services." >&2
+    exit 1
+  fi
+done
+
+backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Master backend CI must run Atlas in the PostgreSQL container network namespace ($required)." >&2
+    exit 1
+  fi
+done
+for required in 'migration_dir="$(cygpath -w "$PWD/migrations")"' 'source=$migration_dir,target=/migrations,readonly' '--mount "$migration_mount"'; do
+  if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
+    echo "Master backend CI must mount migrations using a Windows-native Docker source path ($required)." >&2
+    exit 1
+  fi
+done

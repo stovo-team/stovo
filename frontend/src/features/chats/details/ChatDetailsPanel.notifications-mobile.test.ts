@@ -1,5 +1,5 @@
-import { readCssSource } from "../../../test/cssSource";
 import { describe, expect, it } from "vitest";
+import { readCssSource } from "../../../test/cssSource";
 
 const styles = readCssSource("src/styles.css");
 

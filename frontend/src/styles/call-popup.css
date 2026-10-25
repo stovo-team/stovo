@@ -320,6 +320,10 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.call-popup-group-call .call-popup-status {
+  font-size: var(--font-size-body);
+}
+
 .call-popup-notice {
   font-size: var(--font-size-caption);
   color: var(--text-secondary);
@@ -719,6 +723,11 @@
 
 .call-grid--presenting {
   align-content: stretch;
+}
+
+.call-grid--single-group-participant > .call-grid__tile--local {
+  width: 92%;
+  justify-self: center;
 }
 
 .call-grid--screen-share {

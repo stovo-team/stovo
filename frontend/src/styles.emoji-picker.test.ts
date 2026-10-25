@@ -283,8 +283,8 @@ describe("desktop chat refinements", () => {
   });
 
   it("removes the desktop active-nav border while retaining a subtle selection", () => {
-    expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("border: 0;");
-    expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 1;");
+    expect(desktopRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("border: 0;");
+    expect(desktopRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 1;");
   });
 
   it("pins Variant A navigation without letting page content enter its rail", () => {

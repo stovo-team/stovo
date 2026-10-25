@@ -1,5 +1,5 @@
-import { readCssSource } from "./src/test/cssSource";
 import { expect, it } from "vitest";
+import { readCssSource } from "./src/test/cssSource";
 
 it("caps only the main chat, storage, and plans panes on large screens", () => {
   const styles = readCssSource("src/styles.css");
@@ -11,6 +11,5 @@ it("caps only the main chat, storage, and plans panes on large screens", () => {
   expect(rule).toContain("width: 100%;");
   expect(rule).not.toContain("sidebar");
   expect(styles.includes("grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);")).toBe(true);
-  expect(styles.includes("grid-template-columns: 300px minmax(0, 1fr);")).toBe(true);
-  expect(styles.includes("grid-template-columns: 360px minmax(0, 1fr);")).toBe(true);
+  expect(styles).toMatch(/\.plans-layout\s*\{[^}]*grid-template-columns:\s*minmax\(220px, var\(--plans-sidebar-width, 300px\)\) 12px minmax\(0, 1fr\)/);
 });

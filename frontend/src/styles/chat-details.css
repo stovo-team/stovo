@@ -296,13 +296,13 @@
   height: min(720px, calc(100dvh - 64px));
   max-width: 100%;
   overflow: hidden;
-  width: min(100%, 460px);
+  width: min(100%, 640px);
 }
 
 .popup-dialog.new-chat-screen {
-  max-width: 460px;
+  max-width: 640px;
   padding: 12px;
-  width: min(100%, 460px);
+  width: min(100%, 640px);
 }
 
 @media (max-width: 767px) {

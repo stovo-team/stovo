@@ -37,6 +37,12 @@ describe("message archive grouped view", () => {
     expect(panel).toContain("quick-access-panel-tabs--archive-controls");
   });
 
+  it("places archive controls below a pinned message and tightens the pin banner gap", () => {
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+    expect(styles).toMatch(/\.messenger-shell\.has-active-chat \.chat-detail:has\(\.quick-access-panel-tabs--archive-controls\):has\(\.pinned-banner\) \.quick-access-panel-tabs--archive-controls\s*\{[^}]*top:\s*72px;/);
+    expect(styles).toMatch(/\.pinned-banner\s*\{[^}]*margin:\s*4px var\(--message-gutter-x\) 0;/);
+  });
+
   it("aligns Drafts & scheduled tabs with the archive controls", () => {
     const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
     expect(styles).toMatch(/\.quick-access-panel--outbox \.quick-access-panel-tabs\s*\{[^}]*margin-left:\s*0;[^}]*margin-top:\s*0;/);

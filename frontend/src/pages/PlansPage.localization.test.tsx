@@ -44,7 +44,7 @@ describe("PlansPage date localization", () => {
     expect(host.querySelector(".plans-header h2")?.textContent).toBe(expected);
   });
 
-  it("places the view filters in a separate row below the date header when the event list is collapsed", async () => {
+  it("replaces the event-list close button with an accessible resize divider", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
@@ -55,20 +55,111 @@ describe("PlansPage date localization", () => {
       await Promise.resolve();
     });
 
-    const event = host.querySelector<HTMLButtonElement>(".plans-sidebar-row");
-    expect(event?.textContent).toContain("Selected event");
-    await act(async () => event?.click());
-    const collapse = host.querySelector<HTMLButtonElement>('[aria-label="Скрыть список событий"]');
-    expect(collapse).not.toBeNull();
-    await act(async () => collapse?.click());
+    expect(host.querySelector(".plans-sidebar-collapse")).toBeNull();
+    const divider = host.querySelector<HTMLDivElement>('[role="separator"]');
+    expect(divider).not.toBeNull();
+    expect(divider?.getAttribute("aria-orientation")).toBe("vertical");
+    expect(divider?.getAttribute("aria-valuemin")).toBe("220");
+    expect(divider?.getAttribute("aria-valuemax")).toBe("560");
+    expect(divider?.getAttribute("aria-valuenow")).toBe("300");
+    expect(divider?.getAttribute("tabindex")).toBe("0");
+  });
 
+  it("resizes the event list by dragging the divider", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(<PlansPage />);
+      await Promise.resolve();
+    });
+
+    const divider = host.querySelector<HTMLDivElement>('[role="separator"]');
+    expect(divider).not.toBeNull();
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 200 }));
+      divider?.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 260 }));
+    });
+
+    expect(divider?.getAttribute("aria-valuenow")).toBe("360");
+    expect(host.querySelector(".plans-layout")?.getAttribute("style")).toContain("--plans-sidebar-width: 360px");
+  });
+
+  it("caps expanded width and collapses when dragging below its minimum", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(<PlansPage />);
+      await Promise.resolve();
+    });
+
+    const divider = host.querySelector<HTMLDivElement>('[role="separator"]');
+    expect(divider).not.toBeNull();
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 200 }));
+      divider?.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 1000 }));
+    });
+    expect(divider?.getAttribute("aria-valuenow")).toBe("560");
+
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 1000 }));
+      divider?.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 0 }));
+    });
     expect(host.querySelector(".plans-layout")?.classList.contains("plans-layout--sidebar-collapsed")).toBe(true);
-    const header = host.querySelector(".plans-header");
-    const tabs = host.querySelector(".plans-mobile-tabs.plans-header-tabs");
-    expect(tabs).not.toBeNull();
-    expect(header?.contains(tabs)).toBe(false);
-    expect(tabs?.previousElementSibling).toBe(header);
-    expect(host.querySelector(".plans-sidebar-row")?.getAttribute("aria-current")).toBe("true");
-    expect(host.querySelector<HTMLButtonElement>(".plans-sidebar-collapse")?.getAttribute("aria-expanded")).toBe("false");
+    expect(host.querySelector(".plans-sidebar-collapse")).not.toBeNull();
+  });
+
+  it("collapses the event list when dragged past its minimum and restores its previous width", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(<PlansPage />);
+      await Promise.resolve();
+    });
+
+    const divider = host.querySelector<HTMLDivElement>('[role="separator"]');
+    expect(divider).not.toBeNull();
+    await act(async () => {
+      divider?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 300 }));
+      divider?.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 210 }));
+    });
+
+    const layout = host.querySelector(".plans-layout");
+    expect(layout?.classList.contains("plans-layout--sidebar-collapsed")).toBe(true);
+    const expandButton = host.querySelector<HTMLButtonElement>(".plans-sidebar-collapse");
+    expect(expandButton?.getAttribute("aria-expanded")).toBe("false");
+
+    await act(async () => expandButton?.click());
+
+    expect(layout?.classList.contains("plans-layout--sidebar-collapsed")).toBe(false);
+    expect(host.querySelector(".plans-sidebar-collapse")).toBeNull();
+    expect(host.querySelector('[role="separator"]')?.getAttribute("aria-valuenow")).toBe("300");
+  });
+
+  it("resizes the event list with the keyboard", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(<PlansPage />);
+      await Promise.resolve();
+    });
+
+    const divider = host.querySelector<HTMLDivElement>('[role="separator"]');
+    expect(divider).not.toBeNull();
+    await act(async () => divider?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
+
+    expect(divider?.getAttribute("aria-valuenow")).toBe("316");
   });
 });

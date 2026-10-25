@@ -15,6 +15,7 @@ import { PopupButton } from "../components/ui/PopupButton";
 import { PopupField } from "../components/ui/PopupField";
 import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
 import { formatSlotTime, TODAY_TIME_SLOT_HOURS, TODAY_TIME_SLOTS } from "./plansTimeline";
+import { PLANS_SIDEBAR_MAX_WIDTH, PLANS_SIDEBAR_MIN_WIDTH, usePlansSidebarResize } from "./usePlansSidebarResize";
 
 type View = "today" | "threeDays" | "week" | "month";
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -120,7 +121,7 @@ export default function PlansPage() {
   const dateLocale = resolvedLanguage === "ru" ? "ru-RU" : "en-US";
   const { accessToken, currentUser } = useAuth();
   const [view, setView] = useState<View>("today");
-  const [isEventListCollapsed, setIsEventListCollapsed] = useState(false);
+  const { handleSidebarResizeEnd, handleSidebarResizeKeyDown, handleSidebarResizeMove, handleSidebarResizeStart, isEventListCollapsed, setIsEventListCollapsed, sidebarWidth } = usePlansSidebarResize();
 
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -528,19 +529,18 @@ export default function PlansPage() {
   const detailsCreator = detailsPlan ? membersById.get(detailsPlan.createdBy) : undefined;
   const detailsCreatorName = detailsPlan ? detailsPlan.creatorDisplayName || detailsCreator?.displayName || strings.plans.unknownMember : "";
   const detailsMyRsvp = detailsPlan?.attendees?.find((entry) => entry.userId === currentUser?.id)?.status;
-
   return (
     <main className="app-shell app-frame plans-page">
       <AppNav />
-      <section className={`plans-layout${isEventListCollapsed ? " plans-layout--sidebar-collapsed" : ""}`} aria-busy={loading}>
+      <section className={`plans-layout${isEventListCollapsed ? " plans-layout--sidebar-collapsed" : ""}`} aria-busy={loading} style={{ "--plans-sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
         <aside className="plans-sidebar">
-          <SidebarCollapseButton
-            expanded={!isEventListCollapsed}
+          {isEventListCollapsed && <SidebarCollapseButton
+            expanded={false}
             expandLabel={strings.auditUi.expandEvents}
             collapseLabel={strings.auditUi.collapseEvents}
-            onToggle={() => setIsEventListCollapsed((collapsed) => !collapsed)}
+            onToggle={() => setIsEventListCollapsed(false)}
             className="plans-sidebar-collapse"
-          />
+          />}
           <div className="plans-sidebar-header">
             <label className="plans-search">
               <Search size={17} />
@@ -570,6 +570,23 @@ export default function PlansPage() {
             {!loading && visiblePlans.length === 0 && <p className="plans-muted">{strings.plans.noPlansRange}</p>}
           </div>
         </aside>
+        <div
+          className="plans-sidebar-resizer"
+          role="separator"
+          aria-label={strings.auditUi.resizeEvents}
+          aria-orientation="vertical"
+          aria-valuemin={PLANS_SIDEBAR_MIN_WIDTH}
+          aria-valuemax={PLANS_SIDEBAR_MAX_WIDTH}
+          aria-valuenow={sidebarWidth}
+          aria-valuetext={`${sidebarWidth}px`}
+          tabIndex={isEventListCollapsed ? -1 : 0}
+          onPointerDown={handleSidebarResizeStart}
+          onPointerMove={handleSidebarResizeMove}
+          onPointerUp={handleSidebarResizeEnd}
+          onPointerCancel={handleSidebarResizeEnd}
+          onKeyDown={handleSidebarResizeKeyDown}
+          aria-hidden={isEventListCollapsed}
+        />
 
         <section className={`plans-content plans-content--${view}`}>
           <header className="plans-header">

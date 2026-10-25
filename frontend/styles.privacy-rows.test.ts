@@ -1,5 +1,5 @@
-import { readCssSource } from "./src/test/cssSource";
 import { expect, it } from "vitest";
+import { readCssSource } from "./src/test/cssSource";
 const styles = readCssSource("src/styles.css");
 const rule = (selector: string) => {
   const start = styles.indexOf(`${selector} {`);

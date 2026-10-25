@@ -35,7 +35,13 @@ permissions:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, tests]
+    env:
+      GIT_CONFIG_COUNT: 2
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: http.version
+      GIT_CONFIG_VALUE_1: HTTP/1.1
     permissions:
       contents: read
     outputs:
@@ -45,7 +51,22 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          filter: blob:none
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          $gitBashDirectory = Split-Path $gitBash -Parent
+          Write-Host "Using Git for Windows Bash at $gitBash."
+          Add-Content -Path $env:GITHUB_PATH -Value $gitBashDirectory
       - name: Verify pipeline workflow contract
+        shell: bash
         run: bash .github/workflows/pipeline.test.sh
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
@@ -78,6 +99,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: [self-hosted, e2e]
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -98,44 +123,166 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  solid-boundaries:
+    name: SOLID architecture boundaries
+    needs: changes
+    if: >-
+      !inputs.backend_deploy_only &&
+      (needs.changes.outputs.frontend == 'true' ||
+      needs.changes.outputs.backend == 'true')
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: SOLID architecture boundaries
+        shell: bash
+        run: bash scripts/check-solid-boundaries.sh all
+
   backend-ci:
     name: Backend CI
     needs: changes
     if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only
-    runs-on: [self-hosted, tests]
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: family_user
-          POSTGRES_PASSWORD: family_password
-          POSTGRES_DB: family_messenger_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U family_user -d family_messenger_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      TEST_DATABASE_URL: postgres://family_user:family_password@localhost:5432/family_messenger_test?sslmode=disable
-      TEST_REDIS_URL: redis://localhost:6379/0
+    runs-on: [self-hosted, tests, Windows]
     defaults:
       run:
+        shell: bash
         working-directory: backend
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: Start Docker Desktop for backend test services
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
+          if (-not $dockerCli) {
+            $dockerCliDirectories = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
+            )
+            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
+            if (-not $dockerCliDirectory) {
+              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
+            }
+            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
+            $env:PATH = "$dockerCliDirectory;$env:PATH"
+          }
+
+          docker desktop start --detach 2>$null | Out-Null
+          $desktopStartExitCode = $LASTEXITCODE
+          if ($desktopStartExitCode -ne 0) {
+            $desktopCandidates = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
+            )
+            $dockerDesktop = $desktopCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $dockerDesktop) {
+              throw 'Docker Desktop was not found. Install it for the Windows runner account.'
+            }
+            if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
+              Start-Process -FilePath $dockerDesktop
+            }
+          }
+
+          $deadline = (Get-Date).AddMinutes(3)
+          do {
+            Start-Sleep -Seconds 3
+            $dockerOs = docker info --format '{{.OSType}}' 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+          } while ((Get-Date) -lt $deadline)
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
+          }
+
+          if ($dockerOs -ne 'linux') {
+            docker desktop engine use linux
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Could not switch Docker Desktop to Linux containers. Update Docker Desktop to a version with the desktop CLI and allow the runner account to switch engines.'
+            }
+            $deadline = (Get-Date).AddMinutes(3)
+            do {
+              Start-Sleep -Seconds 3
+              $dockerOs = docker info --format '{{.OSType}}' 2>$null
+              if ($LASTEXITCODE -eq 0 -and $dockerOs -eq 'linux') { break }
+            } while ((Get-Date) -lt $deadline)
+            if ($LASTEXITCODE -ne 0 -or $dockerOs -ne 'linux') {
+              throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
+            }
+          }
+      - name: Start PostgreSQL and Redis test containers
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+          $postgresContainer = "stovo-test-postgres-$suffix"
+          $redisContainer = "stovo-test-redis-$suffix"
+
+          docker rm -f $postgresContainer $redisContainer 2>$null | Out-Null
+          docker run --detach --name $postgresContainer --publish 127.0.0.1::5432 `
+            --env POSTGRES_USER=family_user `
+            --env POSTGRES_PASSWORD=family_password `
+            --env POSTGRES_DB=family_messenger_test `
+            --health-cmd 'pg_isready -U family_user -d family_messenger_test' `
+            --health-interval 5s --health-timeout 5s --health-retries 10 postgres:16
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to start the PostgreSQL test container.' }
+
+          docker run --detach --name $redisContainer --publish 127.0.0.1::6379 `
+            --health-cmd 'redis-cli ping' `
+            --health-interval 5s --health-timeout 5s --health-retries 10 redis:7
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to start the Redis test container.' }
+
+          foreach ($container in @($postgresContainer, $redisContainer)) {
+            $deadline = (Get-Date).AddMinutes(2)
+            do {
+              $health = docker inspect --format '{{.State.Health.Status}}' $container 2>$null
+              if ($LASTEXITCODE -eq 0 -and $health -eq 'healthy') { break }
+              if ((Get-Date) -ge $deadline) {
+                docker logs $container
+                throw "Test container '$container' did not become healthy within 2 minutes."
+              }
+              Start-Sleep -Seconds 2
+            } while ($true)
+          }
+
+          $postgresPortBinding = docker port $postgresContainer 5432/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the PostgreSQL host port.' }
+          $postgresPortMatch = [regex]::Match([string]$postgresPortBinding, ':(\d+)$')
+          if (-not $postgresPortMatch.Success) { throw "Unexpected PostgreSQL host port binding: $postgresPortBinding" }
+          $postgresPort = $postgresPortMatch.Groups[1].Value
+
+          $redisPortBinding = docker port $redisContainer 6379/tcp
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the Redis host port.' }
+          $redisPortMatch = [regex]::Match([string]$redisPortBinding, ':(\d+)$')
+          if (-not $redisPortMatch.Success) { throw "Unexpected Redis host port binding: $redisPortBinding" }
+          $redisPort = $redisPortMatch.Groups[1].Value
+
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/family_messenger_test?sslmode=disable"
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$redisPort/0"
+          Add-Content -Path $env:GITHUB_ENV -Value 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable'
+          Add-Content -Path $env:GITHUB_ENV -Value "POSTGRES_TEST_CONTAINER=$postgresContainer"
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
@@ -150,25 +297,47 @@ jobs:
             git diff -- ent
             exit 1
           fi
-      - name: Add runner tools to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Verify preinstalled golangci-lint
-        env:
-          GOLANGCI_LINT_VERSION: 2.14.0
+      - name: Cache golangci-lint binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/golangci-lint/v2.14.0
+          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
+      - name: Install golangci-lint binary
+        shell: powershell
         run: |
-          version="$(golangci-lint --version)"
-          echo "$version"
-          if [[ "$version" != *"version ${GOLANGCI_LINT_VERSION}"* ]]; then
-            echo "Expected golangci-lint ${GOLANGCI_LINT_VERSION}, got: ${version}" >&2
-            exit 1
-          fi
+          $version = '2.14.0'
+          $toolDirectory = Join-Path $env:RUNNER_TEMP 'golangci-lint\v2.14.0'
+          $binaryPath = Join-Path $toolDirectory 'golangci-lint.exe'
+          if (-not (Test-Path $binaryPath)) {
+            New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+            $archivePath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-windows-amd64.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-extract"
+            $downloadUrl = "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-windows-amd64.zip"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+            Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
+            $downloadedBinary = Join-Path $extractPath "golangci-lint-$version-windows-amd64\golangci-lint.exe"
+            if (-not (Test-Path $downloadedBinary)) {
+              throw "The golangci-lint archive did not contain '$downloadedBinary'."
+            }
+
+            Copy-Item -LiteralPath $downloadedBinary -Destination $binaryPath -Force
+            Remove-Item -LiteralPath $archivePath, $extractPath -Force -Recurse
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $toolDirectory
+          & $binaryPath version
+          if ($LASTEXITCODE -ne 0) {
+            throw "golangci-lint $version could not start."
+          }
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
+          version: v2.14.0
           install-mode: none
           working-directory: backend
           verify: true
-          skip-cache: true
+          skip-cache: false
           args: --timeout=5m
       - name: Unit and integration tests with coverage
         run: |
@@ -200,7 +369,10 @@ jobs:
           fi
       - name: Atlas migrate validate
         if: hashFiles('backend/migrations/atlas.sum') != ''
-        run: docker run --rm -v "$PWD/migrations:/migrations:ro" arigaio/atlas:1.3.2 migrate validate --dir "file:///migrations"
+        run: |
+          migration_dir="$(cygpath -w "$PWD/migrations")"
+          migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
+          docker run --rm --mount "$migration_mount" arigaio/atlas:1.3.2 migrate validate --dir "file:///migrations"
       - name: Reject out-of-order migrations
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -229,10 +401,12 @@ jobs:
       - name: Atlas replay empty install
         if: hashFiles('backend/migrations/*.sql') != ''
         run: |
-          docker run --rm --network host arigaio/atlas:1.3.2 \
-            schema clean -u "$TEST_DATABASE_URL" --auto-approve
-          docker run --rm --network host -v "$PWD/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
-            migrate apply --dir "file:///migrations" --url "$TEST_DATABASE_URL"
+          migration_dir="$(cygpath -w "$PWD/migrations")"
+          migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
+          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" arigaio/atlas:1.3.2 \
+            schema clean -u "$ATLAS_DATABASE_URL" --auto-approve
+          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" --mount "$migration_mount" arigaio/atlas:1.3.2 \
+            migrate apply --dir "file:///migrations" --url "$ATLAS_DATABASE_URL"
       - name: Forbid raw SQL in app packages
         run: |
           set -euo pipefail
@@ -253,30 +427,66 @@ jobs:
             exit 1
           fi
           echo "app SQL gate passed"
+      - name: Stop backend test containers
+        if: always()
+        shell: powershell
+        run: |
+          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+            docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+          }
 
   deploy-frontend-web:
     name: Deploy Frontend Web
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, tests]
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 35
+    env:
+      SSH_CLIENT_OS: windows
     environment: production
 
     steps:
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          $ssh = Join-Path $gitRoot 'usr\bin\ssh.exe'
+          if (-not (Test-Path $ssh)) {
+            throw "Git for Windows OpenSSH was not found at '$ssh'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)
       - name: Deploy Frontend via SSH
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          command_timeout: 30m
-          script_stop: true
-          script: |
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$DEPLOY_SSH_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          {
+            printf 'DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            printf 'TARGET_SHA=%q\n' "$GITHUB_SHA"
+            cat <<'REMOTE'
             set -eu
             exec 9>/tmp/stovo-deploy.lock
             flock -x 9
 
-            cd '${{ secrets.DEPLOY_PATH }}'
+            cd "$DEPLOY_PATH"
 
             # Fetch latest git master
             fetch_git() {
@@ -291,8 +501,8 @@ jobs:
               if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
                 return 0
               fi
-              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
-                echo "Repo is already at target commit ${{ github.sha }}."
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "$TARGET_SHA" ]; then
+                echo "Repo is already at target commit $TARGET_SHA."
                 return 0
               fi
               return 1
@@ -355,30 +565,60 @@ jobs:
             fi
 
             echo "Frontend web deployment finished successfully!"
+          REMOTE
+          } | ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=120 -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s'
 
   deploy-backend-web:
     name: Deploy Backend Web
-    needs: [changes, backend-ci]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
-    runs-on: [self-hosted, tests]
+    needs: [changes, backend-ci, solid-boundaries]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 35
+    env:
+      SSH_CLIENT_OS: windows
     environment: production
 
     steps:
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          $ssh = Join-Path $gitRoot 'usr\bin\ssh.exe'
+          if (-not (Test-Path $ssh)) {
+            throw "Git for Windows OpenSSH was not found at '$ssh'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $ssh -Parent)
       - name: Deploy Backend via SSH
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-          command_timeout: 30m
-          script_stop: true
-          script: |
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$DEPLOY_SSH_KEY" > "$key_file"
+          chmod 600 "$key_file"
+          {
+            printf 'DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            printf 'TARGET_SHA=%q\n' "$GITHUB_SHA"
+            cat <<'REMOTE'
             set -eu
             exec 9>/tmp/stovo-deploy.lock
             flock -x 9
 
-            cd '${{ secrets.DEPLOY_PATH }}'
+            cd "$DEPLOY_PATH"
 
             # Fetch latest git master
             fetch_git() {
@@ -393,8 +633,8 @@ jobs:
               if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
                 return 0
               fi
-              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
-                echo "Repo is already at target commit ${{ github.sha }}."
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "$TARGET_SHA" ]; then
+                echo "Repo is already at target commit $TARGET_SHA."
                 return 0
               fi
               return 1
@@ -633,6 +873,7 @@ jobs:
                           -e "GROQ_STT_MODEL=${groq_stt_model}" \
                           -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                           -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                           -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                           -e "LIVEKIT_URL=${livekit_url}" \
                           -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -673,6 +914,7 @@ jobs:
                             -e "GROQ_STT_MODEL=${groq_stt_model}" \
                             -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                             -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "TRUSTED_PROXY_CIDRS=$(get_env TRUSTED_PROXY_CIDRS 172.34.0.2/32)" \
                             -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
                             -e "LIVEKIT_URL=${livekit_url}" \
                             -e "LIVEKIT_API_KEY=${livekit_api_key}" \
@@ -680,6 +922,7 @@ jobs:
                             --label "stovo-server=${server_slug}" \
                             stovo-backend
                         fi
+                        bash deploy/scripts/ensure-tenant-proxy-network.sh "stovo-backend-${server_slug}" "stovo-backend-${server_slug}-proxy"
                     fi
                 done
             fi
@@ -704,20 +947,36 @@ jobs:
             fi
 
             echo "Backend web deployment finished successfully!"
+          REMOTE
+          } | ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=120 -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s'
 
   deploy-android:
     name: Android Release
-    needs: [changes, frontend-ci]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, e2e]
+    needs: [changes, frontend-ci, solid-boundaries]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
+    runs-on: [self-hosted, e2e, Windows]
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -790,6 +1049,42 @@ jobs:
             find "$HOME/.android/sdk" -path "*/bin/*" -type f -exec chmod +x {} + 2>/dev/null || true
             find "$HOME/.android/sdk" -maxdepth 4 -type d -empty -delete 2>/dev/null || true
           fi
+
+      - name: Ensure PowerShell Core is available for Android SDK setup
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $existingPwsh = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+          if ($existingPwsh) {
+            Write-Host "Using PowerShell Core at $($existingPwsh.Source)"
+            exit 0
+          }
+
+          $version = '7.6.6'
+          $installDirectory = Join-Path $env:RUNNER_TOOL_CACHE "PowerShell\$version\x64"
+          $pwshPath = Join-Path $installDirectory 'pwsh.exe'
+          if (-not (Test-Path -LiteralPath $pwshPath)) {
+            $archivePath = Join-Path $env:RUNNER_TEMP "PowerShell-$version-win-x64.zip"
+            $archiveUrl = "https://github.com/PowerShell/PowerShell/releases/download/v$version/PowerShell-$version-win-x64.zip"
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath -UseBasicParsing
+
+            $expectedHash = '02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860'
+            $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+            if ($actualHash -ne $expectedHash) {
+              throw "PowerShell $version archive checksum mismatch: expected $expectedHash, got $actualHash"
+            }
+
+            New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $installDirectory)
+          }
+
+          if (-not (Test-Path -LiteralPath $pwshPath)) {
+            throw "PowerShell Core was not installed at '$pwshPath'."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $installDirectory
+          & $pwshPath -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4

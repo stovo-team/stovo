@@ -1,6 +1,6 @@
 {
   "files": {
-    "app-shell.css": 2028,
+    "app-shell.css": 2033,
     "appearance-and-settings.css": 1978,
     "appearance-editor.css": 681,
     "attachment-picker.css": 1344,
@@ -12,7 +12,7 @@
     "composer-and-message-editing.css": 1415,
     "conversation.css": 621,
     "foundation.css": 181,
-    "guest-meetings-and-final-overrides.css": 2366,
+    "guest-meetings-and-final-overrides.css": 2571,
     "image-editors.css": 1421,
     "media-attachments.css": 793,
     "message-actions.css": 389,
@@ -21,10 +21,10 @@
     "quick-switcher-and-shortcuts.css": 754,
     "responsive-and-call-stage.css": 1100,
     "scheduled-messages.css": 757,
-    "secondary-settings.css": 1710,
+    "secondary-settings.css": 1724,
     "shared-interactions.css": 405,
     "storage-and-admin.css": 2102,
-    "storage-and-plans.css": 1649,
+    "storage-and-plans.css": 1672,
     "storage-canvas-and-checklist-previews.css": 1000,
     "theme.css": 389,
     "voice-channels.css": 1271

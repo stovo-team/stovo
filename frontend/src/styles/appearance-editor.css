@@ -508,7 +508,7 @@
 .storage-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  grid-template-columns: repeat(auto-fill, 180px);
 }
 
 .storage-tile {

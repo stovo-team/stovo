@@ -5,6 +5,7 @@ import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
+import { handleMockCollectionRequest, resetMockCollections } from "./mockCollections";
 import { handleMockCanvasRequest, resetMockCanvases } from "./mockCanvasStore";
 import {
   associateMockFileWithMessage,
@@ -116,8 +117,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
     }
   );
   if (canvasResponse) return canvasResponse;
-
-  if (method === "GET" && path === "/api/collections") return jsonResponse([]);
+  const collectionResponse = await handleMockCollectionRequest(path, method, mockData.family.id, getMockUserId()); if (collectionResponse) return collectionResponse;
   if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
 
   if (method === "POST" && path === "/api/files/uploads") {
@@ -356,6 +356,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
+  resetMockCollections();
   resetMockCanvases(mockData.family.id, mockData.users[0]?.id, false);
   nextLocalMessageId = 1;
 }

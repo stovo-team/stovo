@@ -598,7 +598,7 @@
   cursor: pointer;
   display: flex;
   font: inherit;
-  font-size: var(--font-size-button);
+  font-size: var(--font-size-small);
   font-weight: var(--font-weight-semibold);
   gap: 12px;
   min-height: 56px;
@@ -643,7 +643,13 @@
   text-transform: capitalize;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1200px) {
+  .chat-layout.details-open {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
   .messenger-shell.messenger-shell--new-chat > .app-nav,
   .messenger-shell.messenger-shell--chat-info > .app-nav {
     display: none !important;
@@ -652,19 +658,20 @@
   .messenger-shell.messenger-shell--new-chat .compose-fab {
     display: none !important;
   }
+}
 
+@media (max-width: 1200px) {
   .chat-info-screen.chat-details-panel {
-    border: none;
-    border-radius: 0;
-    bottom: 0;
-    box-shadow: none;
-    inset: 0;
-    left: 0;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
+    bottom: 12px;
+    box-shadow: var(--popup-dialog-shadow);
+    left: auto;
     max-width: none;
     position: fixed;
-    right: 0;
-    top: 0;
-    width: 100%;
+    right: 12px;
+    top: 12px;
+    width: min(400px, calc(100vw - 32px));
     z-index: 240;
   }
 
@@ -728,6 +735,13 @@
     font-size: var(--font-size-small);
     gap: 6px;
     padding: 9px 14px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .chat-info-screen.chat-details-panel {
+    box-sizing: border-box;
+    width: min(400px, calc(100vw - var(--nav-rail-width) - var(--float-outer-gap) - var(--float-outer-gap) - var(--float-panel-gap) - 320px - 32px));
   }
 }
 
@@ -991,7 +1005,7 @@
 
   .storage-page .storage-grid {
     gap: 8px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 180px);
   }
 
   .storage-page .storage-tile {
@@ -1658,7 +1672,7 @@
 
 @media (max-width: 380px) {
   .storage-page .storage-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 180px);
   }
 
   .contacts-page .summary-band {
