@@ -253,7 +253,11 @@ test('documented Compose filenames and backticked config names match repository 
   }
   for (const [, name] of allMarkdown.matchAll(/`([A-Z][A-Z0-9_]{2,})`/g)) {
     if (/^(?:HTTP|HTTPS|API|URL|JWT|S3|AWS|GCP|CPU|RAM|TLS|UDP|TCP|DNS|CI|CD|JSON|YAML|SQL|SPA|CSS|MCP|RBAC)$/.test(name)) continue;
-    const known = composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
+    // This secret is provisioned by the external Intelligence deployment and
+    // deliberately does not live in this repository's Compose or env files.
+    const externallyProvisioned = name === 'INTELLIGENCE_SOURCE_SECRET_ENCRYPTION_KEYS';
+    const known = externallyProvisioned
+      || composeFiles.some((file) => readFileSync(file, 'utf8').includes(name))
       || readFileSync(path.join(root, '.env.example'), 'utf8').includes(name)
       || implementation.includes(name);
     if (!known) errors.push(`unknown config name ${name}`);
