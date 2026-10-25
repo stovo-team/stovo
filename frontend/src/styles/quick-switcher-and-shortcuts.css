@@ -273,11 +273,12 @@ input.quick-switcher-input:focus-visible {
   padding: 4px 10px 8px;
   min-height: 80px;
   scrollbar-width: thin;
+  scrollbar-width: var(--scrollbar-size);
   scrollbar-color: var(--color-palette-b92166deed41) transparent;
 }
 
 .quick-switcher-content::-webkit-scrollbar {
-  width: 5px;
+  width: var(--scrollbar-size);
 }
 
 .quick-switcher-content::-webkit-scrollbar-track {

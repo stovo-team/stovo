@@ -139,11 +139,12 @@
 :where(*) {
   scrollbar-color: var(--border-default) transparent;
   scrollbar-width: thin;
+  scrollbar-width: var(--scrollbar-size);
 }
 
 :where(*)::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
+  height: var(--scrollbar-size);
+  width: var(--scrollbar-size);
 }
 
 :where(*)::-webkit-scrollbar-track {
