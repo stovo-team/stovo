@@ -4,7 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-# Fork PRs and draft PRs run on disposable hosted workers, with no application credentials.
+# Fork and draft PRs use hosted workers. Ready same-repository PRs may use the
+# online Windows validation runner; visual comparisons stay on Linux below.
 permissions:
   contents: read
 
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","tests","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 5
     outputs:
       visual: ${{ steps.select.outputs.visual }}
@@ -34,7 +35,7 @@ jobs:
         run: node .github/agent-workflows-gate.mjs select
 
   validators:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","tests","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -107,7 +108,7 @@ jobs:
     name: Agent workflow gate
     if: ${{ always() }}
     needs: [changes, validators, visual]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","tests","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
