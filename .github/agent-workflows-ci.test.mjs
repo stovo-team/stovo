@@ -1,4 +1,6 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import path from 'node:path';import {execFileSync,spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {changedSourcePaths} from '../scripts/agent-workflows/source.mjs';
 import {visualApplicable,aggregate} from './agent-workflows-gate.mjs';
 const workflow=()=>readFileSync(new URL('./workflows/agent-evidence.yml',import.meta.url),'utf8');
 const workflowFile=name=>readFileSync(new URL(`./workflows/${name}`,import.meta.url),'utf8');
@@ -12,3 +14,28 @@ test('visual evidence retries transient Chromium download failures on both platf
 test('trusted documentation and CodeQL jobs use online Windows runners',()=>{for(const name of ['docs-validation.yml','codeql.yml']){const w=workflowFile(name);assert.match(w,/self-hosted.*Windows.*tests/);assert.match(w,/ubuntu-latest/);assert.doesNotMatch(w,/self-hosted.*Linux.*tests/);}const docs=workflowFile('docs-validation.yml');assert.match(docs,/helm-\$version-windows-amd64\.zip/);const codeql=workflowFile('codeql.yml');assert.match(codeql,/setup-go@/);assert.match(codeql,/gradlew\.bat/);});
 test('frontend fixes require screenshot evidence in agent instructions',()=>{const instructions=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8');assert.match(instructions,/frontend fix[\s\S]*screenshot/i);});
 test('cross-platform size baseline covers the Windows mock API line count',()=>{const baseline=readFileSync(new URL('../docs/engineering/size-baseline.tsv',import.meta.url),'utf8');assert.match(baseline,/^frontend\/src\/dev\/mockApi\.ts\t418$/m);});
+
+function renamedSource(check){
+ const root=mkdtempSync(path.join(tmpdir(),'stovo-gate-'));
+ const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();
+ try{
+  git('init','-q');git('config','user.email','fixture@example.invalid');git('config','user.name','Fixture');
+  for(const dir of ['frontend/src','backend','docs'])mkdirSync(path.join(root,dir),{recursive:true});
+  writeFileSync(path.join(root,'frontend/src/view.js'),'frontend view');writeFileSync(path.join(root,'backend/service.go'),'backend service');
+  git('add','.');git('commit','-qm','base');const base=git('rev-parse','HEAD');
+  git('mv','frontend/src/view.js','docs/view.js');git('mv','backend/service.go','docs/service.go');git('commit','-qm','move sources');
+  check({root,base,head:git('rev-parse','HEAD')});
+ }finally{rmSync(root,{recursive:true,force:true});}
+}
+test('CI selection cannot hide affected source by renaming it into docs',()=>renamedSource(({root,base,head})=>{
+ const result=spawnSync(process.execPath,[fileURLToPath(new URL('./agent-workflows-gate.mjs',import.meta.url)),'select'],{cwd:root,encoding:'utf8',env:{...process.env,BASE_SHA:base,HEAD_SHA:head,GITHUB_OUTPUT:path.join(root,'output')}});
+ assert.equal(result.status,0,result.stderr);assert.equal(JSON.parse(result.stdout).visualRequired,true);
+}));
+test('delivery path discovery retains deleted side of source renames',()=>renamedSource(({root,base})=>{
+ const paths=changedSourcePaths(root,base);assert.ok(paths.includes('backend/service.go'));assert.ok(paths.includes('frontend/src/view.js'));
+}));
+
+test('backend and delivery tooling avoid unrelated visual capture while shared capture helpers retain it',()=>{
+ for(const file of ['scripts/agent-workflows/capture-backend.mjs','scripts/agent-workflows/validate-delivery.mjs','scripts/agent-workflows/watch-pr.mjs','scripts/agent-workflows/okf-knowledge.mjs'])assert.equal(visualApplicable([file]),false,file);
+ for(const file of ['scripts/agent-workflows/common.mjs','scripts/agent-workflows/source.mjs','frontend/src/View.tsx','e2e/tools/capture-evidence.mjs','.github/workflows/agent-evidence.yml'])assert.equal(visualApplicable([file]),true,file);
+});
