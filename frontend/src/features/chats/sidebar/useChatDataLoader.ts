@@ -233,21 +233,21 @@ export function useChatDataLoader({
       setIsLoading(true);
     }
     try {
-      const [familyResult, memberResult, chatResult] = await Promise.all([
-        authRequestRef.current<Family>("/api/family"),
+      const familyResultPromise = authRequestRef.current<Family>("/api/family").then((familyResult) => {
+        if (isCurrentRequest()) {
+          if (familyResult?.name) { const active = getActiveServer(); if (active && active.name !== familyResult.name) upsertServer({ ...active, name: familyResult.name }); }
+          setFamily(familyResult);
+        }
+        return familyResult;
+      });
+      const [, memberResult, chatResult] = await Promise.all([
+        familyResultPromise,
         authRequestRef.current<User[]>("/api/family/members"),
         authRequestRef.current<Chat[]>("/api/chats")
       ]);
       if (!isCurrentRequest()) {
         return;
       }
-      if (familyResult?.name) {
-        const active = getActiveServer();
-        if (active && active.name !== familyResult.name) {
-          upsertServer({ ...active, name: familyResult.name });
-        }
-      }
-      setFamily(familyResult);
       setMembers(memberResult);
       setChats((current) =>
         chatResult.map((serverChat) => {

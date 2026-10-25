@@ -1,7 +1,7 @@
 {
   "files": {
-    "app-shell.css": 2033,
-    "appearance-and-settings.css": 1978,
+    "app-shell.css": 2039,
+    "appearance-and-settings.css": 1980,
     "appearance-editor.css": 681,
     "attachment-picker.css": 1344,
     "audio-and-document-previews.css": 882,
@@ -12,7 +12,7 @@
     "composer-and-message-editing.css": 1415,
     "conversation.css": 621,
     "foundation.css": 181,
-    "guest-meetings-and-final-overrides.css": 2571,
+    "guest-meetings-and-final-overrides.css": 2610,
     "image-editors.css": 1421,
     "media-attachments.css": 793,
     "message-actions.css": 389,

@@ -81,9 +81,9 @@
 /* Documents use their own compact card, so do not retain the generic
    text-message width or its large right-side gutter. */
 .message-bubble:has(.document-preview-card) {
-  max-width: min(560px, calc(100vw - 48px));
+  max-width: min(560px, 100%);
   padding-inline: 6px;
-  width: min(560px, calc(100vw - 48px));
+  width: min(560px, 100%);
 }
 
 .message-bubble:has(.document-preview-card) .document-preview-card {

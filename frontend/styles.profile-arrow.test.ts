@@ -7,7 +7,10 @@ const rule = (selector: string) => {
   return start < 0 ? "" : styles.slice(start, styles.indexOf("}", start));
 };
 
-it("aligns the profile chevron with the settings rows using the same right inset", () => {
+it("keeps the profile chevron slightly inset from the profile bar edge", () => {
   expect(rule(".settings-profile-open")).toContain("padding: 18px 22px 18px 126px;");
-  expect(rule(".settings-profile-open > svg")).toContain("margin-left: auto;");
+  const chevron = rule(".settings-profile-open > svg");
+  expect(chevron).toContain("right: 22px;");
+  expect(chevron).toContain("height: 18px;");
+  expect(chevron).toContain("width: 18px;");
 });

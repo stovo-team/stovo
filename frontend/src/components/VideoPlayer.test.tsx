@@ -475,8 +475,8 @@ describe("VideoPlayer", () => {
     const expandedVideo = styles.match(/\.video-player\.is-expanded\s*\{[^}]*\}/)?.[0];
     const fullscreenVideo = styles.match(/\.video-player:fullscreen\s*\{[^}]*\}/)?.[0];
 
-    expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px))");
-    expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px))");
+    expect(documentBubble).toContain("max-width: min(560px, 100%)");
+    expect(documentBubble).toContain("width: min(560px, 100%)");
     expect(messageDocumentCard).toContain("max-width: 100%");
     expect((messageVideoCorners.match(/border-radius:\s*var\(--radius-surface\)\s*;/g) ?? []).length).toBe(4);
     expect(expandedVideo).toContain("border-radius: var(--radius-surface)");

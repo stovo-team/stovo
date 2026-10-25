@@ -536,8 +536,8 @@ describe("document attachment cards in chat", () => {
 
     // Match the landscape video preview width while keeping the card within
     // its message bubble and leaving only the small visual inset.
-    expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px));");
-    expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px));");
+    expect(documentBubble).toContain("max-width: min(560px, 100%);");
+    expect(documentBubble).toContain("width: min(560px, 100%);");
     expect(documentCard).toContain("width: 100%;");
     expect(messageDocumentCard).toContain("max-width: 100%;");
     expect(messageDocumentAttachments).toContain("width: 100%;");

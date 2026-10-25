@@ -1657,10 +1657,16 @@ h2 {
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
-.chat-layout.details-open {
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(240px, 280px);
+.chat-layout.details-open::before {
+  background: var(--popup-backdrop-color);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 5;
 }
 
 .chat-layout.voice-call-expanded,

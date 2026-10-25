@@ -434,6 +434,8 @@
   background-position: var(--wallpaper-background-position);
   background-repeat: var(--wallpaper-background-repeat);
   background-size: var(--wallpaper-background-size);
+  container-name: chat-messages;
+  container-type: inline-size;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
