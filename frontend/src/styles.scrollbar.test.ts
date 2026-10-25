@@ -15,7 +15,7 @@ describe("shared application scrollbars", () => {
   it("uses the chat scrollbar treatment for every default scroll container", () => {
     expect(rule(":where(*)")).toContain("scrollbar-color: var(--border-default) transparent;");
     expect(rule(":where(*)")).toContain("scrollbar-width: thin;");
-    expect(rule(":where(*)")).toContain("scrollbar-width: var(--scrollbar-size);");
+    expect(rule(":where(*)")).toContain("scrollbar-width: 1px;");
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("height: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("width: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar-thumb")).toContain("border-radius: var(--radius-pill);");

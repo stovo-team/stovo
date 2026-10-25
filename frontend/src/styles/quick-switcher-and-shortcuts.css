@@ -273,7 +273,7 @@ input.quick-switcher-input:focus-visible {
   padding: 4px 10px 8px;
   min-height: 80px;
   scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+  scrollbar-width: 1px;
   scrollbar-color: var(--color-palette-b92166deed41) transparent;
 }
 

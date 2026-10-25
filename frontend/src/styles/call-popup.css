@@ -1272,7 +1272,7 @@
   overflow-y: auto;
   width: 340px;
   scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+  scrollbar-width: 1px;
   scrollbar-color: var(--border-default) transparent;
 }
 .call-audio-popup::-webkit-scrollbar { width: var(--scrollbar-size); }

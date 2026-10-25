@@ -139,7 +139,8 @@
 :where(*) {
   scrollbar-color: var(--border-default) transparent;
   scrollbar-width: thin;
-  scrollbar-width: var(--scrollbar-size);
+  /* A length stored in a custom property is dropped at computed-value time and resets this property to auto. A literal length stays thin where it is unsupported. */
+  scrollbar-width: 1px;
 }
 
 :where(*)::-webkit-scrollbar {
