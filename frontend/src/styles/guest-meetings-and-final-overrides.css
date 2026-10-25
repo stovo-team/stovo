@@ -1919,11 +1919,10 @@ button.minimized-call-button--end:active:not(:disabled) {
   outline: none !important;
   box-shadow: none !important;
 }
-/* Storage file details are a viewport-sized preview dialog; the grid keeps its full width underneath. */
-.storage-page .storage-layout,
-.storage-page:has(.storage-tile.selected) .storage-layout {
-  grid-template-columns: 300px minmax(0, 1fr);
-}
+/* Storage file details are a viewport-sized preview dialog. Keep the same
+   source | resizer | main tracks underneath — do not reintroduce a two-column
+   template here. Lightning CSS production minify rewrites comma + :has()
+   selectors into :is(), which would outrank the real three-column layout. */
 .storage-page .storage-details-backdrop {
   background: var(--color-palette-638a4c750aa4);
   border: 0;

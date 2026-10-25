@@ -73,5 +73,6 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 - Call and sidebar UI fixes: https://github.com/stovo-team/stovo/pull/177
 - Ponytail agent guidance: https://github.com/stovo-team/stovo/pull/184
 - PR merge approval policy: https://github.com/stovo-team/stovo/pull/302
+- Storage production layout: https://github.com/stovo-team/stovo/pull/308
 - New chat dialog desktop width: https://github.com/stovo-team/stovo/pull/305
 - Pinned banner hover: https://github.com/stovo-team/stovo/pull/304
