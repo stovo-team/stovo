@@ -1,0 +1,42 @@
+name: PR size policy
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_call:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  budget:
+    name: PR size
+    runs-on: [self-hosted, Windows, tests]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Reject more than 445 changed lines
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        shell: powershell
+        run: |
+          @'
+          // PR_BUDGET_BEGIN
+          const {GH_TOKEN, GITHUB_API_URL, GITHUB_REPOSITORY, PR_NUMBER, PR_HEAD} = process.env;
+          if (!/^[1-9][0-9]*$/.test(PR_NUMBER ?? '') || !/^[a-f0-9]{40}$/.test(PR_HEAD ?? '')) throw Error('Invalid PR identity');
+          const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}`, {
+            headers: {Authorization: `Bearer ${GH_TOKEN}`, Accept: 'application/vnd.github+json'},
+            signal: AbortSignal.timeout(30000)
+          });
+          if (!response.ok) throw Error(`PR metadata unavailable: HTTP ${response.status}`);
+          const pr = await response.json();
+          if (pr.head?.sha !== PR_HEAD) throw Error('PR head changed; wait for the new run');
+          if (![pr.additions, pr.deletions].every(n => Number.isSafeInteger(n) && n >= 0)) throw Error('Missing line counts');
+          const changed = pr.additions + pr.deletions;
+          console.log(`${changed}/445 changed lines (${pr.additions} added + ${pr.deletions} deleted); every file counts.`);
+          if (changed > 445) { console.error('Split this PR into coherent deliveries of at most 445 changed lines.'); process.exitCode = 1; }
+          // PR_BUDGET_END
+          '@ | node --input-type=module
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

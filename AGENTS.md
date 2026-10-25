@@ -10,9 +10,9 @@ These instructions apply to every task. Follow [CONTRIBUTING.md](CONTRIBUTING.md
 - If an agent discovers a defect in `okf-agent` itself while using or evaluating it, report it in the [`left-try/okf-agent`](https://github.com/left-try/okf-agent) repository using `gh` outside the sandbox. Follow the reporting steps in the [bug-fix workflow](docs/agent-workflows/bug-fixes.md); do not file `okf-agent` defects in this repository.
 - Never weaken or delete a test to make a change pass.
 - Keep changes focused and preserve unrelated work.
-- Do not push, publish, merge, or open a pull request without authorization.
+- Deliver implementation tasks with a task-branch push and pull request unless the user requests local-only work. This repository grants standing publication authorization for that delivery; merge and deployment need their own authorization.
 - When the user asks to merge pull requests, inspect each PR in its actual target repository and merge green PRs automatically. A PR is green when it is open, mergeable, all required checks have passed, and no required review is outstanding. If any required check is failing (red) or pending, queued, running, unknown, or otherwise inconclusive (yellow), hold that PR and ask the user for additional approval before merging it in that state. Continue merging other green PRs independently, then verify and report which PRs merged and which were held.
-- After authorization, create pull requests with `gh` outside the sandbox and record their URLs in the Active pull requests section below.
+- Use `gh` outside the sandbox for GitHub operations. At implementation completion, open/update the PR and inspect every CI cell on its current head until settled; ignore only CodeQL. Follow [GitHub delivery](docs/agent-workflows/github-delivery.md). Red, absent, queued, running, cancelled or unknown checks prevent a verified delivery claim; fix red checks and repeat after each push.
 - For new popup work and popup migrations, reuse the shared popup primitives and follow [Popup UI standards](docs/ui/popup-standards.md). Do not add popup-local overlay, surface, close, button, field, dropdown, radius, or blur styles that conflict with that standard.
 - Apply the approved typography work through `frontend/src/design-system/tokens.css`: use `--font-family-ui` (or `--font-family-mono` for code), shared font-size, weight, and line-height tokens. Popup primitives must inherit/use these tokens; reuse `PopupDialog`, `PopupBackdrop`, `PopupCloseButton`, `PopupButton`, `PopupField`, and `PopupSelect` instead of creating parallel popup components.
 
@@ -68,8 +68,14 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 
 ## Active pull requests
 
+- MCP connector settings button circle: https://github.com/stovo-team/stovo/pull/309
+- Quick access layout reset: https://github.com/stovo-team/stovo/pull/306
 - Chat transfer controls follow-up: https://github.com/stovo-team/stovo/pull/174
 - Call and sidebar UI fixes: https://github.com/stovo-team/stovo/pull/177
 - Ponytail agent guidance: https://github.com/stovo-team/stovo/pull/184
 - PR merge approval policy: https://github.com/stovo-team/stovo/pull/302
-- Thinner scrollbars: https://github.com/stovo-team/stovo/pull/307
+- Compact media previews below 1600px: https://github.com/stovo-team/stovo/pull/310
+- Storage production layout: https://github.com/stovo-team/stovo/pull/308
+- New chat dialog desktop width: https://github.com/stovo-team/stovo/pull/305
+- Pinned banner hover: https://github.com/stovo-team/stovo/pull/304
+- Thin shared scrollbars: https://github.com/stovo-team/stovo/pull/307

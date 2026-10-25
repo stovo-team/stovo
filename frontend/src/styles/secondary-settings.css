@@ -1642,7 +1642,7 @@
     width: 100%;
   }
 
-  .admin-page .public-access-actions > *,
+  .admin-page .public-access-actions > :not(.mcp-icon-button),
   .admin-page .encryption-settings-form > button,
   .admin-page .media-quality-row > button {
     max-width: 100%;

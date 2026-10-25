@@ -12,7 +12,7 @@ export function sourceSnapshot(root){
 export function changedSourcePaths(root,baseRevision){
  if(!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(baseRevision??''))throw Error('verified base revision required');
  const git=(...args)=>{const r=spawnSync('git',args,{cwd:root,encoding:'utf8'});if(r.status!==0)throw Error(r.stderr);return r.stdout.split('\0').filter(Boolean);};
- return [...new Set([...git('diff',baseRevision,'--name-only','-z'),...git('ls-files','--others','--exclude-standard','-z')])].sort();
+ return [...new Set([...git('diff',baseRevision,'--no-renames','--name-only','-z'),...git('ls-files','--others','--exclude-standard','-z')])].sort();
 }
 
 export function deliveryBase(root,target='origin/master'){

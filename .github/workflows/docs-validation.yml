@@ -29,16 +29,121 @@ on:
 
 jobs:
   docs-and-deployment:
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Linux","tests"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Windows","tests"]') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Detect available shell
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+        if: runner.os == 'Linux'
         with:
           version: v3.18.4
+      - name: Install Helm on Windows runner
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = 'v3.18.4'
+          $archive = Join-Path $env:RUNNER_TEMP "helm-$version-windows-amd64.zip"
+          $extractPath = Join-Path $env:RUNNER_TEMP "helm-$version-windows-amd64"
+          $helmPath = Join-Path $extractPath 'windows-amd64\helm.exe'
+          $helmBin = Join-Path $env:RUNNER_TEMP 'helm-bin'
+
+          Invoke-WebRequest -Uri "https://get.helm.sh/helm-$version-windows-amd64.zip" -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $extractPath -Force
+          New-Item -ItemType Directory -Path $helmBin -Force | Out-Null
+          Copy-Item -LiteralPath $helmPath -Destination (Join-Path $helmBin 'helm.exe') -Force
+          Add-Content -Path $env:GITHUB_PATH -Value $helmBin
+          & (Join-Path $helmBin 'helm.exe') version --short
+      - name: Start Docker Desktop for docs validation
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
+          if (-not $dockerCli) {
+            $dockerCliDirectories = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
+            )
+            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
+            if (-not $dockerCliDirectory) {
+              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
+            }
+            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
+            $env:PATH = "$dockerCliDirectory;$env:PATH"
+          }
+
+          docker desktop start --detach 2>$null | Out-Null
+          $desktopStartExitCode = $LASTEXITCODE
+          if ($desktopStartExitCode -ne 0) {
+            $desktopCandidates = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
+            )
+            $dockerDesktop = $desktopCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $dockerDesktop) {
+              throw 'Docker Desktop was not found. Install it for the Windows runner account.'
+            }
+            if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
+              Start-Process -FilePath $dockerDesktop
+            }
+          }
+
+          $deadline = (Get-Date).AddMinutes(3)
+          do {
+            Start-Sleep -Seconds 3
+            $dockerOs = docker info --format '{{.OSType}}' 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+          } while ((Get-Date) -lt $deadline)
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
+          }
+
+          if ($dockerOs -ne 'linux') {
+            docker desktop engine use linux
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Could not switch Docker Desktop to Linux containers. Update Docker Desktop to a version with the desktop CLI and allow the runner account to switch engines.'
+            }
+            $deadline = (Get-Date).AddMinutes(3)
+            do {
+              Start-Sleep -Seconds 3
+              $dockerOs = docker info --format '{{.OSType}}' 2>$null
+              if ($LASTEXITCODE -eq 0 -and $dockerOs -eq 'linux') { break }
+            } while ((Get-Date) -lt $deadline)
+            if ($LASTEXITCODE -ne 0 -or $dockerOs -ne 'linux') {
+              throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
+            }
+          }
       - name: Ensure Docker Compose CLI plugin is available
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $composeDir = Join-Path $env:USERPROFILE '.docker\cli-plugins'
+          New-Item -ItemType Directory -Path $composeDir -Force | Out-Null
+          $composePath = Join-Path $composeDir 'docker-compose.exe'
+          Invoke-WebRequest -Uri 'https://github.com/docker/compose/releases/download/v5.6.0/docker-compose-windows-x86_64.exe' -OutFile $composePath
+          $composeVersion = & docker.exe compose version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Docker Compose CLI plugin could not start: $composeVersion"
+          }
+          $composeVersion
+      - name: Ensure Docker Compose CLI plugin is available on Linux
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           if docker compose version >/dev/null 2>&1; then

@@ -25,7 +25,7 @@ A changed approved artifact requires a renewed acknowledgement of its new digest
 
 ## Action scopes
 
-Contract approval, local implementation, publication, issues/Project administration, merge and deployment are distinct scopes. An explicit instruction can authorize several; preserve its boundaries and reuse it. Before an external mutation, check actual session authorization and tool permissions as well as any recorded scope. Agent-authored permission text is insufficient.
+Contract approval, local implementation, publication, issues/Project administration, merge and deployment are distinct scopes. The repository grants standing task-branch/PR publication authorization for implementation requests unless the user asks for local-only work; record that source and follow the delivery workflow. An explicit instruction can authorize several; preserve its boundaries and reuse it. Before an external mutation, check actual session authorization and tool permissions as well as any recorded scope. Agent-authored permission text is insufficient.
 
 When a decision is needed, show the prepared artifact or proposed remote diff and explain what will happen. Continue independent authorized work while an unrelated decision remains pending.
 

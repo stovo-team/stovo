@@ -773,12 +773,12 @@
 }
 
 .mcp-connectors-panel .danger-button,
-.mcp-connectors-panel button:not(.popup-button):not(.popup-close),
+.mcp-connectors-panel button:not(.popup-button):not(.popup-close):not(.mcp-icon-button),
 .mcp-connectors-panel .secondary-button,
 .mcp-connector-form input:not([type="checkbox"]):not([type="radio"]):not(.popup-field__input),
 .mcp-connector-form select,
 .mcp-connector-form textarea,
-.mcp-connector-form button:not(.popup-button):not(.popup-close) {
+.mcp-connector-form button:not(.popup-button):not(.popup-close):not(.mcp-icon-button) {
   border-radius: var(--radius-surface);
 }
 
@@ -1017,10 +1017,10 @@
   border: 0;
 }
 
-.admin-page .admin-panel button,
+.admin-page .admin-panel button:not(.mcp-icon-button),
 .admin-page .appearance-settings-panel button,
 .admin-page .encryption-settings-panel button,
-.admin-page .mcp-connectors-admin-section button,
+.admin-page .mcp-connectors-admin-section button:not(.mcp-icon-button),
 .admin-page .admin-members-panel button,
 .admin-page .admin-panel input:not([type="checkbox"]):not([type="radio"]),
 .admin-page .appearance-settings-panel input:not([type="checkbox"]):not([type="radio"]),
@@ -1176,7 +1176,7 @@
   color: var(--text-secondary, var(--color-palette-7b4f256e506d));
 }
 
-.admin-page button,
+.admin-page button:not(.mcp-icon-button),
 .admin-page .secondary-button,
 .admin-page .danger-button,
 .admin-page select,

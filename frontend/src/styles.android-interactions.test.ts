@@ -7,7 +7,7 @@ describe("Android button interactions", () => {
   it("does not show browser tap highlights or apply desktop hover feedback", () => {
     expect(styles).toMatch(/button \{[\s\S]*?-webkit-tap-highlight-color: transparent;/);
     expect(styles).toMatch(
-      /@media \(hover: hover\) and \(pointer: fine\) \{\s*button:hover:not\(:disabled\) \{/,
+      /@media \(hover: hover\) and \(pointer: fine\) \{\s*button:hover:not\(:disabled\):not\(\.pinned-banner-click-area\) \{/,
     );
   });
 

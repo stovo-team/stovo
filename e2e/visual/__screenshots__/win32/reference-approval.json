@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "status": "approved",
-  "source": "Updated the Windows loaded-shell references after the shared scrollbar became 4px, when the failing visual check on PR 307 was requested to be fixed.",
-  "sourceRevision": "9eba4bc7f1d1d0dbdf1f7f2533b7de1459c6614c",
+  "source": "Human asked to fix the red visual CI in this Cursor chat on 2026-10-25 for PR 306. Windows screenshots V-01, V-02, V-03, V-04, V-09, V-11, and V-12 were replaced with that run's captures of the restored full quick-access rows.",
+  "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f",
   "environment": {
     "node": "v22.23.3",
     "platform": "win32",
@@ -12,39 +12,39 @@
   "files": [
     {
       "path": "V-01.png",
-      "sha256": "677fa4cea2c0f9f9d8ff27937e20ed887222d48a497b07b24d120b9b3dd770fa"
+      "sha256": "731299fada95b0d94d81890b4d27a89c37e37bd1757811540c679b11d43c4e78"
     },
     {
       "path": "V-02.png",
-      "sha256": "fc9f392facc7e9f2c885a1ddfe82bab5d83ee078eaf6f5312f47d652798f0e3e"
+      "sha256": "5f060045f7160c01a24ed57d188464b56dd11d89012419bd36ece340ae292ecb"
     },
     {
       "path": "V-03.png",
-      "sha256": "39f7535f5b9bfa37cf4482080670b35a6ac3ebefbe784a6b51c6b4d66540b519"
+      "sha256": "e099e716e386b8f2ad6dfa72b228b3e8c78741cbcd76e12eeaa1c8a673213c19"
     },
     {
       "path": "V-04.png",
-      "sha256": "5f14224ff1223c52865df7129e8f34db95849df7a15adb0ddc7afb4e51466277"
+      "sha256": "75df354f8744492277c4394ffd221adb846139efab1fb59865648475c7f73eab"
     },
     {
       "path": "V-05.png",
-      "sha256": "0bff6e5e7b17c40108dca73a27a9477077f03127a4e6bd76cbc747b3516bc26e"
+      "sha256": "15e63e454d99aad53119c771fbfba3e5e066c997a95c6a83a4cb6e9ad74deb9c"
     },
     {
       "path": "V-06.png",
-      "sha256": "e2d8a1e831414beafb0af9246072da2d858e1dfeb6645cf59d1b77b74d3ccc74"
+      "sha256": "6a8554ea84340dd75750bbdcd66e4f3327a54af00d21ed5dbd5df0752473fc95"
     },
     {
       "path": "V-07.png",
-      "sha256": "34a72b2b90735b5f06955c6399e6611e9bbdd53d0ca1d95cbd8047260a5e4bea"
+      "sha256": "7bf6f205a318fc0a1f09131047d93ec9fd8beab12a082cdf049321e71a7ff635"
     },
     {
       "path": "V-08.png",
-      "sha256": "7f83a088d61f3602be0c1bfd3d028a396d0a2bbd9ec0c7bc17083e5a354c9cf7"
+      "sha256": "4d87f33bb3846ee750e072590ce3331674e491cec42a23be8e0e32754e2100eb"
     },
     {
       "path": "V-09.png",
-      "sha256": "71ce7126eac2372d1e56129822ed4b75999ba455e4f2e4abb3b2307def2b5e1d"
+      "sha256": "2068946e24f953b18ca8df1fefbc28d2ebc857a9ecff324dc2e642e5db0f1d34"
     },
     {
       "path": "V-10.png",
@@ -52,11 +52,11 @@
     },
     {
       "path": "V-11.png",
-      "sha256": "bd735dfb111e1bf70e323f004a62380df9ab32c8b3160d5c0c4ba2df4a9902f0"
+      "sha256": "ff5e274c0ba86fc1fb43140ee3282eac568203f099367739105b3278ce5db42f"
     },
     {
       "path": "V-12.png",
-      "sha256": "5b8fa4c0d63d58e69a68eae6191a342458ad6e4d8d42778e93adca4d433c1830"
+      "sha256": "beb1098c418751d1e12d1b77dae6159c8f8e5e5d2ebb012d3ae910e8b55d2b7b"
     }
   ]
 }
