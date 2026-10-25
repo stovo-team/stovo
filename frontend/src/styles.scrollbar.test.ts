@@ -15,16 +15,25 @@ describe("shared application scrollbars", () => {
   it("uses the chat scrollbar treatment for every default scroll container", () => {
     expect(rule(":where(*)")).toContain("scrollbar-color: var(--border-default) transparent;");
     expect(rule(":where(*)")).toContain("scrollbar-width: thin;");
-    expect(rule(":where(*)")).toContain("scrollbar-width: 1px;");
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("height: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar")).toContain("width: var(--scrollbar-size);");
     expect(rule(":where(*)::-webkit-scrollbar-thumb")).toContain("border-radius: var(--radius-pill);");
-    expect(tokens).toContain("--scrollbar-size: 1px;");
+    expect(tokens).toContain("--scrollbar-size: 4px;");
+  });
+
+  it("keeps Chromium on the token width instead of its native thin bar", () => {
+    const marker = "@supports selector(::-webkit-scrollbar)";
+    const chromium = styles.slice(styles.indexOf(marker) + marker.length);
+    expect(styles).toContain(marker);
+    const reset = chromium.slice(0, chromium.indexOf("::-webkit-scrollbar"));
+    expect(reset).toContain("scrollbar-color: auto;");
+    expect(reset).toContain("scrollbar-width: auto;");
+    expect(styles).not.toContain("scrollbar-width: 1px;");
   });
 
   it("keeps one visible scrollbar color and thumb", () => {
     const colors = [...styles.matchAll(/scrollbar-color:\s*([^;]+);/g)].map((match) => match[1].trim());
-    expect(colors).toEqual(["var(--border-default) transparent"]);
+    expect(colors).toEqual(["var(--border-default) transparent", "auto"]);
     const thumbs = [...styles.matchAll(/::-webkit-scrollbar-thumb(?!:hover)[^{]*\{[^}]*?background:\s*([^;]+);/g)].map((match) => match[1].trim());
     expect(thumbs).toEqual(["var(--border-default)"]);
   });

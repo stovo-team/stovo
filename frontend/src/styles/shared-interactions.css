@@ -134,12 +134,19 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* One visible scrollbar style. Components may only hide a scroller. */
+/* One visible scrollbar style. Components may only hide a scroller.
+   Firefox keeps the standard properties. A length is unsupported there, so thin remains.
+   Chromium drops ::-webkit-scrollbar sizing once scrollbar-color or scrollbar-width is customized, and its native thin bar is wider than the token. Those engines leave the standard properties at auto and paint the WebKit bar at --scrollbar-size. */
 :where(*) {
   scrollbar-color: var(--border-default) transparent;
   scrollbar-width: thin;
-  /* A length stored in a custom property is dropped at computed-value time and resets this property to auto. A literal length stays thin where it is unsupported. */
-  scrollbar-width: 1px;
+}
+
+@supports selector(::-webkit-scrollbar) {
+  :where(*) {
+    scrollbar-color: auto;
+    scrollbar-width: auto;
+  }
 }
 
 :where(*)::-webkit-scrollbar {
