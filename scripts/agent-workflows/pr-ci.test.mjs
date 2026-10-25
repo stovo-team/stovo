@@ -7,6 +7,7 @@ test('every CI cell matters while CodeQL is explicitly ignored', () => {
   const result=classifyChecks(pr([check('Frontend CI'),check('Analyze (go)','FAILURE','COMPLETED','CodeQL')]));
   assert.equal(result.state,'passed'); assert.equal(result.ignored.length,1);
   assert.equal(classifyChecks(pr([check('Backend CI','FAILURE')])).state,'failed');
+  assert.equal(classifyChecks(pr([check('CodeQL policy regression','FAILURE')])).state,'failed');
   for(const conclusion of ['CANCELLED','TIMED_OUT','NEUTRAL','ACTION_REQUIRED'])
     assert.equal(classifyChecks(pr([check('CI',conclusion)])).state,'failed');
 });

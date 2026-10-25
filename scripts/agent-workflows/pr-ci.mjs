@@ -8,7 +8,7 @@ export function classifyChecks(pr, required = []) {
   for (const check of checks) {
     const name = check.name ?? check.context ?? 'unknown check';
     const item = {name, workflow:check.workflowName ?? '', url:check.detailsUrl ?? check.targetUrl};
-    if (/^codeql$/i.test(item.workflow) || /^codeql\b/i.test(name)) { result.ignored.push(item); continue; }
+    if (/^codeql$/i.test(item.workflow) || (!item.workflow && /^codeql(?:\s*\/|$)/i.test(name))) { result.ignored.push(item); continue; }
     if (check.context !== undefined) {
       (check.state === 'SUCCESS' ? result.passed : ['ERROR','FAILURE'].includes(check.state) ? result.failed : result.pending).push(item);
     } else if (check.status !== 'COMPLETED') result.pending.push(item);
