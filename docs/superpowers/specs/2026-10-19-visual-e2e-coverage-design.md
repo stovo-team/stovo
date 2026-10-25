@@ -1,3 +1,8 @@
+---
+title: "Visual and User-Journey E2E Coverage"
+type: specification
+---
+
 # Visual and User-Journey E2E Coverage
 
 ## Goal

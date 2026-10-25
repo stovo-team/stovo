@@ -1,0 +1,5 @@
+#!/bin/sh
+[ -f scripts/agent-workflows/prepare-knowledge.mjs ] || exit 0
+node scripts/agent-workflows/prepare-knowledge.mjs start >/dev/null ||
+  echo 'Knowledge refresh failed; run prepare-knowledge.mjs start before editing.' >&2
+exit 0

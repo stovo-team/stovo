@@ -94,3 +94,6 @@ clean_input.txt
 !/scripts/agent-workflows/
 !/scripts/agent-workflows/**
 /artifacts/agent-workflows/
+
+# Task-specific generated OKF context; curated .okf pages remain tracked.
+/.okf/changes/current.md
