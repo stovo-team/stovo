@@ -29,3 +29,5 @@ test('discovery and pipeline contract depend on the budget gate', () => {
     assert.match(block, /needs: pr-size/);
   }
 });
+
+test('metadata-only budget uses available self-hosted Windows without checkout',()=>{assert.match(budgetWorkflow,/  pull_request_target:/);assert.doesNotMatch(budgetWorkflow,/  pull_request:/);assert.match(budgetWorkflow,/runs-on: \[self-hosted, Windows, tests\]/);assert.match(budgetWorkflow,/shell: powershell/);assert.match(budgetWorkflow,/setup-node@[a-f0-9]{40}/);assert.doesNotMatch(budgetWorkflow,/uses: actions\/checkout/);});
