@@ -15,6 +15,12 @@ it("keeps the pinned-message action clickable without hover feedback", () => {
   expect(focusFeedback).toMatch(/background:\s*var\(--surface-hover\)/);
 });
 
+it("keeps the pinned banner click area visually unchanged on hover", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  expect(css).not.toMatch(/\.pinned-banner-click-area:is\([^)]*:hover/);
+  expect(css).toMatch(/\.pinned-banner-click-area:focus-visible\s*\{[^}]*background:\s*var\(--surface-hover\)/);
+});
+
 it("matches the pinned preview font and active chat header dimensions", () => {
   const css = readFileSync("src/styles.css", "utf8");
   const preview = css.match(/\.pinned-banner-preview\s*\{([^}]*)\}/)?.[1] ?? "";
