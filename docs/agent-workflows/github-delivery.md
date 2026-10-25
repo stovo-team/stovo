@@ -10,6 +10,8 @@ Implementation requests include publishing the focused task branch and opening/u
 1. Verify the task branch, exact diff, regression/acceptance evidence and relevant checks. Keep each PR at most **445 additions + deletions** across every file; generated files, tests, documentation and lockfiles count. Use the GitHub PR metadata count as the remote authority. Split coherent work before publication.
 2. Run `gh` outside the sandbox using the host's escalation mechanism. Resolve the actual target with `gh repo view --json nameWithOwner,defaultBranchRef`; this checkout's old origin redirects to `stovo-team/stovo`. Use that explicit `--repo` for reads and writes. Keep credentials out of logs.
 3. Outside the sandbox run `node scripts/agent-workflows/pr-ci.mjs --publish --repo <owner/repo> --branch <branch> --title "<prefix>: <behavior>" --body-file <body.md>`. This verifies the repository/branch and local size, pushes, creates or updates the PR with `gh`, then immediately watches CI. Attach its URL through the host's artifact tool when available. Publication is a required delivery step under the standing authorization above.
+For a dependent PR, pass `--base <predecessor-branch>` and link its PR. Its 445-line budget is measured against that base. Retarget `master` after the predecessor merges.
+
 4. Immediately inspect all current-head checks outside the sandbox:
 
    ```sh

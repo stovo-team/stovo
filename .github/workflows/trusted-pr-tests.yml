@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   pull_request_target:
-    branches: [master]
+    branches: [master, 'feature/**', 'hotfix/**']
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:

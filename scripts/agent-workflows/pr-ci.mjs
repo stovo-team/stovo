@@ -37,19 +37,19 @@ export async function watchPr({read, required=[], sleep=delay, interval=15000, t
 
 const requiredChecks = ['PR size','Pipeline Contract','Agent workflow gate'];
 const execute = (tool,args) => execFileSync(tool,args,{encoding:'utf8',timeout:60000});
-export async function deliverPr({repo,branch,title,bodyFile,run=execute,onPublished=()=>{},...watchOptions}) {
+export async function deliverPr({repo,branch,title,bodyFile,base='master',run=execute,onPublished=()=>{},...watchOptions}) {
   const actual=JSON.parse(run('gh',['repo','view','--json','nameWithOwner'])).nameWithOwner;
   if (repo !== actual) throw Error(`Target repository is ${actual}, not ${repo}`);
   const current=run('git',['branch','--show-current']).trim();
   if (!branch || branch !== current || !/^(feature|hotfix|release|left-try)\//.test(branch)) throw Error('Publish the current dedicated task branch');
   if (!/^(Feature|Fix|CritFix|Test|Docs): /.test(title ?? '') || !bodyFile) throw Error('PR title and body file required');
-  const count=run('git',['diff','--numstat','origin/master...HEAD']).trim().split('\n').filter(Boolean).reduce((sum,line)=>sum+line.split('\t').slice(0,2).reduce((n,v)=>n+(v==='-'?0:Number(v)),0),0);
+  const count=run('git',['diff','--numstat',`origin/${base}...HEAD`]).trim().split('\n').filter(Boolean).reduce((sum,line)=>sum+line.split('\t').slice(0,2).reduce((n,v)=>n+(v==='-'?0:Number(v)),0),0);
   if (!Number.isSafeInteger(count) || count>445) throw Error(`Split the ${count}-line PR before publishing (limit 445)`);
   run('git',['push','--set-upstream','origin',branch]);
-  const existing=JSON.parse(run('gh',['pr','list','--repo',repo,'--head',branch,'--state','open','--json','url']));
-  let url=existing[0]?.url;
-  if (url) run('gh',['pr','edit',url,'--repo',repo,'--title',title,'--body-file',bodyFile]);
-  else url=run('gh',['pr','create','--repo',repo,'--base','master','--head',branch,'--title',title,'--body-file',bodyFile]).trim();
+  const existing=JSON.parse(run('gh',['pr','list','--repo',repo,'--head',branch,'--state','open','--json','url,isCrossRepository']));
+  let url=existing.find(pr=>pr.isCrossRepository===false)?.url;
+  if (url) run('gh',['pr','edit',url,'--repo',repo,'--base',base,'--title',title,'--body-file',bodyFile]);
+  else url=run('gh',['pr','create','--repo',repo,'--base',base,'--head',branch,'--title',title,'--body-file',bodyFile]).trim();
   if (!/^https:\/\/github\.com\//.test(url)) throw Error('Missing usable PR URL');
   onPublished(url);
   const read=()=>JSON.parse(run('gh',['pr','view',url,'--repo',repo,'--json','headRefOid,statusCheckRollup']));
@@ -62,7 +62,7 @@ main(import.meta.url, async args => {
   const seconds = Number(o['timeout-seconds'] ?? 2700), interval = Number(o['interval-seconds'] ?? 15);
   if (!Number.isFinite(seconds) || seconds < 0 || !Number.isFinite(interval) || interval < 1) throw Error('Invalid timeout or interval');
   if (o.publish) {
-    const result=await deliverPr({repo:o.repo,branch:o.branch,title:o.title,bodyFile:o['body-file'],timeout:seconds*1000,interval:interval*1000,onPublished:url=>console.error(`PR: ${url}`),onUpdate:r=>console.error(JSON.stringify(r))});
+    const result=await deliverPr({repo:o.repo,branch:o.branch,base:o.base??'master',title:o.title,bodyFile:o['body-file'],timeout:seconds*1000,interval:interval*1000,onPublished:url=>console.error(`PR: ${url}`),onUpdate:r=>console.error(JSON.stringify(r))});
     return {...result,ok:result.state==='passed'};
   }
   const read = () => JSON.parse(execFileSync('gh', ['pr','view',String(o.pr),'--repo',String(o.repo),'--json','headRefOid,statusCheckRollup'], {encoding:'utf8',timeout:30000}));
