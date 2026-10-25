@@ -19,7 +19,7 @@ type: index
 
 - [Human approvals and contracts](agent-workflows/approvals.md): reviewed artifacts, freshness, action scopes, and task sizing.
 
-- [Agent workflow improvement program](engineering/agent-workflow-program.md): proposed specification, test/evaluation plan, and implementation sequence for skills, approvals, visual evidence, QA, and GitHub delivery.
+- [Agent workflow improvement program](engineering/agent-workflow-program.md): current skill entry points, task navigation, rollout checks, and original planning references.
 - [Bug and issue fixes](agent-workflows/bug-fixes.md): reproduction-first fixes with a required regression test for every bug or defect issue.
 - [Feature development](agent-workflows/feature-development.md): feature and test plans, test-first implementation, and relevant verification.
 - [Testing and verification](agent-workflows/testing.md): test-layer selection, test quality, isolation, and reporting.

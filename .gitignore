@@ -82,7 +82,11 @@ clean_input.txt
 .playwright/
 .playwright-daemon/
 .claude/
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/stovo-*/
+.agents/skills/*/.stovo-skill.json
 .cache/
 .codex/
 /Stovo/

@@ -7,6 +7,27 @@ type: architecture
 
 This is a navigation guide to the main feature boundaries in the current source tree, not a promise that each directory is an independently deployable service. The backend is built and deployed as one Go application. The frontend is a single React app.
 
+## Task navigation
+
+For a bug or feature, choose the matching entry below, then trace the concrete symbol through its callers. Confirm each path with `rg --files` before editing; this map describes boundaries, while source defines current ownership.
+
+| Reported interaction | First boundary | Follow when affected |
+| --- | --- | --- |
+| Messages, composer, attachments, chat settings | `frontend/src/features/chats`, `frontend/src/api/chats.ts` | `backend/internal/features/chats`, `messages`, `files`; HTTP/realtime transport |
+| Calls, microphone, camera, connection state | `frontend/src/realtime/call`, `frontend/src/realtime/CallController.ts` | `backend/internal/features/calls`, `backend/internal/transport/http/call_routes.go` |
+| Login, registration, session refresh | `frontend/src/auth`, `frontend/src/api/auth.ts` | `backend/internal/features/identity`, HTTP login/setup handlers |
+| Polls and plans | `frontend/src/api/polls.ts`, `frontend/src/features/plans` | `backend/internal/features/polls`, `plans` |
+| Popups, shared styles, translated copy | `frontend/src/components`, `frontend/src/design-system`, `frontend/src/config/strings` | [UI conventions](../engineering/frontend-ui-conventions.md), [popup standards](../ui/popup-standards.md) |
+| Persistence, object access, background effects | `backend/internal/ports`, `backend/internal/repository`, `backend/internal/storage` | Actual callers in `backend/internal/app`, feature packages and adapters |
+| Deployment or configuration | `deploy/compose`, `deploy/charts/stovo`, `.env.example` | [Compose](../self-hosting/docker-compose.md), [Kubernetes](../self-hosting/kubernetes.md), bootstrap consumers |
+| Agent workflow or delivery tooling | `.agents/skills`, `scripts/agent-workflows` | [Program entry](../engineering/agent-workflow-program.md) and the applicable workflow |
+
+Start with a visible label, endpoint, event name or failing test. Search its matching area with `rg -n -F '<literal>' <area>`, then search the discovered symbol's callers across the next boundary. Use neighboring `*.test.ts(x)` or `*_test.go` and transport contracts to identify the smallest regression or acceptance check. Consult `CONTRIBUTING.md` for its command and prerequisites.
+
+Before editing, record the behavior, entry symbol, responsible implementation, affected callers, existing helper/component/dependency to reuse, and focused proof command. Expand the search when a call or contract crosses an area. For broad documentation questions, use the optional docs search in root `AGENTS.md`; source search remains necessary for code ownership.
+
+For a compacted chat or authorized transfer, use the [task handoff](../agent-workflows/task-handoff.md) so the next agent starts with concrete paths and evidence.
+
 ## Backend
 
 ### Application composition and transport

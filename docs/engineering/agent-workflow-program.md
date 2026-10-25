@@ -5,11 +5,18 @@ type: index
 
 # Agent workflow improvement program
 
-**Status:** Proposed implementation; planning artifacts prepared on 2026-10-19.
+**Status:** Repository workflows and local tooling implemented; host skill activation and real model evaluation remain rollout checks. Original planning artifacts were prepared on 2026-10-19.
 
-The user approved the scope of improving skills, feature contracts, human approvals, dependency research, reusable-code discovery, independent QA, frontend evidence, workflow evaluations, and GitHub delivery. This page connects the concrete design and rollout documents for review. Approval of that scope does not assert that these newly written artifacts have already been reviewed, implemented, or deployed.
+The user approved the scope of improving skills, feature contracts, human approvals, dependency research, reusable-code discovery, independent QA, frontend evidence, workflow evaluations, and GitHub delivery. This page connects current entry points and the original design documents. Local tooling and fixture checks do not establish host skill activation, live model quality, remote repository settings, or publication approval.
 
-## Read and review in this order
+## Current entry points
+
+- [Project skills](../../agent-skills/README.md): tracked `.agents/skills` entry points and optional installation.
+- [Subsystem task navigation](../architecture/subsystems.md#task-navigation) and [task handoff](../agent-workflows/task-handoff.md): find concrete code, callers, tests and continuation evidence.
+- [Workflow evaluations](../agent-workflows/workflow-evals.md): real Desktop trials and fixed grading.
+- `scripts/agent-workflows`: contract, evidence, delivery and installation tooling; neighboring tests cover local behavior.
+
+## Original planning references
 
 1. [Design and acceptance criteria](../superpowers/specs/2026-10-19-agent-workflow-system-design.md): responsibilities, permission boundaries, artifact formats, and intended behavior.
 2. [Test and evaluation plan](../feature-plans/agent-workflow-system-tests.md): requirement-to-check mapping, negative cases, visual coverage, and rollout evidence.
@@ -17,13 +24,13 @@ The user approved the scope of improving skills, feature contracts, human approv
 
 ## Existing authorities
 
-- [Feature development](../agent-workflows/feature-development.md), [bug fixes](../agent-workflows/bug-fixes.md), and [testing](../agent-workflows/testing.md) remain the active development policy until their proposed revisions are implemented.
+- [Feature development](../agent-workflows/feature-development.md), [bug fixes](../agent-workflows/bug-fixes.md), and [testing](../agent-workflows/testing.md) are the active development policy.
 - [Isolation and delivery](../agent-workflows/isolation-and-delivery.md) governs branches, local commits, publication authorization, and cleanup.
 - [PR review findings](../agent-workflows/pr-review-findings.md) already requires evidence and limits automatic issue creation.
 - [Frontend conventions](frontend-ui-conventions.md) and [popup standards](../ui/popup-standards.md) govern UI reuse.
 - [Local mock design](../superpowers/specs/2026-10-09-frontend-mock-mode-design.md) describes why the real application runs against synthetic local data.
 
-## Baseline inspected
+## Original planning baseline
 
 Planning started from locally available `origin/master` at commit `26e3aebe72c4441fc518d31d24826e11af5006e9`. Remote repository settings and currently installed personal skill files are not modified by this planning change.
 
@@ -51,13 +58,13 @@ okf-agent bundle backlinks engineering/agent-workflow-program.md --root docs --i
 okf-agent bundle validate --root docs --index-root .okf-index/docs
 ```
 
-The initial full-corpus validation reports 10 existing missing-frontmatter errors and 7 diagnostics for intentional links outside the `docs/` bundle. The implementation plan includes the metadata repair. Planning acceptance requires no new diagnostics and valid new pages; it does not relabel the existing full-corpus failure as a pass. Repository-wide link checks continue to validate the destinations of links that leave the bundle.
+The original planning validation reported 10 missing-frontmatter errors and 7 diagnostics for intentional links outside the `docs/` bundle. These historical counts are not current verification evidence; run the commands above for the active checkout. Repository-wide link checks also validate destinations outside the bundle.
 
 ## Delivery boundary
 
 This program is one coordinated scope delivered through several coherent PRs. Local preparation and verification do not authorize publishing repositories, installing personal skills globally, creating issues or Projects, changing branch rules, merging, or deploying. Record existing task-specific or standing human authorization and reuse it within its stated scope.
 
-## Planning verification
+## Original planning verification
 
 On 2026-10-19, the existing Markdown-link and documented-configuration tests passed (2 tests, 0 failures). OKF indexing found 55 documents after the four program pages were added; search returned all four pages and backlinks linked them with this entry and the documentation index. Comparing validation to the pre-change baseline showed no new diagnostics: the same 10 missing-frontmatter errors and 7 bundle-escape diagnostics remain. `git diff --check` is part of final local verification. Application tests, chargeable model evals, live GitHub changes, and visual execution are implementation tasks, not results asserted by this planning package.
 

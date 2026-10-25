@@ -9,6 +9,7 @@ export function installSkills({sourceRoot,targetRoot,mode='link',dryRun=false}) 
   for(const name of readdirSync(source).filter(n=>n.startsWith('stovo-')).sort()) {
     const from=realpathSync(path.join(source,name)),to=path.join(target,name),stat=present(to);
     if(!from.startsWith(source+path.sep)||!existsSync(path.join(from,'SKILL.md')))throw Error(`invalid or escaping skill source: ${name}`);
+    if(source===target){unchanged.push(name);continue;}
     if(stat?.isSymbolicLink()) {
       if(mode==='link' && path.resolve(path.dirname(to),readlinkSync(to))===from){unchanged.push(name);continue;}
       collisions.push(name);continue;
@@ -25,7 +26,7 @@ export function installSkills({sourceRoot,targetRoot,mode='link',dryRun=false}) 
     operations.push({name,from,to,files,replace:!!stat});
   }
   if(collisions.length)return {ok:false,installed,unchanged,collisions};
-  if(!dryRun)for(const op of operations){mkdirSync(target,{recursive:true});if(op.replace)rmSync(op.to,{recursive:true});if(mode==='link')symlinkSync(op.from,op.to,'dir');else{cpSync(op.from,op.to,{recursive:true});writeFileSync(path.join(op.to,'.stovo-skill.json'),JSON.stringify({source:op.from,hashes:Object.fromEntries(op.files.map(f=>[f,hashFile(path.join(op.from,f))]))}));}}
+  if(!dryRun)for(const op of operations){mkdirSync(target,{recursive:true});if(op.replace)rmSync(op.to,{recursive:true});if(mode==='link')symlinkSync(path.relative(path.dirname(op.to),op.from),op.to,'dir');else{cpSync(op.from,op.to,{recursive:true});writeFileSync(path.join(op.to,'.stovo-skill.json'),JSON.stringify({source:op.from,hashes:Object.fromEntries(op.files.map(f=>[f,hashFile(path.join(op.from,f))]))}));}}
   installed.push(...operations.map(o=>o.name));return {ok:true,dryRun,installed,unchanged,collisions};
 }
-main(import.meta.url,args=>{const o=argumentsOf(args);return installSkills({sourceRoot:o.source??path.resolve('agent-skills'),targetRoot:o.target??path.resolve('.agents/skills'),mode:o.mode??'link',dryRun:!!o['dry-run']});});
+main(import.meta.url,args=>{const o=argumentsOf(args);return installSkills({sourceRoot:o.source??path.resolve('.agents/skills'),targetRoot:o.target??path.resolve('.agents/skills'),mode:o.mode??'link',dryRun:!!o['dry-run']});});
