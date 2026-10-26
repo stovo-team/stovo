@@ -420,15 +420,15 @@ for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 
   fi
 done
 
-# Every Windows bootstrap must be guarded so community PRs can run on hosted Linux.
-for step in 'Detect available shell' 'Install Helm on Windows runner' 'Start Docker Desktop for docs validation' 'Ensure Docker Compose CLI plugin is available'; do
+# Every platform bootstrap must be guarded so community PRs can run on hosted Linux.
+for step in 'Detect available shell' 'Install Helm on Windows runner' 'Install kubeconform on Windows runner' 'Ensure Docker Compose CLI plugin is available'; do
   if ! awk -v step="$step" '$0 == "      - name: " step {getline; if ($0 == "        if: runner.os == \047Windows\047") found=1} END {exit !found}' <<< "$docs_workflow_contract"; then
     echo "Docs Windows setup must be guarded by runner.os ($step)." >&2
     exit 1
   fi
 done
-for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd64.zip' 'docker-compose-windows-x86_64.exe' "if: runner.os == 'Linux'" 'docker-compose-linux-x86_64' 'run: node --test .github/docs-validation.test.mjs' 'kubeconform:v0.6.7'; do
-  if ! grep -Fq "$required" <<< "$docs_workflow_contract"; then
+for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd64.zip' 'kubeconform-windows-amd64.zip' 'kubeconform-linux-amd64.tar.gz' 'docker-compose-windows-x86_64.exe' "if: runner.os == 'Linux'" 'docker-compose-linux-x86_64' 'run: node --test .github/docs-validation.test.mjs' '-strict -summary -kubernetes-version 1.30.0 -'; do
+  if ! grep -Fq -- "$required" <<< "$docs_workflow_contract"; then
     echo "Docs validation must preserve both platform setup and real checks ($required)." >&2
     exit 1
   fi
