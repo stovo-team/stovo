@@ -85,4 +85,17 @@
   .storage-page .storage-grid {
     grid-template-columns: repeat(auto-fill, 140px);
   }
+
+  .message-bubble:has(.canvas-card-bubble) {
+    max-width: min(320px, calc(100vw - 48px));
+    width: min(320px, calc(100vw - 48px));
+  }
+
+  .canvas-card-bubble {
+    max-width: 320px;
+  }
+
+  .canvas-card-bubble-preview {
+    max-height: 180px;
+  }
 }

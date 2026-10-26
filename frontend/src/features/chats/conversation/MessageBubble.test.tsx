@@ -7,6 +7,7 @@ import type { Chat, Message } from "../../../api/chats";
 import { englishStrings, russianStrings } from "../../../config/strings";
 
 const mountedRoots: Root[] = [];
+const conversationStyles = readCssSource("src/styles.css");
 
 afterEach(() => {
   while (mountedRoots.length > 0) {
@@ -16,6 +17,18 @@ afterEach(() => {
     });
   }
   document.body.innerHTML = "";
+});
+
+describe("mobile canvas message preview sizing", () => {
+  it("keeps the desktop preview wide and caps the phone preview at 320 by 180 pixels", () => {
+    const desktopCardRule = conversationStyles.match(/\.message-bubble:has\(\.canvas-card-bubble\)\s*\{([^}]*)\}/)?.[1] ?? "";
+    const mobileCardRule = Array.from(conversationStyles.matchAll(/\.message-bubble:has\(\.canvas-card-bubble\)\s*\{([^}]*)\}/g)).at(-1)?.[1] ?? "";
+    const mobilePreviewRule = Array.from(conversationStyles.matchAll(/\.canvas-card-bubble-preview\s*\{([^}]*)\}/g)).at(-1)?.[1] ?? "";
+
+    expect(desktopCardRule).toMatch(/max-width:\s*min\(560px, calc\(100vw - 48px\)\)/);
+    expect(mobileCardRule).toMatch(/max-width:\s*min\(320px, calc\(100vw - 48px\)\)/);
+    expect(mobilePreviewRule).toMatch(/max-height:\s*180px/);
+  });
 });
 
 function createMockChat(overrides: Partial<Chat> = {}): Chat {
