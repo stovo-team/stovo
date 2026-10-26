@@ -338,7 +338,7 @@ func invitePublicFromFamilyInvite(inv featurefamily.Invite) invitePublic {
 }
 
 func (s *Server) userPublicFromFamilyMember(memberRow featurefamily.Member) userPublic {
-	member := userPublic{ID: memberRow.ID, FamilyID: memberRow.FamilyID, Username: memberRow.Username, DisplayName: memberRow.DisplayName, Role: memberRow.Role, IsActive: memberRow.IsActive, PublicKey: memberRow.PublicKey, ProfileVisibility: memberRow.ProfileVisibility, LastSeenVisibility: memberRow.LastSeenVisibility, ReadReceiptsEnabled: memberRow.ReadReceiptsEnabled, DirectMessagePermission: "family", GroupInvitePermission: "allow", ChannelInvitePermission: "allow", VoiceInvitePermission: "allow", Email: memberRow.Email, Bio: memberRow.Bio, Timezone: memberRow.Timezone}
+	member := userPublic{ID: memberRow.ID, FamilyID: memberRow.FamilyID, Username: memberRow.Username, DisplayName: memberRow.DisplayName, Role: memberRow.Role, IsActive: memberRow.IsActive, PublicKey: memberRow.PublicKey, AvatarMode: memberRow.AvatarMode, AvatarSymbolID: memberRow.AvatarSymbolID, AvatarColorID: memberRow.AvatarColorID, ProfileVisibility: memberRow.ProfileVisibility, LastSeenVisibility: memberRow.LastSeenVisibility, ReadReceiptsEnabled: memberRow.ReadReceiptsEnabled, DirectMessagePermission: "family", GroupInvitePermission: "allow", ChannelInvitePermission: "allow", VoiceInvitePermission: "allow", Email: memberRow.Email, Bio: memberRow.Bio, Timezone: memberRow.Timezone}
 	created := parseTime(memberRow.CreatedAt)
 	member.CreatedAt = &created
 	if memberRow.LastSeenAt != nil {

@@ -30,6 +30,12 @@ type Chat struct {
 	CreatedBy *string `json:"created_by,omitempty"`
 	// ChatPhotoFileID holds the value of the "chat_photo_file_id" field.
 	ChatPhotoFileID *string `json:"chat_photo_file_id,omitempty"`
+	// ChatAvatarMode holds the value of the "chat_avatar_mode" field.
+	ChatAvatarMode *string `json:"chat_avatar_mode,omitempty"`
+	// ChatAvatarSymbolID holds the value of the "chat_avatar_symbol_id" field.
+	ChatAvatarSymbolID *string `json:"chat_avatar_symbol_id,omitempty"`
+	// ChatAvatarColorID holds the value of the "chat_avatar_color_id" field.
+	ChatAvatarColorID *string `json:"chat_avatar_color_id,omitempty"`
 	// MediaVisibility holds the value of the "media_visibility" field.
 	MediaVisibility string `json:"media_visibility,omitempty"`
 	// CommentsEnabled holds the value of the "comments_enabled" field.
@@ -136,7 +142,7 @@ func (*Chat) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case chat.FieldMessageDelaySeconds:
 			values[i] = new(sql.NullInt64)
-		case chat.FieldID, chat.FieldFamilyID, chat.FieldType, chat.FieldTitle, chat.FieldDescription, chat.FieldCreatedBy, chat.FieldChatPhotoFileID, chat.FieldMediaVisibility, chat.FieldEncryptionProtocol, chat.FieldCreatedAt, chat.FieldUpdatedAt, chat.FieldPinPermission:
+		case chat.FieldID, chat.FieldFamilyID, chat.FieldType, chat.FieldTitle, chat.FieldDescription, chat.FieldCreatedBy, chat.FieldChatPhotoFileID, chat.FieldChatAvatarMode, chat.FieldChatAvatarSymbolID, chat.FieldChatAvatarColorID, chat.FieldMediaVisibility, chat.FieldEncryptionProtocol, chat.FieldCreatedAt, chat.FieldUpdatedAt, chat.FieldPinPermission:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -198,6 +204,27 @@ func (_m *Chat) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ChatPhotoFileID = new(string)
 				*_m.ChatPhotoFileID = value.String
+			}
+		case chat.FieldChatAvatarMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_avatar_mode", values[i])
+			} else if value.Valid {
+				_m.ChatAvatarMode = new(string)
+				*_m.ChatAvatarMode = value.String
+			}
+		case chat.FieldChatAvatarSymbolID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_avatar_symbol_id", values[i])
+			} else if value.Valid {
+				_m.ChatAvatarSymbolID = new(string)
+				*_m.ChatAvatarSymbolID = value.String
+			}
+		case chat.FieldChatAvatarColorID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field chat_avatar_color_id", values[i])
+			} else if value.Valid {
+				_m.ChatAvatarColorID = new(string)
+				*_m.ChatAvatarColorID = value.String
 			}
 		case chat.FieldMediaVisibility:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -330,6 +357,21 @@ func (_m *Chat) String() string {
 	builder.WriteString(", ")
 	if v := _m.ChatPhotoFileID; v != nil {
 		builder.WriteString("chat_photo_file_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ChatAvatarMode; v != nil {
+		builder.WriteString("chat_avatar_mode=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ChatAvatarSymbolID; v != nil {
+		builder.WriteString("chat_avatar_symbol_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ChatAvatarColorID; v != nil {
+		builder.WriteString("chat_avatar_color_id=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

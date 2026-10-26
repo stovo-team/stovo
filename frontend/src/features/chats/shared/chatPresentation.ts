@@ -20,24 +20,6 @@ export function chatListLayoutClass(minimizedChatLayout: boolean) {
   return minimizedChatLayout ? " messenger-shell--minimized-chat-layout" : "";
 }
 
-export function compactChatListLeadingVisual(
-  chatType: Chat["type"]
-): "lock" | "hash" | "archive" | "avatar" | "voice" {
-  if (chatType === "voice") {
-    return "voice";
-  }
-  if (chatType === "group" || chatType === "family") {
-    return "lock";
-  }
-  if (chatType === "channel") {
-    return "hash";
-  }
-  if (chatType === "archive") {
-    return "archive";
-  }
-  return "avatar";
-}
-
 export function isSuppressedUserError(message: string | null): boolean {
   return message === "Authentication required";
 }
@@ -331,11 +313,26 @@ export function canPostToChannel(chat: Chat, currentUser: User | null) {
 }
 
 export function chatAvatarFile(chat: Chat, currentUserId: string | undefined) {
-  if (chat.chatPhoto) {
-    return chat.chatPhoto;
-  }
   if (chat.type === "direct") {
     return chat.members.find((member) => member.id !== currentUserId)?.profilePhoto ?? null;
   }
-  return null;
+  return chat.chatPhoto ?? null;
+}
+
+export function chatAvatarIdentity(chat: Chat, currentUserId: string | undefined) {
+  if (chat.type === "direct") {
+    const member = chat.members.find((item) => item.id !== currentUserId);
+    return {
+      entityId: member?.id ?? chat.id,
+      mode: member?.avatarMode,
+      symbolId: member?.avatarSymbolId,
+      colorId: member?.avatarColorId
+    };
+  }
+  return {
+    entityId: chat.id,
+    mode: chat.avatarMode,
+    symbolId: chat.avatarSymbolId,
+    colorId: chat.avatarColorId
+  };
 }

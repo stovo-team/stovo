@@ -70,9 +70,14 @@ type SettingsStore interface {
 	UpdateTitle(context.Context, string, string, string) error
 	UpdateDescription(context.Context, string, *string, string) error
 	UpdatePhoto(context.Context, string, *string, string) error
+	UpdateAvatarChoices(context.Context, string, AvatarChoices, string) error
 	UpdateMediaVisibility(context.Context, string, string, string) error
 	ApproveDirectMediaVisibility(context.Context, string, string, string, string) error
 	UpdatePreferences(context.Context, Preferences) error
+}
+
+type AvatarChoices struct {
+	Mode, SymbolID, ColorID *string
 }
 
 type MessageDelay struct {
@@ -164,6 +169,10 @@ func (s *SettingsService) SetDescription(ctx context.Context, chatID string, des
 
 func (s *SettingsService) SetPhoto(ctx context.Context, chatID string, photoFileID *string) error {
 	return s.store.UpdatePhoto(ctx, chatID, photoFileID, s.now().UTC().Format(time.RFC3339Nano))
+}
+
+func (s *SettingsService) SetAvatarChoices(ctx context.Context, chatID string, choices AvatarChoices) error {
+	return s.store.UpdateAvatarChoices(ctx, chatID, choices, s.now().UTC().Format(time.RFC3339Nano))
 }
 
 func (s *SettingsService) UpdatePreferences(ctx context.Context, preferences Preferences) error {

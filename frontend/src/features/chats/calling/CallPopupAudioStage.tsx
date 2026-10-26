@@ -98,6 +98,10 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
                   className="avatar voice-participant-avatar voice-avatar--md"
                   file={member?.profilePhoto ?? null}
                   label={member?.displayName ?? (isSelf ? currentUser?.displayName ?? "You" : "Member")}
+                  entityId={userId}
+                  mode={member?.avatarMode ?? (isSelf ? currentUser?.avatarMode : undefined)}
+                  symbolId={member?.avatarSymbolId ?? (isSelf ? currentUser?.avatarSymbolId : undefined)}
+                  colorId={member?.avatarColorId ?? (isSelf ? currentUser?.avatarColorId : undefined)}
                 />
                 {isMuted && <span className="voice-card-muted-badge" aria-label={copy.muted}><MicOff size={14} aria-hidden="true" /></span>}
               </div>
@@ -120,6 +124,10 @@ export function CallPopupAudioStage({ activeChat }: CallPopupAudioStageProps) {
           className="avatar call-popup-real-avatar"
           file={activePeer?.profilePhoto ?? null}
           label={callPeerDisplayName ?? activeCallPeerName ?? "Call"}
+          entityId={activePeer?.id ?? session.callPeerUserId ?? "call-peer"}
+          mode={activePeer?.avatarMode}
+          symbolId={activePeer?.avatarSymbolId}
+          colorId={activePeer?.avatarColorId}
         />
         <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
         <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />

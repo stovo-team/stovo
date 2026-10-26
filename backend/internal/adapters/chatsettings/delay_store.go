@@ -54,6 +54,10 @@ func (s *DelayStore) UpdatePhoto(ctx context.Context, chatID string, photoFileID
 	return s.store.UpdateChatPhoto(ctx, chatID, photoFileID, updatedAt)
 }
 
+func (s *DelayStore) UpdateAvatarChoices(ctx context.Context, chatID string, choices chats.AvatarChoices, updatedAt string) error {
+	return s.store.UpdateChatAvatarChoices(ctx, chatID, choices.Mode, choices.SymbolID, choices.ColorID, updatedAt)
+}
+
 func (s *DelayStore) UpdatePreferences(ctx context.Context, preferences chats.Preferences) error {
 	return s.store.UpdateChatPreferences(ctx, repository.UpdateChatPreferencesParams{
 		ChatID:               preferences.ChatID,

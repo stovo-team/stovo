@@ -25,7 +25,7 @@ func (s *Store) Members(ctx context.Context, chatID string) ([]featurechats.Memb
 	}
 	out := make([]featurechats.Member, 0, len(users))
 	for _, u := range users {
-		out = append(out, featurechats.Member{ID: u.ID, DisplayName: u.DisplayName, Username: u.Username, Role: u.Role, PublicKey: u.PublicKey, LastSeenVisibility: u.LastSeenVisibility, LastSeenAt: u.LastSeenAt, ProfilePhotoFileID: u.ProfilePhotoFileID})
+		out = append(out, featurechats.Member{ID: u.ID, DisplayName: u.DisplayName, Username: u.Username, Role: u.Role, PublicKey: u.PublicKey, LastSeenVisibility: u.LastSeenVisibility, LastSeenAt: u.LastSeenAt, ProfilePhotoFileID: u.ProfilePhotoFileID, AvatarMode: u.ProfileAvatarMode, AvatarSymbolID: u.ProfileAvatarSymbolID, AvatarColorID: u.ProfileAvatarColorID})
 	}
 	return out, nil
 }

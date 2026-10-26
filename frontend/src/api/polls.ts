@@ -43,6 +43,9 @@ export interface PollVoterSummary {
   displayName: string;
   username: string;
   profilePhoto?: FamilyFile | null;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
 }
 
 export function createPoll(accessToken: string, chatId: string, payload: CreatePollPayload) {

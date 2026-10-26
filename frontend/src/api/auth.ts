@@ -18,6 +18,9 @@ export interface User {
   isActive: boolean;
   publicKey: string | null;
   profilePhoto: FamilyFile | null;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   createdAt?: string;
   lastSeenAt?: string | null;
   profileVisibility: "family" | "nobody";

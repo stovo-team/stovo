@@ -51,6 +51,16 @@ export const strings = {
     connectSpace: "Добавить Space",
   },
 
+  avatarChoices: {
+    photo: "Фото", symbol: "Символ", initials: "Инициалы", symbols: "Выберите символ", colors: "Выберите цвет",
+    symbolNames: {
+      "user-round": "Человек", users: "Группа", home: "Дом", archive: "Архив", "audio-lines": "Голосовой канал",
+      megaphone: "Объявление", folder: "Папка", heart: "Сердце", star: "Звезда", music: "Музыка",
+      "book-open": "Книга", camera: "Камера", shield: "Щит", sparkles: "Искры", bell: "Колокольчик"
+    },
+    colorNames: { red: "Красный", orange: "Оранжевый", green: "Зелёный", blue: "Синий", purple: "Фиолетовый", pink: "Розовый", teal: "Бирюзовый", sky: "Голубой" }
+  },
+
   previews: {
     voicePreview: "Предпросмотр голосового канала Stovo",
     raidPlanning: "Планирование рейда",
@@ -1171,6 +1181,7 @@ export const strings = {
       groceries: "Покупки", errands: "Дела", checklist: "Список", itemsDone: (completed: number, total: number) => `Выполнено ${completed} из ${total}`, untitledCanvas: "Доска без названия",
     },
     title: "Файлы",
+    resizeChatList: "Изменить ширину списка чатов",
     searchPlaceholder: "Поиск файлов",
     uploadFile: "Загрузить файл",
     uploading: "Загрузка…",

@@ -62,6 +62,7 @@ import {
 } from "../settings/devicePreferences";
 import { updateNativeNotificationSchedule } from "../api/notifications";
 import { AvatarEditorModal } from "../components/AvatarEditorModal";
+import { AvatarChoicePicker } from "../components/AvatarChoicePicker";
 import { BackButton } from "../components/BackButton";
 import AppNav from "./AppNav";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
@@ -392,10 +393,24 @@ export default function SettingsPage() {
       const uploaded = await uploadFile(accessToken, croppedFile);
       const updatedUser = await authRequest<User>("/api/auth/me", {
         method: "PATCH",
-        body: { profilePhotoFileId: uploaded.id }
+        body: { profilePhotoFileId: uploaded.id, avatarMode: "photo" }
       });
       updateCurrentUser(updatedUser);
       setNotice(strings.settings.profilePhotoUpdated);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : strings.errors.couldNotUpdateProfilePhoto);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveProfileAvatarChoice(patch: Partial<Pick<User, "avatarMode" | "avatarSymbolId" | "avatarColorId">>) {
+    if (!currentUser) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const updatedUser = await authRequest<User>("/api/auth/me", { method: "PATCH", body: patch });
+      updateCurrentUser(updatedUser);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : strings.errors.couldNotUpdateProfilePhoto);
     } finally {
@@ -466,7 +481,7 @@ export default function SettingsPage() {
               appearance={appearance}
               appearanceHelper={appearanceHelper}
               onOpen={(item) => item === "Statistics" ? navigate("statistics") : setActiveSettingsItem(item)}
-              profilePhotoControl={<><SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} /><button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} title={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button><input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} /></>}
+              profilePhotoControl={<><SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} entityId={currentUser?.id} mode={currentUser?.avatarMode} symbolId={currentUser?.avatarSymbolId} colorId={currentUser?.avatarColorId} /><button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} title={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button><input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} /></>}
             />
               </>
             )}
@@ -537,11 +552,12 @@ export default function SettingsPage() {
                     onNotificationPreferencesUpdate={updateDevicePreferences}
                     profilePhotoControl={
                       <>
-                        <SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" />
+                        <SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" entityId={currentUser?.id} mode={currentUser?.avatarMode} symbolId={currentUser?.avatarSymbolId} colorId={currentUser?.avatarColorId} />
                         <button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button>
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
                       </>
                     }
+                    profileAvatarPicker={<AvatarChoicePicker accessToken={accessToken} entityId={currentUser?.id ?? "person"} entityKind="person" label={profileForm.displayName || strings.settings.familyMember} file={currentUser?.profilePhoto} allowPhoto={Boolean(currentUser?.profilePhoto)} mode={currentUser?.avatarMode ?? (currentUser?.profilePhoto ? "photo" : "symbol")} symbolId={currentUser?.avatarSymbolId} colorId={currentUser?.avatarColorId} onModeChange={(avatarMode) => void saveProfileAvatarChoice({ avatarMode })} onSymbolChange={(avatarSymbolId) => void saveProfileAvatarChoice({ avatarMode: "symbol", avatarSymbolId })} onColorChange={(avatarColorId) => void saveProfileAvatarChoice({ avatarColorId })} />}
                   />                ) : activeSettingsItem === "General" ? (
                   <GeneralSettings strings={strings} />
                 ) : activeSettingsItem === "Notifications" ? (
@@ -565,7 +581,7 @@ export default function SettingsPage() {
                     onUpdatePrivacy={(patch) => void updatePrivacy(patch)}
                     onAppLockChange={(enabled) => void handleAppLockToggle(enabled)}
                     onToggleBlock={(member) => void toggleBlock(member)}
-                    renderMemberAvatar={(member) => <SettingsAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" />}
+                    renderMemberAvatar={(member) => <SettingsAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" entityId={member.id} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />}
                   />
                 ) : activeSettingsItem === "Shortcuts" ? (
                   <KeyboardShortcutsSettings />

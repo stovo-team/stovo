@@ -5,6 +5,10 @@ import { useStrings } from "../../../i18n/LanguageContext";
 export function MobileIncomingScreen({
   peerName,
   peerProfilePhoto,
+  peerId,
+  avatarMode,
+  avatarSymbolId,
+  avatarColorId,
   accessToken,
   callType,
   onAccept,
@@ -12,6 +16,10 @@ export function MobileIncomingScreen({
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
+  peerId?: string;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   accessToken?: string | null;
   callType: "audio" | "video";
   onAccept: () => void;
@@ -29,6 +37,10 @@ export function MobileIncomingScreen({
           className="avatar mobile-incoming-avatar"
           file={peerProfilePhoto}
           label={peerName}
+          entityId={peerId ?? peerName}
+          mode={avatarMode}
+          symbolId={avatarSymbolId}
+          colorId={avatarColorId}
         />
       </div>
       <div className="mobile-incoming-name">{peerName}</div>

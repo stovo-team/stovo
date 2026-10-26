@@ -11,7 +11,7 @@ import {
 import { ApiError } from "../api/client";
 import { peekApiResponseCache } from "../api/apiResponseCache";
 import { useAuth } from "../auth/AuthContext";
-import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { EntityAvatar } from "../components/EntityAvatar";
 import { shareContent } from "../native/nativeSharePlugin";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
@@ -41,23 +41,8 @@ function inviteRolesFor(role: UserRole): UserRole[] {
   return [];
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.at(0)?.toUpperCase())
-    .join("");
-}
-
 function MemberAvatar({ accessToken, member }: { accessToken: string | null; member: User }) {
-  const previewUrl = useFilePreviewUrl(accessToken, member.profilePhoto, Boolean(member.profilePhoto));
-
-  return (
-    <span className="avatar member-avatar">
-      {previewUrl ? <img src={previewUrl} alt="" /> : <span className="avatar-initials">{initials(member.displayName)}</span>}
-    </span>
-  );
+  return <EntityAvatar accessToken={accessToken} className="member-avatar" entityId={member.id} entityKind="person" file={member.profilePhoto} label={member.displayName} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />;
 }
 
 export default function MembersPage() {

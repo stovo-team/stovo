@@ -104,6 +104,21 @@ func ProfilePhotoFileID(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldProfilePhotoFileID, v))
 }
 
+// ProfileAvatarMode applies equality check predicate on the "profile_avatar_mode" field. It's identical to ProfileAvatarModeEQ.
+func ProfileAvatarMode(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarSymbolID applies equality check predicate on the "profile_avatar_symbol_id" field. It's identical to ProfileAvatarSymbolIDEQ.
+func ProfileAvatarSymbolID(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarColorID applies equality check predicate on the "profile_avatar_color_id" field. It's identical to ProfileAvatarColorIDEQ.
+func ProfileAvatarColorID(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarColorID, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -672,6 +687,231 @@ func ProfilePhotoFileIDEqualFold(v string) predicate.User {
 // ProfilePhotoFileIDContainsFold applies the ContainsFold predicate on the "profile_photo_file_id" field.
 func ProfilePhotoFileIDContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldProfilePhotoFileID, v))
+}
+
+// ProfileAvatarModeEQ applies the EQ predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeNEQ applies the NEQ predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeIn applies the In predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldProfileAvatarMode, vs...))
+}
+
+// ProfileAvatarModeNotIn applies the NotIn predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldProfileAvatarMode, vs...))
+}
+
+// ProfileAvatarModeGT applies the GT predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeGTE applies the GTE predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeLT applies the LT predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeLTE applies the LTE predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeContains applies the Contains predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeHasPrefix applies the HasPrefix predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeHasSuffix applies the HasSuffix predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeIsNil applies the IsNil predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldProfileAvatarMode))
+}
+
+// ProfileAvatarModeNotNil applies the NotNil predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldProfileAvatarMode))
+}
+
+// ProfileAvatarModeEqualFold applies the EqualFold predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarModeContainsFold applies the ContainsFold predicate on the "profile_avatar_mode" field.
+func ProfileAvatarModeContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldProfileAvatarMode, v))
+}
+
+// ProfileAvatarSymbolIDEQ applies the EQ predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDNEQ applies the NEQ predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDIn applies the In predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldProfileAvatarSymbolID, vs...))
+}
+
+// ProfileAvatarSymbolIDNotIn applies the NotIn predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldProfileAvatarSymbolID, vs...))
+}
+
+// ProfileAvatarSymbolIDGT applies the GT predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDGTE applies the GTE predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDLT applies the LT predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDLTE applies the LTE predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDContains applies the Contains predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDHasPrefix applies the HasPrefix predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDHasSuffix applies the HasSuffix predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDIsNil applies the IsNil predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldProfileAvatarSymbolID))
+}
+
+// ProfileAvatarSymbolIDNotNil applies the NotNil predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldProfileAvatarSymbolID))
+}
+
+// ProfileAvatarSymbolIDEqualFold applies the EqualFold predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarSymbolIDContainsFold applies the ContainsFold predicate on the "profile_avatar_symbol_id" field.
+func ProfileAvatarSymbolIDContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldProfileAvatarSymbolID, v))
+}
+
+// ProfileAvatarColorIDEQ applies the EQ predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDNEQ applies the NEQ predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDIn applies the In predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldProfileAvatarColorID, vs...))
+}
+
+// ProfileAvatarColorIDNotIn applies the NotIn predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldProfileAvatarColorID, vs...))
+}
+
+// ProfileAvatarColorIDGT applies the GT predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDGTE applies the GTE predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDLT applies the LT predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDLTE applies the LTE predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDContains applies the Contains predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDHasPrefix applies the HasPrefix predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDHasSuffix applies the HasSuffix predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDIsNil applies the IsNil predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldProfileAvatarColorID))
+}
+
+// ProfileAvatarColorIDNotNil applies the NotNil predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldProfileAvatarColorID))
+}
+
+// ProfileAvatarColorIDEqualFold applies the EqualFold predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldProfileAvatarColorID, v))
+}
+
+// ProfileAvatarColorIDContainsFold applies the ContainsFold predicate on the "profile_avatar_color_id" field.
+func ProfileAvatarColorIDContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldProfileAvatarColorID, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

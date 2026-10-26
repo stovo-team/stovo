@@ -37,6 +37,7 @@ type Props = {
   currentServerUrl: string;
   connectionLink: string;
   profilePhotoControl: ReactNode;
+  profileAvatarPicker: ReactNode;
   notificationPreferences: Pick<DevicePreferences, "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd">;
   onProfileSubmit: (event: FormEvent) => void;
   onPasswordSubmit: (event: FormEvent) => void;
@@ -45,7 +46,7 @@ type Props = {
 };
 
 export function ProfileSettingsTab(props: Props) {
-  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, profileAvatarPicker, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
   const language = useResolvedLanguage();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
@@ -91,6 +92,7 @@ export function ProfileSettingsTab(props: Props) {
         <div className="profile-detail-avatar-wrap">{profilePhotoControl}</div>
         <div><h3>{profileForm.displayName || strings.settings.familyMember}</h3><span className="role-pill">{role}</span></div>
       </section>
+      <section className="profile-detail-avatar-choices" aria-label={strings.avatarChoices.symbols}>{profileAvatarPicker}</section>
       <form className="profile-detail-form" onSubmit={onProfileSubmit}>
         <label><span><UserRound aria-hidden="true" size={21} />{strings.settings.displayName}</span><input maxLength={255} value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} /></label>
         <label><span><Mail aria-hidden="true" size={21} />{strings.settings.emailOptional}</span><input type="email" placeholder={strings.settings.emailPlaceholder} maxLength={255} value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} /></label>

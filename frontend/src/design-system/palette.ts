@@ -4,6 +4,16 @@
  * here has a corresponding canonical entry in that CSS palette.
  */
 export const DESIGN_COLOR_VALUES = {
+  avatarPalette: {
+    red: "#ef4444",
+    orange: "#f59e0b",
+    green: "#10b981",
+    blue: "#3b82f6",
+    purple: "#8b5cf6",
+    pink: "#ec4899",
+    teal: "#0d9488",
+    sky: "#0ea5e9",
+  },
   appearance: {
     defaultAccent: "#d97706",
     avatar: "#0ea5e9",

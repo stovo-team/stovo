@@ -24,6 +24,12 @@ const (
 	FieldCreatedBy = "created_by"
 	// FieldChatPhotoFileID holds the string denoting the chat_photo_file_id field in the database.
 	FieldChatPhotoFileID = "chat_photo_file_id"
+	// FieldChatAvatarMode holds the string denoting the chat_avatar_mode field in the database.
+	FieldChatAvatarMode = "chat_avatar_mode"
+	// FieldChatAvatarSymbolID holds the string denoting the chat_avatar_symbol_id field in the database.
+	FieldChatAvatarSymbolID = "chat_avatar_symbol_id"
+	// FieldChatAvatarColorID holds the string denoting the chat_avatar_color_id field in the database.
+	FieldChatAvatarColorID = "chat_avatar_color_id"
 	// FieldMediaVisibility holds the string denoting the media_visibility field in the database.
 	FieldMediaVisibility = "media_visibility"
 	// FieldCommentsEnabled holds the string denoting the comments_enabled field in the database.
@@ -105,6 +111,9 @@ var Columns = []string{
 	FieldDescription,
 	FieldCreatedBy,
 	FieldChatPhotoFileID,
+	FieldChatAvatarMode,
+	FieldChatAvatarSymbolID,
+	FieldChatAvatarColorID,
 	FieldMediaVisibility,
 	FieldCommentsEnabled,
 	FieldEncryptionProtocol,
@@ -183,6 +192,21 @@ func ByCreatedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByChatPhotoFileID orders the results by the chat_photo_file_id field.
 func ByChatPhotoFileID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChatPhotoFileID, opts...).ToFunc()
+}
+
+// ByChatAvatarMode orders the results by the chat_avatar_mode field.
+func ByChatAvatarMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChatAvatarMode, opts...).ToFunc()
+}
+
+// ByChatAvatarSymbolID orders the results by the chat_avatar_symbol_id field.
+func ByChatAvatarSymbolID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChatAvatarSymbolID, opts...).ToFunc()
+}
+
+// ByChatAvatarColorID orders the results by the chat_avatar_color_id field.
+func ByChatAvatarColorID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChatAvatarColorID, opts...).ToFunc()
 }
 
 // ByMediaVisibility orders the results by the media_visibility field.

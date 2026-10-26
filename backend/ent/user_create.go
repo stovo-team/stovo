@@ -103,6 +103,48 @@ func (_c *UserCreate) SetNillableProfilePhotoFileID(v *string) *UserCreate {
 	return _c
 }
 
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (_c *UserCreate) SetProfileAvatarMode(v string) *UserCreate {
+	_c.mutation.SetProfileAvatarMode(v)
+	return _c
+}
+
+// SetNillableProfileAvatarMode sets the "profile_avatar_mode" field if the given value is not nil.
+func (_c *UserCreate) SetNillableProfileAvatarMode(v *string) *UserCreate {
+	if v != nil {
+		_c.SetProfileAvatarMode(*v)
+	}
+	return _c
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (_c *UserCreate) SetProfileAvatarSymbolID(v string) *UserCreate {
+	_c.mutation.SetProfileAvatarSymbolID(v)
+	return _c
+}
+
+// SetNillableProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field if the given value is not nil.
+func (_c *UserCreate) SetNillableProfileAvatarSymbolID(v *string) *UserCreate {
+	if v != nil {
+		_c.SetProfileAvatarSymbolID(*v)
+	}
+	return _c
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (_c *UserCreate) SetProfileAvatarColorID(v string) *UserCreate {
+	_c.mutation.SetProfileAvatarColorID(v)
+	return _c
+}
+
+// SetNillableProfileAvatarColorID sets the "profile_avatar_color_id" field if the given value is not nil.
+func (_c *UserCreate) SetNillableProfileAvatarColorID(v *string) *UserCreate {
+	if v != nil {
+		_c.SetProfileAvatarColorID(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *UserCreate) SetCreatedAt(v string) *UserCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -597,6 +639,18 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldProfilePhotoFileID, field.TypeString, value)
 		_node.ProfilePhotoFileID = &value
 	}
+	if value, ok := _c.mutation.ProfileAvatarMode(); ok {
+		_spec.SetField(user.FieldProfileAvatarMode, field.TypeString, value)
+		_node.ProfileAvatarMode = &value
+	}
+	if value, ok := _c.mutation.ProfileAvatarSymbolID(); ok {
+		_spec.SetField(user.FieldProfileAvatarSymbolID, field.TypeString, value)
+		_node.ProfileAvatarSymbolID = &value
+	}
+	if value, ok := _c.mutation.ProfileAvatarColorID(); ok {
+		_spec.SetField(user.FieldProfileAvatarColorID, field.TypeString, value)
+		_node.ProfileAvatarColorID = &value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeString, value)
 		_node.CreatedAt = value
@@ -984,6 +1038,60 @@ func (u *UserUpsert) ClearProfilePhotoFileID() *UserUpsert {
 	return u
 }
 
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (u *UserUpsert) SetProfileAvatarMode(v string) *UserUpsert {
+	u.Set(user.FieldProfileAvatarMode, v)
+	return u
+}
+
+// UpdateProfileAvatarMode sets the "profile_avatar_mode" field to the value that was provided on create.
+func (u *UserUpsert) UpdateProfileAvatarMode() *UserUpsert {
+	u.SetExcluded(user.FieldProfileAvatarMode)
+	return u
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (u *UserUpsert) ClearProfileAvatarMode() *UserUpsert {
+	u.SetNull(user.FieldProfileAvatarMode)
+	return u
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (u *UserUpsert) SetProfileAvatarSymbolID(v string) *UserUpsert {
+	u.Set(user.FieldProfileAvatarSymbolID, v)
+	return u
+}
+
+// UpdateProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field to the value that was provided on create.
+func (u *UserUpsert) UpdateProfileAvatarSymbolID() *UserUpsert {
+	u.SetExcluded(user.FieldProfileAvatarSymbolID)
+	return u
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (u *UserUpsert) ClearProfileAvatarSymbolID() *UserUpsert {
+	u.SetNull(user.FieldProfileAvatarSymbolID)
+	return u
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (u *UserUpsert) SetProfileAvatarColorID(v string) *UserUpsert {
+	u.Set(user.FieldProfileAvatarColorID, v)
+	return u
+}
+
+// UpdateProfileAvatarColorID sets the "profile_avatar_color_id" field to the value that was provided on create.
+func (u *UserUpsert) UpdateProfileAvatarColorID() *UserUpsert {
+	u.SetExcluded(user.FieldProfileAvatarColorID)
+	return u
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (u *UserUpsert) ClearProfileAvatarColorID() *UserUpsert {
+	u.SetNull(user.FieldProfileAvatarColorID)
+	return u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (u *UserUpsert) SetCreatedAt(v string) *UserUpsert {
 	u.Set(user.FieldCreatedAt, v)
@@ -1336,6 +1444,69 @@ func (u *UserUpsertOne) UpdateProfilePhotoFileID() *UserUpsertOne {
 func (u *UserUpsertOne) ClearProfilePhotoFileID() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearProfilePhotoFileID()
+	})
+}
+
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (u *UserUpsertOne) SetProfileAvatarMode(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarMode(v)
+	})
+}
+
+// UpdateProfileAvatarMode sets the "profile_avatar_mode" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateProfileAvatarMode() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarMode()
+	})
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (u *UserUpsertOne) ClearProfileAvatarMode() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarMode()
+	})
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (u *UserUpsertOne) SetProfileAvatarSymbolID(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarSymbolID(v)
+	})
+}
+
+// UpdateProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateProfileAvatarSymbolID() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarSymbolID()
+	})
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (u *UserUpsertOne) ClearProfileAvatarSymbolID() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarSymbolID()
+	})
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (u *UserUpsertOne) SetProfileAvatarColorID(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarColorID(v)
+	})
+}
+
+// UpdateProfileAvatarColorID sets the "profile_avatar_color_id" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateProfileAvatarColorID() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarColorID()
+	})
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (u *UserUpsertOne) ClearProfileAvatarColorID() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarColorID()
 	})
 }
 
@@ -1887,6 +2058,69 @@ func (u *UserUpsertBulk) UpdateProfilePhotoFileID() *UserUpsertBulk {
 func (u *UserUpsertBulk) ClearProfilePhotoFileID() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearProfilePhotoFileID()
+	})
+}
+
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (u *UserUpsertBulk) SetProfileAvatarMode(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarMode(v)
+	})
+}
+
+// UpdateProfileAvatarMode sets the "profile_avatar_mode" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateProfileAvatarMode() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarMode()
+	})
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (u *UserUpsertBulk) ClearProfileAvatarMode() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarMode()
+	})
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (u *UserUpsertBulk) SetProfileAvatarSymbolID(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarSymbolID(v)
+	})
+}
+
+// UpdateProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateProfileAvatarSymbolID() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarSymbolID()
+	})
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (u *UserUpsertBulk) ClearProfileAvatarSymbolID() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarSymbolID()
+	})
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (u *UserUpsertBulk) SetProfileAvatarColorID(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetProfileAvatarColorID(v)
+	})
+}
+
+// UpdateProfileAvatarColorID sets the "profile_avatar_color_id" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateProfileAvatarColorID() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateProfileAvatarColorID()
+	})
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (u *UserUpsertBulk) ClearProfileAvatarColorID() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearProfileAvatarColorID()
 	})
 }
 

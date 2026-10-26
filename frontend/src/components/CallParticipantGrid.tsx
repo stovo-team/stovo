@@ -39,7 +39,7 @@ type CallParticipantGridProps = {
   isMobileLayout?: boolean;
   isCallConnected?: boolean;
   hideParticipants?: boolean;
-  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>;
+  participantProfiles?: Record<string, { id?: string; displayName: string; profilePhoto: FamilyFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null }>;
   accessToken?: string | null;
 };
 
@@ -225,6 +225,10 @@ export default function CallParticipantGrid({
       localVideoPlaceholder={localVideoPlaceholder}
       accessToken={accessToken}
       profilePhoto={participantProfiles[localUserLabel]?.profilePhoto ?? null}
+      entityId={participantProfiles[localUserLabel]?.id ?? localUserLabel}
+      avatarMode={participantProfiles[localUserLabel]?.avatarMode}
+      avatarSymbolId={participantProfiles[localUserLabel]?.avatarSymbolId}
+      avatarColorId={participantProfiles[localUserLabel]?.avatarColorId}
       mobilePrimary={mobileSingleRemote && isLocalPrimary}
       mobilePip={mobileSingleRemote && !isLocalPrimary}
     />
@@ -238,13 +242,13 @@ export default function CallParticipantGrid({
     const isRemoteSpeaking = isCallConnected && !remote.isMuted && (speakingUserIds.includes(remote.userId) || (isPeerSpeaking && remoteMedia.length === 1));
     return (
       <div key={remote.userId} data-participant-id={remote.userId} className={mobileSingleRemote ? (isLocalPrimary ? "call-grid__remote-wrap call-grid__remote-wrap--pip" : "call-grid__remote-wrap call-grid__remote-wrap--primary") : undefined} style={{ position: "relative", minWidth: 0, width: useLandscapeParticipantSizing ? undefined : "100%", height: useLandscapeParticipantSizing ? undefined : "100%", aspectRatio: useLandscapeParticipantSizing ? "16 / 9" : undefined }}>
-        <CallParticipantTile className="call-grid__tile call-grid__tile--remote" style={participantTileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
+        <CallParticipantTile className="call-grid__tile call-grid__tile--remote" style={participantTileStyle} label={participantProfiles[remote.userId]?.displayName ?? remote.userId} stream={stream} showVideo={showVideo} isScreen={preferScreen} isSpeaking={isRemoteSpeaking} isMuted={Boolean(remote.isMuted)} isConnected={isCallConnected} accessToken={accessToken} profilePhoto={participantProfiles[remote.userId]?.profilePhoto ?? null} entityId={remote.userId} avatarMode={participantProfiles[remote.userId]?.avatarMode} avatarSymbolId={participantProfiles[remote.userId]?.avatarSymbolId} avatarColorId={participantProfiles[remote.userId]?.avatarColorId} mobilePrimary={mobileSingleRemote && !isLocalPrimary} mobilePip={mobileSingleRemote && isLocalPrimary} onClick={mobileSingleRemote ? () => onToggleMobileStage?.() : isMobileLayout ? undefined : () => focusParticipant(remote.userId)} />
       </div>
     );
   });
 
   const stageContent = focusedParticipantId ? (
-    <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
+    <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} participantProfiles={participantProfiles} accessToken={accessToken} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
   ) : (
     <div
       className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${isGroupCall && remoteMedia.length === 0 ? " call-grid--single-group-participant" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}

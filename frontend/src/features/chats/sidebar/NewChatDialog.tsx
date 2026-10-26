@@ -125,6 +125,10 @@ export function NewChatDialog({
                     className="avatar chat-avatar"
                     file={currentUser.profilePhoto}
                     label={currentUser.displayName}
+                    entityId={currentUser.id}
+                    mode={currentUser.avatarMode}
+                    symbolId={currentUser.avatarSymbolId}
+                    colorId={currentUser.avatarColorId}
                   />
                   <span className="new-chat-contact-copy">
                     <strong>{currentUser.displayName} ({strings.chats.newChat.you ?? "You"})</strong>
@@ -151,6 +155,10 @@ export function NewChatDialog({
                       className="avatar chat-avatar"
                       file={member.profilePhoto}
                       label={member.displayName}
+                      entityId={member.id}
+                      mode={member.avatarMode}
+                      symbolId={member.avatarSymbolId}
+                      colorId={member.avatarColorId}
                     />
                     <span className="new-chat-contact-copy">
                       <strong>{member.displayName}</strong>
@@ -249,6 +257,10 @@ export function NewChatDialog({
                   className="avatar chat-avatar"
                   file={member.profilePhoto}
                   label={member.displayName}
+                  entityId={member.id}
+                  mode={member.avatarMode}
+                  symbolId={member.avatarSymbolId}
+                  colorId={member.avatarColorId}
                 />
                 <span className="new-chat-contact-copy">
                   <strong>{member.displayName}</strong>

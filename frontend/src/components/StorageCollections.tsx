@@ -18,6 +18,7 @@ import { PopupField } from "./ui/PopupField";
 import { PopupSelect } from "./ui/PopupSelect";
 import { useStrings } from "../i18n/LanguageContext";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
+import { EntityAvatar } from "./EntityAvatar";
 
 const iconFor = (file: FamilyFile) => storageFileKind(file) === "audio" ? Music2 : storageFileKind(file) === "photos" || storageFileKind(file) === "videos" ? Image : FileText;
 const extensionLabel = (file: FamilyFile) => {
@@ -45,11 +46,8 @@ export type StorageCollectionPickerRequest = {
   allowedFileIds: string[];
   onConfirm: (ids: string[]) => Promise<void>;
 };
-function memberInitials(name: string) { return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(""); }
 function StorageMemberAvatar({ accessToken, member }: { accessToken: string; member: User }) {
-  const [url, setUrl] = useState<string | null>(() => member.profilePhoto ? peekCachedObjectUrl(member.profilePhoto.id) : null);
-  useEffect(() => { let cancelled = false; const photo = member.profilePhoto; if (!photo) { setUrl(null); return; } const cached = peekCachedObjectUrl(photo.id); if (cached) { setUrl(cached); return; } void downloadFileBlob(accessToken, photo.id).then(() => { if (!cancelled) setUrl(peekCachedObjectUrl(photo.id)); }).catch(() => { if (!cancelled) setUrl(null); }); return () => { cancelled = true; }; }, [accessToken, member.profilePhoto?.id]);
-  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : <span className="avatar-initials">{memberInitials(member.displayName)}</span>}</span>;
+  return <EntityAvatar accessToken={accessToken} className="storage-access-member-avatar" entityId={member.id} entityKind="person" file={member.profilePhoto} label={member.displayName} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />;
 }
 function AccessPrincipalPicker({ accessToken, members, roles, value, onChange }: { accessToken: string; members: User[]; roles: ServerRole[]; value: string; onChange: (value: string) => void }) {
   const copy = useStrings().files.collections;

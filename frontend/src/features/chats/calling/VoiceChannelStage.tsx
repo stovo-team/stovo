@@ -222,6 +222,9 @@ export function VoiceChannelStage({
         displayName: currentUser.displayName ? `${currentUser.displayName} (You)` : "You",
         rawDisplayName: currentUser.displayName || "You",
         profilePhoto: currentUser.profilePhoto ?? foundSelf?.profilePhoto ?? null,
+        avatarMode: currentUser.avatarMode ?? foundSelf?.avatarMode,
+        avatarSymbolId: currentUser.avatarSymbolId ?? foundSelf?.avatarSymbolId,
+        avatarColorId: currentUser.avatarColorId ?? foundSelf?.avatarColorId,
         isSelf: true
       };
     }
@@ -230,6 +233,9 @@ export function VoiceChannelStage({
       displayName: found?.displayName || "Member",
       rawDisplayName: found?.displayName || "Member",
       profilePhoto: found?.profilePhoto ?? null,
+      avatarMode: found?.avatarMode,
+      avatarSymbolId: found?.avatarSymbolId,
+      avatarColorId: found?.avatarColorId,
       isSelf: false
     };
   };
@@ -335,6 +341,10 @@ export function VoiceChannelStage({
                           className="avatar voice-list-row-avatar"
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
+                          entityId={p.userId}
+                          mode={info.avatarMode}
+                          symbolId={info.avatarSymbolId}
+                          colorId={info.avatarColorId}
                         />
                       </div>
                       <span className="voice-list-row-name">{info.displayName}</span>
@@ -422,6 +432,10 @@ export function VoiceChannelStage({
                           className={`avatar voice-participant-avatar ${avatarTierClass}`}
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
+                          entityId={p.userId}
+                          mode={info.avatarMode}
+                          symbolId={info.avatarSymbolId}
+                          colorId={info.avatarColorId}
                         />
                         {isMuted && (
                           <span className="voice-card-muted-badge" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>

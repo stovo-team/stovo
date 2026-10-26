@@ -33,6 +33,12 @@ type User struct {
 	PublicKey *string `json:"public_key,omitempty"`
 	// ProfilePhotoFileID holds the value of the "profile_photo_file_id" field.
 	ProfilePhotoFileID *string `json:"profile_photo_file_id,omitempty"`
+	// ProfileAvatarMode holds the value of the "profile_avatar_mode" field.
+	ProfileAvatarMode *string `json:"profile_avatar_mode,omitempty"`
+	// ProfileAvatarSymbolID holds the value of the "profile_avatar_symbol_id" field.
+	ProfileAvatarSymbolID *string `json:"profile_avatar_symbol_id,omitempty"`
+	// ProfileAvatarColorID holds the value of the "profile_avatar_color_id" field.
+	ProfileAvatarColorID *string `json:"profile_avatar_color_id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt string `json:"created_at,omitempty"`
 	// LastSeenAt holds the value of the "last_seen_at" field.
@@ -200,7 +206,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldIsActive:
 			values[i] = new(sql.NullInt64)
-		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken, user.FieldFcmDeviceToken, user.FieldEmail, user.FieldBio, user.FieldTimezone:
+		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldProfileAvatarMode, user.FieldProfileAvatarSymbolID, user.FieldProfileAvatarColorID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken, user.FieldFcmDeviceToken, user.FieldEmail, user.FieldBio, user.FieldTimezone:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -272,6 +278,27 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ProfilePhotoFileID = new(string)
 				*_m.ProfilePhotoFileID = value.String
+			}
+		case user.FieldProfileAvatarMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field profile_avatar_mode", values[i])
+			} else if value.Valid {
+				_m.ProfileAvatarMode = new(string)
+				*_m.ProfileAvatarMode = value.String
+			}
+		case user.FieldProfileAvatarSymbolID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field profile_avatar_symbol_id", values[i])
+			} else if value.Valid {
+				_m.ProfileAvatarSymbolID = new(string)
+				*_m.ProfileAvatarSymbolID = value.String
+			}
+		case user.FieldProfileAvatarColorID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field profile_avatar_color_id", values[i])
+			} else if value.Valid {
+				_m.ProfileAvatarColorID = new(string)
+				*_m.ProfileAvatarColorID = value.String
 			}
 		case user.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -462,6 +489,21 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	if v := _m.ProfilePhotoFileID; v != nil {
 		builder.WriteString("profile_photo_file_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ProfileAvatarMode; v != nil {
+		builder.WriteString("profile_avatar_mode=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ProfileAvatarSymbolID; v != nil {
+		builder.WriteString("profile_avatar_symbol_id=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ProfileAvatarColorID; v != nil {
+		builder.WriteString("profile_avatar_color_id=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

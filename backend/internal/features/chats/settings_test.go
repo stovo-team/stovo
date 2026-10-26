@@ -44,6 +44,7 @@ type settingsStoreStub struct {
 	approvedBy  string
 	preferences Preferences
 	description *string
+	avatar      AvatarChoices
 	err         error
 }
 
@@ -65,6 +66,11 @@ func (s *settingsStoreStub) UpdateDescription(_ context.Context, chatID string, 
 }
 
 func (s *settingsStoreStub) UpdatePhoto(context.Context, string, *string, string) error {
+	return s.err
+}
+
+func (s *settingsStoreStub) UpdateAvatarChoices(_ context.Context, chatID string, choices AvatarChoices, updatedAt string) error {
+	s.chatID, s.avatar, s.updated = chatID, choices, updatedAt
 	return s.err
 }
 
@@ -188,6 +194,19 @@ func TestSettingsServiceDelegatesDescription(t *testing.T) {
 		t.Fatalf("SetDescription() error = %v", err)
 	}
 	if store.chatID != "chat-1" || store.description == nil || *store.description != desc || store.updated != now.Format(time.RFC3339Nano) {
+		t.Fatalf("store=%+v", store)
+	}
+}
+
+func TestSettingsServiceDelegatesAvatarChoices(t *testing.T) {
+	store := &settingsStoreStub{}
+	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	service := NewSettingsService(store, func() time.Time { return now })
+	mode, symbol, color := "symbol", "users", "purple"
+	if err := service.SetAvatarChoices(context.Background(), "chat-1", AvatarChoices{Mode: &mode, SymbolID: &symbol, ColorID: &color}); err != nil {
+		t.Fatalf("SetAvatarChoices() error = %v", err)
+	}
+	if store.chatID != "chat-1" || store.avatar.Mode == nil || *store.avatar.Mode != mode || store.avatar.SymbolID == nil || *store.avatar.SymbolID != symbol || store.avatar.ColorID == nil || *store.avatar.ColorID != color || store.updated != now.Format(time.RFC3339Nano) {
 		t.Fatalf("store=%+v", store)
 	}
 }

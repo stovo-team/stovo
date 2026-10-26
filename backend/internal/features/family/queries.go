@@ -14,6 +14,7 @@ type Member struct {
 	ProfileVisibility, LastSeenVisibility     string
 	ReadReceiptsEnabled                       bool
 	Email, Bio, Timezone, ProfilePhotoFileID  *string
+	AvatarMode, AvatarSymbolID, AvatarColorID   *string
 	CreatedAt                                 string
 	AudioCallSettings                         *string
 }

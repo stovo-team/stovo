@@ -7,7 +7,6 @@ import {
   displayChatName,
   formatPreviewContent,
   shouldShowChatRowMeta,
-  compactChatListLeadingVisual,
   sharedContentItemMatchesTab,
   computeSharedContentItems
 } from "./chatPresentation";
@@ -40,15 +39,6 @@ describe("chat presentation helpers", () => {
   it("selects the minimized chat-list class only when the family setting is enabled", () => {
     expect(chatListLayoutClass(true)).toBe(" messenger-shell--minimized-chat-layout");
     expect(chatListLayoutClass(false)).toBe("");
-  });
-
-  it("uses compact type markers for groups and channels while retaining DM avatars", () => {
-    expect(compactChatListLeadingVisual("group")).toBe("lock");
-    expect(compactChatListLeadingVisual("family")).toBe("lock");
-    expect(compactChatListLeadingVisual("channel")).toBe("hash");
-    expect(compactChatListLeadingVisual("voice")).toBe("voice");
-    expect(compactChatListLeadingVisual("direct")).toBe("avatar");
-    expect(compactChatListLeadingVisual("archive")).toBe("archive");
   });
 
   it("shows only the chat-details control requested by its icon", () => {

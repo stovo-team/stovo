@@ -35,6 +35,16 @@ export const strings = {
     connectSpace: "Connect Space",
   },
 
+  avatarChoices: {
+    photo: "Photo", symbol: "Symbol", initials: "Initials", symbols: "Choose a symbol", colors: "Choose a color",
+    symbolNames: {
+      "user-round": "Person", users: "Group", home: "Home", archive: "Archive", "audio-lines": "Voice channel",
+      megaphone: "Announcement", folder: "Folder", heart: "Heart", star: "Star", music: "Music",
+      "book-open": "Book", camera: "Camera", shield: "Shield", sparkles: "Sparkles", bell: "Bell"
+    },
+    colorNames: { red: "Red", orange: "Orange", green: "Green", blue: "Blue", purple: "Purple", pink: "Pink", teal: "Teal", sky: "Sky blue" }
+  },
+
   previews: {
     voicePreview: "Stovo voice channel preview",
     raidPlanning: "Raid planning",
@@ -1148,6 +1158,7 @@ export const strings = {
       groceries: "Groceries", errands: "Errands", checklist: "Checklist", itemsDone: (completed: number, total: number) => `${completed}/${total} done`, untitledCanvas: "Untitled canvas",
     },
     title: "Files",
+    resizeChatList: "Resize chat list",
     searchPlaceholder: "Search files",
     uploadFile: "Upload file",
     uploading: "Uploading…",

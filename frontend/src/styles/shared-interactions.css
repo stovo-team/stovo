@@ -411,3 +411,35 @@
   z-index: 80;
 }
 
+.entity-avatar {
+  background: var(--avatar-custom-bg);
+  color: var(--color-palette-dd15e6f7d489);
+}
+.entity-avatar > img { height: 100%; object-fit: cover; width: 100%; }
+.entity-avatar__symbol { height: 55%; stroke-width: 1.75; width: 55%; }
+.avatar-choice-picker { display: grid; gap: var(--font-size-body); }
+.avatar-choice-picker fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
+.avatar-choice-picker legend { color: var(--color-text-secondary); font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); margin-bottom: var(--font-size-caption); }
+.avatar-choice-picker__modes,
+.avatar-choice-picker__symbols,
+.avatar-choice-picker__colors { display: flex; flex-wrap: wrap; gap: var(--font-size-caption); }
+.avatar-choice-picker__modes button,
+.avatar-choice-picker__symbols button,
+.avatar-choice-picker__colors button { align-items: center; background: var(--surface-card); border: 1px solid var(--color-border); border-radius: var(--radius-control); color: var(--color-text-primary); cursor: pointer; display: inline-flex; justify-content: center; padding: var(--font-size-caption); }
+.avatar-choice-picker__symbols button[aria-pressed="true"],
+.avatar-choice-picker__colors button[aria-pressed="true"],
+.avatar-choice-picker__modes button[aria-pressed="true"] { border-color: var(--color-focus); box-shadow: 0 0 0 1px var(--color-focus); }
+.avatar-choice-picker__modes button:focus-visible,
+.avatar-choice-picker__symbols button:focus-visible,
+.avatar-choice-picker__colors button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.avatar-choice-picker__colors button { border-radius: var(--radius-circle); padding: 3px; }
+.avatar-choice-picker__photo-selected { align-items: center; color: var(--color-text-secondary); display: flex; gap: var(--font-size-caption); }
+.profile-detail-avatar-choices {
+  background: var(--surface-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+  padding: 18px 22px;
+}
+.profile-detail-avatar-choices .avatar-choice-picker { min-width: 0; }
+.chat-folder-avatar { height: 22px !important; width: 22px !important; }

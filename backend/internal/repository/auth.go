@@ -325,6 +325,9 @@ type UpdateUserProfileParams struct {
 	Email               *string
 	Bio                 *string
 	Timezone            *string
+	AvatarMode          *string
+	AvatarSymbolID      *string
+	AvatarColorID       *string
 }
 
 // UpdateUserProfile applies partial updates to a user inside a transaction.
@@ -342,6 +345,9 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID string, p UpdateUs
 		} else if p.ProfilePhotoFileID != nil {
 			upd.SetProfilePhotoFileID(*p.ProfilePhotoFileID)
 		}
+		if p.AvatarMode != nil { upd.SetProfileAvatarMode(*p.AvatarMode) }
+		if p.AvatarSymbolID != nil { upd.SetProfileAvatarSymbolID(*p.AvatarSymbolID) }
+		if p.AvatarColorID != nil { upd.SetProfileAvatarColorID(*p.AvatarColorID) }
 		if p.ProfileVisibility != nil {
 			upd.SetProfileVisibility(*p.ProfileVisibility)
 		}

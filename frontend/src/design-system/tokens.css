@@ -53,6 +53,14 @@
   --color-danger: var(--danger, var(--color-palette-c36d4cdccdc9));
   --color-success: var(--success, var(--color-palette-8b8f7c3d4541));
   --color-warning: var(--warning, var(--color-palette-251a7b8506a7));
+  --avatar-color-red: var(--color-palette-c36d4cdccdc9);
+  --avatar-color-orange: var(--color-palette-251a7b8506a7);
+  --avatar-color-green: var(--color-palette-115e018f6107);
+  --avatar-color-blue: var(--color-palette-b51de63d0eac);
+  --avatar-color-purple: var(--color-palette-97b1caaa7b50);
+  --avatar-color-pink: var(--color-palette-9b2320b278ba);
+  --avatar-color-teal: var(--color-palette-fa48ddcd46aa);
+  --avatar-color-sky: var(--color-palette-1d35b820cb2a);
   --color-premium-text: var(--color-palette-b9669148c06a);
   --color-premium-surface: var(--color-palette-41bd8392b498);
   --color-palette-0002249bf757: #0a0a0a; /* #0a0a0a */

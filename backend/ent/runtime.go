@@ -105,31 +105,31 @@ func init() {
 	// chat.TypeValidator is a validator for the "type" field. It is called by the builders before save.
 	chat.TypeValidator = chatDescType.Validators[0].(func(string) error)
 	// chatDescMediaVisibility is the schema descriptor for media_visibility field.
-	chatDescMediaVisibility := chatFields[7].Descriptor()
+	chatDescMediaVisibility := chatFields[10].Descriptor()
 	// chat.MediaVisibilityValidator is a validator for the "media_visibility" field. It is called by the builders before save.
 	chat.MediaVisibilityValidator = chatDescMediaVisibility.Validators[0].(func(string) error)
 	// chatDescCommentsEnabled is the schema descriptor for comments_enabled field.
-	chatDescCommentsEnabled := chatFields[8].Descriptor()
+	chatDescCommentsEnabled := chatFields[11].Descriptor()
 	// chat.DefaultCommentsEnabled holds the default value on creation for the comments_enabled field.
 	chat.DefaultCommentsEnabled = chatDescCommentsEnabled.Default.(bool)
 	// chatDescEncryptionProtocol is the schema descriptor for encryption_protocol field.
-	chatDescEncryptionProtocol := chatFields[9].Descriptor()
+	chatDescEncryptionProtocol := chatFields[12].Descriptor()
 	// chat.DefaultEncryptionProtocol holds the default value on creation for the encryption_protocol field.
 	chat.DefaultEncryptionProtocol = chatDescEncryptionProtocol.Default.(string)
 	// chatDescCreatedAt is the schema descriptor for created_at field.
-	chatDescCreatedAt := chatFields[10].Descriptor()
+	chatDescCreatedAt := chatFields[13].Descriptor()
 	// chat.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	chat.CreatedAtValidator = chatDescCreatedAt.Validators[0].(func(string) error)
 	// chatDescUpdatedAt is the schema descriptor for updated_at field.
-	chatDescUpdatedAt := chatFields[11].Descriptor()
+	chatDescUpdatedAt := chatFields[14].Descriptor()
 	// chat.UpdatedAtValidator is a validator for the "updated_at" field. It is called by the builders before save.
 	chat.UpdatedAtValidator = chatDescUpdatedAt.Validators[0].(func(string) error)
 	// chatDescPinPermission is the schema descriptor for pin_permission field.
-	chatDescPinPermission := chatFields[12].Descriptor()
+	chatDescPinPermission := chatFields[15].Descriptor()
 	// chat.DefaultPinPermission holds the default value on creation for the pin_permission field.
 	chat.DefaultPinPermission = chatDescPinPermission.Default.(string)
 	// chatDescMessageDelaySeconds is the schema descriptor for message_delay_seconds field.
-	chatDescMessageDelaySeconds := chatFields[13].Descriptor()
+	chatDescMessageDelaySeconds := chatFields[16].Descriptor()
 	// chat.DefaultMessageDelaySeconds holds the default value on creation for the message_delay_seconds field.
 	chat.DefaultMessageDelaySeconds = chatDescMessageDelaySeconds.Default.(int)
 	// chatDescID is the schema descriptor for id field.
@@ -929,19 +929,19 @@ func init() {
 	// user.DefaultIsActive holds the default value on creation for the is_active field.
 	user.DefaultIsActive = userDescIsActive.Default.(int)
 	// userDescCreatedAt is the schema descriptor for created_at field.
-	userDescCreatedAt := userFields[9].Descriptor()
+	userDescCreatedAt := userFields[12].Descriptor()
 	// user.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	user.CreatedAtValidator = userDescCreatedAt.Validators[0].(func(string) error)
 	// userDescProfileVisibility is the schema descriptor for profile_visibility field.
-	userDescProfileVisibility := userFields[11].Descriptor()
+	userDescProfileVisibility := userFields[14].Descriptor()
 	// user.DefaultProfileVisibility holds the default value on creation for the profile_visibility field.
 	user.DefaultProfileVisibility = userDescProfileVisibility.Default.(string)
 	// userDescLastSeenVisibility is the schema descriptor for last_seen_visibility field.
-	userDescLastSeenVisibility := userFields[12].Descriptor()
+	userDescLastSeenVisibility := userFields[15].Descriptor()
 	// user.DefaultLastSeenVisibility holds the default value on creation for the last_seen_visibility field.
 	user.DefaultLastSeenVisibility = userDescLastSeenVisibility.Default.(string)
 	// userDescReadReceiptsEnabled is the schema descriptor for read_receipts_enabled field.
-	userDescReadReceiptsEnabled := userFields[13].Descriptor()
+	userDescReadReceiptsEnabled := userFields[16].Descriptor()
 	// user.DefaultReadReceiptsEnabled holds the default value on creation for the read_receipts_enabled field.
 	user.DefaultReadReceiptsEnabled = userDescReadReceiptsEnabled.Default.(bool)
 	// userDescID is the schema descriptor for id field.
