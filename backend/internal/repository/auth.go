@@ -4,9 +4,6 @@ import (
 	"context"
 
 	"stovo-messenger/backend/ent"
-	"stovo-messenger/backend/ent/chat"
-	"stovo-messenger/backend/ent/chatmember"
-	"stovo-messenger/backend/ent/chatpreference"
 	"stovo-messenger/backend/ent/refreshtoken"
 	"stovo-messenger/backend/ent/user"
 )
@@ -40,7 +37,7 @@ type SetupParams struct {
 	IPAddress      string
 }
 
-// CompleteSetup creates the initial family, owner, family chat, membership, and refresh token.
+// CompleteSetup creates the initial workspace, owner, and refresh token.
 func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 	return s.WithTx(ctx, func(tx *ent.Tx) error {
 		if _, err := tx.Family.Create().
@@ -61,36 +58,6 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			SetIsActive(1).
 			SetCreatedAt(p.CreatedAt).
 			Save(ctx); err != nil {
-			return err
-		}
-		if _, err := tx.Chat.Create().
-			SetID(p.ChatID).
-			SetFamilyID(p.FamilyID).
-			SetType("family").
-			SetTitle(p.ChatTitle).
-			SetCreatedBy(p.UserID).
-			SetMediaVisibility("family").
-			SetEncryptionProtocol("server_at_rest").
-			SetCreatedAt(p.CreatedAt).
-			SetUpdatedAt(p.CreatedAt).
-			Save(ctx); err != nil {
-			return err
-		}
-		if err := tx.ChatMember.Create().
-			SetID(p.ChatID).
-			SetUserID(p.UserID).
-			SetCreatedAt(p.CreatedAt).
-			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			Ignore().
-			Exec(ctx); err != nil {
-			return err
-		}
-		if err := tx.ChatPreference.Create().
-			SetID(p.ChatID).
-			SetUserID(p.UserID).
-			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-			Ignore().
-			Exec(ctx); err != nil {
 			return err
 		}
 		create := tx.RefreshToken.Create().
@@ -146,36 +113,6 @@ func (s *Store) CreateAdminUser(ctx context.Context, p SetupParams) (*ent.User, 
 			return err
 		}
 		createdUser = u
-
-		c, err := tx.Chat.Query().Where(chat.FamilyIDEQ(family.ID)).First(ctx)
-		if err != nil || c == nil {
-			c, err = tx.Chat.Create().
-				SetID(p.ChatID).
-				SetFamilyID(family.ID).
-				SetType("family").
-				SetTitle("General Family Chat").
-				SetCreatedBy(p.UserID).
-				SetMediaVisibility("family").
-				SetEncryptionProtocol("server_at_rest").
-				SetCreatedAt(p.CreatedAt).
-				SetUpdatedAt(p.CreatedAt).
-				Save(ctx)
-		}
-		if err == nil && c != nil {
-			_ = tx.ChatMember.Create().
-				SetID(c.ID).
-				SetUserID(p.UserID).
-				SetCreatedAt(p.CreatedAt).
-				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-				Ignore().
-				Exec(ctx)
-			_ = tx.ChatPreference.Create().
-				SetID(c.ID).
-				SetUserID(p.UserID).
-				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-				Ignore().
-				Exec(ctx)
-		}
 
 		create := tx.RefreshToken.Create().
 			SetID(p.RefreshTokenID).
@@ -325,6 +262,9 @@ type UpdateUserProfileParams struct {
 	Email               *string
 	Bio                 *string
 	Timezone            *string
+	AvatarMode          *string
+	AvatarSymbolID      *string
+	AvatarColorID       *string
 }
 
 // UpdateUserProfile applies partial updates to a user inside a transaction.
@@ -342,6 +282,9 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID string, p UpdateUs
 		} else if p.ProfilePhotoFileID != nil {
 			upd.SetProfilePhotoFileID(*p.ProfilePhotoFileID)
 		}
+		if p.AvatarMode != nil { upd.SetProfileAvatarMode(*p.AvatarMode) }
+		if p.AvatarSymbolID != nil { upd.SetProfileAvatarSymbolID(*p.AvatarSymbolID) }
+		if p.AvatarColorID != nil { upd.SetProfileAvatarColorID(*p.AvatarColorID) }
 		if p.ProfileVisibility != nil {
 			upd.SetProfileVisibility(*p.ProfileVisibility)
 		}

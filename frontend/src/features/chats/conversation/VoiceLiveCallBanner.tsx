@@ -45,6 +45,10 @@ export function VoiceLiveCallBanner({
               className="avatar voice-live-call-avatar"
               file={user?.profilePhoto}
               label={user?.displayName ?? strings.chats.sidebar.member}
+              entityId={userId}
+              mode={user?.avatarMode}
+              symbolId={user?.avatarSymbolId}
+              colorId={user?.avatarColorId}
             />
           );
         })}

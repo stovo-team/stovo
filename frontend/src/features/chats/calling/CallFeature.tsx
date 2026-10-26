@@ -134,14 +134,22 @@ export function CallFeature() {
   const peerProfilePhoto = activePeer?.profilePhoto ?? null;
   const participantProfiles = Object.fromEntries(
     [...members, ...(activeChat?.members ?? [])].map((member) => [member.id, {
+      id: member.id,
       displayName: member.displayName,
       profilePhoto: member.profilePhoto ?? null,
+      avatarMode: member.avatarMode,
+      avatarSymbolId: member.avatarSymbolId,
+      avatarColorId: member.avatarColorId,
     }]),
   );
   if (currentUser) {
     participantProfiles[currentUser.displayName] = {
+      id: currentUser.id,
       displayName: currentUser.displayName,
       profilePhoto: currentUser.profilePhoto ?? null,
+      avatarMode: currentUser.avatarMode,
+      avatarSymbolId: currentUser.avatarSymbolId,
+      avatarColorId: currentUser.avatarColorId,
     };
   }
   const mockScreenShareOwnerId = session.mockScreenShareUserId;
@@ -226,6 +234,10 @@ export function CallFeature() {
               <MobileIncomingScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 peerProfilePhoto={peerProfilePhoto}
+                peerId={activePeer?.id}
+                avatarMode={activePeer?.avatarMode}
+                avatarSymbolId={activePeer?.avatarSymbolId}
+                avatarColorId={activePeer?.avatarColorId}
                 accessToken={session.accessToken ?? null}
                 callType={callType}
                 onAccept={() => void acceptIncomingCall()}
@@ -237,6 +249,10 @@ export function CallFeature() {
               <MobileActiveScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 peerProfilePhoto={peerProfilePhoto}
+                peerId={activePeer?.id}
+                avatarMode={activePeer?.avatarMode}
+                avatarSymbolId={activePeer?.avatarSymbolId}
+                avatarColorId={activePeer?.avatarColorId}
                 accessToken={session.accessToken ?? null}
                 callType={callType}
                 callPhase={callPhase}

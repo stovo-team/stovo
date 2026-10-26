@@ -9,6 +9,7 @@ type LoginAccount struct {
 	ID, FamilyID, Username, PasswordHash, DisplayName, Role string
 	IsActive                                                bool
 	PublicKey, ProfilePhotoFileID                           *string
+	AvatarMode, AvatarSymbolID, AvatarColorID                *string
 	CreatedAt                                               string
 	LastSeenAt                                              *string
 	ProfileVisibility, LastSeenVisibility                   string

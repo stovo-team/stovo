@@ -141,6 +141,66 @@ func (_u *ChatUpdate) ClearChatPhotoFileID() *ChatUpdate {
 	return _u
 }
 
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (_u *ChatUpdate) SetChatAvatarMode(v string) *ChatUpdate {
+	_u.mutation.SetChatAvatarMode(v)
+	return _u
+}
+
+// SetNillableChatAvatarMode sets the "chat_avatar_mode" field if the given value is not nil.
+func (_u *ChatUpdate) SetNillableChatAvatarMode(v *string) *ChatUpdate {
+	if v != nil {
+		_u.SetChatAvatarMode(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (_u *ChatUpdate) ClearChatAvatarMode() *ChatUpdate {
+	_u.mutation.ClearChatAvatarMode()
+	return _u
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (_u *ChatUpdate) SetChatAvatarSymbolID(v string) *ChatUpdate {
+	_u.mutation.SetChatAvatarSymbolID(v)
+	return _u
+}
+
+// SetNillableChatAvatarSymbolID sets the "chat_avatar_symbol_id" field if the given value is not nil.
+func (_u *ChatUpdate) SetNillableChatAvatarSymbolID(v *string) *ChatUpdate {
+	if v != nil {
+		_u.SetChatAvatarSymbolID(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (_u *ChatUpdate) ClearChatAvatarSymbolID() *ChatUpdate {
+	_u.mutation.ClearChatAvatarSymbolID()
+	return _u
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (_u *ChatUpdate) SetChatAvatarColorID(v string) *ChatUpdate {
+	_u.mutation.SetChatAvatarColorID(v)
+	return _u
+}
+
+// SetNillableChatAvatarColorID sets the "chat_avatar_color_id" field if the given value is not nil.
+func (_u *ChatUpdate) SetNillableChatAvatarColorID(v *string) *ChatUpdate {
+	if v != nil {
+		_u.SetChatAvatarColorID(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (_u *ChatUpdate) ClearChatAvatarColorID() *ChatUpdate {
+	_u.mutation.ClearChatAvatarColorID()
+	return _u
+}
+
 // SetMediaVisibility sets the "media_visibility" field.
 func (_u *ChatUpdate) SetMediaVisibility(v string) *ChatUpdate {
 	_u.mutation.SetMediaVisibility(v)
@@ -523,6 +583,24 @@ func (_u *ChatUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ChatPhotoFileIDCleared() {
 		_spec.ClearField(chat.FieldChatPhotoFileID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarMode(); ok {
+		_spec.SetField(chat.FieldChatAvatarMode, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarModeCleared() {
+		_spec.ClearField(chat.FieldChatAvatarMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarSymbolID(); ok {
+		_spec.SetField(chat.FieldChatAvatarSymbolID, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarSymbolIDCleared() {
+		_spec.ClearField(chat.FieldChatAvatarSymbolID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarColorID(); ok {
+		_spec.SetField(chat.FieldChatAvatarColorID, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarColorIDCleared() {
+		_spec.ClearField(chat.FieldChatAvatarColorID, field.TypeString)
 	}
 	if value, ok := _u.mutation.MediaVisibility(); ok {
 		_spec.SetField(chat.FieldMediaVisibility, field.TypeString, value)
@@ -911,6 +989,66 @@ func (_u *ChatUpdateOne) SetNillableChatPhotoFileID(v *string) *ChatUpdateOne {
 // ClearChatPhotoFileID clears the value of the "chat_photo_file_id" field.
 func (_u *ChatUpdateOne) ClearChatPhotoFileID() *ChatUpdateOne {
 	_u.mutation.ClearChatPhotoFileID()
+	return _u
+}
+
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (_u *ChatUpdateOne) SetChatAvatarMode(v string) *ChatUpdateOne {
+	_u.mutation.SetChatAvatarMode(v)
+	return _u
+}
+
+// SetNillableChatAvatarMode sets the "chat_avatar_mode" field if the given value is not nil.
+func (_u *ChatUpdateOne) SetNillableChatAvatarMode(v *string) *ChatUpdateOne {
+	if v != nil {
+		_u.SetChatAvatarMode(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (_u *ChatUpdateOne) ClearChatAvatarMode() *ChatUpdateOne {
+	_u.mutation.ClearChatAvatarMode()
+	return _u
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (_u *ChatUpdateOne) SetChatAvatarSymbolID(v string) *ChatUpdateOne {
+	_u.mutation.SetChatAvatarSymbolID(v)
+	return _u
+}
+
+// SetNillableChatAvatarSymbolID sets the "chat_avatar_symbol_id" field if the given value is not nil.
+func (_u *ChatUpdateOne) SetNillableChatAvatarSymbolID(v *string) *ChatUpdateOne {
+	if v != nil {
+		_u.SetChatAvatarSymbolID(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (_u *ChatUpdateOne) ClearChatAvatarSymbolID() *ChatUpdateOne {
+	_u.mutation.ClearChatAvatarSymbolID()
+	return _u
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (_u *ChatUpdateOne) SetChatAvatarColorID(v string) *ChatUpdateOne {
+	_u.mutation.SetChatAvatarColorID(v)
+	return _u
+}
+
+// SetNillableChatAvatarColorID sets the "chat_avatar_color_id" field if the given value is not nil.
+func (_u *ChatUpdateOne) SetNillableChatAvatarColorID(v *string) *ChatUpdateOne {
+	if v != nil {
+		_u.SetChatAvatarColorID(*v)
+	}
+	return _u
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (_u *ChatUpdateOne) ClearChatAvatarColorID() *ChatUpdateOne {
+	_u.mutation.ClearChatAvatarColorID()
 	return _u
 }
 
@@ -1326,6 +1464,24 @@ func (_u *ChatUpdateOne) sqlSave(ctx context.Context) (_node *Chat, err error) {
 	}
 	if _u.mutation.ChatPhotoFileIDCleared() {
 		_spec.ClearField(chat.FieldChatPhotoFileID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarMode(); ok {
+		_spec.SetField(chat.FieldChatAvatarMode, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarModeCleared() {
+		_spec.ClearField(chat.FieldChatAvatarMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarSymbolID(); ok {
+		_spec.SetField(chat.FieldChatAvatarSymbolID, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarSymbolIDCleared() {
+		_spec.ClearField(chat.FieldChatAvatarSymbolID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ChatAvatarColorID(); ok {
+		_spec.SetField(chat.FieldChatAvatarColorID, field.TypeString, value)
+	}
+	if _u.mutation.ChatAvatarColorIDCleared() {
+		_spec.ClearField(chat.FieldChatAvatarColorID, field.TypeString)
 	}
 	if value, ok := _u.mutation.MediaVisibility(); ok {
 		_spec.SetField(chat.FieldMediaVisibility, field.TypeString, value)

@@ -17,6 +17,9 @@ type userSummaryPublic struct {
 	DisplayName  string      `json:"displayName"`
 	Username     string      `json:"username"`
 	ProfilePhoto *filePublic `json:"profilePhoto,omitempty"`
+	AvatarMode *string `json:"avatarMode,omitempty"`
+	AvatarSymbolID *string `json:"avatarSymbolId,omitempty"`
+	AvatarColorID *string `json:"avatarColorId,omitempty"`
 }
 
 func (s *Server) buildPollPublic(ctx context.Context, pollID string, viewerID string) (pollPublic, error) {
@@ -286,6 +289,9 @@ func (s *Server) getPollVoters(ctx context.Context, user userPublic, pollID stri
 			DisplayName:  u.DisplayName,
 			Username:     u.Username,
 			ProfilePhoto: u.ProfilePhoto,
+			AvatarMode: u.AvatarMode,
+			AvatarSymbolID: u.AvatarSymbolID,
+			AvatarColorID: u.AvatarColorID,
 		})
 	}
 

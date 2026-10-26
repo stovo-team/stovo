@@ -94,6 +94,21 @@ func ChatPhotoFileID(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldEQ(FieldChatPhotoFileID, v))
 }
 
+// ChatAvatarMode applies equality check predicate on the "chat_avatar_mode" field. It's identical to ChatAvatarModeEQ.
+func ChatAvatarMode(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarSymbolID applies equality check predicate on the "chat_avatar_symbol_id" field. It's identical to ChatAvatarSymbolIDEQ.
+func ChatAvatarSymbolID(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarColorID applies equality check predicate on the "chat_avatar_color_id" field. It's identical to ChatAvatarColorIDEQ.
+func ChatAvatarColorID(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarColorID, v))
+}
+
 // MediaVisibility applies equality check predicate on the "media_visibility" field. It's identical to MediaVisibilityEQ.
 func MediaVisibility(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldEQ(FieldMediaVisibility, v))
@@ -557,6 +572,231 @@ func ChatPhotoFileIDEqualFold(v string) predicate.Chat {
 // ChatPhotoFileIDContainsFold applies the ContainsFold predicate on the "chat_photo_file_id" field.
 func ChatPhotoFileIDContainsFold(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldContainsFold(FieldChatPhotoFileID, v))
+}
+
+// ChatAvatarModeEQ applies the EQ predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeNEQ applies the NEQ predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeNEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldNEQ(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeIn applies the In predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldIn(FieldChatAvatarMode, vs...))
+}
+
+// ChatAvatarModeNotIn applies the NotIn predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeNotIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldNotIn(FieldChatAvatarMode, vs...))
+}
+
+// ChatAvatarModeGT applies the GT predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeGT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGT(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeGTE applies the GTE predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeGTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGTE(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeLT applies the LT predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeLT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLT(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeLTE applies the LTE predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeLTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLTE(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeContains applies the Contains predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeContains(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContains(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeHasPrefix applies the HasPrefix predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeHasPrefix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasPrefix(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeHasSuffix applies the HasSuffix predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeHasSuffix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasSuffix(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeIsNil applies the IsNil predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeIsNil() predicate.Chat {
+	return predicate.Chat(sql.FieldIsNull(FieldChatAvatarMode))
+}
+
+// ChatAvatarModeNotNil applies the NotNil predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeNotNil() predicate.Chat {
+	return predicate.Chat(sql.FieldNotNull(FieldChatAvatarMode))
+}
+
+// ChatAvatarModeEqualFold applies the EqualFold predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeEqualFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEqualFold(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarModeContainsFold applies the ContainsFold predicate on the "chat_avatar_mode" field.
+func ChatAvatarModeContainsFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContainsFold(FieldChatAvatarMode, v))
+}
+
+// ChatAvatarSymbolIDEQ applies the EQ predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDNEQ applies the NEQ predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDNEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldNEQ(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDIn applies the In predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldIn(FieldChatAvatarSymbolID, vs...))
+}
+
+// ChatAvatarSymbolIDNotIn applies the NotIn predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDNotIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldNotIn(FieldChatAvatarSymbolID, vs...))
+}
+
+// ChatAvatarSymbolIDGT applies the GT predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDGT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGT(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDGTE applies the GTE predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDGTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGTE(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDLT applies the LT predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDLT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLT(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDLTE applies the LTE predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDLTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLTE(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDContains applies the Contains predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDContains(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContains(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDHasPrefix applies the HasPrefix predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDHasPrefix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasPrefix(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDHasSuffix applies the HasSuffix predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDHasSuffix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasSuffix(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDIsNil applies the IsNil predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDIsNil() predicate.Chat {
+	return predicate.Chat(sql.FieldIsNull(FieldChatAvatarSymbolID))
+}
+
+// ChatAvatarSymbolIDNotNil applies the NotNil predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDNotNil() predicate.Chat {
+	return predicate.Chat(sql.FieldNotNull(FieldChatAvatarSymbolID))
+}
+
+// ChatAvatarSymbolIDEqualFold applies the EqualFold predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDEqualFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEqualFold(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarSymbolIDContainsFold applies the ContainsFold predicate on the "chat_avatar_symbol_id" field.
+func ChatAvatarSymbolIDContainsFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContainsFold(FieldChatAvatarSymbolID, v))
+}
+
+// ChatAvatarColorIDEQ applies the EQ predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDNEQ applies the NEQ predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDNEQ(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldNEQ(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDIn applies the In predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldIn(FieldChatAvatarColorID, vs...))
+}
+
+// ChatAvatarColorIDNotIn applies the NotIn predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDNotIn(vs ...string) predicate.Chat {
+	return predicate.Chat(sql.FieldNotIn(FieldChatAvatarColorID, vs...))
+}
+
+// ChatAvatarColorIDGT applies the GT predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDGT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGT(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDGTE applies the GTE predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDGTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldGTE(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDLT applies the LT predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDLT(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLT(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDLTE applies the LTE predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDLTE(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldLTE(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDContains applies the Contains predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDContains(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContains(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDHasPrefix applies the HasPrefix predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDHasPrefix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasPrefix(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDHasSuffix applies the HasSuffix predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDHasSuffix(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldHasSuffix(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDIsNil applies the IsNil predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDIsNil() predicate.Chat {
+	return predicate.Chat(sql.FieldIsNull(FieldChatAvatarColorID))
+}
+
+// ChatAvatarColorIDNotNil applies the NotNil predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDNotNil() predicate.Chat {
+	return predicate.Chat(sql.FieldNotNull(FieldChatAvatarColorID))
+}
+
+// ChatAvatarColorIDEqualFold applies the EqualFold predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDEqualFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldEqualFold(FieldChatAvatarColorID, v))
+}
+
+// ChatAvatarColorIDContainsFold applies the ContainsFold predicate on the "chat_avatar_color_id" field.
+func ChatAvatarColorIDContainsFold(v string) predicate.Chat {
+	return predicate.Chat(sql.FieldContainsFold(FieldChatAvatarColorID, v))
 }
 
 // MediaVisibilityEQ applies the EQ predicate on the "media_visibility" field.

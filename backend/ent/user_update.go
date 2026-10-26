@@ -167,6 +167,66 @@ func (_u *UserUpdate) ClearProfilePhotoFileID() *UserUpdate {
 	return _u
 }
 
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (_u *UserUpdate) SetProfileAvatarMode(v string) *UserUpdate {
+	_u.mutation.SetProfileAvatarMode(v)
+	return _u
+}
+
+// SetNillableProfileAvatarMode sets the "profile_avatar_mode" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableProfileAvatarMode(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetProfileAvatarMode(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (_u *UserUpdate) ClearProfileAvatarMode() *UserUpdate {
+	_u.mutation.ClearProfileAvatarMode()
+	return _u
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (_u *UserUpdate) SetProfileAvatarSymbolID(v string) *UserUpdate {
+	_u.mutation.SetProfileAvatarSymbolID(v)
+	return _u
+}
+
+// SetNillableProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableProfileAvatarSymbolID(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetProfileAvatarSymbolID(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (_u *UserUpdate) ClearProfileAvatarSymbolID() *UserUpdate {
+	_u.mutation.ClearProfileAvatarSymbolID()
+	return _u
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (_u *UserUpdate) SetProfileAvatarColorID(v string) *UserUpdate {
+	_u.mutation.SetProfileAvatarColorID(v)
+	return _u
+}
+
+// SetNillableProfileAvatarColorID sets the "profile_avatar_color_id" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableProfileAvatarColorID(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetProfileAvatarColorID(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (_u *UserUpdate) ClearProfileAvatarColorID() *UserUpdate {
+	_u.mutation.ClearProfileAvatarColorID()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *UserUpdate) SetCreatedAt(v string) *UserUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -845,6 +905,24 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ProfilePhotoFileIDCleared() {
 		_spec.ClearField(user.FieldProfilePhotoFileID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarMode(); ok {
+		_spec.SetField(user.FieldProfileAvatarMode, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarModeCleared() {
+		_spec.ClearField(user.FieldProfileAvatarMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarSymbolID(); ok {
+		_spec.SetField(user.FieldProfileAvatarSymbolID, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarSymbolIDCleared() {
+		_spec.ClearField(user.FieldProfileAvatarSymbolID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarColorID(); ok {
+		_spec.SetField(user.FieldProfileAvatarColorID, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarColorIDCleared() {
+		_spec.ClearField(user.FieldProfileAvatarColorID, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeString, value)
@@ -1527,6 +1605,66 @@ func (_u *UserUpdateOne) SetNillableProfilePhotoFileID(v *string) *UserUpdateOne
 // ClearProfilePhotoFileID clears the value of the "profile_photo_file_id" field.
 func (_u *UserUpdateOne) ClearProfilePhotoFileID() *UserUpdateOne {
 	_u.mutation.ClearProfilePhotoFileID()
+	return _u
+}
+
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (_u *UserUpdateOne) SetProfileAvatarMode(v string) *UserUpdateOne {
+	_u.mutation.SetProfileAvatarMode(v)
+	return _u
+}
+
+// SetNillableProfileAvatarMode sets the "profile_avatar_mode" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableProfileAvatarMode(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetProfileAvatarMode(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (_u *UserUpdateOne) ClearProfileAvatarMode() *UserUpdateOne {
+	_u.mutation.ClearProfileAvatarMode()
+	return _u
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (_u *UserUpdateOne) SetProfileAvatarSymbolID(v string) *UserUpdateOne {
+	_u.mutation.SetProfileAvatarSymbolID(v)
+	return _u
+}
+
+// SetNillableProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableProfileAvatarSymbolID(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetProfileAvatarSymbolID(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (_u *UserUpdateOne) ClearProfileAvatarSymbolID() *UserUpdateOne {
+	_u.mutation.ClearProfileAvatarSymbolID()
+	return _u
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (_u *UserUpdateOne) SetProfileAvatarColorID(v string) *UserUpdateOne {
+	_u.mutation.SetProfileAvatarColorID(v)
+	return _u
+}
+
+// SetNillableProfileAvatarColorID sets the "profile_avatar_color_id" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableProfileAvatarColorID(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetProfileAvatarColorID(*v)
+	}
+	return _u
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (_u *UserUpdateOne) ClearProfileAvatarColorID() *UserUpdateOne {
+	_u.mutation.ClearProfileAvatarColorID()
 	return _u
 }
 
@@ -2238,6 +2376,24 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.ProfilePhotoFileIDCleared() {
 		_spec.ClearField(user.FieldProfilePhotoFileID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarMode(); ok {
+		_spec.SetField(user.FieldProfileAvatarMode, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarModeCleared() {
+		_spec.ClearField(user.FieldProfileAvatarMode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarSymbolID(); ok {
+		_spec.SetField(user.FieldProfileAvatarSymbolID, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarSymbolIDCleared() {
+		_spec.ClearField(user.FieldProfileAvatarSymbolID, field.TypeString)
+	}
+	if value, ok := _u.mutation.ProfileAvatarColorID(); ok {
+		_spec.SetField(user.FieldProfileAvatarColorID, field.TypeString, value)
+	}
+	if _u.mutation.ProfileAvatarColorIDCleared() {
+		_spec.ClearField(user.FieldProfileAvatarColorID, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeString, value)

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Chat } from "../../../api/chats";
+import { colorForAvatarId } from "../../../components/entityAvatar";
 import { defaultFolderRules, folderMatchesChatProperties, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 
 const chat = (overrides: Partial<Chat> = {}): Chat => ({
@@ -81,6 +82,8 @@ describe("matchesFolder", () => {
     const folder = {
       id: "folder-work",
       name: "Work",
+      symbolId: "folder",
+      colorId: colorForAvatarId("folder-work"),
       rules: { ...defaultFolderRules(), includedChatIds: ["chat-1"] }
     };
     saveChatFolders("family-1", [folder]);
@@ -96,6 +99,18 @@ describe("matchesFolder", () => {
     }));
     saveChatFolders("family-1", updatedFolders);
     expect(loadChatFolders("family-1")[0].rules.includedChatIds).toEqual([]);
+  });
+
+  it("adds the default avatar choice to legacy folders and keeps edited choices", () => {
+    window.localStorage.setItem("stovo:chat-folders:family-avatar", JSON.stringify([{
+      id: "folder-legacy", name: "Legacy", rules: defaultFolderRules()
+    }]));
+    expect(loadChatFolders("family-avatar")[0]).toMatchObject({ symbolId: "folder", colorId: expect.any(String) });
+
+    saveChatFolders("family-avatar", [{
+      ...loadChatFolders("family-avatar")[0], symbolId: "star", colorId: "purple"
+    }]);
+    expect(loadChatFolders("family-avatar")[0]).toMatchObject({ symbolId: "star", colorId: "purple" });
   });
 });
 

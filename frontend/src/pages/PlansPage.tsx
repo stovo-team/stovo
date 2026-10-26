@@ -434,11 +434,11 @@ export default function PlansPage() {
                 setProfilePreviewMemberId((current) => current === member.id ? null : member.id);
               }}
             >
-              <RealAvatar accessToken={accessToken} className="avatar plan-attendee-avatar" file={member.profilePhoto} label={member.displayName} />
+              <RealAvatar accessToken={accessToken} className="avatar plan-attendee-avatar" file={member.profilePhoto} label={member.displayName} entityId={member.id} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />
             </button>
             {profilePreviewMemberId === member.id && (
               <div className="plan-member-popover" role="tooltip">
-                <RealAvatar accessToken={accessToken} className="avatar plan-member-popover-avatar" file={member.profilePhoto} label={member.displayName} />
+                <RealAvatar accessToken={accessToken} className="avatar plan-member-popover-avatar" file={member.profilePhoto} label={member.displayName} entityId={member.id} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />
                 <span><strong>{member.displayName}</strong><small>@{member.username}</small></span>
               </div>
             )}
@@ -468,7 +468,7 @@ export default function PlansPage() {
             {plan.location && <small>{plan.location}</small>}
             {plan.notes && <div className="plan-notes plan-notes--preview">{renderPlanNotes(plan.notes)}</div>}
             <div className="plan-created-by">
-              {creator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={creator.profilePhoto} label={creator.displayName} />}
+              {creator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={creator.profilePhoto} label={creator.displayName} entityId={creator.id} mode={creator.avatarMode} symbolId={creator.avatarSymbolId} colorId={creator.avatarColorId} />}
               <small>{strings.plans.createdBy(creatorName)}</small>
             </div>
           </div>
@@ -781,7 +781,7 @@ export default function PlansPage() {
             <div>
               <dt>{strings.plans.createdByLabel}</dt>
               <dd className="plan-details-creator">
-                {detailsCreator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={detailsCreator.profilePhoto} label={detailsCreator.displayName} />}
+                {detailsCreator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={detailsCreator.profilePhoto} label={detailsCreator.displayName} entityId={detailsCreator.id} mode={detailsCreator.avatarMode} symbolId={detailsCreator.avatarSymbolId} colorId={detailsCreator.avatarColorId} />}
                 <span>{detailsCreatorName}</span>
               </dd>
             </div>

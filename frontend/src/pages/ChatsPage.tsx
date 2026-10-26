@@ -365,6 +365,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
               editingChatPhotoFile={detailsActions.editingChatPhotoFile}
               onCloseEditChatPhoto={() => detailsActions.setEditingChatPhotoFile(null)}
               onSaveCroppedChatPhoto={detailsActions.handleSaveCroppedChatPhoto}
+              onAvatarChoiceChange={detailsActions.handleAvatarChoiceChange}
               editingChatWallpaperFile={detailsActions.editingChatWallpaperFile}
               onCloseEditChatWallpaper={() => detailsActions.setEditingChatWallpaperFile(null)}
               onSaveEditedChatWallpaper={detailsActions.handleSaveEditedChatWallpaper}

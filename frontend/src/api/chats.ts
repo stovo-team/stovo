@@ -12,6 +12,9 @@ export interface ChatMember {
   role: UserRole;
   publicKey: string | null;
   profilePhoto: FamilyFile | null;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   email?: string | null;
   bio?: string | null;
   timezone?: string | null;
@@ -35,6 +38,9 @@ export interface Chat {
   mediaVisibilityApprovalRequired: number;
   myMediaVisibilityApproval: boolean;
   chatPhoto: FamilyFile | null;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   createdAt: string;
   updatedAt: string;
   members: ChatMember[];
@@ -225,6 +231,9 @@ export function updateChat(
     description?: string | null;
     mediaVisibility?: "family" | "members";
     chatPhotoFileId?: string;
+    avatarMode?: "photo" | "symbol";
+    avatarSymbolId?: string | null;
+    avatarColorId?: string | null;
     commentsEnabled?: boolean;
   }
 ) {

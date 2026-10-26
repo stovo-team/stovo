@@ -10,6 +10,7 @@ import (
 type ChatDetails struct {
 	ID, FamilyID, Type, MediaVisibility, EncryptionProtocol string
 	Title, Description, CreatedBy, ChatPhotoFileID          *string
+	AvatarMode, AvatarSymbolID, AvatarColorID                 *string
 	CreatedAt, UpdatedAt, PinPermission                     string
 	CommentsEnabled                                         bool
 	MessageDelaySeconds                                     int

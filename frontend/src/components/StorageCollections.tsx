@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, Camera, ChevronLeft, FileText, FileVideo, Folder, Forward, Image, LockKeyhole, Music2, Palette, Pencil, Plus, Settings2, Star, Trash2, Upload, Users, X } from "lucide-react";
+import { ChevronLeft, FileText, Folder, Forward, Image, LockKeyhole, Music2, Pencil, Plus, Settings2, Trash2, Upload, Users, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../api/auth";
 import { getChats, sendCollectionMessage, type Chat } from "../api/chats";
@@ -18,6 +18,9 @@ import { PopupField } from "./ui/PopupField";
 import { PopupSelect } from "./ui/PopupSelect";
 import { useStrings } from "../i18n/LanguageContext";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
+import { EntityAvatar } from "./EntityAvatar";
+import { SymbolColorControls } from "./SymbolColorControls";
+import { AVATAR_SYMBOL_COMPONENTS } from "./avatarSymbols";
 
 const iconFor = (file: FamilyFile) => storageFileKind(file) === "audio" ? Music2 : storageFileKind(file) === "photos" || storageFileKind(file) === "videos" ? Image : FileText;
 const extensionLabel = (file: FamilyFile) => {
@@ -27,11 +30,8 @@ const extensionLabel = (file: FamilyFile) => {
   return extension.length <= 5 ? extension : "FILE";
 };
 const typeLabel = (item: StorageCollection, copy: ReturnType<typeof useStrings>["files"]["collections"]) => item.displayKind === "music-album" ? copy.musicAlbum : item.displayKind === "album" ? copy.photoAlbum : copy.fileFolder;
-type CoverIconName = "folder" | "image" | "music" | "file" | "video" | "camera" | "archive" | "star";
-const coverIconOptions: Array<{ value: CoverIconName; Icon: typeof Folder }> = [
-  { value: "folder", Icon: Folder }, { value: "image", Icon: Image }, { value: "music", Icon: Music2 }, { value: "file", Icon: FileText },
-  { value: "video", Icon: FileVideo }, { value: "camera", Icon: Camera }, { value: "archive", Icon: Archive }, { value: "star", Icon: Star }
-];
+type CoverIconName = keyof typeof AVATAR_SYMBOL_COMPONENTS;
+const coverIconOptions = Object.entries(AVATAR_SYMBOL_COMPONENTS).map(([value, Icon]) => ({ value: value as CoverIconName, Icon }));
 const contentTypeOptions: Exclude<CollectionContentType, "custom">[] = ["mixed", "media", "audio", "documents"];
 const allowsContentType = (contentType: CollectionContentType, file: FamilyFile, customFileTypes = "") => {
   const fileKind = storageFileKind(file);
@@ -45,11 +45,8 @@ export type StorageCollectionPickerRequest = {
   allowedFileIds: string[];
   onConfirm: (ids: string[]) => Promise<void>;
 };
-function memberInitials(name: string) { return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(""); }
 function StorageMemberAvatar({ accessToken, member }: { accessToken: string; member: User }) {
-  const [url, setUrl] = useState<string | null>(() => member.profilePhoto ? peekCachedObjectUrl(member.profilePhoto.id) : null);
-  useEffect(() => { let cancelled = false; const photo = member.profilePhoto; if (!photo) { setUrl(null); return; } const cached = peekCachedObjectUrl(photo.id); if (cached) { setUrl(cached); return; } void downloadFileBlob(accessToken, photo.id).then(() => { if (!cancelled) setUrl(peekCachedObjectUrl(photo.id)); }).catch(() => { if (!cancelled) setUrl(null); }); return () => { cancelled = true; }; }, [accessToken, member.profilePhoto?.id]);
-  return <span className="avatar storage-access-member-avatar">{url ? <img src={url} alt="" /> : <span className="avatar-initials">{memberInitials(member.displayName)}</span>}</span>;
+  return <EntityAvatar accessToken={accessToken} className="storage-access-member-avatar" entityId={member.id} entityKind="person" file={member.profilePhoto} label={member.displayName} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />;
 }
 function AccessPrincipalPicker({ accessToken, members, roles, value, onChange }: { accessToken: string; members: User[]; roles: ServerRole[]; value: string; onChange: (value: string) => void }) {
   const copy = useStrings().files.collections;
@@ -92,9 +89,10 @@ function CollectionFileCard({ file, token, editable, onRemove, onOpen }: { file:
 
 export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage, groupByChat = false, groupFallbackLabel, onPreviewFile }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void; groupByChat?: boolean; groupFallbackLabel?: string; onPreviewFile?: (file: FamilyFile) => void }) {
   const copy = useStrings().files.collections;
+  const avatarCopy = useStrings().avatarChoices;
   const navigate = useNavigate();
   const location = useLocation();
-  const [collections, setCollections] = useState<StorageCollection[]>(() => currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); const [selected, setSelected] = useState<StorageCollection | null>(null); const [items, setItems] = useState<FamilyFile[]>([]); const [grants, setGrants] = useState<CollectionGrant[]>([]); const [members, setMembers] = useState<User[]>([]); const [roles, setRoles] = useState<ServerRole[]>([]); const [chats, setChats] = useState<Chat[]>([]); const [creating, setCreating] = useState(false); const [settings, setSettings] = useState(false); const [adding, setAdding] = useState(false); const [coverMenu, setCoverMenu] = useState(false); const [coverColor, setCoverColor] = useState<string>(DESIGN_COLOR_VALUES.storageCollections.defaultCover); const [coverIcon, setCoverIcon] = useState<CoverIconName>("folder"); const [renaming, setRenaming] = useState(false); const [forwarding, setForwarding] = useState<StorageCollection | null>(null); const [confirmingDelete, setConfirmingDelete] = useState(false); const [title, setTitle] = useState(""); const [kind, setKind] = useState<CollectionKind>("folder"); const [grantTarget, setGrantTarget] = useState(""); const [grantLevel, setGrantLevel] = useState<CollectionAccessLevel>("viewer"); const [forwardChatIds, setForwardChatIds] = useState<string[]>([]); const [error, setError] = useState<string | null>(null);
+  const [collections, setCollections] = useState<StorageCollection[]>(() => currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); const [selected, setSelected] = useState<StorageCollection | null>(null); const [items, setItems] = useState<FamilyFile[]>([]); const [grants, setGrants] = useState<CollectionGrant[]>([]); const [members, setMembers] = useState<User[]>([]); const [roles, setRoles] = useState<ServerRole[]>([]); const [chats, setChats] = useState<Chat[]>([]); const [creating, setCreating] = useState(false); const [settings, setSettings] = useState(false); const [adding, setAdding] = useState(false); const [coverMenu, setCoverMenu] = useState(false); const [coverColor, setCoverColor] = useState<string>(DESIGN_COLOR_VALUES.avatarPalette.blue); const [coverIcon, setCoverIcon] = useState<CoverIconName>("folder"); const [renaming, setRenaming] = useState(false); const [forwarding, setForwarding] = useState<StorageCollection | null>(null); const [confirmingDelete, setConfirmingDelete] = useState(false); const [title, setTitle] = useState(""); const [kind, setKind] = useState<CollectionKind>("folder"); const [grantTarget, setGrantTarget] = useState(""); const [grantLevel, setGrantLevel] = useState<CollectionAccessLevel>("viewer"); const [forwardChatIds, setForwardChatIds] = useState<string[]>([]); const [error, setError] = useState<string | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null); const coverUploadRef = useRef<HTMLInputElement>(null); const requested = useMemo(() => new URLSearchParams(location.search).get("collection"), [location.search]); const opened = useRef(false);
   const load = async () => { if (accessToken) setCollections(await getCollections(accessToken)); };
   useEffect(() => { setCollections(currentUserId ? loadCachedStorageItemsFromLocalStorage<StorageCollection>(currentUserId, "collections") ?? [] : []); }, [currentUserId]);
@@ -135,7 +133,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
     <header className="storage-collection-full-header">
       <BackButton className="storage-collection-back" ariaLabel={copy.backStorage} title={copy.backStorage} onClick={() => setSelected(null)} />
       <div className="storage-collection-full-title">
-        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title={copy.changeCover} onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><strong>{copy.coverIcon}</strong><div className="storage-cover-icon-grid">{coverIconOptions.map(({ value, Icon }) => <button type="button" key={value} className={coverIcon === value ? "is-selected" : ""} aria-label={copy.useCoverIcon(copy.coverIconNames[value])} onClick={() => setCoverIcon(value)}><Icon size={16} /></button>)}</div><strong>{copy.color}</strong><div className="storage-cover-color-row">{DESIGN_COLOR_VALUES.storageCollections.coverColors.map((color) => <button type="button" key={color} className={coverColor === color ? "is-selected" : ""} aria-label={copy.useCoverColor(color)} style={{ backgroundColor: color }} onClick={() => setCoverColor(color)} />)}<button type="button" className="storage-cover-palette" aria-label={copy.customCoverColor}><Palette size={15} /></button></div><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCustomCover}</button></div>}</div>
+        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title={copy.changeCover} onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><SymbolColorControls symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))} symbol={coverIcon} onSymbolChange={(id) => setCoverIcon(id as CoverIconName)} colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))} color={coverColor} onColorChange={setCoverColor} /><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCustomCover}</button></div>}</div>
         <div>{renaming ? <input aria-label={copy.folderName} autoFocus value={title || current.title} onChange={(event) => setTitle(event.target.value)} onBlur={() => { if (title.trim()) void saveName(); setRenaming(false); }} /> : <div className="storage-collection-name"><strong>{current.title}</strong><button type="button" aria-label={copy.renameFolder} onClick={() => setRenaming(true)}><Pencil size={14} /></button></div>}<small>{copy.items(current.itemCount, typeLabel(current, copy))}</small></div>
       </div>
       <div className="storage-collection-full-actions">{current.accessLevel === "editor" && <><button type="button" className="storage-round-icon" title={copy.addFromStorage} onClick={requestStorageSelection}><Plus size={19} /></button><button type="button" className="storage-round-icon" title={copy.uploadFiles} onClick={() => uploadRef.current?.click()}><Upload size={18} /></button></>}<button type="button" className="storage-round-icon" title={copy.settings} onClick={() => setSettings((value) => !value)}><Settings2 size={18} /></button></div>

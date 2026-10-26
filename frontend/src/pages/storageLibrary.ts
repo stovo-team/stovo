@@ -14,7 +14,10 @@ export type StorageChatLike<TFile = StorageFileLike> = {
   type: StorageAvatarKind;
   title: string | null;
   chatPhoto: TFile | null;
-  members: Array<{ id: string; displayName: string; profilePhoto: TFile | null }>;
+  members: Array<{ id: string; displayName: string; profilePhoto: TFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null }>;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
 };
 
 export type StorageSource<TFile = StorageFileLike> = {
@@ -22,6 +25,10 @@ export type StorageSource<TFile = StorageFileLike> = {
   label: string;
   avatarFile: TFile | null;
   avatarKind: StorageAvatarKind;
+  avatarEntityId: string;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   fileCount: number;
   includesUnscopedFiles?: boolean;
 };
@@ -30,13 +37,9 @@ export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" 
 
 export function storageSourceLeadingVisual(
   kind: StorageAvatarKind,
-  minimizedLayout: boolean
+  _minimizedLayout: boolean
 ): "lock" | "hash" | "archive" | "avatar" | "voice" {
-  if (kind === "archive") return "archive";
-  if (!minimizedLayout) return "avatar";
-  if (kind === "group" || kind === "family") return "lock";
-  if (kind === "channel") return "hash";
-  if (kind === "voice") return "voice";
+  if (kind === "archive") return "avatar";
   return "avatar";
 }
 
@@ -115,6 +118,7 @@ export function buildStorageSources<TFile extends StorageFileLike>(
     const directChatFiles = filesByChat.get(chat.id) ?? [];
     if (directChatFiles.length === 0) return null;
     const otherMember = chat.members.find((member) => member.id !== currentUserId);
+    const isDirect = chat.type === "direct";
     const label = chat.type === "direct"
       ? otherMember?.displayName ?? "Direct chat"
       : chat.type === "archive"
@@ -123,8 +127,12 @@ export function buildStorageSources<TFile extends StorageFileLike>(
     return {
       chatId: chat.id,
       label,
-      avatarFile: chat.chatPhoto ?? (chat.type === "direct" ? otherMember?.profilePhoto ?? null : null),
+      avatarFile: isDirect ? otherMember?.profilePhoto ?? null : chat.chatPhoto,
       avatarKind: chat.type,
+      avatarEntityId: isDirect ? otherMember?.id ?? chat.id : chat.id,
+      avatarMode: isDirect ? otherMember?.avatarMode : chat.avatarMode,
+      avatarSymbolId: isDirect ? otherMember?.avatarSymbolId : chat.avatarSymbolId,
+      avatarColorId: isDirect ? otherMember?.avatarColorId : chat.avatarColorId,
       fileCount: directChatFiles.length
     };
   };

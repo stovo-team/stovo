@@ -23,6 +23,7 @@ import {
   canUpdateMediaVisibility,
   chatAvatarFallbackKind,
   chatAvatarFile,
+  chatAvatarIdentity,
   chatAvatarTypeClass,
   chatInfoControlVisibility,
   displayChatName,
@@ -32,6 +33,7 @@ import type { ChatInfoControl, SharedContentItem, SharedContentTab } from "../sh
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
+import { ChatAvatarChoiceSettings } from "./ChatAvatarChoiceSettings";
 import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { ChatTransferSettingsActions } from "../transfer/ChatTransferSettingsActions";
@@ -155,6 +157,7 @@ export function ChatDetailsPanel({
   editingChatPhotoFile,
   onCloseEditChatPhoto,
   onSaveCroppedChatPhoto,
+  onAvatarChoiceChange,
   editingChatWallpaperFile,
   onCloseEditChatWallpaper,
   onSaveEditedChatWallpaper,
@@ -174,6 +177,7 @@ export function ChatDetailsPanel({
   editingChatPhotoFile?: File | null;
   onCloseEditChatPhoto?: () => void;
   onSaveCroppedChatPhoto?: (croppedFile: File) => void | Promise<void>;
+  onAvatarChoiceChange?: (patch: Partial<Pick<Chat, "avatarMode" | "avatarSymbolId" | "avatarColorId">>) => void | Promise<void>;
   editingChatWallpaperFile?: File | null;
   onCloseEditChatWallpaper?: () => void;
   onSaveEditedChatWallpaper?: (wallpaperFile: File) => void | Promise<void>;
@@ -448,6 +452,7 @@ export function ChatDetailsPanel({
         </header>
 
         <div className="chat-info-body">
+          {canManageChat && <ChatAvatarChoiceSettings chat={chat} label={chatName} accessToken={accessToken} onChange={onAvatarChoiceChange} />}
           <ChatTransferSettingsActions chat={chat} accessToken={accessToken} currentUserId={currentUserId} onImported={onImported} />
           <div className="chat-info-section">
             <div className="chat-info-island chat-info-wallpaper">
@@ -769,6 +774,10 @@ export function ChatDetailsPanel({
                                 className="avatar avatar-sm chat-info-sender-avatar"
                                 file={member.profilePhoto}
                                 label={member.displayName}
+                                entityId={member.id}
+                                mode={member.avatarMode}
+                                symbolId={member.avatarSymbolId}
+                                colorId={member.avatarColorId}
                               />
                               <span className="chat-info-sender-name">
                                 <strong>{member.displayName}</strong>
@@ -1011,6 +1020,7 @@ export function ChatDetailsPanel({
               fallbackKind={chatAvatarFallbackKind(chat)}
               file={chatAvatarFile(chat, currentUserId)}
               label={chatName}
+              {...chatAvatarIdentity(chat, currentUserId)}
             />
             {canManageChat && (
               <>
@@ -1356,6 +1366,10 @@ export function ChatDetailsPanel({
                       className="avatar member-avatar"
                       file={member.profilePhoto}
                       label={member.displayName}
+                      entityId={member.id}
+                      mode={member.avatarMode}
+                      symbolId={member.avatarSymbolId}
+                      colorId={member.avatarColorId}
                     />
                     <div className="chat-info-member-copy">
                       <strong>{member.displayName}</strong>

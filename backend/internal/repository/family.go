@@ -133,6 +133,9 @@ func (s *Store) FamilyChatID(ctx context.Context, familyID string) (string, erro
 			chat.TypeEQ("family"),
 		).
 		First(ctx)
+	if ent.IsNotFound(err) {
+		return "", nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -180,22 +183,24 @@ func (s *Store) AcceptInvite(ctx context.Context, p AcceptInviteParams) error {
 		if _, err := tx.Invite.UpdateOneID(p.InviteID).AddUsedCount(1).Save(ctx); err != nil {
 			return err
 		}
-		if err := tx.ChatMember.Create().
-			SetID(p.FamilyChatID).
-			SetUserID(p.UserID).
-			SetCreatedAt(p.CreatedAt).
-			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			Ignore().
-			Exec(ctx); err != nil {
-			return err
-		}
-		if err := tx.ChatPreference.Create().
-			SetID(p.FamilyChatID).
-			SetUserID(p.UserID).
-			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-			Ignore().
-			Exec(ctx); err != nil {
-			return err
+		if p.FamilyChatID != "" {
+			if err := tx.ChatMember.Create().
+				SetID(p.FamilyChatID).
+				SetUserID(p.UserID).
+				SetCreatedAt(p.CreatedAt).
+				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+				Ignore().
+				Exec(ctx); err != nil {
+				return err
+			}
+			if err := tx.ChatPreference.Create().
+				SetID(p.FamilyChatID).
+				SetUserID(p.UserID).
+				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+				Ignore().
+				Exec(ctx); err != nil {
+				return err
+			}
 		}
 		return s.CreateRefreshToken(ctx, tx, CreateRefreshTokenParams{
 			ID:        p.RefreshTokenID,

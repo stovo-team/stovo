@@ -352,6 +352,10 @@ export function MessageBubble({
             className="avatar message-sender-avatar"
             file={senderProfile?.profilePhoto ?? null}
             label={message.senderDisplayName ?? senderProfile?.displayName ?? "Family member"}
+            entityId={senderProfile?.id ?? message.senderId}
+            mode={senderProfile?.avatarMode}
+            symbolId={senderProfile?.avatarSymbolId}
+            colorId={senderProfile?.avatarColorId}
           />
           <strong className="message-sender">
             {message.senderDisplayName ?? senderProfile?.displayName ?? "Family member"}
@@ -617,7 +621,7 @@ export function MessageBubble({
                     const user = memberLookup.get(userId);
                     return (
                       <RealAvatar key={userId} accessToken={accessToken} className="avatar reaction-avatar"
-                        file={selectedChat.members.find((member) => member.id === userId)?.profilePhoto} label={user?.displayName ?? "?"} />
+                        file={selectedChat.members.find((member) => member.id === userId)?.profilePhoto} label={user?.displayName ?? "?"} entityId={userId} mode={selectedChat.members.find((member) => member.id === userId)?.avatarMode} symbolId={selectedChat.members.find((member) => member.id === userId)?.avatarSymbolId} colorId={selectedChat.members.find((member) => member.id === userId)?.avatarColorId} />
                     );
                   })}
                   {userIds.length > 3 && <span className="reaction-avatar reaction-avatar-more">+{userIds.length - 2}</span>}

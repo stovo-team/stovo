@@ -16,17 +16,6 @@ const screenVideoStyle: CSSProperties = {
   objectFit: "contain",
 };
 
-const avatarStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "var(--color-palette-f1147865f078)",
-  fontSize: "var(--font-size-avatar-initials)",
-  letterSpacing: "0.02em",
-};
-
 const labelStyle: CSSProperties = {
   position: "absolute",
   left: 8,
@@ -38,11 +27,6 @@ const labelStyle: CSSProperties = {
   fontSize: "var(--font-size-caption)",
   zIndex: 3,
 };
-
-function initial(label: string): string {
-  const trimmedLabel = label.trim();
-  return trimmedLabel ? trimmedLabel.charAt(0).toUpperCase() : "?";
-}
 
 function bindStream(el: HTMLVideoElement | null, stream: MediaStream | null) {
   if (el && stream && el.srcObject !== stream) {
@@ -69,6 +53,10 @@ export function CallParticipantTile({
   isConnected = true,
   accessToken,
   profilePhoto,
+  entityId,
+  avatarMode,
+  avatarSymbolId,
+  avatarColorId,
   onVideoMetadata,
 }: {
   label: string;
@@ -89,6 +77,10 @@ export function CallParticipantTile({
   isConnected?: boolean;
   accessToken?: string | null;
   profilePhoto?: FamilyFile | null;
+  entityId?: string;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   onVideoMetadata?: (width: number, height: number) => void;
 }) {
   return (
@@ -134,11 +126,9 @@ export function CallParticipantTile({
         localVideoPlaceholder
       ) : (
         <div className="call-grid__avatar-wrap">
-          {profilePhoto ? <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar" file={profilePhoto} label={label} /> : (
-            <div className="call-grid__avatar-circle">
-              <div className="call-grid__avatar" style={avatarStyle}>{initial(label)}</div>
-            </div>
-          )}
+          <div className="call-grid__avatar-circle">
+            <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar call-grid__avatar" entityId={entityId ?? label} file={profilePhoto} label={label} mode={avatarMode} symbolId={avatarSymbolId} colorId={avatarColorId} />
+          </div>
         </div>
       )}
       {onFlipCamera && showVideo && (

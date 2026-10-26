@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   startRegistration: vi.fn(),
   authRequest: vi.fn(),
   getMembers: vi.fn(),
-  currentUser: { id: "owner-1", role: "owner", displayName: "Owner", email: "owner@example.com", bio: "", timezone: "UTC" },
+  currentUser: { id: "owner-1", role: "owner", displayName: "Owner", email: "owner@example.com", bio: "", timezone: "UTC", profilePhoto: null as import("../api/files").FamilyFile | null, avatarMode: "photo" as "photo" | "symbol" },
   updateCurrentUser: vi.fn(),
   logout: vi.fn()
 }));
@@ -40,6 +40,7 @@ vi.mock("../i18n/LanguageContext", async () => {
   return {
     useLanguage: () => ({ language: "en", setLanguage: vi.fn(), systemLanguage: "en", resolvedLanguage: "en", strings }),
     useResolvedLanguage: () => "en",
+    useStrings: () => strings,
   };
 });
 
@@ -53,6 +54,8 @@ describe("SettingsPage profile save", () => {
 
   beforeEach(() => {
     mocks.platform = "web";
+    mocks.currentUser.profilePhoto = null;
+    mocks.currentUser.avatarMode = "photo";
     Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
     Object.defineProperty(window, "PublicKeyCredential", { configurable: true, value: class PublicKeyCredential {} });
     mocks.beginPasskeyRegistration.mockResolvedValue({ ceremonyId: "registration-1", publicKey: { challenge: "challenge" } });
@@ -100,6 +103,42 @@ describe("SettingsPage profile save", () => {
 
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH" }));
     expect(mocks.authRequest.mock.calls.some(([path, options]) => path === "/api/family" && options?.method === "PATCH")).toBe(false);
+  });
+  it("saves profile avatar symbol and color through the profile endpoint", async () => {
+    await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });
+    await act(async () => container?.querySelector<HTMLButtonElement>('button[aria-label="Open profile settings"]')?.click());
+    await act(async () => document.body.querySelector<HTMLButtonElement>('button[aria-label="Star"]')?.click());
+    await act(async () => document.body.querySelector<HTMLButtonElement>('button[aria-label="Purple"]')?.click());
+
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({
+      method: "PATCH", body: { avatarMode: "symbol", avatarSymbolId: "star" }
+    }));
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({
+      method: "PATCH", body: { avatarColorId: "purple" }
+    }));
+    expect(mocks.updateCurrentUser).toHaveBeenCalled();
+  });
+  it("keeps the uploaded profile photo reference while switching avatar modes", async () => {
+    const photo = {
+      id: "profile-photo-1", familyId: "family-1", uploadedBy: "owner-1", chatId: null, chatTitle: null,
+      chatType: null, originMessageId: null, accessScope: "family" as const, storageProvider: "local",
+      originalName: "profile.png", mimeType: "image/png", sizeBytes: 1024, checksum: null,
+      createdAt: "2026-10-01T00:00:00.000Z", deletedAt: null, isFavorite: false
+    };
+    mocks.currentUser.profilePhoto = photo;
+    await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });
+    await act(async () => container?.querySelector<HTMLButtonElement>('button[aria-label="Open profile settings"]')?.click());
+
+    const symbolMode = document.body.querySelector<HTMLButtonElement>('.avatar-choice-picker button[aria-pressed="false"]');
+    expect(symbolMode?.textContent).toBe("Symbol");
+    await act(async () => { symbolMode?.click(); await Promise.resolve(); });
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH", body: { avatarMode: "symbol" } }));
+    expect(mocks.updateCurrentUser).toHaveBeenLastCalledWith(expect.objectContaining({ profilePhoto: photo, avatarMode: "symbol" }));
+
+    const photoMode = [...document.body.querySelectorAll<HTMLButtonElement>(".avatar-choice-picker button")].find((button) => button.textContent === "Photo");
+    await act(async () => { photoMode?.click(); await Promise.resolve(); });
+    expect(mocks.authRequest).toHaveBeenLastCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH", body: { avatarMode: "photo" } }));
+    expect(mocks.updateCurrentUser).toHaveBeenLastCalledWith(expect.objectContaining({ profilePhoto: photo, avatarMode: "photo" }));
   });
   async function openPasskeys() {
     await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });

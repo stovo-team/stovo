@@ -1,3 +1,4 @@
+import { mockChatDetailsResponse } from "./mockChatDetails";
 import { mockCanvasResponse } from "./mockCanvas";
 import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
@@ -336,20 +337,25 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
     const publicKey = typeof body.publicKey === "string" ? body.publicKey : null;
     const currentUserId = getMockUserId();
     const currentUser = mockData.users.find((user) => user.id === currentUserId)!;
-    currentUser.publicKey = publicKey;
+    if (typeof body.publicKey === "string" || body.publicKey === null) currentUser.publicKey = publicKey;
+    if (body.avatarMode === "photo" || body.avatarMode === "symbol") currentUser.avatarMode = body.avatarMode;
+    if (typeof body.avatarSymbolId === "string") currentUser.avatarSymbolId = body.avatarSymbolId;
+    if (typeof body.avatarColorId === "string") currentUser.avatarColorId = body.avatarColorId;
     for (const chat of mockData.chats) {
       for (const member of chat.members) {
-        if (member.id === currentUserId) member.publicKey = publicKey;
+        if (member.id === currentUserId) {
+          if (typeof body.publicKey === "string" || body.publicKey === null) member.publicKey = publicKey;
+          if (body.avatarMode === "photo" || body.avatarMode === "symbol") member.avatarMode = body.avatarMode;
+          if (typeof body.avatarSymbolId === "string") member.avatarSymbolId = body.avatarSymbolId;
+          if (typeof body.avatarColorId === "string") member.avatarColorId = body.avatarColorId;
+        }
       }
     }
     return jsonResponse(currentUser);
   }
 
   const chatDetailMatch = path.match(/^\/api\/chats\/([^/]+)$/);
-  if (method === "GET" && chatDetailMatch) {
-    const chat = mockData.chats.find((item) => item.id === chatDetailMatch[1]);
-    return chat ? jsonResponse(chat) : errorResponse(404, "Mock chat not found.");
-  }
+  if (chatDetailMatch && (method === "GET" || method === "PATCH")) return mockChatDetailsResponse(mockData, chatDetailMatch[1], getMockUserId(), method, await requestBody(input, init));
 
   return errorResponse(501, `Mock API route not implemented: ${method} ${path}`);
 }
@@ -371,6 +377,22 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
 
   const previousFetch = globalThis.fetch;
   const scenario = options.scenario ?? new URLSearchParams(window.location.search).get("mockScenario");
+  if (scenario === "voice-avatar" && !mockData.chats.some((chat) => chat.id === "chat-voice-avatar")) {
+    const template = mockData.chats.find((chat) => chat.type === "group");
+    if (template) {
+      mockData.chats.push({
+        ...template,
+        id: "chat-voice-avatar",
+        type: "voice",
+        title: "Creative Voice",
+        avatarMode: "symbol",
+        avatarSymbolId: "audio-lines",
+        avatarColorId: "purple",
+        createdAt: "2026-10-01T10:00:00.000Z",
+        updatedAt: "2026-10-09T08:30:00.000Z",
+      });
+    }
+  }
   let recovered = false;
   const wrappedFetch: typeof fetch = async (input: FetchInput, init?: RequestInit): Promise<Response> => {
     let url: URL;

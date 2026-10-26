@@ -1,18 +1,17 @@
-import { CSSProperties, useEffect, useState } from "react";
-import { Archive, Home, Megaphone, Users } from "lucide-react";
+import type { CSSProperties } from "react";
 
-import { FamilyFile } from "../../../api/files";
-import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
-import { chatInitials } from "../shared/chatPresentation";
+import type { FamilyFile } from "../../../api/files";
+import { EntityAvatar } from "../../../components/EntityAvatar";
+import type { AvatarEntityKind } from "../../../components/entityAvatar";
 import type { ChatAvatarFallbackKind } from "../shared/types";
 
+const entityKindForFallback: Record<ChatAvatarFallbackKind, AvatarEntityKind> = {
+  direct: "person", group: "group", family: "family", archive: "archive", voice: "voice", channel: "channel"
+};
+
 export function RealAvatar({
-  accessToken,
-  className,
-  file,
-  fallbackKind = "direct",
-  label,
-  style
+  accessToken, className, file, fallbackKind = "direct", label, style, entityId,
+  mode, symbolId, colorId
 }: {
   accessToken: string | null;
   className: string;
@@ -20,48 +19,24 @@ export function RealAvatar({
   fallbackKind?: ChatAvatarFallbackKind;
   label: string;
   style?: CSSProperties;
+  entityId?: string;
+  mode?: "photo" | "symbol";
+  symbolId?: string | null;
+  colorId?: string | null;
 }) {
-  const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file?.id));
-  const [imageBroken, setImageBroken] = useState(false);
-
-  useEffect(() => {
-    setImageBroken(false);
-  }, [file?.id, previewUrl]);
-
-  function renderFallback() {
-    const isXl = className.includes("avatar-xl");
-    const iconSize = isXl ? 56 : 24;
-
-    if (fallbackKind === "archive") {
-      return <Archive aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
-    }
-    if (fallbackKind === "group") {
-      return <Users aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
-    }
-    if (fallbackKind === "channel") {
-      return <Megaphone aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
-    }
-    if (fallbackKind === "family") {
-      return <Home aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
-    }
-    return <span className="avatar-initials">{chatInitials(label)}</span>;
-  }
-
-  const showImage = Boolean(previewUrl) && !imageBroken;
-  const avatarClass = `${className}${fallbackKind && !className.includes(fallbackKind) ? ` ${fallbackKind}` : ""}`;
-
+  const classNames = `${className}${fallbackKind && !className.includes(fallbackKind) ? ` ${fallbackKind}` : ""}`;
   return (
-    <span className={avatarClass} style={style}>
-      {showImage ? (
-        <img
-          src={previewUrl ?? undefined}
-          alt=""
-          draggable={false}
-          onError={() => setImageBroken(true)}
-        />
-      ) : (
-        renderFallback()
-      )}
-    </span>
+    <EntityAvatar
+      accessToken={accessToken}
+      className={classNames}
+      entityId={entityId ?? label}
+      entityKind={entityKindForFallback[fallbackKind]}
+      file={file}
+      label={label}
+      mode={mode}
+      symbolId={symbolId}
+      colorId={colorId}
+      style={style}
+    />
   );
 }

@@ -96,6 +96,48 @@ func (_c *ChatCreate) SetNillableChatPhotoFileID(v *string) *ChatCreate {
 	return _c
 }
 
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (_c *ChatCreate) SetChatAvatarMode(v string) *ChatCreate {
+	_c.mutation.SetChatAvatarMode(v)
+	return _c
+}
+
+// SetNillableChatAvatarMode sets the "chat_avatar_mode" field if the given value is not nil.
+func (_c *ChatCreate) SetNillableChatAvatarMode(v *string) *ChatCreate {
+	if v != nil {
+		_c.SetChatAvatarMode(*v)
+	}
+	return _c
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (_c *ChatCreate) SetChatAvatarSymbolID(v string) *ChatCreate {
+	_c.mutation.SetChatAvatarSymbolID(v)
+	return _c
+}
+
+// SetNillableChatAvatarSymbolID sets the "chat_avatar_symbol_id" field if the given value is not nil.
+func (_c *ChatCreate) SetNillableChatAvatarSymbolID(v *string) *ChatCreate {
+	if v != nil {
+		_c.SetChatAvatarSymbolID(*v)
+	}
+	return _c
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (_c *ChatCreate) SetChatAvatarColorID(v string) *ChatCreate {
+	_c.mutation.SetChatAvatarColorID(v)
+	return _c
+}
+
+// SetNillableChatAvatarColorID sets the "chat_avatar_color_id" field if the given value is not nil.
+func (_c *ChatCreate) SetNillableChatAvatarColorID(v *string) *ChatCreate {
+	if v != nil {
+		_c.SetChatAvatarColorID(*v)
+	}
+	return _c
+}
+
 // SetMediaVisibility sets the "media_visibility" field.
 func (_c *ChatCreate) SetMediaVisibility(v string) *ChatCreate {
 	_c.mutation.SetMediaVisibility(v)
@@ -427,6 +469,18 @@ func (_c *ChatCreate) createSpec() (*Chat, *sqlgraph.CreateSpec) {
 		_spec.SetField(chat.FieldChatPhotoFileID, field.TypeString, value)
 		_node.ChatPhotoFileID = &value
 	}
+	if value, ok := _c.mutation.ChatAvatarMode(); ok {
+		_spec.SetField(chat.FieldChatAvatarMode, field.TypeString, value)
+		_node.ChatAvatarMode = &value
+	}
+	if value, ok := _c.mutation.ChatAvatarSymbolID(); ok {
+		_spec.SetField(chat.FieldChatAvatarSymbolID, field.TypeString, value)
+		_node.ChatAvatarSymbolID = &value
+	}
+	if value, ok := _c.mutation.ChatAvatarColorID(); ok {
+		_spec.SetField(chat.FieldChatAvatarColorID, field.TypeString, value)
+		_node.ChatAvatarColorID = &value
+	}
 	if value, ok := _c.mutation.MediaVisibility(); ok {
 		_spec.SetField(chat.FieldMediaVisibility, field.TypeString, value)
 		_node.MediaVisibility = value
@@ -701,6 +755,60 @@ func (u *ChatUpsert) ClearChatPhotoFileID() *ChatUpsert {
 	return u
 }
 
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (u *ChatUpsert) SetChatAvatarMode(v string) *ChatUpsert {
+	u.Set(chat.FieldChatAvatarMode, v)
+	return u
+}
+
+// UpdateChatAvatarMode sets the "chat_avatar_mode" field to the value that was provided on create.
+func (u *ChatUpsert) UpdateChatAvatarMode() *ChatUpsert {
+	u.SetExcluded(chat.FieldChatAvatarMode)
+	return u
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (u *ChatUpsert) ClearChatAvatarMode() *ChatUpsert {
+	u.SetNull(chat.FieldChatAvatarMode)
+	return u
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (u *ChatUpsert) SetChatAvatarSymbolID(v string) *ChatUpsert {
+	u.Set(chat.FieldChatAvatarSymbolID, v)
+	return u
+}
+
+// UpdateChatAvatarSymbolID sets the "chat_avatar_symbol_id" field to the value that was provided on create.
+func (u *ChatUpsert) UpdateChatAvatarSymbolID() *ChatUpsert {
+	u.SetExcluded(chat.FieldChatAvatarSymbolID)
+	return u
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (u *ChatUpsert) ClearChatAvatarSymbolID() *ChatUpsert {
+	u.SetNull(chat.FieldChatAvatarSymbolID)
+	return u
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (u *ChatUpsert) SetChatAvatarColorID(v string) *ChatUpsert {
+	u.Set(chat.FieldChatAvatarColorID, v)
+	return u
+}
+
+// UpdateChatAvatarColorID sets the "chat_avatar_color_id" field to the value that was provided on create.
+func (u *ChatUpsert) UpdateChatAvatarColorID() *ChatUpsert {
+	u.SetExcluded(chat.FieldChatAvatarColorID)
+	return u
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (u *ChatUpsert) ClearChatAvatarColorID() *ChatUpsert {
+	u.SetNull(chat.FieldChatAvatarColorID)
+	return u
+}
+
 // SetMediaVisibility sets the "media_visibility" field.
 func (u *ChatUpsert) SetMediaVisibility(v string) *ChatUpsert {
 	u.Set(chat.FieldMediaVisibility, v)
@@ -948,6 +1056,69 @@ func (u *ChatUpsertOne) UpdateChatPhotoFileID() *ChatUpsertOne {
 func (u *ChatUpsertOne) ClearChatPhotoFileID() *ChatUpsertOne {
 	return u.Update(func(s *ChatUpsert) {
 		s.ClearChatPhotoFileID()
+	})
+}
+
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (u *ChatUpsertOne) SetChatAvatarMode(v string) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarMode(v)
+	})
+}
+
+// UpdateChatAvatarMode sets the "chat_avatar_mode" field to the value that was provided on create.
+func (u *ChatUpsertOne) UpdateChatAvatarMode() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarMode()
+	})
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (u *ChatUpsertOne) ClearChatAvatarMode() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarMode()
+	})
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (u *ChatUpsertOne) SetChatAvatarSymbolID(v string) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarSymbolID(v)
+	})
+}
+
+// UpdateChatAvatarSymbolID sets the "chat_avatar_symbol_id" field to the value that was provided on create.
+func (u *ChatUpsertOne) UpdateChatAvatarSymbolID() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarSymbolID()
+	})
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (u *ChatUpsertOne) ClearChatAvatarSymbolID() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarSymbolID()
+	})
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (u *ChatUpsertOne) SetChatAvatarColorID(v string) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarColorID(v)
+	})
+}
+
+// UpdateChatAvatarColorID sets the "chat_avatar_color_id" field to the value that was provided on create.
+func (u *ChatUpsertOne) UpdateChatAvatarColorID() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarColorID()
+	})
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (u *ChatUpsertOne) ClearChatAvatarColorID() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarColorID()
 	})
 }
 
@@ -1380,6 +1551,69 @@ func (u *ChatUpsertBulk) UpdateChatPhotoFileID() *ChatUpsertBulk {
 func (u *ChatUpsertBulk) ClearChatPhotoFileID() *ChatUpsertBulk {
 	return u.Update(func(s *ChatUpsert) {
 		s.ClearChatPhotoFileID()
+	})
+}
+
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (u *ChatUpsertBulk) SetChatAvatarMode(v string) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarMode(v)
+	})
+}
+
+// UpdateChatAvatarMode sets the "chat_avatar_mode" field to the value that was provided on create.
+func (u *ChatUpsertBulk) UpdateChatAvatarMode() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarMode()
+	})
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (u *ChatUpsertBulk) ClearChatAvatarMode() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarMode()
+	})
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (u *ChatUpsertBulk) SetChatAvatarSymbolID(v string) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarSymbolID(v)
+	})
+}
+
+// UpdateChatAvatarSymbolID sets the "chat_avatar_symbol_id" field to the value that was provided on create.
+func (u *ChatUpsertBulk) UpdateChatAvatarSymbolID() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarSymbolID()
+	})
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (u *ChatUpsertBulk) ClearChatAvatarSymbolID() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarSymbolID()
+	})
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (u *ChatUpsertBulk) SetChatAvatarColorID(v string) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetChatAvatarColorID(v)
+	})
+}
+
+// UpdateChatAvatarColorID sets the "chat_avatar_color_id" field to the value that was provided on create.
+func (u *ChatUpsertBulk) UpdateChatAvatarColorID() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateChatAvatarColorID()
+	})
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (u *ChatUpsertBulk) ClearChatAvatarColorID() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearChatAvatarColorID()
 	})
 }
 

@@ -7,7 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { PopupDialog } from "../components/ui/Popup";
 import { PopupButton } from "../components/ui/PopupButton";
 import { PopupSelect } from "../components/ui/PopupSelect";
-import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { EntityAvatar } from "../components/EntityAvatar";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { formatMemberJoined, formatMemberLastSeen } from "./memberStats";
@@ -23,22 +23,8 @@ function canManage(actor: User, target: User) {
   return false;
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.at(0)?.toUpperCase())
-    .join("");
-}
-
 function MemberAvatar({ accessToken, member }: { accessToken: string | null; member: User }) {
-  const previewUrl = useFilePreviewUrl(accessToken, member.profilePhoto, Boolean(member.profilePhoto));
-  return (
-    <span className="avatar member-avatar admin-member-avatar">
-      {previewUrl ? <img src={previewUrl} alt="" /> : <span className="avatar-initials">{initials(member.displayName)}</span>}
-    </span>
-  );
+  return <EntityAvatar accessToken={accessToken} className="member-avatar admin-member-avatar" entityId={member.id} entityKind="person" file={member.profilePhoto} label={member.displayName} mode={member.avatarMode} symbolId={member.avatarSymbolId} colorId={member.avatarColorId} />;
 }
 
 export default function AdminMembersPage() {

@@ -76,6 +76,9 @@ var (
 		{Name: "title", Type: field.TypeString, Nullable: true},
 		{Name: "description", Type: field.TypeString, Nullable: true},
 		{Name: "chat_photo_file_id", Type: field.TypeString, Nullable: true},
+		{Name: "chat_avatar_mode", Type: field.TypeString, Nullable: true},
+		{Name: "chat_avatar_symbol_id", Type: field.TypeString, Nullable: true},
+		{Name: "chat_avatar_color_id", Type: field.TypeString, Nullable: true},
 		{Name: "media_visibility", Type: field.TypeString},
 		{Name: "comments_enabled", Type: field.TypeBool, Default: true},
 		{Name: "encryption_protocol", Type: field.TypeString, Default: "server_at_rest"},
@@ -94,13 +97,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "chats_families_chats",
-				Columns:    []*schema.Column{ChatsColumns[12]},
+				Columns:    []*schema.Column{ChatsColumns[15]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "chats_users_chats_created",
-				Columns:    []*schema.Column{ChatsColumns[13]},
+				Columns:    []*schema.Column{ChatsColumns[16]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -109,7 +112,7 @@ var (
 			{
 				Name:    "uq_family_chat_per_family",
 				Unique:  true,
-				Columns: []*schema.Column{ChatsColumns[12]},
+				Columns: []*schema.Column{ChatsColumns[15]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "type = 'family'",
 				},
@@ -1002,6 +1005,9 @@ var (
 		{Name: "is_active", Type: field.TypeInt, Default: 1},
 		{Name: "public_key", Type: field.TypeString, Nullable: true},
 		{Name: "profile_photo_file_id", Type: field.TypeString, Nullable: true},
+		{Name: "profile_avatar_mode", Type: field.TypeString, Nullable: true},
+		{Name: "profile_avatar_symbol_id", Type: field.TypeString, Nullable: true},
+		{Name: "profile_avatar_color_id", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeString},
 		{Name: "last_seen_at", Type: field.TypeString, Nullable: true},
 		{Name: "profile_visibility", Type: field.TypeString, Default: "family"},
@@ -1023,7 +1029,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_families_users",
-				Columns:    []*schema.Column{UsersColumns[19]},
+				Columns:    []*schema.Column{UsersColumns[22]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

@@ -14,6 +14,11 @@ describe("SettingsPage redesign", () => {
     expect(profileSettingsTab).not.toContain("strings.settings.family}");
   });
 
+  it("does not expose symbol or color choices for the signed-in user's profile", () => {
+    expect(profileSettingsTab).not.toContain("AvatarChoicePicker");
+    expect(source).not.toContain("saveProfileAvatarChoice");
+  });
+
   it("uses the tiled overview and explicit internal setting surfaces", () => {
     expect(source).toContain("<SettingsDashboard");
     expect(dashboard).toContain('className="settings-dashboard"');

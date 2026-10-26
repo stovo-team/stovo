@@ -1,14 +1,14 @@
-import { Archive, BellOff, Hash, LockKeyhole, Star, Volume2 } from "lucide-react";
+import { BellOff, Star } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { Chat } from "../../../api/chats";
 import {
   chatAvatarFallbackKind,
   chatAvatarFile,
+  chatAvatarIdentity,
   chatAvatarTypeClass,
   chatPreview,
   chatTransitionName,
-  compactChatListLeadingVisual,
   displayChatName,
   formatChatTime,
   shouldShowChatRowMeta,
@@ -69,10 +69,6 @@ export function ChatListItem({
       ]))
     : [];
   const hasUnread = chat.unreadCount > 0;
-  const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
-  const chatListLeadingVisual = minimizedChatLayout || chat.type === "archive"
-    ? compactLeadingVisual
-    : "avatar";
   const avatarTransitionStyle = transitionAnchorStyle(
     isTransitionSource ? chatTransitionName(chat.id, "avatar") : undefined
   );
@@ -125,41 +121,15 @@ export function ChatListItem({
         onContextMenu?.(event, chat);
       }}
     >
-      {chatListLeadingVisual !== "avatar" ? (
-        <span
-          className={`chat-list-type-marker${
-            chatListLeadingVisual === "archive"
-              ? " chat-list-type-marker--archive"
-              : chatListLeadingVisual === "voice"
-                ? " chat-list-type-marker--voice"
-                : ""
-          }`}
-          aria-hidden="true"
-        >
-          {chatListLeadingVisual === "lock" ? (
-            <LockKeyhole size={16} strokeWidth={2} />
-          ) : chatListLeadingVisual === "hash" ? (
-            <Hash size={16} strokeWidth={2} />
-          ) : chatListLeadingVisual === "voice" ? (
-            <Volume2 size={16} strokeWidth={2} />
-          ) : (
-            <Archive size={16} strokeWidth={2} />
-          )}
-        </span>
-      ) : (
-        <RealAvatar
-          accessToken={accessToken}
-          className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}${
-            minimizedChatLayout && chatListLeadingVisual === "avatar"
-              ? " chat-avatar--compact"
-              : ""
-          }`}
-          fallbackKind={chatAvatarFallbackKind(chat)}
-          file={chatAvatarFile(chat, currentUserId)}
-          label={chatName}
-          style={avatarTransitionStyle}
-        />
-      )}
+      <RealAvatar
+        accessToken={accessToken}
+        className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}${minimizedChatLayout ? " chat-avatar--compact" : ""}`}
+        fallbackKind={chatAvatarFallbackKind(chat)}
+        file={chatAvatarFile(chat, currentUserId)}
+        label={chatName}
+        {...chatAvatarIdentity(chat, currentUserId)}
+        style={avatarTransitionStyle}
+      />
       <span className="chat-list-copy">
         <span className="chat-list-topline">
           <strong style={titleTransitionStyle}>{chatName}</strong>
@@ -202,6 +172,10 @@ export function ChatListItem({
                         className="avatar chat-list-voice-avatar"
                         file={member?.profilePhoto}
                         label={member?.displayName ?? copy.member}
+                        entityId={member?.id}
+                        mode={member?.avatarMode}
+                        symbolId={member?.avatarSymbolId}
+                        colorId={member?.avatarColorId}
                       />
                     </button>
                     <span className="chat-list-voice-member-tooltip" role="tooltip">

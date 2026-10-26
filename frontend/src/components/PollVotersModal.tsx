@@ -49,7 +49,7 @@ export function PollVotersModal({ accessToken = null, open, onClose, poll, voter
                     <div className="poll-voters-user-list">
                       {voters.map((u) => (
                         <div key={u.id} className="poll-voter-user-item">
-                          <RealAvatar accessToken={accessToken} className="avatar poll-voter-avatar" file={u.profilePhoto} label={u.displayName} />
+                          <RealAvatar accessToken={accessToken} className="avatar poll-voter-avatar" file={u.profilePhoto} label={u.displayName} entityId={u.id} mode={u.avatarMode} symbolId={u.avatarSymbolId} colorId={u.avatarColorId} />
                           <div className="poll-voter-names">
                             <span className="poll-voter-displayname">{u.displayName}</span>
                             <span className="poll-voter-username">@{u.username}</span>

@@ -38,8 +38,8 @@ import {
 } from "../api/chats";
 import { getMembers } from "../api/family";
 import type { User } from "../api/auth";
-import { displayChatName } from "../features/chats/shared/chatPresentation";
-import { SettingsAvatar } from "../pages/settings/SettingsAvatar";
+import { chatAvatarFile, chatAvatarIdentity, displayChatName } from "../features/chats/shared/chatPresentation";
+import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import { PopupDialog } from "./ui/Popup";
 import { PopupField } from "./ui/PopupField";
 
@@ -428,13 +428,13 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
                     onMouseEnter={() => setSelectedIndex(index)}
                   >
                     <div className="quick-switcher-item-leading">
-                      {item.avatarFile !== undefined ? (
-                        <SettingsAvatar
-                          accessToken={accessToken}
-                          file={item.avatarFile}
-                          label={item.title}
-                          size="default"
-                        />
+                      {item.chat ? (
+                        (() => {
+                          const identity = chatAvatarIdentity(item.chat, currentUser?.id);
+                          return <RealAvatar accessToken={accessToken} className="user-avatar-preview" entityId={identity.entityId} file={chatAvatarFile(item.chat, currentUser?.id)} fallbackKind={item.chat.type === "direct" ? "direct" : item.chat.type === "voice" ? "voice" : item.chat.type === "family" ? "family" : item.chat.type === "archive" ? "archive" : item.chat.type === "group" ? "group" : "channel"} label={item.title} mode={identity.mode} symbolId={identity.symbolId} colorId={identity.colorId} />;
+                        })()
+                      ) : item.user || item.avatarFile !== undefined ? (
+                        <RealAvatar accessToken={accessToken} className="user-avatar-preview" entityId={item.user?.id ?? item.id} file={item.user?.profilePhoto ?? item.avatarFile} fallbackKind="direct" label={item.title} mode={item.user?.avatarMode} symbolId={item.user?.avatarSymbolId} colorId={item.user?.avatarColorId} />
                       ) : Icon ? (
                         <div className="quick-switcher-icon-wrap">
                           <Icon size={20} aria-hidden="true" />

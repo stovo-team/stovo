@@ -123,6 +123,9 @@ type ProfilePatch struct {
 	Email               *string
 	Bio                 *string
 	Timezone            *string
+	AvatarMode          *string
+	AvatarSymbolID      *string
+	AvatarColorID       *string
 }
 
 type ProfileStore interface {

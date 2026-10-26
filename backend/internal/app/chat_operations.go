@@ -259,6 +259,16 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 			return nil, 0, newStatusError(http.StatusInternalServerError, "Could not update chat")
 		}
 	}
+	if payload.AvatarMode != nil || payload.AvatarSymbolID != nil || payload.AvatarColorID != nil {
+		if chat.Type == "direct" || !s.canManageChat(chat, user) {
+			return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
+		}
+		if err := s.chatSettings.SetAvatarChoices(ctx, chatID, featurechats.AvatarChoices{
+			Mode: payload.AvatarMode, SymbolID: payload.AvatarSymbolID, ColorID: payload.AvatarColorID,
+		}); err != nil {
+			return nil, 0, newStatusError(http.StatusInternalServerError, "Could not update chat avatar")
+		}
+	}
 	if payload.CommentsEnabled != nil {
 		if errors.Is(featurechats.ValidateCommentsChatType(chat.Type), featurechats.ErrCommentsUnavailable) {
 			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "comments can only be changed for channels")
@@ -511,6 +521,9 @@ func (s *Server) buildChatPublicFromRow(c featurechats.ChatDetails, user userPub
 	chat.Title = c.Title
 	chat.Description = c.Description
 	chat.CreatedBy = c.CreatedBy
+	chat.AvatarMode = c.AvatarMode
+	chat.AvatarSymbolID = c.AvatarSymbolID
+	chat.AvatarColorID = c.AvatarColorID
 	chat.MediaVisibility = c.MediaVisibility
 	chat.EncryptionProtocol = c.EncryptionProtocol
 	chat.CreatedAt = parseTime(c.CreatedAt)
@@ -717,6 +730,9 @@ func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
 			Username:           u.Username,
 			Role:               u.Role,
 			PublicKey:          u.PublicKey,
+			AvatarMode:          u.AvatarMode,
+			AvatarSymbolID:      u.AvatarSymbolID,
+			AvatarColorID:       u.AvatarColorID,
 			LastSeenVisibility: u.LastSeenVisibility,
 		}
 		if u.LastSeenAt != nil {

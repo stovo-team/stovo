@@ -20,6 +20,9 @@ type userPublic struct {
 	IsActive                bool        `json:"isActive"`
 	PublicKey               *string     `json:"publicKey"`
 	ProfilePhoto            *filePublic `json:"profilePhoto"`
+	AvatarMode              *string     `json:"avatarMode,omitempty"`
+	AvatarSymbolID          *string     `json:"avatarSymbolId,omitempty"`
+	AvatarColorID           *string     `json:"avatarColorId,omitempty"`
 	CreatedAt               *time.Time  `json:"createdAt,omitempty"`
 	LastSeenAt              *time.Time  `json:"lastSeenAt"`
 	ProfileVisibility       string      `json:"profileVisibility"`

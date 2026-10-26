@@ -137,6 +137,10 @@ func TestChangePasswordUpdatesOnlyTheAuthenticatedUserAndRevokesOtherSessions(t 
 		t.Fatalf("setup status = %d, want %d", setupResp.StatusCode, http.StatusCreated)
 	}
 	owner := decodeJSON[authResponse](t, setupResp)
+	initialChats := decodeJSON[[]chatPublic](t, jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/chats", owner.AccessToken, nil))
+	if len(initialChats) != 0 {
+		t.Fatalf("setup must not create an automatic chat: %#v", initialChats)
+	}
 
 	secondDeviceJar, _ := cookiejar.New(nil)
 	secondDevice := &http.Client{Jar: secondDeviceJar}
@@ -2024,18 +2028,13 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 	}
 	originalMessage := decodeJSON[messagePublic](t, sendResp)
 
-	chatsResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/chats", owner.AccessToken, nil)
-	chats := decodeJSON[[]chatPublic](t, chatsResp)
-	familyChatID := ""
-	for _, chat := range chats {
-		if chat.Type == "family" {
-			familyChatID = chat.ID
-			break
-		}
+	groupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats", owner.AccessToken, map[string]any{
+		"type": "group", "title": "Forward destination", "memberIds": []string{},
+	})
+	if groupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create destination status = %d", groupResp.StatusCode)
 	}
-	if familyChatID == "" {
-		t.Fatalf("expected family chat")
-	}
+	familyChatID := decodeJSON[chatPublic](t, groupResp).ID
 
 	forwardResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/messages/"+originalMessage.ID+"/forward", owner.AccessToken, map[string]any{
 		"chatId": familyChatID,
