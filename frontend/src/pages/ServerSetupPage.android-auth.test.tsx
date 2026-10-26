@@ -74,6 +74,7 @@ describe("Android space setup authentication", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.unstubAllGlobals();
     delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
     delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
@@ -140,6 +141,14 @@ describe("Android space setup authentication", () => {
     expect(container.textContent).toContain("supported Android WebView");
   });
 
+  it("explains HTTPS when Passkey is unavailable in an insecure context", async () => {
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: false });
+    await render();
+    expect(container.querySelector('[data-auth-method="passkey"]')?.disabled).toBe(true);
+    expect(container.textContent).toContain("Passkeys require a secure connection (HTTPS).");
+    expect(container.textContent).not.toContain("supported Android WebView");
+  });
+
   it("keeps the setup screen usable when Passkey is cancelled", async () => {
     mocks.startAuthentication.mockRejectedValueOnce(new DOMException("cancelled", "NotAllowedError"));
     await render();
@@ -149,6 +158,25 @@ describe("Android space setup authentication", () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
     expect(container.querySelector('[data-auth-method="scan-qr"]')).not.toBeNull();
+  });
+
+  it("disables Connect and URL editing while Passkey is running", async () => {
+    mocks.beginPasskeyAuthentication.mockReturnValue(new Promise(() => {}));
+    await render();
+    await setUrl("https://tenant.example.com");
+    await click('[data-auth-method="passkey"]');
+    expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="url"]')?.disabled).toBe(true);
+  });
+
+  it("disables auth actions and URL editing while Connect is testing the server", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    await render();
+    await setUrl("https://tenant.example.com");
+    await click('button[type="submit"]');
+    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="scan-qr"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="url"]')?.disabled).toBe(true);
   });
 
   it("scans and confirms the QR server without using the typed address", async () => {
@@ -180,6 +208,24 @@ describe("Android space setup authentication", () => {
     expect(mocks.redeemAndroidQRLogin).not.toHaveBeenCalled();
     expect(mocks.acceptAuthResponse).not.toHaveBeenCalled();
     expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
+  });
+
+  it("returns to setup when the Android QR scanner is cancelled", async () => {
+    mocks.scan.mockResolvedValueOnce(null);
+    await render();
+    await click('[data-auth-method="scan-qr"]');
+    expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(mocks.redeemAndroidQRLogin).not.toHaveBeenCalled();
+  });
+
+  it("shows a recoverable error when the scanned QR payload is invalid", async () => {
+    mocks.scan.mockResolvedValueOnce("https://untrusted.example/");
+    await render();
+    await click('[data-auth-method="scan-qr"]');
+    expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("QR code");
+    expect(mocks.redeemAndroidQRLogin).not.toHaveBeenCalled();
   });
 
   it("keeps the active server when QR redemption fails", async () => {

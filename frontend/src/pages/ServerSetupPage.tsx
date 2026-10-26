@@ -154,6 +154,7 @@ export default function ServerSetupPage() {
               type="url"
               placeholder={copy.placeholder}
               autoComplete="url"
+              disabled={isTesting || isAuthenticating}
               value={url}
               onChange={(event) => {
                 setUrl(event.target.value);
@@ -162,17 +163,19 @@ export default function ServerSetupPage() {
             />
           </label>
           {error && <p className="error-text" role="alert">{error}</p>}
-          <button type="submit" disabled={isTesting}>
+          <button type="submit" disabled={isTesting || isAuthenticating}>
             {isTesting ? copy.testingConnection : copy.connect}
           </button>
         </form>}
         {isAndroid && !androidQR && <div className="auth-method-options android-auth-methods">
-          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={!supportsPasskeys || isAuthenticating} onClick={handlePasskeyLogin}>
+          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={!supportsPasskeys || isTesting || isAuthenticating} onClick={handlePasskeyLogin}>
             <KeyRound aria-hidden="true" size={18} />
             <span>{strings.auth.signInWithPasskeyShort}</span>
           </button>
-          {!supportsPasskeys && <p className="muted-copy">{strings.auth.supportedAndroidWebView}</p>}
-          <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isAuthenticating} onClick={handleScanAndroidQR}>
+          {!supportsPasskeys && <p className="muted-copy">
+            {!window.isSecureContext ? strings.auth.secureContextRequired : strings.auth.supportedAndroidWebView}
+          </p>}
+          <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isTesting || isAuthenticating} onClick={handleScanAndroidQR}>
             <QrCode aria-hidden="true" size={18} />
             <span>{strings.auth.scanDesktopQrShort}</span>
           </button>
