@@ -141,6 +141,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      - name: Clear stale npm cache
+        run: npm cache clean --force
       - name: Install dependencies
         shell: bash
         working-directory: frontend
@@ -159,8 +161,9 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: changes
+    needs: [changes, frontend-ci]
     if: >-
+      !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
     runs-on: [self-hosted, tests, Windows]

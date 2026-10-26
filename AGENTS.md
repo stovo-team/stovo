@@ -68,6 +68,7 @@ Quote hyphenated phrases in search queries, for example `"self-host"`. Rebuild t
 
 ## Active pull requests
 
+- Android release notes no longer require jq: https://github.com/stovo-team/stovo/pull/317
 - 4px scrollbars: https://github.com/stovo-team/stovo/pull/316
 - MCP connector settings button circle: https://github.com/stovo-team/stovo/pull/309
 - Quick access layout reset: https://github.com/stovo-team/stovo/pull/306
