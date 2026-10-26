@@ -22,7 +22,18 @@ func (c *RedisConsumer) EnsureGroup(ctx context.Context, stream, group, start st
 }
 
 func (c *RedisConsumer) ReadGroup(ctx context.Context, stream, group, consumer, cursor string, count int, block time.Duration) ([]workruntime.JobMessage, error) {
-	streams, err := c.client.XReadGroup(ctx, &redis.XReadGroupArgs{Group: group, Consumer: consumer, Streams: []string{stream, cursor}, Count: int64(count), Block: block}).Result()
+	read := func() ([]redis.XStream, error) {
+		return c.client.XReadGroup(ctx, &redis.XReadGroupArgs{Group: group, Consumer: consumer, Streams: []string{stream, cursor}, Count: int64(count), Block: block}).Result()
+	}
+	streams, err := read()
+	if err != nil && strings.HasPrefix(strings.ToUpper(err.Error()), "NOGROUP") {
+		// The stream or group can disappear while a worker is running. Recreate
+		// the group at the beginning of the stream and retry this read once.
+		if createErr := c.EnsureGroup(ctx, stream, group, "0"); createErr != nil {
+			return nil, createErr
+		}
+		streams, err = read()
+	}
 	if err == redis.Nil {
 		return nil, workruntime.ErrNoJobs
 	}
