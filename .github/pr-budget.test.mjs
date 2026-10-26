@@ -4,11 +4,14 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const workflow = readFileSync(new URL('./workflows/trusted-pr-tests.yml', import.meta.url), 'utf8');
 const budgetWorkflow = readFileSync(new URL('./workflows/pr-size.yml', import.meta.url), 'utf8');
-const extract = () => {
-  const match = budgetWorkflow.match(/\/\/ PR_BUDGET_BEGIN\n([\s\S]*?)\n\s*\/\/ PR_BUDGET_END/);
+const extract = (source = budgetWorkflow) => {
+  const match = source.match(/\/\/ PR_BUDGET_BEGIN\r?\n([\s\S]*?)\r?\n\s*\/\/ PR_BUDGET_END/);
   assert.ok(match, 'PR budget must run before expensive checks');
-  return match[1].split('\n').map(line => line.replace(/^          /, '')).join('\n');
+  return match[1].split(/\r?\n/).map(line => line.replace(/^          /, '')).join('\n');
 };
+test('extracts the PR budget from a Windows CRLF checkout', () => {
+  assert.ok(extract(budgetWorkflow.replace(/\r?\n/g, '\r\n')).length > 0);
+});
 function run(additions, deletions, override = {}, status = 200) {
   const payload = { additions, deletions, head: { sha: 'a'.repeat(40) }, ...override };
   return spawnSync(process.execPath, ['--input-type=module', '-e',
@@ -31,3 +34,7 @@ test('discovery and pipeline contract depend on the budget gate', () => {
 });
 
 test('metadata-only budget uses available self-hosted Windows without checkout',()=>{assert.match(budgetWorkflow,/  pull_request_target:/);assert.doesNotMatch(budgetWorkflow,/  pull_request:/);assert.match(budgetWorkflow,/runs-on: \[self-hosted, Windows, tests\]/);assert.match(budgetWorkflow,/shell: powershell/);assert.match(budgetWorkflow,/setup-node@[a-f0-9]{40}/);assert.doesNotMatch(budgetWorkflow,/uses: actions\/checkout/);});
+test('Windows CRLF checkout still exposes the budget script', () => {
+  const crlf = budgetWorkflow.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+  assert.match(extract(crlf), /pr\.additions \+ pr\.deletions/);
+});
