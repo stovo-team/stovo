@@ -1500,6 +1500,16 @@ h2 {
   width: 100%;
 }
 
+.android-auth-methods > .secondary-button {
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-small);
+  gap: 8px;
+  justify-self: stretch;
+  min-height: 48px;
+  padding: 8px 12px;
+  width: 100%;
+}
+
 .auth-divider {
   align-items: center;
   color: var(--text-secondary);
@@ -1566,6 +1576,36 @@ h2 {
   gap: 8px;
   justify-items: center;
   text-align: center;
+  width: 100%;
+}
+
+.android-qr-confirmation {
+  gap: 12px;
+}
+
+.android-qr-confirmation h2,
+.android-qr-confirmation p {
+  margin: 0;
+}
+
+.android-qr-confirmation-address {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.auth-action-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.auth-panel .auth-action-row .secondary-button {
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-small);
+  justify-self: stretch;
+  min-height: 48px;
+  padding: 8px 12px;
   width: 100%;
 }
 

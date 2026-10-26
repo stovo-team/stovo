@@ -176,7 +176,7 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]')?.disabled).toBe(true);
     expect(container.textContent).toContain(reason === "missing API" ? "supported Android WebView" : "secure connection");
     expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
-    expect(container.textContent).toContain("Scan desktop QR");
+    expect(container.textContent).toContain("Scan QR");
   });
   it.each(["NotAllowedError", "AbortError", "UnknownError"])("allows Android retry after %s", async (name) => {
     mocks.platform = "android";
@@ -189,7 +189,7 @@ describe("LoginPage authentication methods", () => {
     expect(button?.disabled).toBe(false);
     expect(mocks.finishPasskeyAuthentication).not.toHaveBeenCalled();
     expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
-    expect(container.textContent).toContain("Scan desktop QR");
+    expect(container.textContent).toContain("Scan QR");
     await act(async () => button?.click());
     expect(mocks.acceptAuthResponse).toHaveBeenCalledOnce();
   });
