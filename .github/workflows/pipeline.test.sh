@@ -319,6 +319,10 @@ if ! grep -Fq 'needs: [changes, frontend-ci]' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must wait for Frontend CI to avoid overloading the shared Windows runner pool." >&2
   exit 1
 fi
+if ! grep -Fq '!cancelled()' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must still run when Frontend CI is skipped for backend-only changes." >&2
+  exit 1
+fi
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
