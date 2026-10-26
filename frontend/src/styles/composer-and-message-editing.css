@@ -1294,7 +1294,7 @@
   background: linear-gradient(145deg, color-mix(in oklab, var(--accent-primary) 78%, var(--color-palette-68cd6cc8cd4a)), color-mix(in oklab, var(--accent-primary) 84%, var(--color-palette-109a5bc93425)));
   border: 1px solid var(--color-palette-e84c9c36bb12);
   border-radius: var(--radius-surface);
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--accent-primary) 32%, transparent);
+  box-shadow: none;
   color: var(--color-palette-f2074b6cef37);
   display: inline-flex;
   height: 50px;

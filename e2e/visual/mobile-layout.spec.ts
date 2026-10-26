@@ -29,6 +29,7 @@ test('V-14 file tiles form two 120px columns on a narrow phone',async({page},inf
  const second=await tiles.nth(1).boundingBox();
  expect(first).not.toBeNull();expect(second).not.toBeNull();
  expect(first!.width).toBe(120);expect(first!.height).toBe(120);
+ expect(await tiles.first().evaluate((node) => getComputedStyle(node).boxShadow)).toBe('none');
  expect(second!.width).toBe(120);expect(second!.y).toBe(first!.y);
  expect(second!.x-first!.x).toBeGreaterThanOrEqual(120);
  await screenshot(page,info,s);
@@ -45,6 +46,7 @@ test('V-15 canvas message preview is compact on a phone',async({page},info)=>{
  expect(cardBounds!.width).toBeLessThanOrEqual(280);
  expect(previewBounds!.height).toBeLessThanOrEqual(120);
  expect(cardBounds!.x + cardBounds!.width).toBeLessThanOrEqual(s.viewport.width);
+ expect(await card.evaluate((node) => getComputedStyle(node).boxShadow)).toBe('none');
  await screenshot(page,info,s);
 });
 
@@ -68,6 +70,7 @@ test('V-16 guest meeting actions stay distinct on a phone',async({page},info)=>{
   expect(joinStyle.backgroundColor).not.toBe(bubbleBackground);
   expect(planStyle.backgroundColor).not.toBe(bubbleBackground);
   expect(joinStyle.backgroundColor).not.toBe(planStyle.backgroundColor);
+  expect(await invitation.locator('.guest-meeting-invitation-icon').evaluate((node) => getComputedStyle(node).boxShadow)).toBe('none');
  }
  await screenshot(page,info,s);
 });

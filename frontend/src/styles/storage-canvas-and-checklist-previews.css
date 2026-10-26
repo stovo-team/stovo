@@ -379,7 +379,7 @@
 .storage-page .storage-tile.selected:focus-visible {
   background: inherit;
   border-color: var(--color-palette-b93c380e90f2) !important;
-  box-shadow: 0 0 0 2px var(--color-palette-b93c380e90f2) !important;
+  box-shadow: none !important;
   filter: none;
   outline: 0 !important;
   transform: none;
@@ -953,12 +953,12 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.18s, box-shadow 0.18s;
-  box-shadow: 0 4px 18px var(--color-palette-0bf61dd701cd);
+  transition: border-color 0.18s;
+  box-shadow: none;
 }
 .canvas-card-bubble:hover {
   border-color: var(--color-palette-e0d084e83ad2);
-  box-shadow: 0 6px 24px var(--color-palette-a95460aad32a);
+  box-shadow: none;
 }
 .canvas-card-bubble-header {
   display: flex;

@@ -37,6 +37,7 @@ describe("guest meeting invitation visual hierarchy", () => {
     const outgoingRule = conversationStyles.match(/\.message-bubble\.mine \.guest-meeting-invitation\s*\{([^}]*)\}/)?.[1] ?? "";
     const copyRule = conversationStyles.match(/\.guest-meeting-invitation-copy\s*\{([^}]*)\}/)?.[1] ?? "";
     const joinRule = conversationStyles.match(/\.guest-meeting-invitation-join\s*\{([^}]*)\}/)?.[1] ?? "";
+    const iconRule = conversationStyles.match(/\.guest-meeting-invitation-icon\s*\{([^}]*)\}/)?.[1] ?? "";
     const outgoingJoinRule = conversationStyles.match(/\.message-bubble\.mine \.guest-meeting-invitation-join\s*\{([^}]*)\}/)?.[1] ?? "";
     const planRule = conversationStyles.match(/\.guest-meeting-invitation-plan\s*\{([^}]*)\}/)?.[1] ?? "";
 
@@ -49,6 +50,7 @@ describe("guest meeting invitation visual hierarchy", () => {
     expect(joinRule).toMatch(/border-radius:\s*var\(--radius-pill\)/);
     expect(outgoingJoinRule).toMatch(/background:\s*var\(--color-palette-f2074b6cef37\)/);
     expect(joinRule).toMatch(/min-height:\s*44px/);
+    expect(iconRule).toMatch(/box-shadow:\s*none/);
     expect(planRule).toMatch(/background:\s*var\(--color-palette-db0c497d2782\)/);
     expect(planRule).toMatch(/border-radius:\s*var\(--radius-pill\)/);
   });
