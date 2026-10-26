@@ -34,7 +34,7 @@ describe("new message dialog on web", () => {
   });
 
   it("bounds the dialog to narrow phone and tablet viewports", () => {
-    const compactRule = styles.match(/@media \(max-width: 1024px\) \{\s*\.popup-dialog\.new-chat-screen \{([^}]*)\}/)?.[1] ?? "";
+    const compactRule = styles.match(/@media \(min-width: 768px\) and \(max-width: 1024px\) \{\s*\.popup-dialog\.new-chat-screen \{([^}]*)\}/)?.[1] ?? "";
     expect(compactRule).toMatch(/box-sizing:\s*border-box;/);
     expect(compactRule).toMatch(/min-width:\s*0;/);
     expect(compactRule).toMatch(/width:\s*min\(640px, calc\(100vw - 24px\)\);/);
