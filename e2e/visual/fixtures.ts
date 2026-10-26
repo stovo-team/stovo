@@ -15,7 +15,7 @@ export const test=base.extend<{networkGuard:void}>({
    if(/^(data:|blob:)/.test(url.protocol))return route.continue();
    violations.push(url.origin+url.pathname);return route.abort('blockedbyclient');
   });
-  await page.routeWebSocket('**/*',ws=>{const u=new URL(ws.url());if(u.protocol==='ws:'&&u.host==='127.0.0.1:5174'&&u.pathname==='/'){ws.connectToServer();return;}violations.push(u.origin);ws.close();});
+  await page.routeWebSocket('**/*',ws=>{const u=new URL(ws.url()),base=new URL(baseURL);if(u.protocol==='ws:'&&u.hostname===base.hostname&&u.port===base.port&&u.pathname==='/'){ws.connectToServer();return;}violations.push(u.origin);ws.close();});
   page.on('pageerror',e=>errors.push(e.message));
   await page.clock.setFixedTime(new Date('2026-10-19T06:00:00Z'));
   await use();expect(violations,'unexpected external request or WebSocket').toEqual([]);expect(errors,'uncaught application errors').toEqual([]);
