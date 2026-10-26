@@ -430,6 +430,15 @@
   overflow: hidden;
   position: relative;
 }
+
+@media (min-width: 1600px) {
+  .plans-page .plans-content {
+    box-sizing: border-box;
+    max-width: none;
+    width: 100%;
+  }
+}
+
 .plans-header {
   flex-shrink: 0;
   gap: 12px;
