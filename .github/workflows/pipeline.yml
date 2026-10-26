@@ -108,6 +108,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      - name: Clear stale npm cache
+        run: npm cache clean --force
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -149,8 +151,8 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only
+    needs: [changes, frontend-ci]
+    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
     defaults:
       run:

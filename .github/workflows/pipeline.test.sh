@@ -43,6 +43,12 @@ awk '
     next
   }
 
+  /^    needs:/ {
+    needs = $0
+    sub(/^    needs:[[:space:]]*/, "", needs)
+    job_needs[job] = needs
+  }
+
   /^    permissions:$/ {
     in_job_permissions = 1
     next
@@ -81,6 +87,8 @@ awk '
   job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
   job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
   job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
+  job == "frontend-ci" && /^      - name: Clear stale npm cache$/ { frontend_npm_cache_step = 1 }
+  job == "frontend-ci" && frontend_npm_cache_step && /npm cache clean --force/ { frontend_npm_cache_cleaned = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -104,8 +112,11 @@ awk '
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
       fail("Frontend CI must run only when frontend paths changed.")
     }
-    if (job_condition["backend-ci"] != "needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only") {
+    if (job_condition["backend-ci"] != "${{ !cancelled() && needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only }}") {
       fail("Backend CI must run only when backend paths changed.")
+    }
+    if (job_needs["backend-ci"] != "[changes, frontend-ci]") {
+      fail("Backend CI must wait for Frontend CI to avoid overloading the shared Windows runner pool.")
     }
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
@@ -125,6 +136,9 @@ awk '
     }
     if (!frontend_git_config_count || !frontend_autocrlf_key || !frontend_autocrlf_disabled) {
       fail("Frontend CI must disable the Windows autocrlf conversion before checkout.")
+    }
+    if (!frontend_npm_cache_step || !frontend_npm_cache_cleaned) {
+      fail("Frontend CI must clear stale runner-local npm cache before installing dependencies.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
