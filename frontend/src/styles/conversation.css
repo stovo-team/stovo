@@ -113,18 +113,8 @@
 }
 
 @media (min-width: 1600px) {
-  .messenger-shell .chat-layout:not(.voice-call-expanded) {
-    grid-template-columns:
-      minmax(320px, 1fr)
-      minmax(0, min(1400px, calc(100% - 320px - var(--float-panel-gap))));
-  }
-
-  .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail {
-    box-sizing: border-box;
-    justify-self: center;
-    max-width: 1400px;
-    width: 100%;
-  }
+  .messenger-shell .chat-layout:not(.voice-call-expanded) { grid-template-columns: minmax(320px, 1fr) minmax(0, min(1400px, calc(100% - 320px - var(--float-panel-gap)))); }
+  .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail { box-sizing: border-box; justify-self: center; max-width: 1400px; width: 100%; }
 }
 
 .chat-detail-header {
