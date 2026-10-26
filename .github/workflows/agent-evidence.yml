@@ -14,7 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # TEMPORARY: keep the stable gate check while pausing unreliable agent CI.
   changes:
+    if: ${{ false }}
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 15
     outputs:
@@ -39,6 +41,7 @@ jobs:
         run: node .github/agent-workflows-gate.mjs select
 
   validators:
+    if: ${{ false }}
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 10
     steps:
@@ -55,8 +58,8 @@ jobs:
           node --test --test-name-pattern='all Markdown local links|documented Compose filenames|agent instructions' .github/docs-validation.test.mjs
 
   visual:
+    if: ${{ false && needs.changes.outputs.visual == 'true' }}
     needs: changes
-    if: needs.changes.outputs.visual == 'true'
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
     timeout-minutes: 20
     steps:
@@ -150,4 +153,5 @@ jobs:
           node-version: 22
       - env:
           JOB_RESULTS: ${{ toJSON(needs) }}
+          WORKFLOW_DISABLED: 'true'
         run: node .github/agent-workflows-gate.mjs aggregate

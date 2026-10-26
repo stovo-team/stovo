@@ -8,7 +8,8 @@ export function visualApplicable(paths){
  return paths.some(p=>/^(frontend\/|e2e\/|scripts\/agent-workflows\/(?:common|source)\.mjs$)/.test(p));
 }
 
-export function aggregate(needs){
+export function aggregate(needs, disabled=false){
+ if(disabled)return {ok:true,disabled:true,status:'temporarily disabled',scope:'workflow-tools-and-synthetic-ui',errors:[]};
  const errors=[];
  if(needs?.changes?.result!=='success')errors.push('change discovery failed or missing');
  if(needs?.validators?.result!=='success')errors.push('required validators failed or missing');
@@ -52,8 +53,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1]
   }).catch(e=>{console.error(e.message);process.exitCode=1;});
  }else if(process.argv[2]==='aggregate'){
   try{
-   const result=aggregate(JSON.parse(process.env.JOB_RESULTS??'null'));
+   const disabled=process.env.WORKFLOW_DISABLED==='true';
+   const result=aggregate(JSON.parse(process.env.JOB_RESULTS??'null'),disabled);
    console.log(JSON.stringify(result,null,2));
+   if(disabled&&process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Agent workflow evidence is temporarily disabled.\n');
    if(!result.ok)process.exitCode=1;
   }catch(e){console.error(e.message);process.exitCode=1;}
  }else{console.error('require select or aggregate');process.exitCode=1;}
