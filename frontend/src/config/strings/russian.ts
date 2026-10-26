@@ -430,7 +430,7 @@ export const strings = {
     androidQrRegenerate: "Создать QR-код для входа на Android заново",
     androidQrCreating: "Создание…",
     androidQrAlt: "QR-код для входа на Android",
-    expires: "Истекает:",
+    expires: "QR-код исчезнет через:",
     androidQrCreateFailed: "Не удалось создать QR-код для входа на Android. Попробуйте ещё раз.",
     appLock: {
       unlockReason: "Разблокировать Stovo",
