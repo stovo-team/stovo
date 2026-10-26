@@ -181,6 +181,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
           $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
           if (-not $dockerCli) {
             $dockerCliDirectories = @(
