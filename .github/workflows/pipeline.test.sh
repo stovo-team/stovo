@@ -310,6 +310,15 @@ for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Win
     exit 1
   fi
 done
+if ! grep -Fq 'name: Clear stale npm cache' <<< "$frontend_ci_contract" || ! grep -Fq 'run: npm cache clean --force' <<< "$frontend_ci_contract"; then
+  echo "Trusted PR frontend CI must clear stale runner-local npm cache before installing dependencies." >&2
+  exit 1
+fi
+
+if ! grep -Fq 'needs: [changes, frontend-ci]' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must wait for Frontend CI to avoid overloading the shared Windows runner pool." >&2
+  exit 1
+fi
 
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
