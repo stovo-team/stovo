@@ -343,6 +343,14 @@
   margin-left: auto;
   padding-right: 0;
 }
+.chat-header-actions button:hover:not(:disabled),
+.chat-header-actions button:active:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: inherit;
+  transform: none;
+}
 
 .chat-header-selection-button.icon-button.subtle {
   align-items: center;

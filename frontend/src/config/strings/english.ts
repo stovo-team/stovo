@@ -36,11 +36,11 @@ export const strings = {
   },
 
   avatarChoices: {
-    photo: "Photo", symbol: "Symbol", initials: "Initials", symbols: "Choose a symbol", colors: "Choose a color",
+    photo: "Photo", symbol: "Symbol", initials: "Initials", symbols: "Choose a symbol", colors: "Choose a color", moreSymbols: "More symbols", fewerSymbols: "Fewer symbols", customColor: "Custom color",
     symbolNames: {
       "user-round": "Person", users: "Group", home: "Home", archive: "Archive", "audio-lines": "Voice channel",
       megaphone: "Announcement", folder: "Folder", heart: "Heart", star: "Star", music: "Music",
-      "book-open": "Book", camera: "Camera", shield: "Shield", sparkles: "Sparkles", bell: "Bell"
+      "book-open": "Book", camera: "Camera", shield: "Shield", sparkles: "Sparkles", bell: "Bell", image: "Image", "file-text": "Document", video: "Video", briefcase: "Project", code: "Code", globe: "Globe", coffee: "Coffee", rocket: "Rocket"
     },
     colorNames: { red: "Red", orange: "Orange", green: "Green", blue: "Blue", purple: "Purple", pink: "Pink", teal: "Teal", sky: "Sky blue" }
   },
@@ -913,12 +913,12 @@ export const strings = {
       dms: "DMs",
     },
     types: {
-      familyChat: "Family chat",
+      familyChat: "Group chat",
       voiceChannel: "Voice channel",
       channel: "Channel",
       groupChat: "Group chat",
       directChat: "Direct chat",
-      generalFamilyChat: "General Family Chat",
+      generalFamilyChat: "Group chat",
       directMessage: "Direct message",
       messageArchive: "Message Archive",
       membersCount: (count: number) => `${count} member${count === 1 ? "" : "s"}`,

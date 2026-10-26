@@ -1,0 +1,21 @@
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { expect, it, vi } from "vitest";
+import { SymbolColorControls } from "./SymbolColorControls";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+it("expands two initial symbol rows and accepts a custom color", () => {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const onColorChange = vi.fn();
+  const symbols = Array.from({ length: 24 }, (_, i) => ({ id: String(i), label: `Symbol ${i}`, icon: <span>{i}</span> }));
+  act(() => root.render(<SymbolColorControls symbols={symbols} symbol="0" onSymbolChange={vi.fn()} colors={[{ id: "red", label: "Red", value: "red" }]} color="red" onColorChange={onColorChange} />));
+  expect(host.querySelectorAll('.symbol-color-controls__icons button')).toHaveLength(12);
+  act(() => host.querySelector<HTMLButtonElement>('button[aria-expanded]')?.click());
+  expect(host.querySelectorAll('.symbol-color-controls__icons button')).toHaveLength(24);
+  const input = host.querySelector<HTMLInputElement>('input[type="color"]')!;
+  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "#786a91"); input.dispatchEvent(new Event("input", { bubbles: true })); input.dispatchEvent(new Event("change", { bubbles: true })); });
+  expect(onColorChange).toHaveBeenCalledWith("#786a91");
+  act(() => root.unmount());
+});

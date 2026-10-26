@@ -33,7 +33,7 @@ import type { ChatInfoControl, SharedContentItem, SharedContentTab } from "../sh
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
-import { AvatarChoicePicker } from "../../../components/AvatarChoicePicker";
+import { ChatAvatarChoiceSettings } from "./ChatAvatarChoiceSettings";
 import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { ChatTransferSettingsActions } from "../transfer/ChatTransferSettingsActions";
@@ -452,6 +452,7 @@ export function ChatDetailsPanel({
         </header>
 
         <div className="chat-info-body">
+          {canManageChat && <ChatAvatarChoiceSettings chat={chat} label={chatName} accessToken={accessToken} onChange={onAvatarChoiceChange} />}
           <ChatTransferSettingsActions chat={chat} accessToken={accessToken} currentUserId={currentUserId} onImported={onImported} />
           <div className="chat-info-section">
             <div className="chat-info-island chat-info-wallpaper">
@@ -1046,20 +1047,6 @@ export function ChatDetailsPanel({
               </>
             )}
           </div>
-          {canManageChat && chat.type !== "direct" && <AvatarChoicePicker
-            accessToken={accessToken}
-            entityId={chat.id}
-            entityKind={chat.type === "family" ? "family" : chat.type === "group" ? "group" : chat.type === "voice" ? "voice" : chat.type === "archive" ? "archive" : "channel"}
-            label={chatName}
-            file={chat.chatPhoto}
-            allowPhoto={Boolean(chat.chatPhoto)}
-            mode={chat.avatarMode ?? (chat.chatPhoto ? "photo" : "symbol")}
-            symbolId={chat.avatarSymbolId}
-            colorId={chat.avatarColorId}
-            onModeChange={(avatarMode) => void onAvatarChoiceChange?.({ avatarMode })}
-            onSymbolChange={(avatarSymbolId) => void onAvatarChoiceChange?.({ avatarMode: "symbol", avatarSymbolId })}
-            onColorChange={(avatarColorId) => void onAvatarChoiceChange?.({ avatarColorId })}
-          />}
           <div className="chat-info-title-row">
             {nameEditor ? (
               <form className="chat-info-title-inline-editor" onSubmit={onChatSettingsSubmit}>

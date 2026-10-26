@@ -29,7 +29,7 @@ export function displayChatName(chat: Chat, currentUserId: string | undefined, s
     return strings?.chats.types.messageArchive ?? strings?.chats.sections.archive ?? "Message Archive";
   }
   if (chat.type === "family" || chat.type === "group" || chat.type === "channel" || chat.type === "voice") {
-    return chat.title ?? (chat.type === "voice" ? (strings?.chats.types.voiceChannel ?? "Voice Channel") : (strings?.chats.types.generalFamilyChat ?? "General Family Chat"));
+    return chat.title ?? (chat.type === "voice" ? (strings?.chats.types.voiceChannel ?? "Voice Channel") : (strings?.chats.types.groupChat ?? "Group chat"));
   }
   const otherMember = chat.members.find((member) => member.id !== currentUserId);
   return otherMember?.displayName ?? (strings?.chats.types.directChat ?? "Direct chat");
@@ -52,7 +52,7 @@ export function chatAvatarFallbackKind(chat: Chat): ChatAvatarFallbackKind {
     return "archive";
   }
   if (chat.type === "family") {
-    return "family";
+    return "group";
   }
   if (chat.type === "channel") {
     return "channel";
@@ -104,7 +104,7 @@ export const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> =
 
 export function chatTypeLabel(chat: Chat) {
   if (chat.type === "family") {
-    return "Family chat";
+    return "Group chat";
   }
   if (chat.type === "voice") {
     return "Voice channel";

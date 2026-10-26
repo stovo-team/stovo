@@ -156,19 +156,7 @@ const chats: Chat[] = [
     lastMessageSenderDisplayName: demoSam.displayName,
     lastMessageContent: "The release notes are ready for a quick read.",
   }),
-  chat({
-    id: "chat-family-hub",
-    type: "family",
-    title: "Family Hub",
-    members: allMembers,
-    createdAt: "2026-10-01T08:00:00.000Z",
-    updatedAt: "2026-10-07T13:15:00.000Z",
-    unreadCount: 0,
-    lastMessageId: "msg-family-lunch",
-    lastMessageSenderId: demoAlex.id,
-    lastMessageSenderDisplayName: demoAlex.displayName,
-    lastMessageContent: "Lunch is on the table.",
-  }),
+
 ];
 
 function message(options: {
@@ -264,16 +252,7 @@ const messages: Record<string, Message[]> = {
       createdAt: "2026-10-08T16:30:00.000Z",
     }),
   ],
-  "chat-family-hub": [
-    message({
-      id: "msg-family-lunch",
-      chatId: "chat-family-hub",
-      senderId: demoAlex.id,
-      senderDisplayName: demoAlex.displayName,
-      content: "Lunch is on the table.",
-      createdAt: "2026-10-07T13:15:00.000Z",
-    }),
-  ],
+
 };
 
 const pins: Record<string, PinnedMessage[]> = {

@@ -3,6 +3,8 @@ import { AVATAR_COLOR_IDS, AVATAR_SYMBOL_IDS, colorForAvatarId, defaultAvatarSym
 import type { AvatarEntityKind, AvatarColorId, AvatarSymbolId } from "./entityAvatar";
 import { EntityAvatar } from "./EntityAvatar";
 import { useStrings } from "../i18n/LanguageContext";
+import { SymbolColorControls } from "./SymbolColorControls";
+import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 
 type AvatarChoicePickerProps = {
   accessToken?: string | null;
@@ -33,26 +35,14 @@ export function AvatarChoicePicker({
         <button type="button" aria-pressed={mode === "photo"} onClick={() => onModeChange("photo")}>{strings.photo}</button>
         <button type="button" aria-pressed={mode === "symbol"} onClick={() => onModeChange("symbol")}>{strings.symbol}</button>
       </div>}
-      <fieldset>
-        <legend>{strings.symbols}</legend>
-        <div className="avatar-choice-picker__symbols">
-          {AVATAR_SYMBOL_IDS.map((id) => (
-            <button key={id} type="button" aria-label={id === "initials" ? strings.initials : strings.symbolNames[id]} aria-pressed={selectedSymbol === id} onClick={() => onSymbolChange(id)}>
-              <EntityAvatar accessToken={null} entityId={entityId} entityKind={entityKind} label={label} mode="symbol" symbolId={id} colorId={selectedColor} size={36} />
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>{strings.colors}</legend>
-        <div className="avatar-choice-picker__colors">
-          {AVATAR_COLOR_IDS.map((id) => (
-            <button key={id} type="button" aria-label={strings.colorNames[id]} aria-pressed={selectedColor === id} onClick={() => onColorChange(id)}>
-              <EntityAvatar accessToken={null} entityId={entityId} entityKind={entityKind} label={label} mode="symbol" symbolId={selectedSymbol} colorId={id} size={28} />
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <SymbolColorControls
+        symbols={AVATAR_SYMBOL_IDS.map((id) => ({ id, label: id === "initials" ? strings.initials : strings.symbolNames[id], icon: <EntityAvatar accessToken={null} entityId={entityId} entityKind={entityKind} label={label} mode="symbol" symbolId={id} colorId={selectedColor} size={36} /> }))}
+        symbol={selectedSymbol}
+        onSymbolChange={(id) => onSymbolChange(id as AvatarSymbolId)}
+        colors={AVATAR_COLOR_IDS.map((id) => ({ id, label: strings.colorNames[id], value: DESIGN_COLOR_VALUES.avatarPalette[id] }))}
+        color={selectedColor}
+        onColorChange={(id) => onColorChange(id as AvatarColorId)}
+      />
       {mode === "photo" && allowPhoto && <div className="avatar-choice-picker__photo-selected"><EntityAvatar accessToken={accessToken} entityId={entityId} entityKind={entityKind} label={label} file={file} mode="photo" size={36} /><span>{strings.photo}</span></div>}
     </section>
   );

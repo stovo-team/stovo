@@ -3,15 +3,16 @@ import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 export type AvatarEntityKind = "person" | "family" | "group" | "archive" | "voice" | "channel" | "folder";
 export const AVATAR_SYMBOL_IDS = [
   "initials", "user-round", "users", "home", "archive", "audio-lines", "megaphone", "folder",
-  "heart", "star", "music", "book-open", "camera", "shield", "sparkles", "bell"
+  "heart", "star", "music", "book-open", "camera", "shield", "sparkles", "bell",
+  "image", "file-text", "video", "briefcase", "code", "globe", "coffee", "rocket"
 ] as const;
 export type AvatarSymbolId = typeof AVATAR_SYMBOL_IDS[number];
 
 export const AVATAR_COLOR_IDS = Object.keys(DESIGN_COLOR_VALUES.avatarPalette) as Array<keyof typeof DESIGN_COLOR_VALUES.avatarPalette>;
-export type AvatarColorId = typeof AVATAR_COLOR_IDS[number];
+export type AvatarColorId = typeof AVATAR_COLOR_IDS[number] | `#${string}`;
 
 const defaultSymbols: Record<AvatarEntityKind, AvatarSymbolId> = {
-  person: "initials", family: "home", group: "users", archive: "archive",
+  person: "initials", family: "users", group: "users", archive: "archive",
   voice: "audio-lines", channel: "megaphone", folder: "folder"
 };
 
@@ -24,7 +25,7 @@ export function isKnownAvatarSymbolId(value: unknown): value is AvatarSymbolId {
 }
 
 export function isKnownAvatarColorId(value: unknown): value is AvatarColorId {
-  return typeof value === "string" && (AVATAR_COLOR_IDS as readonly string[]).includes(value);
+  return typeof value === "string" && ((AVATAR_COLOR_IDS as readonly string[]).includes(value) || /^#[0-9a-f]{6}$/i.test(value));
 }
 
 export function colorForAvatarId(id: string): AvatarColorId {

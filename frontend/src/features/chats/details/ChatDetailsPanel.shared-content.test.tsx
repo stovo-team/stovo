@@ -88,15 +88,15 @@ const chat: Chat = {
   isFavorite: false
 };
 
-function renderPanel(detailsTab: "files" | "links", sharedContentItems: any[]) {
+function renderPanel(detailsTab: "files" | "links", sharedContentItems: any[], panelChat: Chat = chat, canManageChat = false) {
   return render(
     <ChatDetailsPanel
       accessToken="test-token"
-      chat={chat}
+      chat={panelChat}
       chatPhotoInputRef={createRef<HTMLInputElement>()}
       chatWallpaperInputRef={createRef<HTMLInputElement>()}
       chatTitleDraft="Example chat"
-      canManageChat={false}
+      canManageChat={canManageChat}
       currentUser={null}
       currentUserId={undefined}
       detailsTab={detailsTab}
@@ -161,6 +161,19 @@ describe("Chat details shared content", () => {
     act(() => document.body.querySelector<HTMLButtonElement>('.chat-transfer-dialog button[aria-label="Close"]')?.click());
     act(() => exportButton?.click());
     expect(document.body.querySelector(".chat-transfer-dialog h2")?.textContent).toBe("Export chat");
+  });
+
+  it("offers avatar choices from chat settings for manageable groups", () => {
+    const groupChat = { ...chat, type: "group" as const };
+    const container = renderPanel("files", [], groupChat, true);
+    expect(container.querySelector(".avatar-choice-picker")).toBeNull();
+    const options = container.querySelector<HTMLButtonElement>('button[aria-label="Chat options"]');
+    act(() => options?.click());
+    const settings = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => item.textContent?.includes("Chat settings"));
+    act(() => settings?.click());
+    expect(container.querySelector("#chat-settings-title")).not.toBeNull();
+    expect(container.querySelector(".avatar-choice-picker")).not.toBeNull();
   });
 
   it("renders a loaded video preview and falls back to its video icon after a media error", () => {

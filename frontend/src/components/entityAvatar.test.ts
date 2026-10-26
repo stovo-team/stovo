@@ -12,7 +12,7 @@ import {
 describe("entity avatar defaults", () => {
   it("maps each entity kind to its approved symbol", () => {
     expect(defaultAvatarSymbol("person")).toBe("initials");
-    expect(defaultAvatarSymbol("family")).toBe("home");
+    expect(defaultAvatarSymbol("family")).toBe("users");
     expect(defaultAvatarSymbol("group")).toBe("users");
     expect(defaultAvatarSymbol("archive")).toBe("archive");
     expect(defaultAvatarSymbol("voice")).toBe("audio-lines");

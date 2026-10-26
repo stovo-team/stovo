@@ -36,6 +36,15 @@ afterEach(() => {
 });
 
 describe("local mock chat API", () => {
+  it("starts without an automatic family chat and saves chat avatar choices", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const chats = await request<Chat[]>("/api/chats");
+    expect(chats.body.some((chat) => chat.type === "family" || chat.title === "Family Hub")).toBe(false);
+    const saved = await request<Chat>(`/api/chats/${FIRST_CHAT_ID}`, { method: "PATCH", body: JSON.stringify({ avatarMode: "symbol", avatarSymbolId: "briefcase", avatarColorId: "#786a91" }) });
+    expect(saved.response.status).toBe(200);
+    const loaded = await request<Chat>(`/api/chats/${FIRST_CHAT_ID}`);
+    expect(loaded.body).toMatchObject({ avatarSymbolId: "briefcase", avatarColorId: "#786a91" });
+  });
   it("lists a seeded canvas and returns its document", async () => {
     seedMockSession(MOCK_ORIGIN);
     const canvases = await getStorageCanvases("local-mock-access-token");

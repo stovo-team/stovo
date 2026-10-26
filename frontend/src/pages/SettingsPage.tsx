@@ -62,7 +62,6 @@ import {
 } from "../settings/devicePreferences";
 import { updateNativeNotificationSchedule } from "../api/notifications";
 import { AvatarEditorModal } from "../components/AvatarEditorModal";
-import { AvatarChoicePicker } from "../components/AvatarChoicePicker";
 import { BackButton } from "../components/BackButton";
 import AppNav from "./AppNav";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
@@ -404,19 +403,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveProfileAvatarChoice(patch: Partial<Pick<User, "avatarMode" | "avatarSymbolId" | "avatarColorId">>) {
-    if (!currentUser) return;
-    setIsSaving(true);
-    setError(null);
-    try {
-      const updatedUser = await authRequest<User>("/api/auth/me", { method: "PATCH", body: patch });
-      updateCurrentUser(updatedUser);
-    } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : strings.errors.couldNotUpdateProfilePhoto);
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   async function handlePasswordSubmit(event: FormEvent) {
     event.preventDefault();
@@ -557,7 +543,6 @@ export default function SettingsPage() {
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
                       </>
                     }
-                    profileAvatarPicker={<AvatarChoicePicker accessToken={accessToken} entityId={currentUser?.id ?? "person"} entityKind="person" label={profileForm.displayName || strings.settings.familyMember} file={currentUser?.profilePhoto} allowPhoto={Boolean(currentUser?.profilePhoto)} mode={currentUser?.avatarMode ?? (currentUser?.profilePhoto ? "photo" : "symbol")} symbolId={currentUser?.avatarSymbolId} colorId={currentUser?.avatarColorId} onModeChange={(avatarMode) => void saveProfileAvatarChoice({ avatarMode })} onSymbolChange={(avatarSymbolId) => void saveProfileAvatarChoice({ avatarMode: "symbol", avatarSymbolId })} onColorChange={(avatarColorId) => void saveProfileAvatarChoice({ avatarColorId })} />}
                   />                ) : activeSettingsItem === "General" ? (
                   <GeneralSettings strings={strings} />
                 ) : activeSettingsItem === "Notifications" ? (

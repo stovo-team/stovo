@@ -1,6 +1,6 @@
 # Profile, chat, and folder avatars
 
-Status: draft for human review
+Status: approved with user-requested visual and scope amendments on 2026-10-26
 
 ## Intent
 
@@ -9,11 +9,12 @@ Give people, chats, and chat folders a consistent avatar treatment across Stovo.
 ## Goals
 
 - Use one shared, size-aware avatar renderer wherever profile or chat avatars appear, including profile/settings views, member lists, chat lists/details, and voice call views.
-- Keep initials as the default for people. Let a person choose a built-in symbol and color.
-- Give groups, voice chats, announcement channels, and folders useful built-in SVG defaults. Allow chat and folder owners to choose a built-in symbol and color.
-- Keep a bright, readable, stable generated color for entities with no explicit color, derived from the entity ID and a shared curated palette. The color must not change between views or app launches.
-- Keep uploaded photos available. Let a person or chat switch between its saved photo and built-in treatment without deleting or re-uploading the photo.
-- Save person and chat choices through the API so they follow the entity across devices. Save folder choices with the existing per-family local folder settings.
+- Keep people on initials by default and preserve profile-photo upload. People do not choose an SVG or avatar color.
+- Give groups, channels, voice channels, and folders useful built-in SVG defaults. Allow chat managers to choose symbols and colors from chat settings, and folder owners to choose them in folder settings.
+- Use stable entity colors from a muted curated palette. Render folder SVGs as neutral white or gray line icons with no colored background.
+- Keep uploaded chat photos available. Chat managers can switch between a saved photo and a built-in symbol without deleting or re-uploading the photo.
+- Save chat choices through the API so they follow the entity across devices. Save folder choices with the existing per-family local folder settings.
+- Place folder symbols after the disclosure arrow. Remove hover effects from folder headings and the chat header.
 
 ## Non-goals and anti-goals
 
@@ -41,10 +42,10 @@ The recommended approach is proposed because saved profile and chat choices must
 ## Proposed behavior and decisions left to the builder
 
 - The avatar renderer accepts entity kind, label, optional photo, avatar mode (`photo` or `symbol`), optional symbol ID, optional color, and size. The saved mode decides whether to display the photo or built-in treatment. Existing records with a photo default to `photo`; records without a photo default to `symbol`.
-- A person with no photo or selected symbol displays their initials on the deterministic palette color. Selecting a symbol displays that symbol on the saved or deterministic color.
+- A person displays their photo when present, otherwise their initials on a stable muted palette color. Person rendering ignores legacy symbol/color preferences.
 - Default chat symbols: `Users` for groups, `Home` for the family chat, `Archive` for archive chats, `AudioLines` plus the existing live-state affordance for voice chats, and `Megaphone` for channels. The current chat model has one `channel` kind and no announcement subtype, so all channels use the announcement symbol. Direct chats keep the other person's profile avatar.
-- Folders default to `Folder` and a deterministic palette color. Folder creators can change both values in the existing folder create/edit flow.
-- The picker uses a curated set of existing Lucide symbols with stable IDs. Proposed additional choices: `UserRound`, `Heart`, `Home`, `Star`, `Music`, `BookOpen`, `Camera`, `Shield`, `Sparkles`, and `Bell`. Use curated colors from `frontend/src/design-system/palette.ts`, with palette entries represented in `tokens.css`; keep icon foreground contrast readable.
+- Folders default to `Folder`. Folder icons use a neutral line color and transparent background; folder creators can change the symbol/color in the existing folder create/edit flow.
+- The picker uses a curated set of existing Lucide symbols with stable IDs. Proposed additional choices: `UserRound`, `Heart`, `Home`, `Star`, `Music`, `BookOpen`, `Camera`, `Shield`, `Sparkles`, and `Bell`. Use subdued colors from `frontend/src/design-system/palette.ts`, with palette entries represented in `tokens.css`; picker previews use neutral line icons without colored disks.
 - Missing values from existing accounts/chats use deterministic defaults. Unknown or invalid symbol IDs safely fall back to the entity's default symbol/initials.
 - Keep the photo file reference when the user switches to a symbol, so switching back restores the saved photo without another upload. Existing uploaded media is never deleted by avatar mode changes.
 - Chat edits remain restricted to existing chat managers. A person can edit their own profile avatar. Folder edits follow the current local folder controls.
@@ -53,15 +54,15 @@ The recommended approach is proposed because saved profile and chat choices must
 
 | Acceptance ID | Scenario | Expected result | Proof layer | Required evidence |
 | --- | --- | --- | --- | --- |
-| AV-01 | Render the same person with initials, selected symbol, or uploaded photo at several sizes | All views use the shared renderer; initials/symbol/photo and color remain consistent, and sizing changes without changing style | Component tests | Focused frontend component tests |
-| AV-02 | Render the same member in chat lists/details, member lists, and voice call participant views | Each view uses the same profile photo or selected symbol/color; existing call state indicators remain visible | Component tests | Focused call/avatar tests |
+| AV-01 | Render a person with a photo, or with no photo at several sizes | All views use the shared renderer; people show their photo or initials and never display selectable symbol/color choices, including when legacy preferences exist | Component tests | Focused frontend component tests |
+| AV-02 | Render the same member in chat lists/details, member lists, and voice call participant views | Each view uses the same profile photo or initials; existing call state indicators remain visible | Component tests | Focused call/avatar tests |
 | AV-03 | Render family, group, archive, voice, channel, and direct chats with no photo | Defaults are Home, Users, Archive, AudioLines with live indicator, Megaphone, and the other member's avatar respectively | Component tests | Focused avatar mapping tests |
-| AV-04 | Generate defaults for different IDs and render repeatedly | Colors are from the approved palette, bright/readable, and stable for each ID across renders and reloads | Unit tests | Deterministic color tests with fixed IDs |
-| AV-05 | A person chooses a symbol/color, reloads, and views a call | API persists the choice and every view reflects it; invalid symbol/color values are rejected or safely defaulted | API/backend tests | Request validation, persistence, response round-trip tests |
-| AV-06 | A chat manager chooses an icon/color for a group, voice chat, or channel | API persists the choice and all chat views reflect it; a non-manager cannot change the choice | API/backend tests | Permission and persistence tests |
-| AV-07 | A folder creator changes its icon/color, reloads, then edits it again | Local folder data retains the selection and the same shared renderer displays it | Component tests | Folder create/edit and reload tests |
-| AV-08 | User switches between photo and built-in symbol | Existing crop/upload still works; mode changes preserve the photo reference and allow switching back without upload; stored media is not deleted | Integration/component tests | Profile and chat editor tests |
-| AV-09 | Use the picker with keyboard, screen reader labels, narrow mobile viewport, dark theme, and both locales | Controls are reachable and labeled; tokens keep symbols/backgrounds legible; layouts remain usable | Component and visual review | Screenshot for affected state at a named viewport, theme, locale, and interaction; English and Russian catalog check |
+| AV-04 | Generate defaults for different IDs and render repeatedly | Colors are from the curated palette, muted, and stable for each ID across renders and reloads | Unit tests | Deterministic color tests with fixed IDs |
+| AV-05 | A chat manager opens settings for a group, channel, or voice channel | Symbol/color choices are available in chat settings and persist across views; direct, family, archive, and person entities do not expose the picker; non-managers cannot update choices | Component and API/backend tests | Settings placement, type restrictions, permission and persistence tests |
+| AV-06 | A folder creator changes its icon/color, reloads, then edits it again | Local folder data retains the selection; the neutral line icon has no colored background and appears after the disclosure arrow | Component tests | Folder create/edit, reload, render and order tests |
+| AV-07 | User switches between initials and an uploaded profile photo | Existing crop/upload still works, and stored media remains available when switching to initials | Integration/component tests | Profile photo flow tests |
+| AV-08 | Hover over folder headings and chat header controls | Folder headings and chat header controls do not change appearance on hover; keyboard focus still reveals folder controls | Style/component tests | Focus behavior and hover-state assertions |
+| AV-09 | Use the chat/folder picker with keyboard, screen reader labels, narrow mobile viewport, dark theme, and both locales | Controls are reachable and labeled; folder symbols remain neutral, backgrounds stay transparent, colors are subdued, and layouts remain usable | Component and visual review | Screenshot for affected state at a named viewport, theme, locale, and interaction; English and Russian catalog check |
 
 ### Verification commands (to be finalized after approval)
 
@@ -79,4 +80,4 @@ The recommended approach is proposed because saved profile and chat choices must
 
 ## Scope and approval
 
-This document is a proposed spec/test plan for one combined review. No feature behavior should change until the human approves this exact document. Publication of an implementation PR is covered by the repository's standing delivery authorization; merge and deployment are not.
+The original feature was approved before implementation. The user amended the requirements on 2026-10-26: remove people symbol/color selection; put chat symbol/color selection in settings for groups, channels and voice channels; use neutral background-free folder SVGs after the disclosure arrow; mute the colors; remove folder and chat-header hover effects. This amendment governs the updated implementation. Publication of an implementation PR is covered by the repository's standing delivery authorization; merge and deployment are not.

@@ -633,8 +633,8 @@ export function ChatList({
               >
                 <div className="chat-section-heading">
                   <button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}>
-                    <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={defaultFolders[section.key].id} entityKind="folder" label={sectionLabel} mode="symbol" symbolId={defaultFolders[section.key].symbolId ?? defaultAvatarSymbol("folder")} colorId={defaultFolders[section.key].colorId ?? colorForAvatarId(defaultFolders[section.key].id)} size={22} />
                     <ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} />
+                    <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={defaultFolders[section.key].id} entityKind="folder" label={sectionLabel} mode="symbol" symbolId={defaultFolders[section.key].symbolId ?? defaultAvatarSymbol("folder")} colorId={defaultFolders[section.key].colorId ?? colorForAvatarId(defaultFolders[section.key].id)} size={22} />
                     <span>{sectionLabel}</span>
                     {isRestricted && (
                       <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedDrop} aria-label={strings.chats.folders.dropNotAllowed}>
@@ -725,8 +725,8 @@ export function ChatList({
           >
             <div className="chat-section-heading">
               <button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}>
-                <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={folder.id} entityKind="folder" label={folder.name} mode="symbol" symbolId={folder.symbolId ?? defaultAvatarSymbol("folder")} colorId={folder.colorId ?? colorForAvatarId(folder.id)} size={22} />
                 <ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} />
+                <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={folder.id} entityKind="folder" label={folder.name} mode="symbol" symbolId={folder.symbolId ?? defaultAvatarSymbol("folder")} colorId={folder.colorId ?? colorForAvatarId(folder.id)} size={22} />
                 <span>{folder.name}</span>
                 {isFolderRestricted && (
                 <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedRulesHelp} aria-label={strings.chats.folders.restrictedLabel}>

@@ -22,11 +22,12 @@ describe("EntityAvatar", () => {
     act(() => root.unmount());
   });
 
-  it("keeps people on initials until they choose a built-in symbol", () => {
+  it("keeps person avatars on initials even when stale symbol preferences exist", () => {
     const container = document.createElement("div");
     const root = createRoot(container);
-    act(() => root.render(<EntityAvatar accessToken={null} entityId="person-1" entityKind="person" label="Ada Lovelace" />));
+    act(() => root.render(<EntityAvatar accessToken={null} entityId="person-1" entityKind="person" label="Ada Lovelace" mode="symbol" symbolId="heart" colorId="red" />));
     expect(container.querySelector(".avatar-initials")?.textContent).toBe("AL");
+    expect(container.querySelector(".entity-avatar__symbol")).toBeNull();
     act(() => root.unmount());
   });
 });

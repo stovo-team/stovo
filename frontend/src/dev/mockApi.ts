@@ -1,3 +1,4 @@
+import { mockChatDetailsResponse } from "./mockChatDetails";
 import { mockCanvasResponse } from "./mockCanvas";
 import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
@@ -354,10 +355,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   }
 
   const chatDetailMatch = path.match(/^\/api\/chats\/([^/]+)$/);
-  if (method === "GET" && chatDetailMatch) {
-    const chat = mockData.chats.find((item) => item.id === chatDetailMatch[1]);
-    return chat ? jsonResponse(chat) : errorResponse(404, "Mock chat not found.");
-  }
+  if (chatDetailMatch && (method === "GET" || method === "PATCH")) return mockChatDetailsResponse(mockData, chatDetailMatch[1], getMockUserId(), method, await requestBody(input, init));
 
   return errorResponse(501, `Mock API route not implemented: ${method} ${path}`);
 }
