@@ -352,7 +352,7 @@ export const strings = {
     invalidVerificationCode: "Неверный код подтверждения",
     scanQrFailed: "Не удалось отсканировать QR-код компьютера. Попробуйте ещё раз или используйте пароль.",
     signInWithPasskey: "Войти с помощью ключа доступа",
-    signInWithPasskeyShort: "Passkey",
+    signInWithPasskeyShort: "Ключ доступа",
     signInWithPassword: "Войти с паролем",
     signInWithQr: "Войти по QR-коду",
     secureContextRequired: "Для ключей доступа требуется защищённое соединение (HTTPS).",
