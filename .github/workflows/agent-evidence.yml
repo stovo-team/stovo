@@ -141,7 +141,7 @@ jobs:
     name: Agent workflow gate
     if: ${{ always() }}
     needs: [changes, validators, visual]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
     steps:
       - name: Report temporary pause
         run: echo 'Agent workflow evidence is temporarily disabled.' >> "$GITHUB_STEP_SUMMARY"
