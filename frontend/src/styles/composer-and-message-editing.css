@@ -1309,7 +1309,7 @@
 .message-bubble.mine .guest-meeting-invitation-copy,
 .message-bubble.mine .guest-meeting-invitation-copy strong,
 .message-bubble.mine .guest-meeting-invitation-detail { color: var(--color-palette-f2074b6cef37); }
-.guest-meeting-invitation-actions { display: grid; gap: .55rem; grid-column: 1 / -1; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: .15rem; }
+.guest-meeting-invitation-actions { display: grid; gap: .55rem; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: .15rem; }
 .guest-meeting-invitation-join {
   align-items: center;
   background: var(--accent-primary);
@@ -1329,9 +1329,12 @@
 .message-bubble.mine .guest-meeting-invitation-join { background: var(--color-palette-f2074b6cef37); border-color: var(--color-palette-f2074b6cef37); color: var(--color-palette-930c6a0c90da) !important; }
 .guest-meeting-invitation-join:hover { background: var(--accent-primary-hover); border-color: var(--accent-primary-hover); }
 .message-bubble.mine .guest-meeting-invitation-join:hover { background: color-mix(in oklab, var(--color-palette-f2074b6cef37) 90%, var(--color-palette-930c6a0c90da)); border-color: color-mix(in oklab, var(--color-palette-f2074b6cef37) 90%, var(--color-palette-930c6a0c90da)); }
-.guest-meeting-invitation-plan { align-items: center; background: var(--color-palette-db0c497d2782); border: 1px solid var(--color-palette-db0c497d2782); border-radius: var(--radius-pill); color: var(--color-palette-f2074b6cef37) !important; display: inline-flex; font-size: var(--font-size-small); font-weight: var(--font-weight-bold); gap: .38rem; justify-content: center; min-height: 44px; padding: .45rem .65rem; text-decoration: none !important; }
-.guest-meeting-invitation-plan:hover { background: var(--color-palette-bade0f691df5); border-color: var(--color-palette-bade0f691df5); }
-@media (max-width: 380px) { .guest-meeting-invitation-actions { grid-template-columns: 1fr; } }
+.guest-meeting-invitation-plan { align-items: center; background: color-mix(in oklab, var(--accent-primary) 42%, var(--color-palette-7b2817bf9b80) 58%); border: 1px solid color-mix(in oklab, var(--accent-primary) 42%, var(--color-palette-7b2817bf9b80) 58%); border-radius: var(--radius-pill); color: var(--color-palette-f2074b6cef37) !important; display: inline-flex; font-size: var(--font-size-small); font-weight: var(--font-weight-bold); gap: .38rem; justify-content: center; min-height: 44px; padding: .45rem .65rem; text-decoration: none !important; }
+.guest-meeting-invitation-plan:hover { background: color-mix(in oklab, var(--accent-primary) 50%, var(--color-palette-7b2817bf9b80) 50%); border-color: color-mix(in oklab, var(--accent-primary) 50%, var(--color-palette-7b2817bf9b80) 50%); }
+@media (max-width: 380px) {
+  .guest-meeting-invitation-actions > a { box-sizing: border-box; font-size: var(--font-size-caption); gap: .25rem; min-width: 0; padding: .4rem .3rem; text-align: center; white-space: nowrap; }
+  .guest-meeting-invitation-join > svg { display: none; }
+}
 
 .message-spoiler {
   appearance: none;

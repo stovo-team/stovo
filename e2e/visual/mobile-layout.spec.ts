@@ -50,8 +50,8 @@ test('V-15 canvas message preview is compact on a phone',async({page},info)=>{
  await screenshot(page,info,s);
 });
 
-test('V-16 guest meeting actions stay distinct on a phone',async({page},info)=>{
- const s:Scenario={id:'V-16',viewport:{width:390,height:844},theme:'light',locale:'ru',state:'mobile-layout-meetup'};
+test('V-16 guest meeting actions stay equal and distinct on a narrow phone',async({page},info)=>{
+ const s:Scenario={id:'V-16',viewport:{width:320,height:844},theme:'light',locale:'ru',state:'mobile-layout-meetup'};
  await prepareVisualScenario(page,s);
  const invitations=page.locator('.guest-meeting-invitation');
  await expect(invitations).toHaveCount(2);
@@ -64,6 +64,15 @@ test('V-16 guest meeting actions stay distinct on a phone',async({page},info)=>{
   const plan = invitation.locator('.guest-meeting-invitation-plan');
   const joinStyle = await join.evaluate((node) => getComputedStyle(node));
   const planStyle = await plan.evaluate((node) => getComputedStyle(node));
+  const joinBounds = await join.boundingBox();
+  const planBounds = await plan.boundingBox();
+  expect(joinBounds).not.toBeNull();
+  expect(planBounds).not.toBeNull();
+  expect(Math.abs(joinBounds!.width - planBounds!.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(joinBounds!.y - planBounds!.y)).toBeLessThanOrEqual(1);
+  expect(await join.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe('nowrap');
+  expect(await join.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await plan.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   const bubbleBackground = await invitation.evaluate((node) => getComputedStyle(node.closest('.message-bubble')!).backgroundColor);
   expect(parseFloat(joinStyle.borderTopLeftRadius)).toBeGreaterThanOrEqual(22);
   expect(parseFloat(planStyle.borderTopLeftRadius)).toBeGreaterThanOrEqual(22);

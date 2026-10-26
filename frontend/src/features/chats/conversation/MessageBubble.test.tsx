@@ -40,6 +40,8 @@ describe("guest meeting invitation visual hierarchy", () => {
     const iconRule = conversationStyles.match(/\.guest-meeting-invitation-icon\s*\{([^}]*)\}/)?.[1] ?? "";
     const outgoingJoinRule = conversationStyles.match(/\.message-bubble\.mine \.guest-meeting-invitation-join\s*\{([^}]*)\}/)?.[1] ?? "";
     const planRule = conversationStyles.match(/\.guest-meeting-invitation-plan\s*\{([^}]*)\}/)?.[1] ?? "";
+    const actionsRule = conversationStyles.match(/\.guest-meeting-invitation-actions\s*\{([^}]*)\}/)?.[1] ?? "";
+    const compactActionsRule = conversationStyles.match(/@media \(max-width: 380px\)\s*\{\s*\.guest-meeting-invitation-actions > a\s*\{([^}]*)\}/)?.[1] ?? "";
 
     expect(invitationRule).toMatch(/background:\s*transparent/);
     expect(invitationRule).toMatch(/border:\s*0/);
@@ -51,8 +53,11 @@ describe("guest meeting invitation visual hierarchy", () => {
     expect(outgoingJoinRule).toMatch(/background:\s*var\(--color-palette-f2074b6cef37\)/);
     expect(joinRule).toMatch(/min-height:\s*44px/);
     expect(iconRule).toMatch(/box-shadow:\s*none/);
-    expect(planRule).toMatch(/background:\s*var\(--color-palette-db0c497d2782\)/);
+    expect(planRule).toMatch(/background:\s*color-mix\(in oklab, var\(--accent-primary\) 42%, var\(--color-palette-7b2817bf9b80\) 58%\)/);
     expect(planRule).toMatch(/border-radius:\s*var\(--radius-pill\)/);
+    expect(actionsRule).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(compactActionsRule).toContain("font-size: var(--font-size-caption);");
+    expect(compactActionsRule).toContain("white-space: nowrap;");
   });
 });
 
