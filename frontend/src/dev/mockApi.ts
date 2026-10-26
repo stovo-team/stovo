@@ -398,6 +398,44 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
           else signal?.addEventListener("abort", abort, { once: true });
         });
       }
+      if (scenario === "mobile-layout-canvas" || scenario === "mobile-layout-meetup") {
+        const response = await handleMockRequest(url, method, input, init);
+        const page = await response.json() as MessageHistoryPage;
+        const currentUserId = getMockUserId();
+        const otherUser = mockData.users.find((user) => user.id !== currentUserId) ?? mockData.users[0];
+        const visualMessage = (id: string, senderId: string, type: Message["type"], content: string | null, createdAt: string): Message => ({
+          id,
+          chatId: "chat-planning-team",
+          senderId,
+          senderDisplayName: mockData.users.find((user) => user.id === senderId)?.displayName ?? "Stovo Demo",
+          type,
+          content,
+          encryptionProtocol: "legacy_plaintext",
+          ciphertext: null,
+          nonce: null,
+          keyVersion: null,
+          encryptionMetadata: null,
+          replyToMessageId: null,
+          threadRootMessageId: null,
+          messageKind: "chat",
+          createdAt,
+          updatedAt: createdAt,
+          deletedAt: null,
+          isEdited: false,
+          forwardedFrom: null,
+          statuses: [],
+          reactions: [],
+          attachments: [],
+          ...(type === "canvas" ? { canvas: { id: "canvas-planning-notes", title: "Untitled canvas", available: true } } : {}),
+        });
+        const visualMessages = scenario === "mobile-layout-canvas"
+          ? [visualMessage("visual-canvas-card", currentUserId, "canvas", null, "2026-10-18T09:00:00.000Z")]
+          : [
+            visualMessage("visual-meetup-incoming", otherUser.id, "text", 'guest-meeting-card:{"title":"Some meetup","timing":"Starts when the host opens the meeting.","entry":"Anyone with this link can join.","url":"http://127.0.0.1:5174/meet/mock"}', "2026-10-18T09:00:00.000Z"),
+            visualMessage("visual-meetup-outgoing", currentUserId, "text", 'guest-meeting-card:{"title":"Meetup","timing":"Starts when the host opens the meeting.","entry":"Anyone with this link can join.","url":"http://127.0.0.1:5174/meet/mock"}', "2026-10-18T09:05:00.000Z"),
+          ];
+        return jsonResponse({ ...page, messages: [...page.messages, ...visualMessages] });
+      }
     }
     return handleMockRequest(url, method, input, init);
   };
