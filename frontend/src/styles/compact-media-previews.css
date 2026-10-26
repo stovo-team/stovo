@@ -79,7 +79,7 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .popup-dialog.new-chat-screen {
     box-sizing: border-box;
     max-width: 640px;
@@ -89,22 +89,41 @@
 }
 
 /* Storage grids have several later desktop-size declarations; keep phone tiles
-   compact so two 140px previews fit on narrow screens. */
+   compact so two 120px previews fit on narrow screens. */
 @media (max-width: 767px) {
   .storage-page .storage-grid {
-    grid-template-columns: repeat(auto-fill, 140px);
+    grid-template-columns: repeat(auto-fill, 120px);
   }
 
   .message-bubble:has(.canvas-card-bubble) {
-    max-width: min(320px, calc(100vw - 48px));
-    width: min(320px, calc(100vw - 48px));
+    max-width: min(280px, calc(100vw - 48px));
+    width: min(280px, calc(100vw - 48px));
   }
 
   .canvas-card-bubble {
-    max-width: 320px;
+    max-width: 280px;
   }
 
   .canvas-card-bubble-preview {
-    max-height: 180px;
+    max-height: 120px;
+  }
+
+  .popup-backdrop.new-chat-modal-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .popup-dialog.new-chat-screen {
+    box-sizing: border-box;
+    background: var(--surface-card);
+    border: 0;
+    border-radius: var(--radius-panel);
+    box-shadow: none;
+    height: 100dvh;
+    max-height: none;
+    max-width: none;
+    min-width: 0;
+    padding: 0;
+    width: 100vw;
   }
 }

@@ -49,8 +49,8 @@ describe("storage file tile sizing", () => {
     expect(storageGridRules.some((rule) => rule.includes("repeat(auto-fill, 180px)"))).toBe(true);
   });
 
-  it("uses fixed 140px file tiles in a two-column mobile grid", () => {
+  it("uses fixed 120px file tiles in a two-column mobile grid", () => {
     expect(mobileStorageGridRules.length).toBeGreaterThan(0);
-    expect(mobileStorageGridRules.at(-1)).toContain("repeat(auto-fill, 140px)");
+    expect(mobileStorageGridRules.at(-1)).toContain("repeat(auto-fill, 120px)");
   });
 });
