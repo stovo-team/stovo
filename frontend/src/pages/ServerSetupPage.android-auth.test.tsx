@@ -31,6 +31,7 @@ vi.mock("../native/androidQrScanner", async (importOriginal) => ({
 vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 
 import { getApiUrl } from "../api/client";
+import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE } from "../native/androidQrScanner";
 import ServerSetupPage from "./ServerSetupPage";
 
 const qrCode = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop0";
@@ -224,8 +225,16 @@ describe("Android space setup authentication", () => {
     await render();
     await click('[data-auth-method="scan-qr"]');
     expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not scan QR code. Try again, use Passkey, or connect with the server address.");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not scan QR code. Try again or connect with the server address.");
     expect(mocks.redeemAndroidQRLogin).not.toHaveBeenCalled();
+  });
+
+  it("localizes the scanner-installing recovery message", async () => {
+    mocks.scan.mockRejectedValueOnce(new Error(ANDROID_QR_SCANNER_INSTALLING_MESSAGE));
+    await render();
+    await click('[data-auth-method="scan-qr"]');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("QR scanner is being installed. Try again shortly.");
+    expect(container.querySelector('[role="alert"]')?.textContent).not.toContain("password");
   });
 
   it("keeps the active server when QR redemption fails", async () => {

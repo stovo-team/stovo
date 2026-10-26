@@ -113,7 +113,7 @@ export default function ServerSetupPage() {
       if (value !== null) setAndroidQR(parseAndroidLoginQR(value));
     } catch (err) {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
-        ? ANDROID_QR_SCANNER_INSTALLING_MESSAGE
+        ? strings.auth.qrScannerInstalling
         : strings.auth.scanSetupQrFailed);
     } finally {
       setIsAuthenticating(false);
