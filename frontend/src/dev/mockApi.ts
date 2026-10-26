@@ -3,7 +3,7 @@ import { mockCanvasResponse } from "./mockCanvas";
 import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
-import { createMockData, createMockManifest } from "./mockFixtures";
+import { addMobileLayoutMessages, createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId } from "./mockBootstrap";
 import { handleMockCollectionRequest, resetMockCollections } from "./mockCollections";
@@ -45,7 +45,6 @@ function jsonResponse(value: unknown, status = 200): Response {
   });
 }
 const errorResponse = (status: number, detail: string): Response => jsonResponse({ detail }, status);
-
 function findMessage(messageId: string): Message | undefined {
   return Object.values(mockData.messages).flat().find((message) => message.id === messageId);
 }
@@ -420,6 +419,7 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
           else signal?.addEventListener("abort", abort, { once: true });
         });
       }
+      if (scenario === "mobile-layout-canvas" || scenario === "mobile-layout-meetup") return addMobileLayoutMessages(handleMockRequest(url, method, input, init), scenario, getMockUserId(), mockData.users).then(jsonResponse);
     }
     return handleMockRequest(url, method, input, init);
   };

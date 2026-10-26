@@ -10,6 +10,12 @@ function rule(selector: string): string {
 }
 
 describe("storage video preview sizing", () => {
+  it("keeps file tiles flat while retaining a selected border", () => {
+    const selectedTileRule = styles.match(/\.storage-page \.storage-tile\.selected,\s*\.storage-page \.storage-tile\.selected:hover,\s*\.storage-page \.storage-tile\.selected:focus,\s*\.storage-page \.storage-tile\.selected:focus-visible\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(selectedTileRule).toContain("border-color:");
+    expect(selectedTileRule).toContain("box-shadow: none !important;");
+  });
+
   it("opens the selected file against the right edge with media-sized bounds", () => {
     expect(rule(".storage-page .storage-preview-backdrop")).toContain("place-items: center end;");
     expect(styles).not.toMatch(/\.storage-page:has\(\.storage-tile\.selected\) \.storage-layout\s*\{[^}]*grid-template-columns:[^}]*minmax\(380px/);
