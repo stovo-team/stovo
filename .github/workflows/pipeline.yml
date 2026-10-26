@@ -210,10 +210,13 @@ jobs:
           $deadline = (Get-Date).AddMinutes(3)
           do {
             Start-Sleep -Seconds 3
+            $ErrorActionPreference = 'Continue'
             $dockerOs = docker info --format '{{.OSType}}' 2>$null
-            if ($LASTEXITCODE -eq 0) { break }
+            $dockerInfoExitCode = $LASTEXITCODE
+            $ErrorActionPreference = 'Stop'
+            if ($dockerInfoExitCode -eq 0) { break }
           } while ((Get-Date) -lt $deadline)
-          if ($LASTEXITCODE -ne 0) {
+          if ($dockerInfoExitCode -ne 0) {
             throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
           }
 
@@ -225,10 +228,13 @@ jobs:
             $deadline = (Get-Date).AddMinutes(3)
             do {
               Start-Sleep -Seconds 3
+              $ErrorActionPreference = 'Continue'
               $dockerOs = docker info --format '{{.OSType}}' 2>$null
-              if ($LASTEXITCODE -eq 0 -and $dockerOs -eq 'linux') { break }
+              $dockerInfoExitCode = $LASTEXITCODE
+              $ErrorActionPreference = 'Stop'
+              if ($dockerInfoExitCode -eq 0 -and $dockerOs -eq 'linux') { break }
             } while ((Get-Date) -lt $deadline)
-            if ($LASTEXITCODE -ne 0 -or $dockerOs -ne 'linux') {
+            if ($dockerInfoExitCode -ne 0 -or $dockerOs -ne 'linux') {
               throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
             }
           }

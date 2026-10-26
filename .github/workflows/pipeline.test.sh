@@ -287,6 +287,10 @@ for required in 'name: Start Docker Desktop for backend test services' 'docker i
     exit 1
   fi
 done
+if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
+  exit 1
+fi
 if grep -Fq '    services:' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
@@ -406,6 +410,10 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: De
     exit 1
   fi
 done
+if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_workflow_contract"; then
+  echo "Master backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
+  exit 1
+fi
 if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
   echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
