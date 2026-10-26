@@ -356,6 +356,7 @@ export const strings = {
     sendCodeFailed: "Could not send verification code",
     invalidVerificationCode: "Invalid verification code",
     scanQrFailed: "Could not scan a desktop sign-in QR code. Try again or use your password.",
+    androidQrSignInFailed: "QR sign-in failed. Try scanning a new code.",
   },
 
   // ── Auth — Setup (owner account creation) ──────────────────────────
@@ -424,13 +425,11 @@ export const strings = {
     title: "Space address",
     hint: "Enter the address of your Stovo space. Use",
     hintHttps: "https://",
-    hintSuffix: "for domain names.",
+    hintSuffix: "for domain names or IP addresses.",
     serverUrl: "Space URL",
     placeholder: "https://stovo.example.com",
     connect: "Connect",
     testingConnection: "Testing connection…",
-    localNetworkHint: "For local network:",
-    localNetworkExample: "http://192.168.1.100:8000",
     invalidUrl: "Enter a valid URL, e.g. https://stovo.example.com or http://192.168.1.100:8000",
     serverReply: (status: number) => `Space replied with ${status} — check the URL`,
     cannotReach: (url: string, reason: string) => `Cannot reach ${url} — ${reason}`,
