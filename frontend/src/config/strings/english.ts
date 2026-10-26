@@ -356,6 +356,7 @@ export const strings = {
     sendCodeFailed: "Could not send verification code",
     invalidVerificationCode: "Invalid verification code",
     scanQrFailed: "Could not scan a desktop sign-in QR code. Try again or use your password.",
+    scanSetupQrFailed: "Could not scan QR code. Try again, use Passkey, or connect with the server address.",
     androidQrSignInFailed: "QR sign-in failed. Try scanning a new code.",
   },
 

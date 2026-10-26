@@ -224,7 +224,7 @@ describe("Android space setup authentication", () => {
     await render();
     await click('[data-auth-method="scan-qr"]');
     expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain("QR code");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not scan QR code. Try again, use Passkey, or connect with the server address.");
     expect(mocks.redeemAndroidQRLogin).not.toHaveBeenCalled();
   });
 

@@ -114,7 +114,7 @@ export default function ServerSetupPage() {
     } catch (err) {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
         ? ANDROID_QR_SCANNER_INSTALLING_MESSAGE
-        : strings.auth.scanQrFailed);
+        : strings.auth.scanSetupQrFailed);
     } finally {
       setIsAuthenticating(false);
     }
