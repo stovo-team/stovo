@@ -10,7 +10,8 @@ import { ProfileSettingsTab } from "./ProfileSettingsTab";
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const expiresAt = "2026-10-09T12:02:00Z";
+const fixedTime = Date.parse("2030-01-01T12:00:00Z");
+const expiresAt = new Date(fixedTime + 2 * 60 * 1000).toISOString();
 const apiUrl = "https://example.test/s/family?route=a&name=two words";
 const code = "grant/+?=&";
 
@@ -44,6 +45,7 @@ describe("Profile Settings Android sign-in", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -68,9 +70,13 @@ describe("Profile Settings Android sign-in", () => {
     expect(container.textContent).toContain("Ключи доступа");
     expect(container.textContent).toContain("QR-код для входа на Android");
     expect(container.textContent).not.toContain("Android sign-in QR");
+    await create(props.strings.security.androidQrCreate);
+    expect(container.querySelector('[role="timer"]')?.textContent).toContain("QR-код исчезнет через:");
   });
 
   it("creates an authenticated grant and displays the encoded current-server QR and expiry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedTime);
     await render();
     await create();
     expect(fetchMock).toHaveBeenCalledWith("http://localhost:3000/api/auth/android-qr-login", expect.objectContaining({ method: "POST" }));
@@ -82,24 +88,44 @@ describe("Profile Settings Android sign-in", () => {
     expect(payload).not.toContain("secret-access-token");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.getAttribute("src")).toBe("data:image/png;base64,cXJjb2Rl");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.classList.contains("android-qr-code")).toBe(true);
-    expect(container.querySelector("time")?.dateTime).toBe(expiresAt);
-    expect(container.querySelector("time")?.textContent).toBe(new Date(expiresAt).toLocaleString("en"));
+    expect(container.querySelector('[role="timer"]')?.textContent).toContain("QR expires in: 02:00");
     expect(localStorage.length).toBe(0);
   });
 
+  it("counts down to expiry, removes the QR, and allows creating another", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedTime);
+    await render();
+    await create();
+    expect(container.querySelector('[role="timer"]')?.textContent).toContain("02:00");
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(119_000); });
+    expect(container.querySelector('[role="timer"]')?.textContent).toContain("00:01");
+    expect(container.querySelector('img[alt="Android sign-in QR code"]')).not.toBeNull();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    expect(container.querySelector('[role="timer"]')).toBeNull();
+    expect(container.querySelector('img[alt="Android sign-in QR code"]')).toBeNull();
+    expect(Array.from(container.querySelectorAll("button")).some((button) => button.textContent === "Create Android sign-in QR")).toBe(true);
+  });
+
   it("regenerates only on explicit action and replaces the displayed grant", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedTime);
     await render();
     await create();
     await render();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ requestId: "second-code", expiresAt: "2026-10-09T12:04:00Z" }), {
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    const secondExpiresAt = new Date(Date.parse(expiresAt) + 30_000).toISOString();
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ requestId: "second-code", expiresAt: secondExpiresAt }), {
       status: 200, headers: { "Content-Type": "application/json" },
     }));
     vi.mocked(QRCode.toDataURL).mockResolvedValueOnce("data:image/png;base64,c2Vjb25k");
     await create("Regenerate Android sign-in QR");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(new URL(String(vi.mocked(QRCode.toDataURL).mock.calls[1][0])).searchParams.get("code")).toBe("second-code");
-    expect(container.querySelector("time")?.dateTime).toBe("2026-10-09T12:04:00Z");
+    expect(container.querySelector('[role="timer"]')?.textContent).toContain("02:00");
     expect(container.querySelector('img[alt="Android sign-in QR code"]')?.getAttribute("src")).toBe("data:image/png;base64,c2Vjb25k");
   });
 
@@ -114,6 +140,22 @@ describe("Profile Settings Android sign-in", () => {
     await create();
     expect(container.querySelector('img[alt="Android sign-in QR code"]')).not.toBeNull();
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("removes the previous QR after a failed regeneration", async () => {
+    await render();
+    await create();
+    expect(container.querySelector('img[alt="Android sign-in QR code"]')).not.toBeNull();
+
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Grant creation unavailable" }), {
+      status: 503, headers: { "Content-Type": "application/json" },
+    }));
+    await create("Regenerate Android sign-in QR");
+
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("Grant creation unavailable");
+    expect(container.querySelector('img[alt="Android sign-in QR code"]')).toBeNull();
+    expect(container.querySelector('[role="timer"]')).toBeNull();
+    expect(Array.from(container.querySelectorAll("button")).some((button) => button.textContent === "Create Android sign-in QR")).toBe(true);
   });
 
   it("prevents duplicate requests while creation is pending", async () => {

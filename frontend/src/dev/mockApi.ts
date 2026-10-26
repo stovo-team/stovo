@@ -90,7 +90,7 @@ async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Pr
 
 async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit): Promise<Response> {
   const path = decodeURI(url.pathname);
-  if (method === "POST" && path === "/api/auth/refresh") return jsonResponse(responseForRefresh());
+  if (method === "POST" && path === "/api/auth/android-qr-login") return jsonResponse({ requestId: "local-mock-android-qr-grant", expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString() }); if (method === "POST" && path === "/api/auth/refresh") return jsonResponse(responseForRefresh());
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }

@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { startRegistration } from "@simplewebauthn/browser";
 import QRCode from "qrcode";
@@ -8,7 +8,6 @@ import { ApiError, getApiUrl } from "../../api/client";
 import { beginPasskeyRegistration, createAndroidQRLogin, finishPasskeyRegistration } from "../../api/auth";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
-import { useResolvedLanguage } from "../../i18n/LanguageContext";
 import { passkeyRegistrationErrorMessage } from "./passkeyErrorMessage";
 
 export type ProfileForm = {
@@ -23,6 +22,19 @@ export type PasswordForm = {
   newPassword: string;
   confirmation: string;
 };
+
+type AndroidQr = { image: string; expiresAt: string; remainingSeconds: number };
+
+function getAndroidQrRemainingSeconds(expiresAt: string, now = Date.now()) {
+  const milliseconds = Date.parse(expiresAt) - now;
+  return Number.isFinite(milliseconds) ? Math.max(0, Math.ceil(milliseconds / 1000)) : 0;
+}
+
+function formatAndroidQrCountdown(remainingSeconds: number) {
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
 
 type Props = {
   strings: AppStrings;
@@ -46,12 +58,24 @@ type Props = {
 
 export function ProfileSettingsTab(props: Props) {
   const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
-  const language = useResolvedLanguage();
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState("");
-  const [androidQR, setAndroidQR] = useState<{ image: string; expiresAt: string } | null>(null);
+  const [androidQR, setAndroidQR] = useState<AndroidQr | null>(null);
   const [androidQRBusy, setAndroidQRBusy] = useState(false);
   const [androidQRError, setAndroidQRError] = useState("");
+  const androidQrExpiresAt = androidQR?.expiresAt;
+  useEffect(() => {
+    if (!androidQrExpiresAt) return;
+    const updateCountdown = () => {
+      const remainingSeconds = getAndroidQrRemainingSeconds(androidQrExpiresAt);
+      setAndroidQR((current) => {
+        if (!current || current.expiresAt !== androidQrExpiresAt) return current;
+        return remainingSeconds > 0 ? { ...current, remainingSeconds } : null;
+      });
+    };
+    const timer = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(timer);
+  }, [androidQrExpiresAt]);
   async function generateAndroidQR() {
     if (!accessToken || androidQRBusy) return;
     setAndroidQRBusy(true);
@@ -62,7 +86,8 @@ export function ProfileSettingsTab(props: Props) {
       const grant = await createAndroidQRLogin(accessToken);
       const payload = `stovo://auth/android-login?version=1&apiUrl=${encodeURIComponent(apiUrl)}&code=${encodeURIComponent(grant.requestId)}`;
       const image = await QRCode.toDataURL(payload, { width: 256, margin: 2 });
-      setAndroidQR({ image, expiresAt: grant.expiresAt });
+      const remainingSeconds = getAndroidQrRemainingSeconds(grant.expiresAt);
+      setAndroidQR(remainingSeconds > 0 ? { image, expiresAt: grant.expiresAt, remainingSeconds } : null);
     } catch (err) {
       setAndroidQRError(err instanceof ApiError ? String(err.message) : strings.security.androidQrCreateFailed);
     } finally {
@@ -116,9 +141,11 @@ export function ProfileSettingsTab(props: Props) {
         <h3>{strings.security.androidQrTitle}</h3>
         <p className="muted-copy">{strings.security.androidQrDescription}</p>
         <button type="button" className="save-button primary-button" onClick={() => void generateAndroidQR()} disabled={!accessToken || androidQRBusy || isSaving}>{androidQRBusy ? strings.security.androidQrCreating : androidQR ? strings.security.androidQrRegenerate : strings.security.androidQrCreate}</button>
-        {androidQR && <div aria-live="polite">
+        {androidQR && <div>
           <img className="android-qr-code" src={androidQR.image} alt={strings.security.androidQrAlt} width={256} height={256} style={{ maxWidth: "100%", height: "auto" }} />
-          <p className="muted-copy">{strings.security.expires} <time dateTime={androidQR.expiresAt}>{new Date(androidQR.expiresAt).toLocaleString(language)}</time></p>
+          <p className="muted-copy" role="timer">
+            {strings.security.expires} {formatAndroidQrCountdown(androidQR.remainingSeconds)}
+          </p>
         </div>}
         {androidQRError && <p role="alert" className="muted-copy">{androidQRError}</p>}
       </section>}

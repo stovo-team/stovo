@@ -404,7 +404,7 @@ export const strings = {
     androidQrRegenerate: "Regenerate Android sign-in QR",
     androidQrCreating: "Creating…",
     androidQrAlt: "Android sign-in QR code",
-    expires: "Expires:",
+    expires: "QR expires in:",
     androidQrCreateFailed: "Could not create Android sign-in QR. Try again.",
     appLock: {
       unlockReason: "Unlock Stovo",
