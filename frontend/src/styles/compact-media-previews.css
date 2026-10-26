@@ -78,3 +78,11 @@
     width: min(320px, 62%);
   }
 }
+
+/* Storage grids have several later desktop-size declarations; keep phone tiles
+   compact so two 140px previews fit on narrow screens. */
+@media (max-width: 767px) {
+  .storage-page .storage-grid {
+    grid-template-columns: repeat(auto-fill, 140px);
+  }
+}
