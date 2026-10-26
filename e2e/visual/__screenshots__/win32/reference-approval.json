@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "status": "approved",
-  "source": "Human asked to fix the red visual CI in this Cursor chat on 2026-10-25 for PR 306. Windows screenshots V-01, V-02, V-03, V-04, V-09, V-11, and V-12 were replaced with that run's captures of the restored full quick-access rows.",
-  "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f",
+  "source": "Human approval: On 2026-10-26 the user approved the eight Windows shell screenshot candidates shown for PR #318 (V-01 through V-08), captured from revision 8ebb6310b1ff51d55b87de10186dfb5595bf84b2. Existing V-09 through V-12 references were retained from the prior approved set.",
+  "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2",
   "environment": {
     "node": "v22.23.3",
     "platform": "win32",
@@ -12,51 +12,63 @@
   "files": [
     {
       "path": "V-01.png",
-      "sha256": "731299fada95b0d94d81890b4d27a89c37e37bd1757811540c679b11d43c4e78"
+      "sha256": "64ffb1f14e489356b75e08f78b599f8416c9c4f1cb49b9d348c773ea0f1e7717",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-02.png",
-      "sha256": "5f060045f7160c01a24ed57d188464b56dd11d89012419bd36ece340ae292ecb"
+      "sha256": "52f7e8b53686ddd0ce45847c4f69b0403a205961c3742c999258470a4e1dc300",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-03.png",
-      "sha256": "e099e716e386b8f2ad6dfa72b228b3e8c78741cbcd76e12eeaa1c8a673213c19"
+      "sha256": "253abcd7003518a16061344811f2cf0f49ce06cac0dc8af2ceab27f594bb7344",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-04.png",
-      "sha256": "75df354f8744492277c4394ffd221adb846139efab1fb59865648475c7f73eab"
+      "sha256": "e16bd4a33f43ee6fe6b2f583f3e93e02d6368cedd8d73f713934a91f97737aca",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-05.png",
-      "sha256": "15e63e454d99aad53119c771fbfba3e5e066c997a95c6a83a4cb6e9ad74deb9c"
+      "sha256": "bcf40369380e36c2694eb5c0bd22cf983bc4fa432915834c3834bf9b7828cc34",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-06.png",
-      "sha256": "6a8554ea84340dd75750bbdcd66e4f3327a54af00d21ed5dbd5df0752473fc95"
+      "sha256": "4f550f7ace01b14da9f1d905e500b14784c713a51cadac61e18e2bb0e2a2e221",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-07.png",
-      "sha256": "7bf6f205a318fc0a1f09131047d93ec9fd8beab12a082cdf049321e71a7ff635"
+      "sha256": "29858f6563fffc226133b4ab4f073b088c4cc9868ab64938a8ab81a184b5fec7",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-08.png",
-      "sha256": "4d87f33bb3846ee750e072590ce3331674e491cec42a23be8e0e32754e2100eb"
+      "sha256": "604f1895d5e2656e1a738bf93db9d80974b641d0247ed226504876ef7fa080ca",
+      "sourceRevision": "8ebb6310b1ff51d55b87de10186dfb5595bf84b2"
     },
     {
       "path": "V-09.png",
-      "sha256": "2068946e24f953b18ca8df1fefbc28d2ebc857a9ecff324dc2e642e5db0f1d34"
+      "sha256": "2068946e24f953b18ca8df1fefbc28d2ebc857a9ecff324dc2e642e5db0f1d34",
+      "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f"
     },
     {
       "path": "V-10.png",
-      "sha256": "753273e76f639cb83ddb051c609ab70441bd0b811a656375f9b82c3be94ee08e"
+      "sha256": "753273e76f639cb83ddb051c609ab70441bd0b811a656375f9b82c3be94ee08e",
+      "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f"
     },
     {
       "path": "V-11.png",
-      "sha256": "ff5e274c0ba86fc1fb43140ee3282eac568203f099367739105b3278ce5db42f"
+      "sha256": "ff5e274c0ba86fc1fb43140ee3282eac568203f099367739105b3278ce5db42f",
+      "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f"
     },
     {
       "path": "V-12.png",
-      "sha256": "beb1098c418751d1e12d1b77dae6159c8f8e5e5d2ebb012d3ae910e8b55d2b7b"
+      "sha256": "beb1098c418751d1e12d1b77dae6159c8f8e5e5d2ebb012d3ae910e8b55d2b7b",
+      "sourceRevision": "0bd4cad383d9fb0a3e3bdcac2f4db2fa86b0fb3f"
     }
   ]
 }

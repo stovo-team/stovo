@@ -417,6 +417,16 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   }
 });
 
+test('Windows docs validation runs kubeconform natively without a Docker engine', () => {
+  const workflow = read('.github/workflows/docs-validation.yml');
+  assert.match(workflow, /kubeconform-windows-amd64\.zip/);
+  assert.match(workflow, /kubeconform-linux-amd64\.tar\.gz/);
+  assert.match(workflow, /if \[ \"\$RUNNER_OS\" = 'Windows' \]; then validator=kubeconform\.exe; fi/);
+  assert.match(workflow, /\| \"\$validator\" -strict -summary -kubernetes-version 1\.30\.0 -/);
+  assert.doesNotMatch(workflow, /docker run --rm -i ghcr\.io\/yannh\/kubeconform/);
+  assert.doesNotMatch(workflow, /Start Docker Desktop for docs validation/);
+});
+
 test('Design issue form requires a description, screenshot, and suggested fix', () => {
   const form = read('.github/ISSUE_TEMPLATE/design_issue.yml');
   for (const [id, label] of [
