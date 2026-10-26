@@ -2292,16 +2292,6 @@ button.minimized-call-button--end:active:not(:disabled) {
   }
 }
 
-/* Preserve source-list widths while keeping wide-screen main panes readable. */
-@media (min-width: 1600px) {
-  .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail,
-  .plans-page .plans-content {
-    box-sizing: border-box;
-    justify-self: center;
-    max-width: 1200px;
-    width: 100%;
-  }
-}
 .pinned-banner-click-area:focus-visible {
   background: var(--surface-hover);
 }

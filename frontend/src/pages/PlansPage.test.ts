@@ -205,4 +205,13 @@ describe("PlansPage week range logic", () => {
     expect(styles).toMatch(/\.plans-agenda\s*\{[^}]*overflow-y:\s*auto/);
     expect(styles).toMatch(/\.storage-content-area\s*\{[^}]*overflow-y:\s*auto/);
   });
+  it("lets the wide-screen Plans calendar use the full main pane", async () => {
+    const { resolve } = await import("node:path");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+    const plansContentRule = Array.from(styles.matchAll(/\.plans-page \.plans-content\s*\{([^}]*)\}/g)).at(-1)?.[1] ?? "";
+
+    expect(plansContentRule).toContain("max-width: none;");
+    expect(styles).toContain(".plans-calendar--7 { min-width: 1200px; }");
+  });
+
 });
