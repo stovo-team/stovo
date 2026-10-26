@@ -31,6 +31,27 @@ describe("mobile canvas message preview sizing", () => {
   });
 });
 
+describe("guest meeting invitation visual hierarchy", () => {
+  it("uses a plain message surface with readable text and a clear primary action", () => {
+    const invitationRule = conversationStyles.match(/\.guest-meeting-invitation\s*\{([^}]*)\}/)?.[1] ?? "";
+    const outgoingRule = conversationStyles.match(/\.message-bubble\.mine \.guest-meeting-invitation\s*\{([^}]*)\}/)?.[1] ?? "";
+    const copyRule = conversationStyles.match(/\.guest-meeting-invitation-copy\s*\{([^}]*)\}/)?.[1] ?? "";
+    const joinRule = conversationStyles.match(/\.guest-meeting-invitation-join\s*\{([^}]*)\}/)?.[1] ?? "";
+    const planRule = conversationStyles.match(/\.guest-meeting-invitation-plan\s*\{([^}]*)\}/)?.[1] ?? "";
+    const outgoingPlanRule = conversationStyles.match(/\.message-bubble\.mine \.guest-meeting-invitation-plan\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(invitationRule).toMatch(/background:\s*transparent/);
+    expect(invitationRule).toMatch(/border:\s*0/);
+    expect(invitationRule).toMatch(/padding:\s*0/);
+    expect(outgoingRule).toMatch(/background:\s*transparent/);
+    expect(copyRule).toMatch(/color:\s*var\(--text-primary\)/);
+    expect(joinRule).toMatch(/background:\s*var\(--color-palette-db0c497d2782\)/);
+    expect(joinRule).toMatch(/min-height:\s*44px/);
+    expect(planRule).toMatch(/background:\s*var\(--surface-raised\)/);
+    expect(outgoingPlanRule).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
+  });
+});
+
 function createMockChat(overrides: Partial<Chat> = {}): Chat {
   return {
     id: "chat-archive",
