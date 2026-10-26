@@ -20,6 +20,7 @@ import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry"
 import { useAuth } from "../auth/AuthContext";
 import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
 import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, scanAndroidLoginQR } from "../native/androidQrScanner";
+import AndroidQrConfirmation from "../components/AndroidQrConfirmation";
 import StovoLogo from "../components/StovoLogo";
 import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
 
@@ -271,7 +272,7 @@ export default function LoginPage() {
             {serverName && <span className="auth-server-name">{serverName}</span>}
           </div>
         </div>
-        {(isDeviceLogin || authView === "password") && (
+        {!androidQR && (isDeviceLogin || authView === "password") && (
           <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
             <label>
               {strings.auth.nickname}
@@ -299,7 +300,7 @@ export default function LoginPage() {
         )}
         {error && <p className="error-text auth-error" role="alert">{error}</p>}
         {isDeviceLogin && <p className="muted-copy">{strings.auth.deviceCodeHint}</p>}
-        {!isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
+        {!androidQR && !isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
           {authView === "qr" ? <>
             <div className="qr-login-panel" aria-live="polite">
               {!qrLogin ? <p>{strings.auth.qrPreparing}</p> : qrLogin.status === "pending" ? <>
@@ -342,23 +343,23 @@ export default function LoginPage() {
           </>}
         </div>}
         {!isDeviceLogin && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && (
-          <div className="auth-method-options">
+          androidQR ? <AndroidQrConfirmation
+            apiUrl={androidQR.apiUrl}
+            isSubmitting={isSubmitting}
+            onConfirm={() => void handleConfirmAndroidQR()}
+            onCancel={() => setAndroidQR(null)}
+          /> : <div className="auth-method-options android-auth-methods">
             <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-              <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
+              <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskeyShort}</span>
             </button>
             {!isSecureContext ? <p className="muted-copy">{strings.auth.secureContextRequired}</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">{strings.auth.supportedAndroidWebView}</p>}
-            {androidQR ? <div className="qr-login-panel" role="region" aria-label={strings.auth.confirmScannedServer}>
-              <p>{strings.auth.signInTo} <strong>{new URL(androidQR.apiUrl).host}</strong>?</p>
-              <p className="muted-copy">{strings.auth.confirmSpaceAddress} {androidQR.apiUrl}</p>
-              <button type="button" disabled={isSubmitting} onClick={() => void handleConfirmAndroidQR()}>{strings.auth.confirmSignIn}</button>
-              <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => setAndroidQR(null)}>{strings.auth.cancel}</button>
-            </div> : <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
-              <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.scanDesktopQr}</span>
-            </button>}
+            <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
+              <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.scanDesktopQrShort}</span>
+            </button>
           </div>
         )}
-        <OwnerSetupPrompt setupRequired={setupRequired} />
-        {Capacitor.isNativePlatform() && (
+        {!androidQR && <OwnerSetupPrompt setupRequired={setupRequired} />}
+        {!androidQR && Capacitor.isNativePlatform() && (
           <p className="secondary-link">
             <Link to="/server-setup">{strings.auth.changeServerAddress}</Link>
           </p>

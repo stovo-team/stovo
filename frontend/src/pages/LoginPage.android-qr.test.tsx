@@ -31,13 +31,24 @@ describe("Android QR login", () => {
     afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
     async function render() { await act(async () => root.render(<MemoryRouter><LoginPage /></MemoryRouter>)); }
     async function click(text: string) { const button = [...container.querySelectorAll("button")].find(item => item.textContent?.includes(text)); expect(button, `Missing action: ${text}`).toBeTruthy(); await act(async () => button!.click()); }
+    async function scan() { const button = container.querySelector<HTMLButtonElement>('[data-auth-method="scan-qr"]'); expect(button, "Missing QR scan action").toBeTruthy(); await act(async () => button!.click()); }
     function expectPassword() { expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull(); }
     function expectNoRedemption() { expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/redeem"))).toHaveLength(0); }
     it("shows host and waits for confirmation; rejection retains selection", async () => {
         await render();
         const selected = getApiUrl();
-        await click("Scan desktop QR");
+        await scan();
         expect(container.textContent).toContain("scanned.example");
+        const confirmation = container.querySelector('[role="region"][aria-label="Confirm scanned server"]');
+        expect(confirmation).not.toBeNull();
+        expect(confirmation?.textContent).toContain(scannedUrl);
+        expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
+        expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
+        expect(container.querySelector('[data-auth-method="scan-qr"]')).toBeNull();
+        const actions = confirmation?.querySelector(".auth-action-row");
+        expect(actions?.querySelectorAll("button")).toHaveLength(2);
+        expect(actions?.textContent).toContain("Confirm sign-in");
+        expect(actions?.textContent).toContain("Cancel");
         expectNoRedemption();
         expect(getApiUrl()).toBe(selected);
         await click("Cancel");
@@ -45,9 +56,15 @@ describe("Android QR login", () => {
         expect(getApiUrl()).toBe(selected);
         expectPassword();
     });
+    it("uses short action labels on Android", async () => {
+        Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+        await render();
+        expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+        expect(container.querySelector('[data-auth-method="scan-qr"]')?.textContent?.trim()).toBe("Scan QR");
+    });
     it("adopts only after redemption and before accepting auth", async () => {
         await render();
-        await click("Scan desktop QR");
+        await scan();
         await click("Confirm sign-in");
         expect(fetch).toHaveBeenCalledWith(`${scannedUrl}/api/auth/android-qr-login/${code}/redeem`, expect.objectContaining({ method: "POST" }));
         expect(getApiUrl()).toBe(scannedUrl);
@@ -56,7 +73,7 @@ describe("Android QR login", () => {
     it("retains selection and password when redemption fails", async () => {
         await render();
         const selected = getApiUrl();
-        await click("Scan desktop QR");
+        await scan();
         vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Expired grant" }), { status: 401 }));
         await click("Confirm sign-in");
         expect(getApiUrl()).toBe(selected);
@@ -71,7 +88,7 @@ describe("Android QR login", () => {
             mocks.scan.mockResolvedValueOnce(result);
         await render();
         const selected = getApiUrl();
-        await click("Scan desktop QR");
+        await scan();
         expectPassword();
         expectNoRedemption();
         expect(getApiUrl()).toBe(selected);
@@ -82,7 +99,7 @@ describe("Android QR login", () => {
         mocks.scan.mockRejectedValueOnce(new Error("QR scanner is being installed. Try again shortly or use your password."));
         await render();
         const selected = getApiUrl();
-        await click("Scan desktop QR");
+        await scan();
         expect(container.querySelector('[role="alert"]')?.textContent).toContain("QR scanner is being installed");
         expect(container.textContent).toContain("Try again shortly");
         expectPassword();

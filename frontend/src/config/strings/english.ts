@@ -327,6 +327,7 @@ export const strings = {
     deviceCodeHint:
       "Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.",
     signInWithPasskey: "Sign in with Passkey",
+    signInWithPasskeyShort: "Passkey",
     signInWithPassword: "Sign in with Password",
     signInWithQr: "Sign in with QR code",
     secureContextRequired: "Passkeys require a secure connection (HTTPS).",
@@ -344,6 +345,7 @@ export const strings = {
     confirmSignIn: "Confirm sign-in",
     cancel: "Cancel",
     scanDesktopQr: "Scan desktop QR",
+    scanDesktopQrShort: "Scan QR",
     or: "or",
     signIn: "Sign In",
     signedIn: "Signed in",
