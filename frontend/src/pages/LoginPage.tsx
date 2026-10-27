@@ -71,6 +71,14 @@ function safeFallbackPath(fallback: string): string {
   }
 }
 
+function openStovoApp(url: string) {
+  const appLink = document.createElement("a");
+  appLink.href = url;
+  document.body.appendChild(appLink);
+  appLink.click();
+  appLink.remove();
+}
+
 export default function LoginPage() {
   const strings = useStrings();
   const language = useResolvedLanguage();
@@ -85,7 +93,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
-  const [qrLogin, setQrLogin] = useState<{ requestId: string; image: string; expiresAt: string; status: string } | null>(null);
+  const [qrLogin, setQrLogin] = useState<{ requestId: string; image: string; scanUrl: string; expiresAt: string; status: string } | null>(null);
   const [androidQR, setAndroidQR] = useState<AndroidLoginQR | null>(null);
   const [authView, setAuthView] = useState<"password" | "qr">("password");
   const [isSecureContext, setIsSecureContext] = useState(() => typeof window !== "undefined" && window.isSecureContext);
@@ -95,6 +103,8 @@ export default function LoginPage() {
   const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
   const prefix = getClusterPrefix();
   const isDeviceLogin = new URLSearchParams(location.search).get("deviceLogin") === "1";
+  const isMobileBrowser = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const passkeyLabel = isMobileBrowser ? strings.auth.signInWithPasskeyShort : strings.auth.signInWithPasskey;
   const postLoginPath = getSafeLoginReturnPath(location.state, `${prefix}/app/chats`);
 
   useEffect(() => {
@@ -253,7 +263,8 @@ export default function LoginPage() {
     try {
       const request = await createBrowserQRLogin();
       const image = await QRCode.toDataURL(request.scanUrl, { width: 240, margin: 1 });
-      setQrLogin({ requestId: request.requestId, image, expiresAt: request.expiresAt, status: "pending" });
+      if (isMobileBrowser) openStovoApp(request.scanUrl);
+      setQrLogin({ requestId: request.requestId, image, scanUrl: request.scanUrl, expiresAt: request.expiresAt, status: "pending" });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : strings.auth.qrStartFailed);
       setAuthView("password");
@@ -317,8 +328,9 @@ export default function LoginPage() {
             </div>
             <div className="auth-method-grid">
               <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-                <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
+                <KeyRound aria-hidden="true" size={18} /> <span>{passkeyLabel}</span>
               </button>
+              {qrLogin && isMobileBrowser && <button type="button" className="secondary-button" data-auth-method="open-app" onClick={() => openStovoApp(qrLogin.scanUrl)}>{strings.auth.openInStovo}</button>}
               <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => { setAuthView("password"); setQrLogin(null); }}>
                 <span>{strings.auth.signInWithPassword}</span>
               </button>
@@ -333,10 +345,10 @@ export default function LoginPage() {
             </div>
             <div className="auth-method-grid">
               <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
-                <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskey}</span>
+                <KeyRound aria-hidden="true" size={18} /> <span>{passkeyLabel}</span>
               </button>
               <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
-                <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.signInWithQr}</span>
+                <QrCode aria-hidden="true" size={18} /> <span>{isMobileBrowser ? strings.auth.signInWithQrShort : strings.auth.signInWithQr}</span>
               </button>
             </div>
             {!isSecureContext && <p className="muted-copy">{strings.auth.secureContextRequired}</p>}

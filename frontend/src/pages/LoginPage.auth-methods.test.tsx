@@ -50,7 +50,7 @@ describe("LoginPage authentication methods", () => {
     mocks.fetchSetupStatus.mockResolvedValue({ setupRequired: false });
     mocks.beginPasskeyAuthentication.mockReset().mockResolvedValue({ ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } });
     mocks.finishPasskeyAuthentication.mockReset().mockResolvedValue({ accessToken: "access" });
-    mocks.createBrowserQRLogin.mockReset().mockResolvedValue({ requestId: "request-1", scanUrl: "stovo://auth/qr/request-1", expiresAt: "2030-01-01T00:00:00Z" });
+    mocks.createBrowserQRLogin.mockReset().mockResolvedValue({ requestId: "request-1", scanUrl: `stovo://auth/qr-approve/${"a".repeat(48)}`, expiresAt: "2030-01-01T00:00:00Z" });
     mocks.getBrowserQRLoginStatus.mockReset().mockResolvedValue({ status: "pending" });
     mocks.qrToDataURL.mockReset().mockResolvedValue("data:image/png;base64,ZmFrZQ==");
     mocks.startAuthentication.mockReset().mockResolvedValue({ id: "credential-1", response: {} });
@@ -65,6 +65,8 @@ describe("LoginPage authentication methods", () => {
     act(() => root.unmount());
     container.remove();
     document.body.innerHTML = "";
+    Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36" });
     delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
     delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
@@ -76,22 +78,24 @@ describe("LoginPage authentication methods", () => {
   }
 
   it("keeps username and password as the default and offers passkey and QR as secondary methods", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36" });
     await renderPage();
 
     expect(container.querySelector('input[autocomplete="username"]')).not.toBeNull();
     expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
     expect(container.textContent).toContain("Sign In");
-    expect(container.textContent).toContain("Passkey");
-    expect(container.textContent).toContain("QR code");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR code");
   });
 
   it("renders authentication labels in Russian when the device language is Russian", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36" });
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();
     expect(container.textContent).toContain("Никнейм");
-    expect(container.textContent).toContain("Войти с помощью ключа доступа");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ доступа");
+    expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
     expect(container.textContent).not.toContain("Sign in with Passkey");
-    Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
   });
 
   it("shows QR sign-in without login fields and offers passkey or password", async () => {
@@ -145,6 +149,25 @@ describe("LoginPage authentication methods", () => {
     expect(container.textContent).toContain("Scan this code with Stovo");
     expect(container.textContent).toContain("Waiting for approval");
     expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
+  });
+
+  it("automatically opens the Stovo app for mobile QR sign-in and keeps a manual fallback", async () => {
+    Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36" });
+    const launchedUrls: string[] = [];
+    const launchApp = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function(this: HTMLAnchorElement) {
+      expect(this.isConnected).toBe(true);
+      launchedUrls.push(this.href);
+    });
+    await renderPage();
+
+    const qrAction = container.querySelector<HTMLButtonElement>('[data-auth-method="qr"]');
+    await act(async () => qrAction?.click());
+
+    expect(launchApp).toHaveBeenCalledOnce();
+    expect(launchedUrls).toEqual([`stovo://auth/qr-approve/${"a".repeat(48)}`]);
+    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="open-app"]')).not.toBeNull();
+    expect(container.querySelector('[data-auth-method="open-app"]')?.textContent).toBe("Open in Stovo");
+    launchApp.mockRestore();
   });
 
   it("completes a passkey assertion and accepts the normal Stovo auth response", async () => {
