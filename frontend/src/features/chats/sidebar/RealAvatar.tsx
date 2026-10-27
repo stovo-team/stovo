@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import type { FamilyFile } from "../../../api/files";
 import { EntityAvatar } from "../../../components/EntityAvatar";
-import type { AvatarEntityKind } from "../../../components/entityAvatar";
+import type { AvatarEntityKind } from "../../../components/avatarIdentity";
 import type { ChatAvatarFallbackKind } from "../shared/types";
 
 const entityKindForFallback: Record<ChatAvatarFallbackKind, AvatarEntityKind> = {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Chat } from "../../../api/chats";
-import { colorForAvatarId } from "../../../components/entityAvatar";
+import { colorForAvatarId } from "../../../components/avatarIdentity";
 import { defaultFolderRules, folderMatchesChatProperties, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 
 const chat = (overrides: Partial<Chat> = {}): Chat => ({

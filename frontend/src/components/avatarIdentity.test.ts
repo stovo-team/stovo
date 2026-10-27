@@ -7,7 +7,7 @@ import {
   defaultAvatarSymbol,
   isKnownAvatarColorId,
   isKnownAvatarSymbolId
-} from "./entityAvatar";
+} from "./avatarIdentity";
 
 describe("entity avatar defaults", () => {
   it("maps each entity kind to its approved symbol", () => {

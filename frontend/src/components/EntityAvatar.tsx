@@ -4,8 +4,8 @@ import { useEffect, useState, type CSSProperties } from "react";
 import type { FamilyFile } from "../api/files";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { avatarInitials } from "../utils/avatarInitials";
-import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "./entityAvatar";
-import type { AvatarEntityKind } from "./entityAvatar";
+import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "./avatarIdentity";
+import type { AvatarEntityKind } from "./avatarIdentity";
 
 export type EntityAvatarProps = {
   accessToken: string | null;

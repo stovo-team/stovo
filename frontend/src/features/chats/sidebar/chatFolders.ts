@@ -1,6 +1,6 @@
 import type { Chat } from "../../../api/chats";
-import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "../../../components/entityAvatar";
-import type { AvatarColorId, AvatarSymbolId } from "../../../components/entityAvatar";
+import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "../../../components/avatarIdentity";
+import type { AvatarColorId, AvatarSymbolId } from "../../../components/avatarIdentity";
 
 export type FolderChatType = "direct" | "group" | "channel" | "voice" | "archive";
 
