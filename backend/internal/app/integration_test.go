@@ -287,18 +287,24 @@ func execSchemaSQL(db *sql.DB, raw string) error {
 		cleaned.WriteString(line)
 		cleaned.WriteByte('\n')
 	}
+	statements := make([]string, 0)
 	for _, stmt := range splitSQLStatements(cleaned.String()) {
 		stmt = strings.TrimSpace(stmt)
 		if stmt == "" || schemaStatementIsCommentOnly(stmt) || shouldSkipSchemaStatement(stmt) {
 			continue
 		}
-		if _, err := db.Exec(stmt); err != nil {
-			preview := stmt
-			if len(preview) > 240 {
-				preview = preview[:240] + "…"
-			}
-			return fmt.Errorf("%w\nstatement: %s", err, preview)
+		statements = append(statements, stmt)
+	}
+	if len(statements) == 0 {
+		return nil
+	}
+	batch := strings.Join(statements, ";\n") + ";"
+	if _, err := db.Exec(batch); err != nil {
+		preview := batch
+		if len(preview) > 240 {
+			preview = preview[:240] + "…"
 		}
+		return fmt.Errorf("%w\nschema SQL batch preview: %s", err, preview)
 	}
 	return nil
 }
