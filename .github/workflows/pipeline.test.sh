@@ -107,6 +107,7 @@ awk '
   job == "deploy-android" && /^      - name: Build frontend for Android release$/ { android_builds_frontend = 1 }
   job == "deploy-android" && /git fetch --tags/ { android_fetches_tags = 1 }
   /dorny\/paths-filter@v4/ || /dorny\/paths-filter@[[:xdigit:]]{40}[[:space:]]+# v4/ { paths_filter_v4 = 1 }
+  job == "changes" && /^[[:space:]]+- / && (/pipeline\.yml/ || /pipeline\.test\.sh/) { ci_workflow_triggers_product_jobs = 1 }
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
 
   END {
@@ -116,6 +117,7 @@ awk '
     if (!changes_fetches_full_history) fail("Detect Changes must fetch full history so merge pushes can compare against the previous push commit.")
     if (!changes_skips_historical_blobs) fail("Detect Changes must avoid downloading historical blobs when fetching full history.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
+    if (ci_workflow_triggers_product_jobs) fail("CI workflow-only changes must not trigger product build/deploy jobs.")
     if (insecure_node_override) fail("The pipeline must not enable the insecure Node.js runtime override.")
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
       fail("Frontend CI must run only when frontend paths changed.")
