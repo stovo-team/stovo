@@ -108,6 +108,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+      - name: Report runner capacity
+        shell: powershell
+        run: |
+          $computer = Get-CimInstance Win32_ComputerSystem
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
       - name: Clear stale npm cache
         run: npm cache clean --force
       - name: Install dependencies
@@ -151,7 +157,7 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: [changes, frontend-ci]
+    needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
     defaults:
@@ -173,6 +179,11 @@ jobs:
           }
 
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: Report runner capacity
+        shell: powershell
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
       - name: Start Docker Desktop for backend test services
         shell: powershell
         run: |

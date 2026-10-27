@@ -31,8 +31,8 @@ export default defineConfig({
   cacheDir: process.env.STOVO_VITE_CACHE_DIR || undefined,
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
-    // Self-hosted CI shares memory with other jobs; avoid a worker per CPU.
-    maxWorkers: process.env.CI ? 1 : undefined,
+    // Start with three workers and validate this against the self-hosted E2E runners.
+    maxWorkers: process.env.CI ? 3 : undefined,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

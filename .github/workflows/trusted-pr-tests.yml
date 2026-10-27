@@ -161,7 +161,7 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: [changes, frontend-ci]
+    needs: changes
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&

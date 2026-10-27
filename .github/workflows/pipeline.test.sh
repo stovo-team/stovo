@@ -115,8 +115,8 @@ awk '
     if (job_condition["backend-ci"] != "${{ !cancelled() && needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only }}") {
       fail("Backend CI must run only when backend paths changed.")
     }
-    if (job_needs["backend-ci"] != "[changes, frontend-ci]") {
-      fail("Backend CI must wait for Frontend CI to avoid overloading the shared Windows runner pool.")
+    if (job_needs["backend-ci"] != "changes") {
+      fail("Backend CI must be eligible independently of Frontend CI because it uses a separate runner pool.")
     }
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
@@ -319,8 +319,8 @@ if ! grep -Fq 'name: Clear stale npm cache' <<< "$frontend_ci_contract" || ! gre
   exit 1
 fi
 
-if ! grep -Fq 'needs: [changes, frontend-ci]' <<< "$backend_ci_contract"; then
-  echo "Trusted PR backend CI must wait for Frontend CI to avoid overloading the shared Windows runner pool." >&2
+if ! grep -Fq 'needs: changes' <<< "$backend_ci_contract"; then
+  echo "Trusted PR backend CI must be eligible independently of Frontend CI because it uses a separate runner pool." >&2
   exit 1
 fi
 if ! grep -Fq '!cancelled()' <<< "$backend_ci_contract"; then
