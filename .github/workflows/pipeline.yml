@@ -155,7 +155,7 @@ jobs:
         shell: bash
         run: bash scripts/check-solid-boundaries.sh all
 
-  backend-test-shards:
+  backend_test_shards:
     name: Backend CI test shards
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
@@ -477,8 +477,8 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: [changes, backend-test-shards]
-    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && needs['backend-test-shards'].result == 'success' && !inputs.backend_deploy_only }}
+    needs: [changes, backend_test_shards]
+    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && needs['backend_test_shards'].result == 'success' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
     defaults:
       run:

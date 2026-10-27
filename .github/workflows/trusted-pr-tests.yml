@@ -159,7 +159,7 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-  backend-test-shards:
+  backend_test_shards:
     name: Backend CI test shards
     needs: changes
     if: >-
@@ -377,12 +377,12 @@ jobs:
 
   backend-ci:
     name: Backend CI
-    needs: [changes, backend-test-shards]
+    needs: [changes, backend_test_shards]
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true' &&
-      needs['backend-test-shards'].result == 'success'
+      needs['backend_test_shards'].result == 'success'
     runs-on: [self-hosted, tests, Windows]
     steps:
       - name: Aggregate successful backend shards
