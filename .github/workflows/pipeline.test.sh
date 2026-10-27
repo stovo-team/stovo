@@ -90,8 +90,7 @@ awk '
   job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
   job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
   job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
-  job == "frontend-ci" && /^      - name: Clear stale npm cache$/ { frontend_npm_cache_step = 1 }
-  job == "frontend-ci" && frontend_npm_cache_step && /npm cache clean --force/ { frontend_npm_cache_cleaned = 1 }
+  job == "frontend-ci" && /npm cache clean --force/ { frontend_npm_cache_cleaned = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
@@ -141,8 +140,8 @@ awk '
     if (!frontend_git_config_count || !frontend_autocrlf_key || !frontend_autocrlf_disabled) {
       fail("Frontend CI must disable the Windows autocrlf conversion before checkout.")
     }
-    if (!frontend_npm_cache_step || !frontend_npm_cache_cleaned) {
-      fail("Frontend CI must clear stale runner-local npm cache before installing dependencies.")
+    if (frontend_npm_cache_cleaned) {
+      fail("Frontend CI must not clear the shared runner-local npm cache before installing dependencies.")
     }
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
@@ -353,8 +352,8 @@ for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Win
     exit 1
   fi
 done
-if ! grep -Fq 'name: Clear stale npm cache' <<< "$frontend_ci_contract" || ! grep -Fq 'run: npm cache clean --force' <<< "$frontend_ci_contract"; then
-  echo "Trusted PR frontend CI must clear stale runner-local npm cache before installing dependencies." >&2
+if grep -Fq 'npm cache clean --force' <<< "$frontend_ci_contract"; then
+  echo "Trusted PR frontend CI must not clear the shared runner-local npm cache before installing dependencies." >&2
   exit 1
 fi
 
