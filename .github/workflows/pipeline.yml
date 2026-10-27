@@ -108,8 +108,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - name: Clear stale npm cache
-        run: npm cache clean --force
+      - name: Report runner capacity
+        shell: powershell
+        run: |
+          $computer = Get-CimInstance Win32_ComputerSystem
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -149,11 +153,17 @@ jobs:
         shell: bash
         run: bash scripts/check-solid-boundaries.sh all
 
-  backend-ci:
-    name: Backend CI
-    needs: [changes, frontend-ci]
+  backend_test_shards:
+    name: Backend CI test shards
+    needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1]
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -173,6 +183,11 @@ jobs:
           }
 
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: Report runner capacity
+        shell: powershell
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
       - name: Start Docker Desktop for backend test services
         shell: powershell
         run: |
@@ -242,7 +257,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
           $postgresContainer = "stovo-test-postgres-$suffix"
           $redisContainer = "stovo-test-redis-$suffix"
 
@@ -296,6 +311,7 @@ jobs:
       - name: Download modules
         run: go mod download
       - name: Ent generation drift
+        if: matrix.shard == 0
         run: |
           go generate ./ent
           if ! git diff --quiet -- ent; then
@@ -304,11 +320,13 @@ jobs:
             exit 1
           fi
       - name: Cache golangci-lint binary
+        if: matrix.shard == 0
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/golangci-lint/v2.14.0
           key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
       - name: Install golangci-lint binary
+        if: matrix.shard == 0
         shell: powershell
         run: |
           $version = '2.14.0'
@@ -336,37 +354,48 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "golangci-lint $version could not start."
           }
+      - name: Configure runner-local golangci-lint cache
+        if: matrix.shard == 0
+        shell: powershell
+        run: |
+          $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
+          New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
+          Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
       - name: Go lint
+        if: matrix.shard == 0
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
           install-mode: none
           working-directory: backend
           verify: true
-          skip-cache: false
+          skip-cache: true
           args: --timeout=5m
-      - name: Unit and integration tests with coverage
+      - name: Sharded unit and integration tests with coverage
+        env:
+          BACKEND_TEST_SHARD: ${{ matrix.shard }}
         run: |
-          rm -f coverage.out
-          go test -count=1 -covermode=atomic -coverprofile=coverage.out ./...
-          go tool cover -func=coverage.out | tee coverage-summary.txt
-          {
-            echo "## Backend coverage"
-            echo '```text'
-            tail -n 1 coverage-summary.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload backend coverage profile
+          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 2)"
+          go test -count=1 -covermode=atomic -coverprofile="coverage-app-$BACKEND_TEST_SHARD.out" -run "$testRegex" ./internal/app
+          if [ "$BACKEND_TEST_SHARD" = "0" ]; then
+            mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
+            if [ "${#packages[@]}" -gt 0 ]; then
+              go test -count=1 -covermode=atomic -coverprofile=coverage-other.out "${packages[@]}"
+            fi
+          fi
+      - name: Upload backend coverage shard
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        continue-on-error: true
+        if: always()
         with:
-          name: backend-coverage
-          path: backend/coverage.out
-          if-no-files-found: ignore
+          name: backend-coverage-shard-${{ matrix.shard }}
+          path: backend/coverage-*.out
+          if-no-files-found: error
       - name: SOLID architecture boundaries
+        if: matrix.shard == 0
         working-directory: .
         run: bash scripts/check-solid-boundaries.sh backend
       - name: Reject UTF-8 BOMs in Atlas migrations
+        if: matrix.shard == 0
         run: |
           set -euo pipefail
           if LC_ALL=C grep -rl $'^\xEF\xBB\xBF' migrations --include='*.sql'; then
@@ -374,12 +403,13 @@ jobs:
             exit 1
           fi
       - name: Atlas migrate validate
-        if: hashFiles('backend/migrations/atlas.sum') != ''
+        if: matrix.shard == 0 && hashFiles('backend/migrations/atlas.sum') != ''
         run: |
           migration_dir="$(cygpath -w "$PWD/migrations")"
           migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
           docker run --rm --mount "$migration_mount" arigaio/atlas:1.3.2 migrate validate --dir "file:///migrations"
       - name: Reject out-of-order migrations
+        if: matrix.shard == 0
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
@@ -405,7 +435,7 @@ jobs:
                 fi
               done
       - name: Atlas replay empty install
-        if: hashFiles('backend/migrations/*.sql') != ''
+        if: matrix.shard == 0 && hashFiles('backend/migrations/*.sql') != ''
         run: |
           migration_dir="$(cygpath -w "$PWD/migrations")"
           migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
@@ -414,6 +444,7 @@ jobs:
           docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" --mount "$migration_mount" arigaio/atlas:1.3.2 \
             migrate apply --dir "file:///migrations" --url "$ATLAS_DATABASE_URL"
       - name: Forbid raw SQL in app packages
+        if: matrix.shard == 0
         run: |
           set -euo pipefail
           if ! command -v rg >/dev/null 2>&1; then
@@ -438,9 +469,100 @@ jobs:
         shell: powershell
         run: |
           if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
-            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
             docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }
+
+  backend-ci:
+    name: Backend CI
+    needs: [changes, backend_test_shards]
+    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
+    runs-on: [self-hosted, tests, Windows]
+    permissions:
+      actions: read
+      contents: read
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: Require successful backend test shards
+        env:
+          BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
+        run: |
+          if [[ "$BACKEND_SHARD_RESULT" != "success" ]]; then
+            echo "Backend test shards did not succeed: $BACKEND_SHARD_RESULT" >&2
+            exit 1
+          fi
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+      - name: Download backend coverage shard artifacts
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $artifactsUri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID/artifacts?per_page=100"
+          $artifactResponse = Invoke-RestMethod -Method Get -Uri $artifactsUri -Headers $headers
+          $destination = Join-Path $env:GITHUB_WORKSPACE 'backend'
+
+          foreach ($shard in @(0, 1)) {
+            $artifactName = "backend-coverage-shard-$shard"
+            $artifactMatches = @($artifactResponse.artifacts | Where-Object { $_.name -eq $artifactName -and -not $_.expired })
+            if ($artifactMatches.Count -ne 1) {
+              throw "Expected exactly one unexpired artifact named '$artifactName'; found $($artifactMatches.Count)."
+            }
+
+            $zipPath = Join-Path $env:RUNNER_TEMP "$artifactName.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP $artifactName
+            if (Test-Path $extractPath) { Remove-Item -LiteralPath $extractPath -Recurse -Force }
+            Invoke-WebRequest -Uri $artifactMatches[0].archive_download_url -Headers $headers -OutFile $zipPath -UseBasicParsing
+            Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+
+            $expectedProfiles = if ($shard -eq 0) { @('coverage-app-0.out', 'coverage-other.out') } else { @('coverage-app-1.out') }
+            foreach ($profile in $expectedProfiles) {
+              $profilePath = Join-Path $extractPath $profile
+              if (-not (Test-Path $profilePath -PathType Leaf)) {
+                throw "Artifact '$artifactName' is missing expected coverage profile '$profile'."
+              }
+              Copy-Item -LiteralPath $profilePath -Destination (Join-Path $destination $profile) -Force
+            }
+          }
+      - name: Merge backend coverage profiles
+        run: |
+          go run ./cmd/test-shard merge -output coverage.out coverage-app-0.out coverage-app-1.out coverage-other.out
+          go tool cover -func=coverage.out | tee coverage-summary.txt
+          {
+            echo "## Backend coverage"
+            echo '```text'
+            tail -n 1 coverage-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload merged backend coverage profile
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          if-no-files-found: error
 
   deploy-frontend-web:
     name: Deploy Frontend Web
