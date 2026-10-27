@@ -381,9 +381,16 @@ jobs:
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&
-      needs.changes.outputs.backend == 'true' &&
-      needs.backend_test_shards.result == 'success'
+      needs.changes.outputs.backend == 'true'
     runs-on: [self-hosted, tests, Windows]
     steps:
+      - name: Require successful backend test shards
+        env:
+          BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
+        shell: powershell
+        run: |
+          if ($env:BACKEND_SHARD_RESULT -ne 'success') {
+            throw "Backend test shards did not succeed: $env:BACKEND_SHARD_RESULT"
+          }
       - name: Aggregate successful backend shards
         run: echo "Both backend test shards and lint passed."

@@ -197,8 +197,9 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
     echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the two shards." >&2
     exit 1
   fi
-  if ! grep -Fq "needs.backend_test_shards.result == 'success'" <<< "$aggregate_contract"; then
-    echo "Backend workflow $workflow must require successful backend test shards before aggregating." >&2
+  if ! grep -Fq 'BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}' <<< "$aggregate_contract" || \
+     ! grep -Fq 'did not succeed:' <<< "$aggregate_contract"; then
+    echo "Backend workflow $workflow must fail its aggregate when a test shard fails or is skipped." >&2
     exit 1
   fi
 done
