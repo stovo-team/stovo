@@ -1628,6 +1628,9 @@ type ChatMutation struct {
 	title                    *string
 	description              *string
 	chat_photo_file_id       *string
+	chat_avatar_mode         *string
+	chat_avatar_symbol_id    *string
+	chat_avatar_color_id     *string
 	media_visibility         *string
 	comments_enabled         *bool
 	encryption_protocol      *string
@@ -2028,6 +2031,153 @@ func (m *ChatMutation) ChatPhotoFileIDCleared() bool {
 func (m *ChatMutation) ResetChatPhotoFileID() {
 	m.chat_photo_file_id = nil
 	delete(m.clearedFields, chat.FieldChatPhotoFileID)
+}
+
+// SetChatAvatarMode sets the "chat_avatar_mode" field.
+func (m *ChatMutation) SetChatAvatarMode(s string) {
+	m.chat_avatar_mode = &s
+}
+
+// ChatAvatarMode returns the value of the "chat_avatar_mode" field in the mutation.
+func (m *ChatMutation) ChatAvatarMode() (r string, exists bool) {
+	v := m.chat_avatar_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatAvatarMode returns the old "chat_avatar_mode" field's value of the Chat entity.
+// If the Chat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatMutation) OldChatAvatarMode(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatAvatarMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatAvatarMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatAvatarMode: %w", err)
+	}
+	return oldValue.ChatAvatarMode, nil
+}
+
+// ClearChatAvatarMode clears the value of the "chat_avatar_mode" field.
+func (m *ChatMutation) ClearChatAvatarMode() {
+	m.chat_avatar_mode = nil
+	m.clearedFields[chat.FieldChatAvatarMode] = struct{}{}
+}
+
+// ChatAvatarModeCleared returns if the "chat_avatar_mode" field was cleared in this mutation.
+func (m *ChatMutation) ChatAvatarModeCleared() bool {
+	_, ok := m.clearedFields[chat.FieldChatAvatarMode]
+	return ok
+}
+
+// ResetChatAvatarMode resets all changes to the "chat_avatar_mode" field.
+func (m *ChatMutation) ResetChatAvatarMode() {
+	m.chat_avatar_mode = nil
+	delete(m.clearedFields, chat.FieldChatAvatarMode)
+}
+
+// SetChatAvatarSymbolID sets the "chat_avatar_symbol_id" field.
+func (m *ChatMutation) SetChatAvatarSymbolID(s string) {
+	m.chat_avatar_symbol_id = &s
+}
+
+// ChatAvatarSymbolID returns the value of the "chat_avatar_symbol_id" field in the mutation.
+func (m *ChatMutation) ChatAvatarSymbolID() (r string, exists bool) {
+	v := m.chat_avatar_symbol_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatAvatarSymbolID returns the old "chat_avatar_symbol_id" field's value of the Chat entity.
+// If the Chat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatMutation) OldChatAvatarSymbolID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatAvatarSymbolID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatAvatarSymbolID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatAvatarSymbolID: %w", err)
+	}
+	return oldValue.ChatAvatarSymbolID, nil
+}
+
+// ClearChatAvatarSymbolID clears the value of the "chat_avatar_symbol_id" field.
+func (m *ChatMutation) ClearChatAvatarSymbolID() {
+	m.chat_avatar_symbol_id = nil
+	m.clearedFields[chat.FieldChatAvatarSymbolID] = struct{}{}
+}
+
+// ChatAvatarSymbolIDCleared returns if the "chat_avatar_symbol_id" field was cleared in this mutation.
+func (m *ChatMutation) ChatAvatarSymbolIDCleared() bool {
+	_, ok := m.clearedFields[chat.FieldChatAvatarSymbolID]
+	return ok
+}
+
+// ResetChatAvatarSymbolID resets all changes to the "chat_avatar_symbol_id" field.
+func (m *ChatMutation) ResetChatAvatarSymbolID() {
+	m.chat_avatar_symbol_id = nil
+	delete(m.clearedFields, chat.FieldChatAvatarSymbolID)
+}
+
+// SetChatAvatarColorID sets the "chat_avatar_color_id" field.
+func (m *ChatMutation) SetChatAvatarColorID(s string) {
+	m.chat_avatar_color_id = &s
+}
+
+// ChatAvatarColorID returns the value of the "chat_avatar_color_id" field in the mutation.
+func (m *ChatMutation) ChatAvatarColorID() (r string, exists bool) {
+	v := m.chat_avatar_color_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatAvatarColorID returns the old "chat_avatar_color_id" field's value of the Chat entity.
+// If the Chat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatMutation) OldChatAvatarColorID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatAvatarColorID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatAvatarColorID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatAvatarColorID: %w", err)
+	}
+	return oldValue.ChatAvatarColorID, nil
+}
+
+// ClearChatAvatarColorID clears the value of the "chat_avatar_color_id" field.
+func (m *ChatMutation) ClearChatAvatarColorID() {
+	m.chat_avatar_color_id = nil
+	m.clearedFields[chat.FieldChatAvatarColorID] = struct{}{}
+}
+
+// ChatAvatarColorIDCleared returns if the "chat_avatar_color_id" field was cleared in this mutation.
+func (m *ChatMutation) ChatAvatarColorIDCleared() bool {
+	_, ok := m.clearedFields[chat.FieldChatAvatarColorID]
+	return ok
+}
+
+// ResetChatAvatarColorID resets all changes to the "chat_avatar_color_id" field.
+func (m *ChatMutation) ResetChatAvatarColorID() {
+	m.chat_avatar_color_id = nil
+	delete(m.clearedFields, chat.FieldChatAvatarColorID)
 }
 
 // SetMediaVisibility sets the "media_visibility" field.
@@ -2619,7 +2769,7 @@ func (m *ChatMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChatMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 16)
 	if m.family != nil {
 		fields = append(fields, chat.FieldFamilyID)
 	}
@@ -2637,6 +2787,15 @@ func (m *ChatMutation) Fields() []string {
 	}
 	if m.chat_photo_file_id != nil {
 		fields = append(fields, chat.FieldChatPhotoFileID)
+	}
+	if m.chat_avatar_mode != nil {
+		fields = append(fields, chat.FieldChatAvatarMode)
+	}
+	if m.chat_avatar_symbol_id != nil {
+		fields = append(fields, chat.FieldChatAvatarSymbolID)
+	}
+	if m.chat_avatar_color_id != nil {
+		fields = append(fields, chat.FieldChatAvatarColorID)
 	}
 	if m.media_visibility != nil {
 		fields = append(fields, chat.FieldMediaVisibility)
@@ -2679,6 +2838,12 @@ func (m *ChatMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedBy()
 	case chat.FieldChatPhotoFileID:
 		return m.ChatPhotoFileID()
+	case chat.FieldChatAvatarMode:
+		return m.ChatAvatarMode()
+	case chat.FieldChatAvatarSymbolID:
+		return m.ChatAvatarSymbolID()
+	case chat.FieldChatAvatarColorID:
+		return m.ChatAvatarColorID()
 	case chat.FieldMediaVisibility:
 		return m.MediaVisibility()
 	case chat.FieldCommentsEnabled:
@@ -2714,6 +2879,12 @@ func (m *ChatMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreatedBy(ctx)
 	case chat.FieldChatPhotoFileID:
 		return m.OldChatPhotoFileID(ctx)
+	case chat.FieldChatAvatarMode:
+		return m.OldChatAvatarMode(ctx)
+	case chat.FieldChatAvatarSymbolID:
+		return m.OldChatAvatarSymbolID(ctx)
+	case chat.FieldChatAvatarColorID:
+		return m.OldChatAvatarColorID(ctx)
 	case chat.FieldMediaVisibility:
 		return m.OldMediaVisibility(ctx)
 	case chat.FieldCommentsEnabled:
@@ -2778,6 +2949,27 @@ func (m *ChatMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChatPhotoFileID(v)
+		return nil
+	case chat.FieldChatAvatarMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatAvatarMode(v)
+		return nil
+	case chat.FieldChatAvatarSymbolID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatAvatarSymbolID(v)
+		return nil
+	case chat.FieldChatAvatarColorID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatAvatarColorID(v)
 		return nil
 	case chat.FieldMediaVisibility:
 		v, ok := value.(string)
@@ -2885,6 +3077,15 @@ func (m *ChatMutation) ClearedFields() []string {
 	if m.FieldCleared(chat.FieldChatPhotoFileID) {
 		fields = append(fields, chat.FieldChatPhotoFileID)
 	}
+	if m.FieldCleared(chat.FieldChatAvatarMode) {
+		fields = append(fields, chat.FieldChatAvatarMode)
+	}
+	if m.FieldCleared(chat.FieldChatAvatarSymbolID) {
+		fields = append(fields, chat.FieldChatAvatarSymbolID)
+	}
+	if m.FieldCleared(chat.FieldChatAvatarColorID) {
+		fields = append(fields, chat.FieldChatAvatarColorID)
+	}
 	return fields
 }
 
@@ -2911,6 +3112,15 @@ func (m *ChatMutation) ClearField(name string) error {
 	case chat.FieldChatPhotoFileID:
 		m.ClearChatPhotoFileID()
 		return nil
+	case chat.FieldChatAvatarMode:
+		m.ClearChatAvatarMode()
+		return nil
+	case chat.FieldChatAvatarSymbolID:
+		m.ClearChatAvatarSymbolID()
+		return nil
+	case chat.FieldChatAvatarColorID:
+		m.ClearChatAvatarColorID()
+		return nil
 	}
 	return fmt.Errorf("unknown Chat nullable field %s", name)
 }
@@ -2936,6 +3146,15 @@ func (m *ChatMutation) ResetField(name string) error {
 		return nil
 	case chat.FieldChatPhotoFileID:
 		m.ResetChatPhotoFileID()
+		return nil
+	case chat.FieldChatAvatarMode:
+		m.ResetChatAvatarMode()
+		return nil
+	case chat.FieldChatAvatarSymbolID:
+		m.ResetChatAvatarSymbolID()
+		return nil
+	case chat.FieldChatAvatarColorID:
+		m.ResetChatAvatarColorID()
 		return nil
 	case chat.FieldMediaVisibility:
 		m.ResetMediaVisibility()
@@ -26718,6 +26937,9 @@ type UserMutation struct {
 	addis_active                  *int
 	public_key                    *string
 	profile_photo_file_id         *string
+	profile_avatar_mode           *string
+	profile_avatar_symbol_id      *string
+	profile_avatar_color_id       *string
 	created_at                    *string
 	last_seen_at                  *string
 	profile_visibility            *string
@@ -27203,6 +27425,153 @@ func (m *UserMutation) ProfilePhotoFileIDCleared() bool {
 func (m *UserMutation) ResetProfilePhotoFileID() {
 	m.profile_photo_file_id = nil
 	delete(m.clearedFields, user.FieldProfilePhotoFileID)
+}
+
+// SetProfileAvatarMode sets the "profile_avatar_mode" field.
+func (m *UserMutation) SetProfileAvatarMode(s string) {
+	m.profile_avatar_mode = &s
+}
+
+// ProfileAvatarMode returns the value of the "profile_avatar_mode" field in the mutation.
+func (m *UserMutation) ProfileAvatarMode() (r string, exists bool) {
+	v := m.profile_avatar_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfileAvatarMode returns the old "profile_avatar_mode" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldProfileAvatarMode(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfileAvatarMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfileAvatarMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfileAvatarMode: %w", err)
+	}
+	return oldValue.ProfileAvatarMode, nil
+}
+
+// ClearProfileAvatarMode clears the value of the "profile_avatar_mode" field.
+func (m *UserMutation) ClearProfileAvatarMode() {
+	m.profile_avatar_mode = nil
+	m.clearedFields[user.FieldProfileAvatarMode] = struct{}{}
+}
+
+// ProfileAvatarModeCleared returns if the "profile_avatar_mode" field was cleared in this mutation.
+func (m *UserMutation) ProfileAvatarModeCleared() bool {
+	_, ok := m.clearedFields[user.FieldProfileAvatarMode]
+	return ok
+}
+
+// ResetProfileAvatarMode resets all changes to the "profile_avatar_mode" field.
+func (m *UserMutation) ResetProfileAvatarMode() {
+	m.profile_avatar_mode = nil
+	delete(m.clearedFields, user.FieldProfileAvatarMode)
+}
+
+// SetProfileAvatarSymbolID sets the "profile_avatar_symbol_id" field.
+func (m *UserMutation) SetProfileAvatarSymbolID(s string) {
+	m.profile_avatar_symbol_id = &s
+}
+
+// ProfileAvatarSymbolID returns the value of the "profile_avatar_symbol_id" field in the mutation.
+func (m *UserMutation) ProfileAvatarSymbolID() (r string, exists bool) {
+	v := m.profile_avatar_symbol_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfileAvatarSymbolID returns the old "profile_avatar_symbol_id" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldProfileAvatarSymbolID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfileAvatarSymbolID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfileAvatarSymbolID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfileAvatarSymbolID: %w", err)
+	}
+	return oldValue.ProfileAvatarSymbolID, nil
+}
+
+// ClearProfileAvatarSymbolID clears the value of the "profile_avatar_symbol_id" field.
+func (m *UserMutation) ClearProfileAvatarSymbolID() {
+	m.profile_avatar_symbol_id = nil
+	m.clearedFields[user.FieldProfileAvatarSymbolID] = struct{}{}
+}
+
+// ProfileAvatarSymbolIDCleared returns if the "profile_avatar_symbol_id" field was cleared in this mutation.
+func (m *UserMutation) ProfileAvatarSymbolIDCleared() bool {
+	_, ok := m.clearedFields[user.FieldProfileAvatarSymbolID]
+	return ok
+}
+
+// ResetProfileAvatarSymbolID resets all changes to the "profile_avatar_symbol_id" field.
+func (m *UserMutation) ResetProfileAvatarSymbolID() {
+	m.profile_avatar_symbol_id = nil
+	delete(m.clearedFields, user.FieldProfileAvatarSymbolID)
+}
+
+// SetProfileAvatarColorID sets the "profile_avatar_color_id" field.
+func (m *UserMutation) SetProfileAvatarColorID(s string) {
+	m.profile_avatar_color_id = &s
+}
+
+// ProfileAvatarColorID returns the value of the "profile_avatar_color_id" field in the mutation.
+func (m *UserMutation) ProfileAvatarColorID() (r string, exists bool) {
+	v := m.profile_avatar_color_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProfileAvatarColorID returns the old "profile_avatar_color_id" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldProfileAvatarColorID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProfileAvatarColorID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProfileAvatarColorID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProfileAvatarColorID: %w", err)
+	}
+	return oldValue.ProfileAvatarColorID, nil
+}
+
+// ClearProfileAvatarColorID clears the value of the "profile_avatar_color_id" field.
+func (m *UserMutation) ClearProfileAvatarColorID() {
+	m.profile_avatar_color_id = nil
+	m.clearedFields[user.FieldProfileAvatarColorID] = struct{}{}
+}
+
+// ProfileAvatarColorIDCleared returns if the "profile_avatar_color_id" field was cleared in this mutation.
+func (m *UserMutation) ProfileAvatarColorIDCleared() bool {
+	_, ok := m.clearedFields[user.FieldProfileAvatarColorID]
+	return ok
+}
+
+// ResetProfileAvatarColorID resets all changes to the "profile_avatar_color_id" field.
+func (m *UserMutation) ResetProfileAvatarColorID() {
+	m.profile_avatar_color_id = nil
+	delete(m.clearedFields, user.FieldProfileAvatarColorID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -28293,7 +28662,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 22)
 	if m.family != nil {
 		fields = append(fields, user.FieldFamilyID)
 	}
@@ -28317,6 +28686,15 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.profile_photo_file_id != nil {
 		fields = append(fields, user.FieldProfilePhotoFileID)
+	}
+	if m.profile_avatar_mode != nil {
+		fields = append(fields, user.FieldProfileAvatarMode)
+	}
+	if m.profile_avatar_symbol_id != nil {
+		fields = append(fields, user.FieldProfileAvatarSymbolID)
+	}
+	if m.profile_avatar_color_id != nil {
+		fields = append(fields, user.FieldProfileAvatarColorID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
@@ -28375,6 +28753,12 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.PublicKey()
 	case user.FieldProfilePhotoFileID:
 		return m.ProfilePhotoFileID()
+	case user.FieldProfileAvatarMode:
+		return m.ProfileAvatarMode()
+	case user.FieldProfileAvatarSymbolID:
+		return m.ProfileAvatarSymbolID()
+	case user.FieldProfileAvatarColorID:
+		return m.ProfileAvatarColorID()
 	case user.FieldCreatedAt:
 		return m.CreatedAt()
 	case user.FieldLastSeenAt:
@@ -28422,6 +28806,12 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldPublicKey(ctx)
 	case user.FieldProfilePhotoFileID:
 		return m.OldProfilePhotoFileID(ctx)
+	case user.FieldProfileAvatarMode:
+		return m.OldProfileAvatarMode(ctx)
+	case user.FieldProfileAvatarSymbolID:
+		return m.OldProfileAvatarSymbolID(ctx)
+	case user.FieldProfileAvatarColorID:
+		return m.OldProfileAvatarColorID(ctx)
 	case user.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case user.FieldLastSeenAt:
@@ -28508,6 +28898,27 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetProfilePhotoFileID(v)
+		return nil
+	case user.FieldProfileAvatarMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfileAvatarMode(v)
+		return nil
+	case user.FieldProfileAvatarSymbolID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfileAvatarSymbolID(v)
+		return nil
+	case user.FieldProfileAvatarColorID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProfileAvatarColorID(v)
 		return nil
 	case user.FieldCreatedAt:
 		v, ok := value.(string)
@@ -28637,6 +29048,15 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldProfilePhotoFileID) {
 		fields = append(fields, user.FieldProfilePhotoFileID)
 	}
+	if m.FieldCleared(user.FieldProfileAvatarMode) {
+		fields = append(fields, user.FieldProfileAvatarMode)
+	}
+	if m.FieldCleared(user.FieldProfileAvatarSymbolID) {
+		fields = append(fields, user.FieldProfileAvatarSymbolID)
+	}
+	if m.FieldCleared(user.FieldProfileAvatarColorID) {
+		fields = append(fields, user.FieldProfileAvatarColorID)
+	}
 	if m.FieldCleared(user.FieldLastSeenAt) {
 		fields = append(fields, user.FieldLastSeenAt)
 	}
@@ -28677,6 +29097,15 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldProfilePhotoFileID:
 		m.ClearProfilePhotoFileID()
+		return nil
+	case user.FieldProfileAvatarMode:
+		m.ClearProfileAvatarMode()
+		return nil
+	case user.FieldProfileAvatarSymbolID:
+		m.ClearProfileAvatarSymbolID()
+		return nil
+	case user.FieldProfileAvatarColorID:
+		m.ClearProfileAvatarColorID()
 		return nil
 	case user.FieldLastSeenAt:
 		m.ClearLastSeenAt()
@@ -28730,6 +29159,15 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldProfilePhotoFileID:
 		m.ResetProfilePhotoFileID()
+		return nil
+	case user.FieldProfileAvatarMode:
+		m.ResetProfileAvatarMode()
+		return nil
+	case user.FieldProfileAvatarSymbolID:
+		m.ResetProfileAvatarSymbolID()
+		return nil
+	case user.FieldProfileAvatarColorID:
+		m.ResetProfileAvatarColorID()
 		return nil
 	case user.FieldCreatedAt:
 		m.ResetCreatedAt()

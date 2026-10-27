@@ -41,7 +41,7 @@ export function ThreadSummaryButton({ message, messages, chat, count, currentUse
   return <button type="button" className="thread-open-button" aria-label={strings.comments.count(count)} onClick={onOpen}>
     <span className="thread-summary-avatars" aria-hidden="true">
       {users.slice(0, 2).map((user) => <RealAvatar key={user.id} accessToken={accessToken} className="avatar thread-summary-avatar"
-        file={chat.members.find((member) => member.id === user.id)?.profilePhoto} label={user.name} />)}
+        file={chat.members.find((member) => member.id === user.id)?.profilePhoto} label={user.name} entityId={user.id} mode={chat.members.find((member) => member.id === user.id)?.avatarMode} symbolId={chat.members.find((member) => member.id === user.id)?.avatarSymbolId} colorId={chat.members.find((member) => member.id === user.id)?.avatarColorId} />)}
       {users.length > 2 && <span className="thread-summary-overflow">+</span>}
     </span>
     <span className="thread-summary-count">{count}</span>

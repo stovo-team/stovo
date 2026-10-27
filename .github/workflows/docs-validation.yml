@@ -68,66 +68,37 @@ jobs:
           Copy-Item -LiteralPath $helmPath -Destination (Join-Path $helmBin 'helm.exe') -Force
           Add-Content -Path $env:GITHUB_PATH -Value $helmBin
           & (Join-Path $helmBin 'helm.exe') version --short
-      - name: Start Docker Desktop for docs validation
+      - name: Install kubeconform on Windows runner
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
-          if (-not $dockerCli) {
-            $dockerCliDirectories = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-            )
-            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
-            if (-not $dockerCliDirectory) {
-              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
-            }
-            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
-            $env:PATH = "$dockerCliDirectory;$env:PATH"
-          }
+          $version = 'v0.6.7'
+          $archive = Join-Path $env:RUNNER_TEMP "kubeconform-$version-windows-amd64.zip"
+          $extractPath = Join-Path $env:RUNNER_TEMP "kubeconform-$version-windows-amd64"
+          $kubeconformBin = Join-Path $env:RUNNER_TEMP 'kubeconform-bin'
 
-          docker desktop start --detach 2>$null | Out-Null
-          $desktopStartExitCode = $LASTEXITCODE
-          if ($desktopStartExitCode -ne 0) {
-            $desktopCandidates = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
-            )
-            $dockerDesktop = $desktopCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if (-not $dockerDesktop) {
-              throw 'Docker Desktop was not found. Install it for the Windows runner account.'
-            }
-            if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
-              Start-Process -FilePath $dockerDesktop
-            }
-          }
-
-          $deadline = (Get-Date).AddMinutes(3)
-          do {
-            Start-Sleep -Seconds 3
-            $dockerOs = docker info --format '{{.OSType}}' 2>$null
-            if ($LASTEXITCODE -eq 0) { break }
-          } while ((Get-Date) -lt $deadline)
-          if ($LASTEXITCODE -ne 0) {
-            throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
-          }
-
-          if ($dockerOs -ne 'linux') {
-            docker desktop engine use linux
-            if ($LASTEXITCODE -ne 0) {
-              throw 'Could not switch Docker Desktop to Linux containers. Update Docker Desktop to a version with the desktop CLI and allow the runner account to switch engines.'
-            }
-            $deadline = (Get-Date).AddMinutes(3)
-            do {
-              Start-Sleep -Seconds 3
-              $dockerOs = docker info --format '{{.OSType}}' 2>$null
-              if ($LASTEXITCODE -eq 0 -and $dockerOs -eq 'linux') { break }
-            } while ((Get-Date) -lt $deadline)
-            if ($LASTEXITCODE -ne 0 -or $dockerOs -ne 'linux') {
-              throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
-            }
-          }
+          Invoke-WebRequest -Uri "https://github.com/yannh/kubeconform/releases/download/$version/kubeconform-windows-amd64.zip" -OutFile $archive
+          Expand-Archive -LiteralPath $archive -DestinationPath $extractPath -Force
+          New-Item -ItemType Directory -Path $kubeconformBin -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $extractPath 'kubeconform.exe') -Destination (Join-Path $kubeconformBin 'kubeconform.exe') -Force
+          Add-Content -Path $env:GITHUB_PATH -Value $kubeconformBin
+          & (Join-Path $kubeconformBin 'kubeconform.exe') -v
+      - name: Install kubeconform on Linux runner
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=v0.6.7
+          archive="$RUNNER_TEMP/kubeconform-$version-linux-amd64.tar.gz"
+          install_dir="$RUNNER_TEMP/kubeconform-bin"
+          curl --fail --location --retry 3 \
+            "https://github.com/yannh/kubeconform/releases/download/$version/kubeconform-linux-amd64.tar.gz" \
+            --output "$archive"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" kubeconform
+          echo "$install_dir" >> "$GITHUB_PATH"
+          "$install_dir/kubeconform" -v
       - name: Ensure Docker Compose CLI plugin is available
         if: runner.os == 'Windows'
         shell: powershell
@@ -164,12 +135,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          validator=kubeconform
+          if [ "$RUNNER_OS" = 'Windows' ]; then validator=kubeconform.exe; fi
           helm template stovo deploy/charts/stovo \
             --set backend.image.repository=registry.example.test/stovo/backend \
             --set backend.image.tag=v1.2.3 \
             --set frontend.image.repository=registry.example.test/stovo/frontend \
             --set frontend.image.tag=v1.2.3 \
-            | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -kubernetes-version 1.30.0 -
+            | "$validator" -strict -summary -kubernetes-version 1.30.0 -
           helm template stovo deploy/charts/stovo \
             --set app.domain=chat.example.test \
             --set backend.image.repository=registry.example.test/stovo/backend \
@@ -180,4 +153,4 @@ jobs:
             --set uploads.persistence.size=37Gi \
             --set service.backend.port=18000 \
             --set existingSecret=stovo-test-secret \
-            | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -kubernetes-version 1.30.0 -
+            | "$validator" -strict -summary -kubernetes-version 1.30.0 -

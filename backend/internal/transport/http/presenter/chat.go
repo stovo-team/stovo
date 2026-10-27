@@ -19,6 +19,9 @@ type Member struct {
 	Role               string     `json:"role"`
 	PublicKey          *string    `json:"publicKey"`
 	ProfilePhoto       any        `json:"profilePhoto"`
+	AvatarMode         *string    `json:"avatarMode,omitempty"`
+	AvatarSymbolID     *string    `json:"avatarSymbolId,omitempty"`
+	AvatarColorID      *string    `json:"avatarColorId,omitempty"`
 	IsOnline           bool       `json:"isOnline"`
 	LastSeenAt         *time.Time `json:"lastSeenAt"`
 	LastSeenVisibility string     `json:"lastSeenVisibility"`
@@ -41,6 +44,9 @@ type Chat struct {
 	MediaVisibilityApprovalRequired int            `json:"mediaVisibilityApprovalRequired"`
 	MyMediaVisibilityApproval       bool           `json:"myMediaVisibilityApproval"`
 	ChatPhoto                       any            `json:"chatPhoto"`
+	AvatarMode                      *string        `json:"avatarMode,omitempty"`
+	AvatarSymbolID                  *string        `json:"avatarSymbolId,omitempty"`
+	AvatarColorID                   *string        `json:"avatarColorId,omitempty"`
 	CreatedAt                       time.Time      `json:"createdAt"`
 	UpdatedAt                       time.Time      `json:"updatedAt"`
 	Members                         []Member       `json:"members"`

@@ -79,6 +79,10 @@ export function AddPeopleDialog({ accessToken, members, onAdd, onClose }: AddPeo
                       className="avatar chat-avatar"
                       file={member.profilePhoto}
                       label={member.displayName}
+                      entityId={member.id}
+                      mode={member.avatarMode}
+                      symbolId={member.avatarSymbolId}
+                      colorId={member.avatarColorId}
                     />
                     <span className="new-chat-contact-copy">
                       <strong>{member.displayName}</strong>

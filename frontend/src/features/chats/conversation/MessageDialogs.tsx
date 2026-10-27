@@ -9,6 +9,7 @@ import type { Chat } from "../../../api/chats";
 import {
   chatAvatarFallbackKind,
   chatAvatarFile,
+  chatAvatarIdentity,
   chatAvatarTypeClass,
   displayChatName
 } from "../shared/chatPresentation";
@@ -53,6 +54,7 @@ export function ForwardChatList({
               fallbackKind={chatAvatarFallbackKind(chat)}
               file={chatAvatarFile(chat, currentUserId)}
               label={name}
+              {...chatAvatarIdentity(chat, currentUserId)}
             />
             <span>{name}</span>
           </button>

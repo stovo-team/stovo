@@ -1,0 +1,8 @@
+{
+  "viewport": "2200x1100",
+  "theme": "light",
+  "locale": "en",
+  "browser": "Playwright Chromium",
+  "os": "linux",
+  "interaction": "Open Plans and select Week"
+}

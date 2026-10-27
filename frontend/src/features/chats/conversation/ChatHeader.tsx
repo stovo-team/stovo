@@ -25,6 +25,7 @@ import type { Chat } from "../../../api/chats";
 import {
   chatAvatarFallbackKind,
   chatAvatarFile,
+  chatAvatarIdentity,
   chatAvatarTypeClass,
   chatTransitionName,
   displayChatName,
@@ -156,6 +157,7 @@ export function ChatHeader({
             fallbackKind={chatAvatarFallbackKind(selectedChat)}
             file={chatAvatarFile(selectedChat, currentUser?.id)}
             label={chatName}
+            {...chatAvatarIdentity(selectedChat, currentUser?.id)}
             style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
           />
           <span>
@@ -178,7 +180,7 @@ export function ChatHeader({
       ) : isArchiveGroup ? (
         <div className="chat-title-group chat-title-group--archive-group" aria-label={headerCopy.archiveLabel(archiveGroupName!)}>
           {isNotesArchiveGroup ? (
-            <span className="avatar chat-avatar archive" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}><FileText size={20} /></span>
+            <RealAvatar accessToken={accessToken} className="avatar chat-avatar archive" fallbackKind="archive" file={null} label={archiveGroupChatName} entityId={archiveGroupChat.id} style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))} />
           ) : (
             <RealAvatar
               accessToken={accessToken}
@@ -186,6 +188,7 @@ export function ChatHeader({
               fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : "archive"}
               file={archiveGroupAvatarFile}
               label={archiveGroupChatName}
+              {...(archiveGroupSourceChat ? chatAvatarIdentity(archiveGroupSourceChat, currentUser?.id) : { entityId: archiveGroupChat.id })}
               style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}
             />
           )}
@@ -201,6 +204,7 @@ export function ChatHeader({
             fallbackKind={chatAvatarFallbackKind(selectedChat)}
             file={chatAvatarFile(selectedChat, currentUser?.id)}
             label={chatName}
+            {...chatAvatarIdentity(selectedChat, currentUser?.id)}
             style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
           />
           <span>

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "taskId": "page-width-priority",
+  "state": "verified",
+  "artifacts": [
+    {
+      "role": "spec",
+      "path": "docs/agent-workflows/specs/page-width-priority.md",
+      "sha256": "33f50ad986f4c903c3a910c9e5b716a68864224579dc6b208104420f850738de"
+    },
+    {
+      "role": "test-plan",
+      "path": "docs/agent-workflows/test-plans/page-width-priority.md",
+      "sha256": "fd33017c4e4488f7f790eb9972bf7341499a321ebdb6e612da6c6a8837e4475a"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "P1",
+      "expected": "At >=1600px, Plans content and week calendar fill available pane width without the 1200px cap."
+    },
+    {
+      "id": "C1",
+      "expected": "At desktop width, active conversation is fluid below 1400px and capped at 1400px."
+    },
+    {
+      "id": "C2",
+      "expected": "After the conversation reaches 1400px, the chat list expands into remaining width and the panes fill the layout."
+    },
+    {
+      "id": "R1",
+      "expected": "Below 1600px, mobile chat layout and 620px/1200px calendar minimum widths remain unchanged."
+    }
+  ],
+  "checks": [
+    {
+      "id": "page-width-priority",
+      "acceptanceIds": [
+        "P1",
+        "C1",
+        "C2",
+        "R1"
+      ],
+      "layer": "e2e",
+      "command": [
+        "E2E_MODE=mock",
+        "E2E_BASE_URL=http://127.0.0.1:5180",
+        "npx",
+        "playwright",
+        "test",
+        "tests/page-width-priority.spec.ts"
+      ],
+      "required": true
+    },
+    {
+      "id": "focused-css-tests",
+      "acceptanceIds": [
+        "P1",
+        "C1",
+        "C2",
+        "R1"
+      ],
+      "layer": "unit",
+      "command": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "test",
+        "--",
+        "--run",
+        "src/pages/PlansPage.test.ts",
+        "src/pages/ChatsPage.width-layout.test.ts"
+      ],
+      "required": true
+    },
+    {
+      "id": "visual-suite",
+      "acceptanceIds": [
+        "P1",
+        "C1",
+        "C2",
+        "R1"
+      ],
+      "layer": "visual",
+      "command": [
+        "npm",
+        "--prefix",
+        "e2e",
+        "run",
+        "test:visual"
+      ],
+      "required": true
+    },
+    {
+      "id": "evidence-capture",
+      "acceptanceIds": [
+        "P1",
+        "C1",
+        "C2",
+        "R1"
+      ],
+      "layer": "visual",
+      "command": [
+        "node",
+        "e2e/tools/capture-evidence.mjs",
+        "--task",
+        "page-width-priority",
+        "--output",
+        "artifacts/agent-workflows/page-width-priority"
+      ],
+      "required": true
+    }
+  ],
+  "approvals": [
+    {
+      "actor": "user",
+      "source": "Codex chat reply to review item call_5dd720c2692d4d688fc847bdfb64cfe2: \u201cApprove and proceed.\u201d",
+      "decision": "approved",
+      "artifacts": {
+        "docs/agent-workflows/specs/page-width-priority.md": "33f50ad986f4c903c3a910c9e5b716a68864224579dc6b208104420f850738de",
+        "docs/agent-workflows/test-plans/page-width-priority.md": "fd33017c4e4488f7f790eb9972bf7341499a321ebdb6e612da6c6a8837e4475a"
+      }
+    }
+  ],
+  "authorizations": [
+    {
+      "scope": "local-implementation",
+      "source": "User reply: \u201cApprove and proceed.\u201d"
+    },
+    {
+      "scope": "local-tests",
+      "source": "User reply: \u201cApprove and proceed.\u201d"
+    },
+    {
+      "scope": "publication",
+      "source": "Current user-provided AGENTS.md grants standing authorization for task-branch push and pull request."
+    }
+  ]
+}

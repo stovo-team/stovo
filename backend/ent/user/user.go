@@ -28,6 +28,12 @@ const (
 	FieldPublicKey = "public_key"
 	// FieldProfilePhotoFileID holds the string denoting the profile_photo_file_id field in the database.
 	FieldProfilePhotoFileID = "profile_photo_file_id"
+	// FieldProfileAvatarMode holds the string denoting the profile_avatar_mode field in the database.
+	FieldProfileAvatarMode = "profile_avatar_mode"
+	// FieldProfileAvatarSymbolID holds the string denoting the profile_avatar_symbol_id field in the database.
+	FieldProfileAvatarSymbolID = "profile_avatar_symbol_id"
+	// FieldProfileAvatarColorID holds the string denoting the profile_avatar_color_id field in the database.
+	FieldProfileAvatarColorID = "profile_avatar_color_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldLastSeenAt holds the string denoting the last_seen_at field in the database.
@@ -164,6 +170,9 @@ var Columns = []string{
 	FieldIsActive,
 	FieldPublicKey,
 	FieldProfilePhotoFileID,
+	FieldProfileAvatarMode,
+	FieldProfileAvatarSymbolID,
+	FieldProfileAvatarColorID,
 	FieldCreatedAt,
 	FieldLastSeenAt,
 	FieldProfileVisibility,
@@ -258,6 +267,21 @@ func ByPublicKey(opts ...sql.OrderTermOption) OrderOption {
 // ByProfilePhotoFileID orders the results by the profile_photo_file_id field.
 func ByProfilePhotoFileID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProfilePhotoFileID, opts...).ToFunc()
+}
+
+// ByProfileAvatarMode orders the results by the profile_avatar_mode field.
+func ByProfileAvatarMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProfileAvatarMode, opts...).ToFunc()
+}
+
+// ByProfileAvatarSymbolID orders the results by the profile_avatar_symbol_id field.
+func ByProfileAvatarSymbolID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProfileAvatarSymbolID, opts...).ToFunc()
+}
+
+// ByProfileAvatarColorID orders the results by the profile_avatar_color_id field.
+func ByProfileAvatarColorID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProfileAvatarColorID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -6,7 +6,7 @@ import { Chat, getChats } from "../api/chats";
 import { getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
-import { chatAvatarFallbackKind, chatAvatarFile } from "../features/chats/shared/chatPresentation";
+import { chatAvatarFallbackKind, chatAvatarFile, chatAvatarIdentity } from "../features/chats/shared/chatPresentation";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { useStrings } from "../i18n/LanguageContext";
@@ -111,7 +111,7 @@ export default function AdminStatsPage() {
             {conversationStarters.length ? conversationStarters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{copy.starts(member.starts_count)}</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">{copy.leaderEmpty}</p>}
           </div></article>
           <article className="stats-card"><div className="stats-card-heading"><div><span>{copy.activeSpaces}</span><h2>{copy.conversationLives}</h2></div><BarChart3 size={18} /></div><div className="stats-chat-list">
-            {activeChats.length ? activeChats.map((chat) => { const fullChat = chatsById.get(chat.chat_id); return <div className="stats-chat" key={chat.chat_id}>{fullChat ? <RealAvatar accessToken={accessToken} className="avatar stats-chat-avatar" fallbackKind={chatAvatarFallbackKind(fullChat)} file={chatAvatarFile(fullChat, currentUser?.id)} label={chat.title} /> : <span className="stats-chat-avatar stats-chat-avatar--fallback"><span className="avatar-initials">{chat.type.slice(0, 1)}</span></span>}<strong>{chat.title}</strong><small>{copy.messagesShort(chat.message_count)}</small></div>; }) : <p className="stats-empty">{copy.noChatActivity}</p>}
+            {activeChats.length ? activeChats.map((chat) => { const fullChat = chatsById.get(chat.chat_id); const fallbackKind = chat.type === "voice" ? "voice" : chat.type === "channel" ? "channel" : chat.type === "family" ? "family" : chat.type === "archive" ? "archive" : chat.type === "group" ? "group" : "direct"; return <div className="stats-chat" key={chat.chat_id}>{<RealAvatar accessToken={accessToken} className="avatar stats-chat-avatar" fallbackKind={fullChat ? chatAvatarFallbackKind(fullChat) : fallbackKind} file={fullChat ? chatAvatarFile(fullChat, currentUser?.id) : null} label={chat.title} {...(fullChat ? chatAvatarIdentity(fullChat, currentUser?.id) : { entityId: chat.chat_id })} />}<strong>{chat.title}</strong><small>{copy.messagesShort(chat.message_count)}</small></div>; }) : <p className="stats-empty">{copy.noChatActivity}</p>}
           </div></article>
         </section>
         {awards && <section className="stats-awards"><div className="stats-awards-heading"><div><span>{copy.goodCompany}</span><h2>{copy.communityHighlights}</h2></div><Trophy size={20} /></div><div className="stats-award-grid">

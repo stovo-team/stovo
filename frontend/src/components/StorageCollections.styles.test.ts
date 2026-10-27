@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const stylesheet = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const storageGridRules = Array.from(stylesheet.matchAll(/\.storage-page \.storage-grid\s*\{[^}]+\}/g)).map((match) => match[0]);
+const mobileStorageGridRules = Array.from(stylesheet.matchAll(/@media \(max-width: 767px\) \{[\s\S]*?\.storage-page \.storage-grid\s*\{([^}]+)\}/g)).map((match) => match[1]);
 const removalButtonRule = Array.from(stylesheet.matchAll(/\.storage-collection-file-grid \.collection-file-tile > button:not\(\.collection-file-open\) \{[^}]+\}/g))
   .map((match) => match[0])
   .find((rule) => rule.includes("height: 28px !important"));
@@ -45,6 +46,11 @@ describe("folder file removal control", () => {
 describe("storage file tile sizing", () => {
   it("keeps fixed 180px file tiles in desktop and tablet layouts", () => {
     expect(storageGridRules.length).toBeGreaterThan(0);
-    expect(storageGridRules.every((rule) => rule.includes("repeat(auto-fill, 180px)"))).toBe(true);
+    expect(storageGridRules.some((rule) => rule.includes("repeat(auto-fill, 180px)"))).toBe(true);
+  });
+
+  it("uses fixed 120px file tiles in a two-column mobile grid", () => {
+    expect(mobileStorageGridRules.length).toBeGreaterThan(0);
+    expect(mobileStorageGridRules.at(-1)).toContain("repeat(auto-fill, 120px)");
   });
 });

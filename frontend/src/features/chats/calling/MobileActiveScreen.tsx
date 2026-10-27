@@ -23,6 +23,10 @@ import { useStrings } from "../../../i18n/LanguageContext";
 export function MobileActiveScreen({
   peerName,
   peerProfilePhoto,
+  peerId,
+  avatarMode,
+  avatarSymbolId,
+  avatarColorId,
   accessToken,
   callType,
   callPhase,
@@ -61,6 +65,10 @@ export function MobileActiveScreen({
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
+  peerId?: string;
+  avatarMode?: "photo" | "symbol";
+  avatarSymbolId?: string | null;
+  avatarColorId?: string | null;
   accessToken?: string | null;
   callType: "audio" | "video";
   callPhase: string;
@@ -95,7 +103,7 @@ export function MobileActiveScreen({
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
   isGroupCall?: boolean;
-  participantProfiles?: Record<string, { displayName: string; profilePhoto: FamilyFile | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
+  participantProfiles?: Record<string, { id?: string; displayName: string; profilePhoto: FamilyFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null }>; mockScreenShareOwner?: { userId: string; displayName: string } | null;
 }) {
   const copy = useStrings().sharedUi;
   const { preferences: callUIPreferences } = useCallUIPreferences();
@@ -554,6 +562,10 @@ export function MobileActiveScreen({
                     className="avatar mobile-active-avatar"
                     file={peerProfilePhoto}
                     label={peerName}
+                    entityId={peerId ?? peerName}
+                    mode={avatarMode}
+                    symbolId={avatarSymbolId}
+                    colorId={avatarColorId}
                   />
                 </div>
                 <div className="mobile-active-name">{peerName}</div>

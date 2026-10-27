@@ -45,6 +45,7 @@ import type { Canvas } from "../api/canvas";
 import type { Checklist } from "../api/checklist";
 import { useAuth } from "../auth/AuthContext";
 import { AudioPlayer } from "../components/AudioPlayer";
+import { EntityAvatar } from "../components/EntityAvatar";
 import {
   DocumentAttachmentPreview,
   detectDocumentPreviewKind
@@ -144,43 +145,29 @@ function accessLabel(file: FamilyFile, sharedStorageLabel: string) {
   return file.accessScope === "family" ? sharedStorageLabel : "Chat members";
 }
 
-function chatInitials(name: string) {
-  const parts = name.split(" ").filter(Boolean);
-  return parts.length > 1
-    ? parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")
-    : (parts[0] ?? name).slice(0, 2).toUpperCase();
-}
-
 function StorageSourceAvatar({
   accessToken,
   file,
   kind,
   label,
-  minimizedLayout
+  minimizedLayout,
+  entityId,
+  mode,
+  symbolId,
+  colorId
 }: {
   accessToken: string | null;
   file: FamilyFile | null;
   kind: StorageAvatarKind;
   label: string;
   minimizedLayout: boolean;
+  entityId: string;
+  mode?: "photo" | "symbol";
+  symbolId?: string | null;
+  colorId?: string | null;
 }) {
-  const previewUrl = useFilePreviewUrl(accessToken, file, Boolean(file));
-  const [imageBroken, setImageBroken] = useState(false);
-
-  useEffect(() => setImageBroken(false), [file?.id, previewUrl]);
-
-  const leadingVisual = storageSourceLeadingVisual(kind, minimizedLayout);
-
-  if (leadingVisual === "lock") return <LockKeyhole aria-hidden="true" size={16} strokeWidth={2} />;
-  if (leadingVisual === "hash") return <Hash aria-hidden="true" size={16} strokeWidth={2} />;
-  if (leadingVisual === "archive") return <Archive aria-hidden="true" size={16} strokeWidth={2} />;
-  if (previewUrl && !imageBroken) {
-    return <img src={previewUrl} alt="" onError={() => setImageBroken(true)} />;
-  }
-  if (kind === "family") return <Home aria-hidden="true" size={20} />;
-  if (kind === "group") return <Users aria-hidden="true" size={20} />;
-  if (kind === "channel") return <Megaphone aria-hidden="true" size={20} />;
-  return <span className="avatar-initials" aria-hidden="true">{chatInitials(label)}</span>;
+  const entityKind = kind === "direct" ? "person" : kind;
+  return <EntityAvatar accessToken={accessToken} className={`storage-source-avatar__entity${minimizedLayout ? " is-compact" : ""}`} entityId={entityId} entityKind={entityKind} file={file} label={label} mode={mode} symbolId={symbolId} colorId={colorId} />;
 }
 
 function StorageTile({
@@ -667,6 +654,10 @@ export default function FilesPage() {
                             kind={source.avatarKind}
                             label={source.label}
                             minimizedLayout={Boolean(family?.minimizedChatLayout)}
+                            entityId={source.avatarEntityId}
+                            mode={source.avatarMode}
+                            symbolId={source.avatarSymbolId}
+                            colorId={source.avatarColorId}
                           />
                         </span>
                         <span><strong>{source.label}</strong><small>{source.fileCount} files</small></span>
@@ -702,6 +693,10 @@ export default function FilesPage() {
                       kind={source.avatarKind}
                       label={source.label}
                       minimizedLayout={Boolean(family?.minimizedChatLayout)}
+                      entityId={source.avatarEntityId}
+                      mode={source.avatarMode}
+                      symbolId={source.avatarSymbolId}
+                      colorId={source.avatarColorId}
                     />
                   </span>
                   <span className="storage-source-copy"><strong>{source.label}</strong><small>{source.fileCount} files</small></span>
@@ -714,7 +709,7 @@ export default function FilesPage() {
         <div
           className="storage-source-resizer"
           role="separator"
-          aria-label="Resize chat list"
+          aria-label={strings.files.resizeChatList}
           aria-orientation="vertical"
           aria-valuemin={180}
           aria-valuemax={640}

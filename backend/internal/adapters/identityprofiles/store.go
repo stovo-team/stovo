@@ -15,6 +15,7 @@ func NewStore(repository *repository.Store) *Store { return &Store{repository: r
 func (s *Store) UpdateProfile(ctx context.Context, userID string, patch identity.ProfilePatch) error {
 	return s.repository.UpdateUserProfile(ctx, userID, repository.UpdateUserProfileParams{
 		DisplayName: patch.DisplayName, PublicKey: patch.PublicKey, ProfilePhotoFileID: patch.ProfilePhotoFileID,
+		AvatarMode: patch.AvatarMode, AvatarSymbolID: patch.AvatarSymbolID, AvatarColorID: patch.AvatarColorID,
 		ClearProfilePhoto: patch.ClearProfilePhoto, ProfileVisibility: patch.ProfileVisibility,
 		LastSeenVisibility: patch.LastSeenVisibility, ReadReceiptsEnabled: patch.ReadReceiptsEnabled,
 		Email: patch.Email, Bio: patch.Bio, Timezone: patch.Timezone,

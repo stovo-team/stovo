@@ -687,10 +687,6 @@
   color: var(--color-palette-f2074b6cef37);
 }
 
-.chat-list-type-marker--voice {
-  color: var(--color-palette-3398ce8a6140);
-}
-
 .voice-channel-room {
   display: flex;
   flex-direction: column;

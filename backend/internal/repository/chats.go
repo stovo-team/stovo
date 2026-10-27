@@ -145,6 +145,15 @@ func (s *Store) UpdateChatPhoto(ctx context.Context, chatID string, photoFileID 
 	return err
 }
 
+func (s *Store) UpdateChatAvatarChoices(ctx context.Context, chatID string, mode, symbolID, colorID *string, updatedAt string) error {
+	upd := s.Client.Chat.UpdateOneID(chatID).SetUpdatedAt(updatedAt)
+	if mode != nil { upd.SetChatAvatarMode(*mode) }
+	if symbolID != nil { upd.SetChatAvatarSymbolID(*symbolID) }
+	if colorID != nil { upd.SetChatAvatarColorID(*colorID) }
+	_, err := upd.Save(ctx)
+	return err
+}
+
 // UpdateChatCommentsEnabled sets comments_enabled and updated_at.
 func (s *Store) UpdateChatCommentsEnabled(ctx context.Context, chatID string, enabled bool, updatedAt string) error {
 	_, err := s.Client.Chat.UpdateOneID(chatID).

@@ -1,5 +1,5 @@
 import type { User } from "../api/auth";
-import type { Chat, ChatMember, Message, PinnedMessage } from "../api/chats";
+import type { Chat, ChatMember, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import type { Family } from "../api/family";
 import type { ServerManifest } from "../config/profileManifest";
 import {
@@ -156,19 +156,7 @@ const chats: Chat[] = [
     lastMessageSenderDisplayName: demoSam.displayName,
     lastMessageContent: "The release notes are ready for a quick read.",
   }),
-  chat({
-    id: "chat-family-hub",
-    type: "family",
-    title: "Family Hub",
-    members: allMembers,
-    createdAt: "2026-10-01T08:00:00.000Z",
-    updatedAt: "2026-10-07T13:15:00.000Z",
-    unreadCount: 0,
-    lastMessageId: "msg-family-lunch",
-    lastMessageSenderId: demoAlex.id,
-    lastMessageSenderDisplayName: demoAlex.displayName,
-    lastMessageContent: "Lunch is on the table.",
-  }),
+
 ];
 
 function message(options: {
@@ -264,16 +252,7 @@ const messages: Record<string, Message[]> = {
       createdAt: "2026-10-08T16:30:00.000Z",
     }),
   ],
-  "chat-family-hub": [
-    message({
-      id: "msg-family-lunch",
-      chatId: "chat-family-hub",
-      senderId: demoAlex.id,
-      senderDisplayName: demoAlex.displayName,
-      content: "Lunch is on the table.",
-      createdAt: "2026-10-07T13:15:00.000Z",
-    }),
-  ],
+
 };
 
 const pins: Record<string, PinnedMessage[]> = {
@@ -333,4 +312,47 @@ export function createMockData(): MockData {
 
 export function createMockManifest(): ServerManifest {
   return structuredClone(fixtureData.manifest);
+}
+
+export async function addMobileLayoutMessages(
+  response: Promise<Response>,
+  scenario: "mobile-layout-canvas" | "mobile-layout-meetup",
+  currentUserId: string,
+  users: User[],
+): Promise<MessageHistoryPage> {
+  const page = await (await response).json() as MessageHistoryPage;
+  const otherUser = users.find((user) => user.id !== currentUserId) ?? users[0];
+  const message = (id: string, senderId: string, type: Message["type"], content: string | null, createdAt: string): Message => ({
+    id,
+    chatId: "chat-planning-team",
+    senderId,
+    senderDisplayName: users.find((user) => user.id === senderId)?.displayName ?? "Stovo Demo",
+    type,
+    content,
+    encryptionProtocol: "legacy_plaintext",
+    ciphertext: null,
+    nonce: null,
+    keyVersion: null,
+    encryptionMetadata: null,
+    replyToMessageId: null,
+    threadRootMessageId: null,
+    messageKind: "chat",
+    createdAt,
+    updatedAt: createdAt,
+    deletedAt: null,
+    isEdited: false,
+    forwardedFrom: null,
+    statuses: [],
+    reactions: [],
+    attachments: [],
+    ...(type === "canvas" ? { canvas: { id: "canvas-planning-notes", title: "Untitled canvas", available: true } } : {}),
+  });
+  const meetingText = 'guest-meeting-card:{"title":"Meetup","timing":"Starts when the host opens the meeting.","entry":"Anyone with this link can join.","url":"http://127.0.0.1:5174/meet/mock"}';
+  const messages = scenario === "mobile-layout-canvas"
+    ? [message("visual-canvas-card", currentUserId, "canvas", null, "2026-10-18T09:00:00.000Z")]
+    : [
+      message("visual-meetup-incoming", otherUser.id, "text", meetingText.replace("Meetup", "Some meetup"), "2026-10-18T09:00:00.000Z"),
+      message("visual-meetup-outgoing", currentUserId, "text", meetingText, "2026-10-18T09:05:00.000Z"),
+    ];
+  return { ...page, messages: [...page.messages, ...messages] };
 }

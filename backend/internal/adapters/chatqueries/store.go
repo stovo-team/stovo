@@ -38,7 +38,7 @@ func (s *Store) Type(ctx context.Context, chatID string) (string, error) {
 
 func mapDetails(row *repository.ChatForMember) featurechats.ChatDetails {
 	c := row.Chat
-	out := featurechats.ChatDetails{ID: c.ID, FamilyID: c.FamilyID, Type: c.Type, Title: c.Title, Description: c.Description, CreatedBy: c.CreatedBy, ChatPhotoFileID: c.ChatPhotoFileID, MediaVisibility: c.MediaVisibility, CommentsEnabled: c.CommentsEnabled, EncryptionProtocol: c.EncryptionProtocol, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, PinPermission: c.PinPermission, MessageDelaySeconds: c.MessageDelaySeconds}
+	out := featurechats.ChatDetails{ID: c.ID, FamilyID: c.FamilyID, Type: c.Type, Title: c.Title, Description: c.Description, CreatedBy: c.CreatedBy, ChatPhotoFileID: c.ChatPhotoFileID, AvatarMode: c.ChatAvatarMode, AvatarSymbolID: c.ChatAvatarSymbolID, AvatarColorID: c.ChatAvatarColorID, MediaVisibility: c.MediaVisibility, CommentsEnabled: c.CommentsEnabled, EncryptionProtocol: c.EncryptionProtocol, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, PinPermission: c.PinPermission, MessageDelaySeconds: c.MessageDelaySeconds}
 	if p := row.Preference; p != nil {
 		out.Preference = &featurechats.ChatPreference{
 			IsMuted:              p.IsMuted,

@@ -8,8 +8,11 @@ import { useCallChatReveal } from "./useCallChatReveal";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
+import { EntityAvatar } from "../../../components/EntityAvatar";
+import { RealAvatar } from "./RealAvatar";
+import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/entityAvatar";
 import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
-import { displayChatName } from "../shared/chatPresentation";
+import { chatAvatarFile, chatAvatarIdentity, displayChatName } from "../shared/chatPresentation";
 import type { ChatContextMenuState } from "./ChatContextMenu";
 import { ChatListContextMenu } from "./ChatListContextMenu";
 import { PopupDialog } from "../../../components/ui/Popup";
@@ -562,7 +565,7 @@ export function ChatList({
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{strings.chats.quickAccess.archive}</strong></span></span>
+                  <RealAvatar accessToken={accessToken} className="avatar chat-avatar archive quick-access-icon" fallbackKind="archive" file={chatAvatarFile(archiveChat, currentUserId)} label={strings.chats.quickAccess.archive} {...chatAvatarIdentity(archiveChat, currentUserId)} /><span className="chat-list-copy"><span className="chat-list-topline"><strong>{strings.chats.quickAccess.archive}</strong></span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
@@ -631,6 +634,7 @@ export function ChatList({
                 <div className="chat-section-heading">
                   <button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}>
                     <ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} />
+                    <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={defaultFolders[section.key].id} entityKind="folder" label={sectionLabel} mode="symbol" symbolId={defaultFolders[section.key].symbolId ?? defaultAvatarSymbol("folder")} colorId={defaultFolders[section.key].colorId ?? colorForAvatarId(defaultFolders[section.key].id)} size={22} />
                     <span>{sectionLabel}</span>
                     {isRestricted && (
                       <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedDrop} aria-label={strings.chats.folders.dropNotAllowed}>
@@ -722,6 +726,7 @@ export function ChatList({
             <div className="chat-section-heading">
               <button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}>
                 <ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} />
+                <EntityAvatar accessToken={null} className="chat-folder-avatar" entityId={folder.id} entityKind="folder" label={folder.name} mode="symbol" symbolId={folder.symbolId ?? defaultAvatarSymbol("folder")} colorId={folder.colorId ?? colorForAvatarId(folder.id)} size={22} />
                 <span>{folder.name}</span>
                 {isFolderRestricted && (
                 <span className="chat-folder-locked-icon" title={strings.chats.folders.restrictedRulesHelp} aria-label={strings.chats.folders.restrictedLabel}>

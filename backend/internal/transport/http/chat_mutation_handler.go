@@ -26,6 +26,9 @@ type ChatUpdateRequest struct {
 	CommentsEnabled     *bool   `json:"commentsEnabled"`
 	PinPermission       *string `json:"pinPermission"`
 	MessageDelaySeconds *int    `json:"messageDelaySeconds"`
+	AvatarMode          *string `json:"avatarMode"`
+	AvatarSymbolID      *string `json:"avatarSymbolId"`
+	AvatarColorID       *string `json:"avatarColorId"`
 }
 
 type ChatPreferencesRequest struct {
@@ -90,6 +93,19 @@ func (h ChatMutationHandler) Update(w stdhttp.ResponseWriter, r *stdhttp.Request
 	if request.Title != nil {
 		value := strings.TrimSpace(*request.Title)
 		request.Title = &value
+	}
+	for _, value := range []*string{request.AvatarMode, request.AvatarSymbolID, request.AvatarColorID} {
+		if value != nil {
+			trimmed := strings.TrimSpace(*value)
+			*value = trimmed
+		}
+	}
+	if request.AvatarMode != nil && *request.AvatarMode == "" { request.AvatarMode = nil }
+	if request.AvatarSymbolID != nil && *request.AvatarSymbolID == "" { request.AvatarSymbolID = nil }
+	if request.AvatarColorID != nil && *request.AvatarColorID == "" { request.AvatarColorID = nil }
+	if detail := avatarValidationDetail(request.AvatarMode, request.AvatarSymbolID, request.AvatarColorID); detail != "" {
+		writeChatMutationError(w, stdhttp.StatusUnprocessableEntity, detail)
+		return
 	}
 	value, status, err := h.operations.Update(r.Context(), chi.URLParam(r, "chatId"), request)
 	if err != nil {

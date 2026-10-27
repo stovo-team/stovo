@@ -30,7 +30,8 @@ func mapLoginAccount(user *ent.User, err error) (identity.LoginAccount, error) {
 	return identity.LoginAccount{
 		ID: user.ID, FamilyID: user.FamilyID, Username: user.Username, PasswordHash: user.PasswordHash,
 		DisplayName: user.DisplayName, Role: user.Role, IsActive: user.IsActive == 1,
-		PublicKey: user.PublicKey, ProfilePhotoFileID: user.ProfilePhotoFileID, CreatedAt: user.CreatedAt,
+		PublicKey: user.PublicKey, ProfilePhotoFileID: user.ProfilePhotoFileID,
+		AvatarMode: user.ProfileAvatarMode, AvatarSymbolID: user.ProfileAvatarSymbolID, AvatarColorID: user.ProfileAvatarColorID, CreatedAt: user.CreatedAt,
 		LastSeenAt: user.LastSeenAt, ProfileVisibility: user.ProfileVisibility,
 		LastSeenVisibility: user.LastSeenVisibility, ReadReceiptsEnabled: user.ReadReceiptsEnabled,
 		AudioCallSettings: user.AudioCallSettings, Email: user.Email, Bio: user.Bio, Timezone: user.Timezone,

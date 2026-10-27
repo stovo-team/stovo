@@ -1,4 +1,6 @@
 import type { Chat } from "../../../api/chats";
+import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "../../../components/entityAvatar";
+import type { AvatarColorId, AvatarSymbolId } from "../../../components/entityAvatar";
 
 export type FolderChatType = "direct" | "group" | "channel" | "voice" | "archive";
 
@@ -16,6 +18,8 @@ export type ChatFolder = {
   id: string;
   name: string;
   rules: ChatFolderRules;
+  symbolId?: AvatarSymbolId;
+  colorId?: AvatarColorId;
 };
 
 export const folderChatTypes: Array<{ value: FolderChatType; label: string }> = [
@@ -62,10 +66,15 @@ export function loadChatFolders(familyId: string): ChatFolder[] {
   try {
     const value: unknown = JSON.parse(window.localStorage.getItem(storageKey(familyId)) ?? "[]");
     if (!Array.isArray(value)) return [];
-    return value.filter((item): item is ChatFolder => Boolean(
+    const folders = value.filter((item): item is ChatFolder => Boolean(
       item && typeof item === "object" && typeof (item as ChatFolder).id === "string" &&
       typeof (item as ChatFolder).name === "string" && (item as ChatFolder).rules
     ));
+    return folders.map((folder) => ({
+      ...folder,
+      symbolId: isKnownAvatarSymbolId(folder.symbolId) ? folder.symbolId : defaultAvatarSymbol("folder"),
+      colorId: isKnownAvatarColorId(folder.colorId) ? folder.colorId : colorForAvatarId(folder.id)
+    }));
   } catch {
     return [];
   }

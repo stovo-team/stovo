@@ -132,13 +132,25 @@ export function useChatDetailsActions({
     try {
       const uploaded = await uploadFile(accessToken, croppedFile);
       const chat = await updateChat(accessToken, selectedChat.id, {
-        chatPhotoFileId: uploaded.id
+        chatPhotoFileId: uploaded.id,
+        avatarMode: "photo"
       });
       applyChatUpdate(chat);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not update chat photo");
     } finally {
       setIsChatMediaUploading(false);
+    }
+  }
+
+  async function handleAvatarChoiceChange(patch: Partial<Pick<Chat, "avatarMode" | "avatarSymbolId" | "avatarColorId">>) {
+    if (!accessToken || !selectedChat || !canManageSelectedChat) return;
+    onError(null);
+    try {
+      const chat = await updateChat(accessToken, selectedChat.id, patch);
+      applyChatUpdate(chat);
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not update chat avatar");
     }
   }
 
@@ -315,6 +327,7 @@ export function useChatDetailsActions({
     handleDescriptionChange,
     handleChatPhotoSelect,
     handleSaveCroppedChatPhoto,
+    handleAvatarChoiceChange,
     handleMediaVisibilityChange,
     handleCommentsEnabledChange,
     handlePinPermissionChange,

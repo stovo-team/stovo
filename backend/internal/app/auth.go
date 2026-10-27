@@ -118,6 +118,9 @@ func (s *Server) updateProfileForUser(ctx context.Context, user userPublic, payl
 		Email:               payload.Email,
 		Bio:                 payload.Bio,
 		Timezone:            payload.Timezone,
+		AvatarMode:          payload.AvatarMode,
+		AvatarSymbolID:      payload.AvatarSymbolID,
+		AvatarColorID:       payload.AvatarColorID,
 	}
 	if payload.ProfilePhotoFileID != nil {
 		if *payload.ProfilePhotoFileID == "" {

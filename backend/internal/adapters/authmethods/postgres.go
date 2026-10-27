@@ -86,6 +86,7 @@ func (s *PostgresStore) TransitionQRLogin(ctx context.Context, requestHash, stat
 func (s *PostgresStore) FamilyChatID(ctx context.Context, familyID string) (string, error) {
 	var id string
 	err := s.db.QueryRowContext(ctx, `SELECT id FROM chats WHERE family_id = $1 AND type = 'family' LIMIT 1`, familyID).Scan(&id)
+	if err == sql.ErrNoRows { return "", nil }
 	return id, err
 }
 
@@ -100,8 +101,10 @@ func (s *PostgresStore) AcceptPasskeyInvite(ctx context.Context, p identity.Pass
 	if err != nil { return err }
 	if count != 1 { return sql.ErrNoRows }
 	if _, err = tx.ExecContext(ctx, `INSERT INTO passkey_credentials (id, user_id, family_id, credential_id, credential_data) VALUES ($1,$2,$3,$4,$5::jsonb)`, p.CredentialRecordID, p.UserID, p.FamilyID, p.CredentialID, p.CredentialData); err != nil { return err }
+	if p.FamilyChatID != "" {
 	if _, err = tx.ExecContext(ctx, `INSERT INTO chat_members (chat_id,user_id,created_at) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, p.FamilyChatID, p.UserID, p.CreatedAt); err != nil { return err }
 	if _, err = tx.ExecContext(ctx, `INSERT INTO chat_preferences (chat_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, p.FamilyChatID, p.UserID); err != nil { return err }
+	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO refresh_tokens (id,user_id,token_hash,expires_at,created_at,ip_address) VALUES ($1,$2,$3,$4,$5,$6)`, p.RefreshTokenID, p.UserID, p.RefreshTokenHash, p.RefreshExpiresAt, p.CreatedAt, p.IPAddress); err != nil { return err }
 	return tx.Commit()
 }

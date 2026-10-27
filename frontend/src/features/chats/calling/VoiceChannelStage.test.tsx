@@ -63,7 +63,10 @@ const mockVoiceChat: Chat = {
       username: "bob",
       role: "member",
       publicKey: null,
-      profilePhoto: null
+      profilePhoto: null,
+      avatarMode: "symbol",
+      avatarSymbolId: "star",
+      avatarColorId: "teal"
     }
   ],
   unreadCount: 0,
@@ -119,6 +122,8 @@ describe("VoiceChannelStage", () => {
 
     act(() => container.querySelector<HTMLElement>(".voice-room-stage")?.dispatchEvent(new PointerEvent("pointermove", { bubbles: true })));
     expect(onReveal).toHaveBeenCalledOnce();
+    const bobAvatar = container.querySelector<HTMLElement>('.voice-list-row-avatar[data-avatar-color="teal"]');
+    expect(bobAvatar?.querySelector(".entity-avatar__symbol")).not.toBeNull();
     window.removeEventListener(CALL_CONTROLS_REVEAL_EVENT, onReveal);
   });
 

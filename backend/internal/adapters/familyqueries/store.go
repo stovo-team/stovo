@@ -22,7 +22,7 @@ func (s *Store) ListActiveMembers(ctx context.Context, familyID, excludeRole str
 	}
 	members := make([]featurefamily.Member, 0, len(rows))
 	for _, row := range rows {
-		members = append(members, featurefamily.Member{ID: row.ID, FamilyID: row.FamilyID, Username: row.Username, DisplayName: row.DisplayName, Role: row.Role, IsActive: row.IsActive == 1, PublicKey: row.PublicKey, LastSeenAt: row.LastSeenAt, ProfileVisibility: row.ProfileVisibility, LastSeenVisibility: row.LastSeenVisibility, ReadReceiptsEnabled: row.ReadReceiptsEnabled, Email: row.Email, Bio: row.Bio, Timezone: row.Timezone, ProfilePhotoFileID: row.ProfilePhotoFileID, CreatedAt: row.CreatedAt, AudioCallSettings: row.AudioCallSettings})
+		members = append(members, featurefamily.Member{ID: row.ID, FamilyID: row.FamilyID, Username: row.Username, DisplayName: row.DisplayName, Role: row.Role, IsActive: row.IsActive == 1, PublicKey: row.PublicKey, LastSeenAt: row.LastSeenAt, ProfileVisibility: row.ProfileVisibility, LastSeenVisibility: row.LastSeenVisibility, ReadReceiptsEnabled: row.ReadReceiptsEnabled, Email: row.Email, Bio: row.Bio, Timezone: row.Timezone, ProfilePhotoFileID: row.ProfilePhotoFileID, AvatarMode: row.ProfileAvatarMode, AvatarSymbolID: row.ProfileAvatarSymbolID, AvatarColorID: row.ProfileAvatarColorID, CreatedAt: row.CreatedAt, AudioCallSettings: row.AudioCallSettings})
 	}
 	return members, nil
 }

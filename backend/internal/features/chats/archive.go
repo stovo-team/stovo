@@ -16,6 +16,7 @@ type ArchiveStore interface {
 type Member struct {
 	ID, DisplayName, Username, Role, LastSeenVisibility string
 	PublicKey, LastSeenAt, ProfilePhotoFileID           *string
+	AvatarMode, AvatarSymbolID, AvatarColorID            *string
 }
 
 type MessagePreview struct {
