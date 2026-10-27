@@ -56,12 +56,18 @@ test("active chat is capped at 1400px and the chat list gets remaining desktop w
   const wide = await page.evaluate(() => {
     const layout = document.querySelector<HTMLElement>(".chat-layout")!;
     const sidebar = document.querySelector<HTMLElement>(".chat-sidebar")!;
+    const sidebarHeader = document.querySelector<HTMLElement>(".chat-sidebar-header")!;
+    const search = document.querySelector<HTMLElement>(".chat-list-search")!;
+    const chatRow = document.querySelector<HTMLElement>('.chat-list-item[data-chat-id="chat-planning-team"]')!;
     const detail = document.querySelector<HTMLElement>(".chat-detail")!;
     const layoutRect = layout.getBoundingClientRect();
     const detailRect = detail.getBoundingClientRect();
     return {
       layoutWidth: layoutRect.width,
       sidebarWidth: sidebar.getBoundingClientRect().width,
+      sidebarHeaderWidth: sidebarHeader.getBoundingClientRect().width,
+      searchWidth: search.getBoundingClientRect().width,
+      chatRowWidth: chatRow.getBoundingClientRect().width,
       detailWidth: detailRect.width,
       rightInset: layoutRect.right - detailRect.right,
     };
@@ -69,6 +75,9 @@ test("active chat is capped at 1400px and the chat list gets remaining desktop w
 
   expect(wide.detailWidth).toBeCloseTo(1400, 0);
   expect(wide.sidebarWidth).toBeGreaterThan(320);
+  expect(wide.sidebarHeaderWidth).toBeLessThanOrEqual(560);
+  expect(wide.searchWidth).toBeLessThanOrEqual(560);
+  expect(wide.chatRowWidth).toBeLessThanOrEqual(560);
   expect(wide.rightInset).toBeLessThanOrEqual(1);
   expect(wide.layoutWidth).toBeCloseTo(wide.sidebarWidth + wide.detailWidth + 16, 0);
 

@@ -1,0 +1,10 @@
+{
+  "viewport": "2200x1100",
+  "theme": "light",
+  "shellAppearance": "Dark sidebar and search with a light conversation surface",
+  "locale": "en",
+  "browser": "Playwright Chromium",
+  "os": "linux",
+  "interaction": "Open the populated planning chat",
+  "state": "before: chat sidebar header expands to 648px"
+}
