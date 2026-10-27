@@ -1694,7 +1694,7 @@ h2 {
   display: grid;
   flex: 1;
   gap: var(--float-panel-gap);
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
   position: relative;

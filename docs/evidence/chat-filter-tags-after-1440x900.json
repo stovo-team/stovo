@@ -1,0 +1,8 @@
+{
+  "viewport": "1440x900",
+  "theme": "light",
+  "locale": "en",
+  "browser": "Playwright Chromium",
+  "os": "linux",
+  "interaction": "Open the populated planning chat at a 1440px desktop viewport"
+}
