@@ -59,6 +59,9 @@ awk '
   in_job_permissions && job == "changes" && $0 == "      contents: read" {
     changes_contents_read = 1
   }
+  in_job_permissions && job == "backend-ci" && $0 == "      actions: read" {
+    backend_actions_read = 1
+  }
   in_job_permissions && job == "deploy-android" && $0 == "      contents: write" {
     android_contents_write = 1
   }
@@ -105,6 +108,7 @@ awk '
   END {
     if (!global_contents_read) fail("The workflow token must have read-only contents access by default.")
     if (!changes_contents_read) fail("The changes job must retain contents: read permission.")
+    if (!backend_actions_read) fail("The backend aggregate must use actions: read only to fetch coverage artifacts from the current run.")
     if (!changes_fetches_full_history) fail("Detect Changes must fetch full history so merge pushes can compare against the previous push commit.")
     if (!changes_skips_historical_blobs) fail("Detect Changes must avoid downloading historical blobs when fetching full history.")
     if (!paths_filter_v4) fail("The pipeline must use the Node.js 24-compatible paths-filter release.")
@@ -205,12 +209,19 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
 done
 
 master_coverage_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'backend-coverage-shard-*' 'Merge backend coverage profiles' 'go run ./cmd/test-shard merge' 'name: backend-coverage'; do
+for required in 'backend-coverage-shard' 'Merge backend coverage profiles' 'go run ./cmd/test-shard merge' 'name: backend-coverage'; do
   if ! grep -Fq "$required" <<< "$master_coverage_contract"; then
     echo "Backend CI must merge and publish coverage from both shards ($required)." >&2
     exit 1
   fi
 done
+if ! grep -Fq 'name: Download backend coverage shard artifacts' <<< "$master_coverage_contract" || \
+   ! grep -Fq 'archive_download_url' <<< "$master_coverage_contract" || \
+   ! grep -Fq 'actions/runs/$env:GITHUB_RUN_ID/artifacts?per_page=100' <<< "$master_coverage_contract" || \
+   grep -Fq 'actions/download-artifact@' <<< "$master_coverage_contract"; then
+  echo "Backend coverage artifacts must be fetched through the GitHub REST API without an unapproved action." >&2
+  exit 1
+fi
 if ! grep -Fq 'SUMMARY=$(printf '\''Что нового:\n%s'\'' "$COMMITS")' <<< "$notes_retry_contract"; then
   echo "Android release notes must retain the commit-list fallback after retries are exhausted." >&2
   exit 1
