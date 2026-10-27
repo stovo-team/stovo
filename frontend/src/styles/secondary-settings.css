@@ -684,6 +684,8 @@
 }
 
 .chat-info-screen .chat-info-avatar-edit {
+  min-height: 0;
+  padding: 0;
   bottom: 0;
   height: 28px;
   right: -4px;
