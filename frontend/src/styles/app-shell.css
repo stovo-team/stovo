@@ -1425,8 +1425,6 @@ h2 {
   margin-bottom: 0;
 }
 
-
-
 .auth-brand-header {
   align-items: center;
   display: flex;
@@ -1663,11 +1661,7 @@ h2 {
   color: var(--color-palette-f2074b6cef37);
   justify-self: start;
 }
-
-.auth-panel .form-grid > button:hover:not(:disabled) {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-}
+.auth-panel .form-grid > button:hover:not(:disabled) { background: var(--accent-primary); border-color: var(--accent-primary); }
 
 .secondary-link {
   color: var(--text-secondary);
