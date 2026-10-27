@@ -382,7 +382,7 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true' &&
-      needs['backend_test_shards'].result == 'success'
+      needs.backend_test_shards.result == 'success'
     runs-on: [self-hosted, tests, Windows]
     steps:
       - name: Aggregate successful backend shards

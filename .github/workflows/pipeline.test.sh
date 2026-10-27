@@ -197,6 +197,10 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
     echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the two shards." >&2
     exit 1
   fi
+  if ! grep -Fq "needs.backend_test_shards.result == 'success'" <<< "$aggregate_contract"; then
+    echo "Backend workflow $workflow must require successful backend test shards before aggregating." >&2
+    exit 1
+  fi
 done
 
 master_coverage_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
