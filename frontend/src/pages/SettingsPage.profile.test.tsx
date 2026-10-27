@@ -56,6 +56,7 @@ describe("SettingsPage profile save", () => {
     mocks.platform = "web";
     mocks.currentUser.profilePhoto = null;
     mocks.currentUser.avatarMode = "photo";
+    Object.assign(mocks.currentUser, { avatarColorId: null });
     Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
     Object.defineProperty(window, "PublicKeyCredential", { configurable: true, value: class PublicKeyCredential {} });
     mocks.beginPasskeyRegistration.mockResolvedValue({ ceremonyId: "registration-1", publicKey: { challenge: "challenge" } });
@@ -104,21 +105,15 @@ describe("SettingsPage profile save", () => {
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH" }));
     expect(mocks.authRequest.mock.calls.some(([path, options]) => path === "/api/family" && options?.method === "PATCH")).toBe(false);
   });
-  it("saves profile avatar symbol and color through the profile endpoint", async () => {
+  it("keeps person initials when a profile color is set", async () => {
+    Object.assign(mocks.currentUser, { avatarColorId: "purple" });
     await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });
     await act(async () => container?.querySelector<HTMLButtonElement>('button[aria-label="Open profile settings"]')?.click());
-    await act(async () => document.body.querySelector<HTMLButtonElement>('button[aria-label="Star"]')?.click());
-    await act(async () => document.body.querySelector<HTMLButtonElement>('button[aria-label="Purple"]')?.click());
 
-    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({
-      method: "PATCH", body: { avatarMode: "symbol", avatarSymbolId: "star" }
-    }));
-    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({
-      method: "PATCH", body: { avatarColorId: "purple" }
-    }));
-    expect(mocks.updateCurrentUser).toHaveBeenCalled();
+    expect(container?.querySelector('.entity-avatar[data-avatar-color="purple"] .avatar-initials')?.textContent).toBe("OW");
+    expect(mocks.authRequest).not.toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH" }));
   });
-  it("keeps the uploaded profile photo reference while switching avatar modes", async () => {
+  it("keeps the uploaded profile photo available through the photo control", async () => {
     const photo = {
       id: "profile-photo-1", familyId: "family-1", uploadedBy: "owner-1", chatId: null, chatTitle: null,
       chatType: null, originMessageId: null, accessScope: "family" as const, storageProvider: "local",
@@ -129,16 +124,7 @@ describe("SettingsPage profile save", () => {
     await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });
     await act(async () => container?.querySelector<HTMLButtonElement>('button[aria-label="Open profile settings"]')?.click());
 
-    const symbolMode = document.body.querySelector<HTMLButtonElement>('.avatar-choice-picker button[aria-pressed="false"]');
-    expect(symbolMode?.textContent).toBe("Symbol");
-    await act(async () => { symbolMode?.click(); await Promise.resolve(); });
-    expect(mocks.authRequest).toHaveBeenCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH", body: { avatarMode: "symbol" } }));
-    expect(mocks.updateCurrentUser).toHaveBeenLastCalledWith(expect.objectContaining({ profilePhoto: photo, avatarMode: "symbol" }));
-
-    const photoMode = [...document.body.querySelectorAll<HTMLButtonElement>(".avatar-choice-picker button")].find((button) => button.textContent === "Photo");
-    await act(async () => { photoMode?.click(); await Promise.resolve(); });
-    expect(mocks.authRequest).toHaveBeenLastCalledWith("/api/auth/me", expect.objectContaining({ method: "PATCH", body: { avatarMode: "photo" } }));
-    expect(mocks.updateCurrentUser).toHaveBeenLastCalledWith(expect.objectContaining({ profilePhoto: photo, avatarMode: "photo" }));
+    expect(container?.querySelector('button[aria-label="Change profile photo"]') && container.querySelector<HTMLInputElement>('input[type="file"][accept="image/jpeg,image/png,image/gif,image/webp"]') && mocks.currentUser.profilePhoto).toBe(photo);
   });
   async function openPasskeys() {
     await act(async () => { root?.render(<MemoryRouter><SettingsPage /></MemoryRouter>); });

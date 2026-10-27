@@ -67,7 +67,7 @@ describe("message archive grouped view", () => {
   });
 
   it("uses the archive fallback icon and standard chat title spacing in the grouped archive header", () => {
-    expect(panel).toContain('<Archive aria-hidden className="avatar-fallback-svg" size={24} strokeWidth={1.75} />');
+    expect(panel).toContain('fallbackKind="archive"');
   });
 
   it("renders mobile back buttons and enables detail view when drafts & scheduled is active", () => {

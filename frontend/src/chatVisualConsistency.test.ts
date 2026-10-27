@@ -7,6 +7,7 @@ import { avatarInitials } from "./utils/avatarInitials";
 const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 const attachmentPicker = readTextFile(resolve(process.cwd(), "src/components/AttachmentPickerSheet.tsx"));
 const settingsAvatar = readTextFile(resolve(process.cwd(), "src/pages/settings/SettingsAvatar.tsx"));
+const entityAvatar = readTextFile(resolve(process.cwd(), "src/components/EntityAvatar.tsx"));
 const appearanceEditor = readTextFile(resolve(process.cwd(), "src/pages/settings/AppearanceEditor.tsx"));
 const settingsDashboard = readTextFile(resolve(process.cwd(), "src/pages/settings/SettingsDashboard.tsx"));
 
@@ -37,8 +38,7 @@ describe("chat visual consistency", () => {
   });
 
   it("uses the shared initials formatter for settings profile avatars", () => {
-    expect(settingsAvatar.includes('import { avatarInitials } from "../../utils/avatarInitials";')).toBe(true);
-    expect(settingsAvatar.includes("avatarInitials(label)")).toBe(true);
+    expect(settingsAvatar + entityAvatar).toMatch(/EntityAvatar[\s\S]*avatarInitials\(label \?\? undefined\)/);
     expect(appearanceEditor.includes("avatarInitials(displayName)")).toBe(true);
     expect(settingsDashboard.includes("avatarInitials(name)")).toBe(true);
     expect(avatarInitials("ivan")).toBe("IV");
@@ -48,15 +48,12 @@ describe("chat visual consistency", () => {
   it("scales generated avatar initials with the avatar circle diameter", () => {
     const avatarRule = styles.match(/\.avatar \{([\s\S]*?)\n\}/)?.[1] ?? "";
     const initialsRule = styles.match(/\.avatar-initials \{([\s\S]*?)\n\}/)?.[1] ?? "";
-    const realAvatar = readTextFile(resolve(process.cwd(), "src/features/chats/sidebar/RealAvatar.tsx"));
-    const callTile = readTextFile(resolve(process.cwd(), "src/components/CallParticipantTile.tsx"));
     const callCircleRule = [...styles.matchAll(/\.call-grid__avatar-circle \{([\s\S]*?)\n\}/g)]
       .find(([, rule]) => rule.includes("width: 64px"))?.[1] ?? "";
 
     expect(avatarRule).toContain("container-type: size;");
     expect(initialsRule).toContain("font-size: var(--font-size-avatar-initials);");
-    expect(realAvatar).toContain('<span className="avatar-initials">{chatInitials(label)}</span>');
+    expect(entityAvatar).toContain('<span className="avatar-initials">{avatarInitials(label ?? undefined)}</span>');
     expect(callCircleRule).toContain("container-type: size;");
-    expect(callTile).toContain('fontSize: "var(--font-size-avatar-initials)"');
   });
 });

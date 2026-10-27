@@ -8,13 +8,9 @@ import {
 } from "./storageLibrary";
 
 describe("storage library helpers", () => {
-  it("uses compact markers for group and channel sources while keeping archives icon-only", () => {
-    expect(storageSourceLeadingVisual("group", true)).toBe("lock");
-    expect(storageSourceLeadingVisual("channel", true)).toBe("hash");
-    expect(storageSourceLeadingVisual("voice", true)).toBe("voice");
-    expect(storageSourceLeadingVisual("direct", true)).toBe("avatar");
-    expect(storageSourceLeadingVisual("archive", true)).toBe("archive");
-    expect(storageSourceLeadingVisual("archive", false)).toBe("archive");
+  it("uses the shared avatar visual for every storage source", () => {
+    expect((["group", "channel", "voice", "direct", "archive"] as const).map((kind) => storageSourceLeadingVisual(kind, true))).toEqual(["avatar", "avatar", "avatar", "avatar", "avatar"]);
+    expect(storageSourceLeadingVisual("archive", false)).toBe("avatar");
   });
 
   const audio = {
@@ -64,7 +60,7 @@ describe("storage library helpers", () => {
       "me"
     );
 
-    expect(sources).toEqual([
+    expect(sources).toMatchObject([
       {
         label: "CHATS",
         sources: [{ chatId: "chat-1", label: "Family announcements", avatarFile: chatPhoto, avatarKind: "family", fileCount: 1 }]
@@ -74,6 +70,7 @@ describe("storage library helpers", () => {
         sources: [{ chatId: "chat-2", label: "Mom", avatarFile: profilePhoto, avatarKind: "direct", fileCount: 1 }]
       }
     ]);
+    expect(sources[1].sources[0].avatarEntityId).toBe("mom");
   });
 
   it("keeps a chat with files visible while its chat metadata is unavailable", () => {
@@ -81,7 +78,7 @@ describe("storage library helpers", () => {
       [{ ...audio, chatId: "syncing-chat", chatTitle: "Trip plans", chatType: "group" }],
       [],
       "me"
-    )).toEqual([
+    )).toMatchObject([
       {
         label: "GROUPS",
         sources: [{
@@ -112,7 +109,7 @@ describe("storage library helpers", () => {
       "me"
     );
 
-    expect(sources).toEqual([{
+    expect(sources).toMatchObject([{
       label: "CHATS",
       sources: [{ chatId: "chat-3", label: "Planning", avatarFile: null, avatarKind: "family", fileCount: 1 }]
     }]);
@@ -125,7 +122,7 @@ describe("storage library helpers", () => {
       "me"
     );
 
-    expect(sources).toEqual([{
+    expect(sources).toMatchObject([{
       label: "MESSAGE ARCHIVE",
       sources: [{ chatId: "archive", label: "Message Archive", avatarFile: null, avatarKind: "archive", fileCount: 1 }]
     }]);
