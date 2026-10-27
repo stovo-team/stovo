@@ -112,11 +112,11 @@ awk '
     if (job_condition["frontend-ci"] != "needs.changes.outputs.frontend == '\''true'\''") {
       fail("Frontend CI must run only when frontend paths changed.")
     }
-    if (job_condition["backend-ci"] != "${{ !cancelled() && needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only }}") {
-      fail("Backend CI must run only when backend paths changed.")
+    if (job_condition["backend-test-shards"] != "${{ !cancelled() && needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only }}") {
+      fail("Backend test shards must run only when backend paths changed.")
     }
-    if (job_needs["backend-ci"] != "changes") {
-      fail("Backend CI must be eligible independently of Frontend CI because it uses a separate runner pool.")
+    if (job_needs["backend-test-shards"] != "changes" || job_needs["backend-ci"] != "[changes, backend-test-shards]") {
+      fail("Backend shards must run independently of Frontend CI and Backend CI must aggregate the shards.")
     }
     if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
       fail("Frontend CI must stay on the frontend runner labeled e2e.")
@@ -124,8 +124,8 @@ awk '
     if (job_runner["changes"] != "[self-hosted, Windows, tests]") {
       fail("The changes job must use the Windows self-hosted tests runner instead of GitHub-hosted Windows.")
     }
-    if (job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
-      fail("Backend CI must use the Windows tests runner because its database services are initialized with Docker Desktop.")
+    if (job_runner["backend-test-shards"] != "[self-hosted, tests, Windows]" || job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
+      fail("Backend shards and aggregate must use the Windows tests runner.")
     }
     if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
       fail("The changes job must use built-in Windows PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
@@ -180,6 +180,29 @@ fi
 for required in 'MAX_ATTEMPTS=3' '-le "$MAX_ATTEMPTS"' 'BASE_DELAY=$((1 << (attempt - 1)))' 'RANDOM' 'sleep "$DELAY"' 'curl -fsSL https://api.openai.com/v1/chat/completions'; do
   if ! grep -Fq -- "$required" <<< "$notes_retry_contract"; then
     echo "Android release notes must retry the OpenAI request up to three times with exponential jittered delays ($required)." >&2
+    exit 1
+  fi
+done
+
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  shard_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'max-parallel: 2' 'shard: [0, 1]' 'matrix.shard' 'select -shard "$BACKEND_TEST_SHARD" -shards 2' '-run "$testRegex"' './internal/app'; do
+    if ! grep -Fq -- "$required" <<< "$shard_contract"; then
+      echo "Backend workflow $workflow must run two isolated Go integration shards ($required)." >&2
+      exit 1
+    fi
+  done
+  aggregate_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if ! grep -Fq 'needs: [changes, backend-test-shards]' <<< "$aggregate_contract"; then
+    echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the two shards." >&2
+    exit 1
+  fi
+done
+
+master_coverage_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for required in 'backend-coverage-shard-*' 'Merge backend coverage profiles' 'go run ./cmd/test-shard merge' 'name: backend-coverage'; do
+  if ! grep -Fq "$required" <<< "$master_coverage_contract"; then
+    echo "Backend CI must merge and publish coverage from both shards ($required)." >&2
     exit 1
   fi
 done
@@ -280,7 +303,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
   exit 1
 fi
-backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+backend_ci_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
 for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
@@ -358,7 +381,7 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+backend_workflow_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Backend CI must run the pinned golangci-lint binary with lint caching enabled ($required)." >&2
@@ -366,7 +389,7 @@ for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLA
   fi
 done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  workflow_backend_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  workflow_backend_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
     if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
       echo "Backend CI in $workflow must download and cache a named Windows golangci-lint archive before invoking the action ($required)." >&2
@@ -403,7 +426,7 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
   fi
 done
 
-backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+backend_workflow_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
@@ -519,7 +542,7 @@ if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_
 fi
 
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  backend_ci_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
     if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
       echo "Backend CI in $workflow must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
@@ -538,7 +561,7 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
   fi
 done
 
-backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+backend_ci_contract=$(sed -n '/^  backend-test-shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
   if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
     echo "Master backend CI must run Atlas in the PostgreSQL container network namespace ($required)." >&2
