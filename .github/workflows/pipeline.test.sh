@@ -281,7 +281,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
     exit 1
@@ -359,7 +359,7 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   exit 1
 }
 backend_workflow_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
+for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Backend CI must run the pinned golangci-lint binary with lint caching enabled ($required)." >&2
     exit 1
@@ -367,7 +367,7 @@ for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: false'; do
 done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   workflow_backend_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none'; do
+  for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
     if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
       echo "Backend CI in $workflow must download and cache a named Windows golangci-lint archive before invoking the action ($required)." >&2
       exit 1

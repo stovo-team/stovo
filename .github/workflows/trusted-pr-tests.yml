@@ -330,6 +330,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "golangci-lint $version could not start."
           }
+      - name: Configure runner-local golangci-lint cache
+        shell: powershell
+        run: |
+          $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
+          New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
+          Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
@@ -337,7 +343,7 @@ jobs:
           install-mode: none
           working-directory: backend
           verify: true
-          skip-cache: false
+          skip-cache: true
           args: --timeout=5m
       - name: Unit and integration tests
         run: go test -count=1 ./...
