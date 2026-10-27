@@ -28,6 +28,7 @@ function bundlePdfJsSupportAssets() {
 }
 
 export default defineConfig({
+  cacheDir: process.env.STOVO_VITE_CACHE_DIR || undefined,
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
     // Self-hosted CI shares memory with other jobs; avoid a worker per CPU.
