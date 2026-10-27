@@ -822,7 +822,7 @@ export function ChatList({
       {editingDefaultSection !== undefined && (
         <ChatFolderDialog
           folder={defaultFolders[editingDefaultSection]}
-          title={strings.chats.folders.settingsForFolder(defaultFolders[editingDefaultSection]?.name || strings.chats.folders.newFolder)}
+          title={strings.chats.folders.settings}
           allowDelete={true}
           onClose={() => setEditingDefaultSection(undefined)}
           onSave={(folder) => saveDefaultFolderSettings(editingDefaultSection, folder)}

@@ -548,7 +548,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px 0;
+  padding: 16px 8px 16px 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -675,7 +675,7 @@
   }
 
   .chat-folder-body {
-    padding: 14px 0;
+    padding: 14px 8px 14px 0;
   }
 
   .chat-folder-actions { padding: 10px 0 0; }
