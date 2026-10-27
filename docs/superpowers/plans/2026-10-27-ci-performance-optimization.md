@@ -147,7 +147,7 @@
 - [ ] Move work into a new `backend-test-shards` matrix with exactly two shards and `max-parallel: 2` on `[self-hosted, tests, Windows]`. Keep `backend-ci` as the final, short aggregate job with its existing job ID and `Backend CI` name so it remains the branch-protection/deploy check.
 - [ ] Give every shard unique PostgreSQL/Redis container and network/project names based on run ID, attempt, and shard index; export that shard's URLs only to its test process.
 - [ ] Run non-app packages exactly once. Assign the current lint/static checks to shard 0's runner lane and keep the other lane available for shard 1, avoiding a third queued heavy job. First use sequential lint+shard in lane 0 as the safe baseline; then benchmark background lint with shard 0 only if actual CPU/RAM supports it.
-- [ ] Upload atomic coverage profile from each shard with shard-specific artifact names. In the existing `backend-ci` aggregate job after both shards, merge profiles, produce the current coverage summary, and upload the existing aggregate artifact name.
+- [ ] Upload atomic coverage profile from each shard with shard-specific artifact names. The repository restricts Actions to an explicit SHA-pinned allowlist that does not include `actions/download-artifact`, so the existing `backend-ci` aggregate uses a job-scoped `actions: read` token to fetch only artifacts from the current run through GitHub's artifact REST API, validates both shard profiles, merges them, produces the current coverage summary, and uploads the existing aggregate artifact name.
 - [ ] Ensure failures in either shard, lint, or coverage merge fail the aggregate gate; cleanup each shard's own containers with `if: always()`.
 - [ ] Extend workflow contract tests for exactly two shards, unique service identities, coverage requirements, and preserved deploy gating; run these tests before and after workflow edits.
 - [ ] Re-run the focused backend selector/coverage tests, all Go tests, lint, migration validation, and full workflow contract test suite.
@@ -178,6 +178,7 @@
 
 - The suite may not balance evenly into two shards. Use measured per-root-test durations to balance while preserving deterministic assignments.
 - A matrix can leave artifacts with missing coverage if one shard fails. Aggregate only after both succeed and fail closed when an expected profile is absent.
+- The repository's selected-action policy rejects an unlisted artifact download action before job creation. Preserve that least-privilege policy; fetch same-run artifacts with the GitHub REST API and grant `actions: read` only to the aggregate job.
 - Running lint and tests concurrently on one Windows host can increase both durations or exhaust memory. Begin sequentially in one lane and adopt overlap only after controlled measurements.
 - Docker Desktop startup and port allocation can be the new bottleneck. Use unique project/container names and dynamic host ports per shard.
 - Previous PR #301 was reverted without a recorded cause. Do not assume its three-runner design or reset strategy is valid for today's two-runner pool.
