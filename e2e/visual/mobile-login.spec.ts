@@ -42,13 +42,13 @@ test("mobile web login uses short auth labels in English", async ({ page }, test
   await capture(page, testInfo, "mobile-login-en", "en", "Login page; Android browser; dark theme; 390x844");
 });
 
-test("mobile QR sign-in exposes the Stovo app fallback in Russian", async ({ page }, testInfo) => {
+test("mobile QR sign-in automatically opens Stovo without a manual fallback in Russian", async ({ page }, testInfo) => {
   await openMobileLogin(page, "ru");
   await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Ключ доступа");
   await expect(page.locator('[data-auth-method="qr"]')).toHaveText("QR-код");
   await page.locator('[data-auth-method="qr"]').click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("visualAppLaunchUrl"))).toBe(approvalUrl);
-  await expect(page.locator('[data-auth-method="open-app"]')).toBeVisible();
-  await expect(page.locator('[data-auth-method="open-app"]')).toHaveText("Открыть в Stovo");
-  await capture(page, testInfo, "mobile-login-app-fallback-ru", "ru", "QR sign-in after automatic app handoff; manual fallback shown; Android browser; dark theme; 390x844");
+  await expect(page.locator('[data-auth-method="open-app"]')).toHaveCount(0);
+  await expect(page.getByText("Открыть в Stovo")).toHaveCount(0);
+  await capture(page, testInfo, "mobile-login-auto-app-ru", "ru", "QR sign-in after automatic app handoff; no manual app-open prompt; Android browser; dark theme; 390x844");
 });

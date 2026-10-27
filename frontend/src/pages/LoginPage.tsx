@@ -330,7 +330,6 @@ export default function LoginPage() {
               <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
                 <KeyRound aria-hidden="true" size={18} /> <span>{passkeyLabel}</span>
               </button>
-              {qrLogin && isMobileBrowser && <button type="button" className="secondary-button" data-auth-method="open-app" onClick={() => openStovoApp(qrLogin.scanUrl)}>{strings.auth.openInStovo}</button>}
               <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => { setAuthView("password"); setQrLogin(null); }}>
                 <span>{strings.auth.signInWithPassword}</span>
               </button>

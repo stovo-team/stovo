@@ -151,7 +151,7 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
   });
 
-  it("automatically opens the Stovo app for mobile QR sign-in and keeps a manual fallback", async () => {
+  it("automatically opens the Stovo app for mobile QR sign-in without offering a manual fallback", async () => {
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36" });
     const launchedUrls: string[] = [];
     const launchApp = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function(this: HTMLAnchorElement) {
@@ -165,8 +165,8 @@ describe("LoginPage authentication methods", () => {
 
     expect(launchApp).toHaveBeenCalledOnce();
     expect(launchedUrls).toEqual([`stovo://auth/qr-approve/${"a".repeat(48)}`]);
-    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="open-app"]')).not.toBeNull();
-    expect(container.querySelector('[data-auth-method="open-app"]')?.textContent).toBe("Open in Stovo");
+    expect(container.querySelector('[data-auth-method="open-app"]')).toBeNull();
+    expect(container.textContent).not.toContain("Open in Stovo");
     launchApp.mockRestore();
   });
 

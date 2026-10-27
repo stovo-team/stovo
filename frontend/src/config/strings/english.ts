@@ -338,7 +338,7 @@ export const strings = {
       "Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.",
     signInWithPasskey: "Sign in with Passkey", signInWithPasskeyShort: "Passkey",
     signInWithPassword: "Sign in with Password",
-    signInWithQr: "Sign in with QR code", signInWithQrShort: "QR code", openInStovo: "Open in Stovo",
+    signInWithQr: "Sign in with QR code", signInWithQrShort: "QR code",
     secureContextRequired: "Passkeys require a secure connection (HTTPS).",
     supportedAndroidWebView: "Passkeys require a supported Android WebView. Update Android System WebView or use your password or QR.",
     signInFailed: "Passkey sign-in failed. Try again or use your password.",
