@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppStrings } from "../config/strings";
+import type { ChatStats } from "../api/stats";
 
 vi.mock("../i18n/LanguageContext", () => ({
   useStrings: () => getAppStrings("ru"),
@@ -43,5 +44,23 @@ describe("ChatStatsDrawer", () => {
     act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an empty activity state when a chat has no top-member rows", () => {
+    const stats = {
+      chat_id: "empty-chat",
+      total_messages: 0,
+      total_media: 0,
+      total_members: 1,
+      avg_response_time_seconds: 0,
+      fastest_responder_name: "",
+      fastest_responder_speed: 0,
+      messages_by_hour: Array(24).fill(0),
+      top_members: null,
+    } satisfies ChatStats;
+
+    act(() => root.render(<ChatStatsDrawer stats={stats} onClose={vi.fn()} />));
+
+    expect(document.body.querySelector(".chat-stats-empty")?.textContent).toBe("Пока нет активности участников.");
   });
 });

@@ -18,6 +18,7 @@ export default function ChatStatsDrawer({ stats, chatTitle, isLoading = false, e
   const locale = useResolvedLanguage();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const messagesByHour = stats?.messages_by_hour ?? [];
+  const topMembers = stats?.top_members ?? [];
   const maxHour = Math.max(...messagesByHour, 1);
   const formatHour = (hour: number) => new Date(Date.UTC(2020, 0, 1, hour)).toLocaleTimeString(locale, { hour: "numeric", timeZone: "UTC" });
   const formatResponseTime = (seconds: number) => !seconds ? copy.noReplies : seconds < 60
@@ -60,7 +61,7 @@ export default function ChatStatsDrawer({ stats, chatTitle, isLoading = false, e
 
           <section className="chat-stats-section">
             <div className="chat-stats-section-heading"><div><span>{copy.people}</span><h3>{copy.mostActive}</h3></div></div>
-            {stats.top_members.length ? <ol className="chat-stats-member-list">{stats.top_members.map((member, index) => <li key={member.user_id}><span>{index + 1}</span><strong>{member.display_name}</strong><small>{copy.messageCount(member.message_count, locale)}</small></li>)}</ol> : <p className="chat-stats-empty">{copy.noActivity}</p>}
+            {topMembers.length ? <ol className="chat-stats-member-list">{topMembers.map((member, index) => <li key={member.user_id}><span>{index + 1}</span><strong>{member.display_name}</strong><small>{copy.messageCount(member.message_count, locale)}</small></li>)}</ol> : <p className="chat-stats-empty">{copy.noActivity}</p>}
           </section>
         </>}
       </div>
