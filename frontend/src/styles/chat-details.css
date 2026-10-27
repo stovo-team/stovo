@@ -1003,7 +1003,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .chat-info-avatar-edit {
-  align-items: center;
+  align-items: center; min-height: 0; padding: 0;
   background: var(--island-surface);
   border: 0;
   border-radius: var(--radius-circle);
