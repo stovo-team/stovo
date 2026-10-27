@@ -162,7 +162,7 @@
 - [ ] From completed lint logs, establish whether analysis cache is restored/saved; separate cache restore time, analysis time, and post-save time.
 - [ ] If analysis cache misses repeatedly, correct only the golangci cache path/key or action setup; key it on runner OS/arch, Go version, golangci version, config and dependency lock/mod files as appropriate.
 - [ ] If warm-cache lint remains close to 179 seconds, profile the configured standard linters and actual runner CPU. Adjust `run.concurrency` only after comparing default with a bounded candidate on the same host; keep every configured linter enabled.
-- [ ] Measure `npm cache clean --force` and `npm ci` on repeat runs. If cleaning only discards valid reusable cache and disk is healthy, remove the cleanup and let `npm ci` retain deterministic installs; otherwise keep it and document the disk constraint. Do not add a remote dependency cache without measuring restore cost and trust implications.
+- [ ] Measure `npm cache clean --force` and `npm ci` on repeat runs. The parallel CI run showed that clearing the shared runner-local npm cache races with another frontend job (`ENOTEMPTY` and `ENOENT` in the same cache); remove the cleanup and let `npm ci` retain deterministic installs and a reusable local cache. Do not add a remote dependency cache without measuring restore cost and trust implications.
 - [ ] Compare full pipeline medians across at least three comparable successful runs; report critical-path reduction and any new queue time.
 
 **Exit:** each retained lint/cache change has measured benefit, full lint remains enabled, and the end-to-end pipeline is faster than the recorded baseline.
@@ -181,5 +181,6 @@
 - The repository's selected-action policy rejects an unlisted artifact download action before job creation. Preserve that least-privilege policy; fetch same-run artifacts with the GitHub REST API and grant `actions: read` only to the aggregate job.
 - Running lint and tests concurrently on one Windows host can increase both durations or exhaust memory. Begin sequentially in one lane and adopt overlap only after controlled measurements.
 - Docker Desktop startup and port allocation can be the new bottleneck. Use unique project/container names and dynamic host ports per shard.
+- Two e2e jobs can run concurrently on separate runner services that share the Windows user's `%LOCALAPPDATA%\npm-cache`; never delete that shared cache as part of a job. `npm ci` provides the clean dependency tree without globally racing cache cleanup.
 - Previous PR #301 was reverted without a recorded cause. Do not assume its three-runner design or reset strategy is valid for today's two-runner pool.
 - If two-shard execution is not faster or reliable on actual runners, keep the verified graph/Vitest improvements and revert only the sharding portion.

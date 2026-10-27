@@ -114,8 +114,6 @@ jobs:
           $computer = Get-CimInstance Win32_ComputerSystem
           $os = Get-CimInstance Win32_OperatingSystem
           Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
-      - name: Clear stale npm cache
-        run: npm cache clean --force
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
