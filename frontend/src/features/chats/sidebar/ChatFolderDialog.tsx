@@ -4,7 +4,7 @@ import { PopupDialog } from "../../../components/ui/Popup";
 import { PopupButton } from "../../../components/ui/PopupButton";
 import { PopupField } from "../../../components/ui/PopupField";
 import { AvatarChoicePicker } from "../../../components/AvatarChoicePicker";
-import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/entityAvatar";
+import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/avatarIdentity";
 
 import { ChatFolder, defaultFolderRules, folderChatTypes } from "./chatFolders";
 import { useStrings } from "../../../i18n/LanguageContext";

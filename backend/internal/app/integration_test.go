@@ -138,8 +138,8 @@ func TestChangePasswordUpdatesOnlyTheAuthenticatedUserAndRevokesOtherSessions(t 
 	}
 	owner := decodeJSON[authResponse](t, setupResp)
 	initialChats := decodeJSON[[]chatPublic](t, jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/chats", owner.AccessToken, nil))
-	if len(initialChats) != 0 {
-		t.Fatalf("setup must not create an automatic chat: %#v", initialChats)
+	if len(initialChats) != 1 || initialChats[0].Type != "archive" {
+		t.Fatalf("setup must create only the message archive: %#v", initialChats)
 	}
 
 	secondDeviceJar, _ := cookiejar.New(nil)
@@ -2028,8 +2028,8 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 	}
 	originalMessage := decodeJSON[messagePublic](t, sendResp)
 
-	groupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats", owner.AccessToken, map[string]any{
-		"type": "group", "title": "Forward destination", "memberIds": []string{},
+	groupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/group", owner.AccessToken, map[string]any{
+		"title": "Forward destination", "memberIds": []string{},
 	})
 	if groupResp.StatusCode != http.StatusCreated {
 		t.Fatalf("create destination status = %d", groupResp.StatusCode)

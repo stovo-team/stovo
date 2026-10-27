@@ -29,5 +29,10 @@
     "theme.css": 389,
     "voice-channels.css": 1271
   },
-  "exceptions": {}
+  "exceptions": {
+    "app-shell.css": {
+      "maxLines": 2079,
+      "reason": "Accept the existing app-shell stylesheet size on current master while its rules are split into smaller partials."
+    }
+  }
 }

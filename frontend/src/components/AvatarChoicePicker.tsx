@@ -1,6 +1,6 @@
 import type { FamilyFile } from "../api/files";
-import { AVATAR_COLOR_IDS, AVATAR_SYMBOL_IDS, colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "./entityAvatar";
-import type { AvatarEntityKind, AvatarColorId, AvatarSymbolId } from "./entityAvatar";
+import { AVATAR_COLOR_IDS, AVATAR_SYMBOL_IDS, colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "./avatarIdentity";
+import type { AvatarEntityKind, AvatarColorId, AvatarSymbolId } from "./avatarIdentity";
 import { EntityAvatar } from "./EntityAvatar";
 import { useStrings } from "../i18n/LanguageContext";
 import { SymbolColorControls } from "./SymbolColorControls";

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { afterEach, test } = require('node:test');
-const { checkCssSizes } = require('./check-frontend-css-size.cjs');
+const { checkCssSizes, countLines } = require('./check-frontend-css-size.cjs');
 
 const temporaryDirectories = [];
 
@@ -73,6 +73,18 @@ test('allows baseline growth only within a documented exception cap', () => {
     },
   }));
   assert.deepEqual(result.errors, []);
+});
+
+test('keeps the oversized app shell within its documented exception cap', () => {
+  const baselinePath = path.join(__dirname, '..', 'frontend', 'css-size-baseline.json');
+  const stylesheetPath = path.join(__dirname, '..', 'frontend', 'src', 'styles', 'app-shell.css');
+  const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+  const exception = baseline.exceptions['app-shell.css'];
+  const actualLines = countLines(fs.readFileSync(stylesheetPath, 'utf8'));
+
+  assert.ok(exception.reason.trim().length > 0);
+  assert.ok(exception.maxLines >= actualLines);
+  assert.deepEqual(checkCssSizes().errors, []);
 });
 
 test('rejects exception entries without a reason', () => {

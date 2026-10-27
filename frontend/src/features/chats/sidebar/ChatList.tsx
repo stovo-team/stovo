@@ -10,7 +10,7 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
 import { EntityAvatar } from "../../../components/EntityAvatar";
 import { RealAvatar } from "./RealAvatar";
-import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/entityAvatar";
+import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/avatarIdentity";
 import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
 import { chatAvatarFile, chatAvatarIdentity, displayChatName } from "../shared/chatPresentation";
 import type { ChatContextMenuState } from "./ChatContextMenu";

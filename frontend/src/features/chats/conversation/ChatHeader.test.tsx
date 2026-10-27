@@ -251,7 +251,7 @@ describe("ChatHeader", () => {
 
     expect(container.querySelector(".chat-title-group--archive-group .chat-avatar")).not.toBeNull();
     expect(container.querySelector(".chat-title-group--archive-group .chat-avatar.archive")).not.toBeNull();
-    expect(container.querySelector(".chat-title-group--archive-group .lucide-file-text")).not.toBeNull();
+    expect(container.querySelector(".chat-title-group--archive-group .entity-avatar__symbol")).not.toBeNull();
   });
 
   it("renders member count and description horizontally separated by dot", () => {

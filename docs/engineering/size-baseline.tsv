@@ -2,7 +2,7 @@ backend/internal/adapters/statsstore/postgres_store.go	893
 backend/internal/app/admin_operations.go	535
 backend/internal/app/call_operations.go	1409
 backend/internal/app/canvas_operations.go	608
-backend/internal/app/chat_operations.go	1673
+backend/internal/app/chat_operations.go	1689
 backend/internal/app/checklist_operations.go	1016
 backend/internal/app/collection_operations.go	557
 backend/internal/app/file_operations.go	594
@@ -11,13 +11,13 @@ backend/internal/app/helpers.go	437
 backend/internal/app/mcp_operations.go	1068
 backend/internal/app/recording_operations.go	577
 backend/internal/app/routes.go	1362
-backend/internal/app/server.go	500
+backend/internal/app/server.go	503
 backend/internal/app/transcription_operations.go	638
-backend/internal/app/types.go	481
+backend/internal/app/types.go	484
 backend/internal/config/config.go	456
 backend/internal/orchestrator/routes.go	774
 backend/internal/repository/auth.go	435
-backend/internal/repository/chats.go	508
+backend/internal/repository/chats.go	517
 backend/internal/repository/messages.go	619
 backend/internal/transcription/groq.go	474
 backend/internal/tunnel/tunnel.go	502
