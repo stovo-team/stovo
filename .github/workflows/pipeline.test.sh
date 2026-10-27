@@ -82,6 +82,11 @@ awk '
   job == "changes" && shell_detection_step && /bin\\bash\.exe/ { git_bash_path = 1 }
   job == "changes" && shell_detection_step && /Add-Content.*GITHUB_PATH/ { git_bash_added_to_path = 1 }
   job == "changes" && shell_detection_step && /^[[:space:]]+fi[[:space:]]*$/ { shell_uses_bash_fi = 1 }
+  job == "backend-ci" && /^      - name: Detect available shell$/ { backend_shell_detection_step = 1 }
+  job == "backend-ci" && backend_shell_detection_step && /^        shell: powershell$/ { backend_shell_detection_shell = 1 }
+  job == "backend-ci" && backend_shell_detection_step && /Get-Command git/ { backend_git_command_lookup = 1 }
+  job == "backend-ci" && backend_shell_detection_step && /bin\\bash\.exe/ { backend_git_bash_path = 1 }
+  job == "backend-ci" && backend_shell_detection_step && /Add-Content.*GITHUB_PATH/ { backend_git_bash_added_to_path = 1 }
   job == "changes" && /GIT_CONFIG_COUNT: 2/ { checkout_git_config_count = 1 }
   job == "changes" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { checkout_autocrlf_key = 1 }
   job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
@@ -132,6 +137,9 @@ awk '
     }
     if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
       fail("The changes job must use built-in Windows PowerShell and put Git for Windows Bash ahead of the broken WSL bash shim.")
+    }
+    if (!backend_shell_detection_step || !backend_shell_detection_shell || !backend_git_command_lookup || !backend_git_bash_path || !backend_git_bash_added_to_path) {
+      fail("The backend aggregate must put Git for Windows Bash ahead of the broken WSL bash shim before running bash steps.")
     }
     if (shell_uses_bash_fi) fail("The PowerShell shell bootstrap must not contain Bash control syntax.")
     if (!checkout_git_config_count || !checkout_autocrlf_key || !checkout_autocrlf_disabled || !checkout_http_version_key || !checkout_http_version_http1) {
