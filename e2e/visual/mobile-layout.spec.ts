@@ -79,6 +79,7 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.composePosition).toBe('absolute');
     expect(geometry.compose.left).toBeGreaterThanOrEqual(geometry.sidebar.left);
     expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.sidebar.right - geometry.compose.right).toBeGreaterThanOrEqual(12);
     expect(geometry.compose.top).toBeGreaterThanOrEqual(geometry.sidebar.top);
     expect(geometry.compose.bottom).toBeLessThanOrEqual(geometry.sidebar.bottom);
     expect(geometry.compose.right).toBeLessThanOrEqual(s.viewport.width);
