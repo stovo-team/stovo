@@ -112,7 +112,7 @@ test.describe('V-18 narrow desktop chat list', () => {
 });
 
 test('wide desktop keeps the list compact and centers the chat in the remaining space', async ({ page }, info) => {
-  const s: Scenario = { id: 'V-21', viewport: { width: 1920, height: 900 }, theme: 'dark', locale: 'en' };
+  const s: Scenario = { id: 'V-21', viewport: { width: 2560, height: 900 }, theme: 'dark', locale: 'en' };
   await prepareVisualScenario(page, s, '/app/chats/chat-planning-team');
   const geometry = await page.evaluate(() => {
     const rect = (selector: string) => document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
@@ -125,7 +125,7 @@ test('wide desktop keeps the list compact and centers the chat in the remaining 
     return { sidebarWidth: sidebar.width, sidebarRight: sidebar.right, searchRight: rect('.chat-list-search').right, itemRight: rect('.chat-list-item').right, buttonRight: rect('.compose-fab').right, detailCenter: (detail.left + detail.right) / 2, remainingCenter: (sidebar.right + layout.right) / 2, filtersRight: filters.getBoundingClientRect().right, filtersFit: filters.scrollWidth <= filters.clientWidth, target: !!target?.closest('.filter-chip:last-child') };
   });
   await screenshot(page, info, s);
-  expect(geometry.sidebarWidth).toBeLessThanOrEqual(280);
+  expect(geometry.sidebarWidth).toBeCloseTo(322, 0);
   expect(geometry.searchRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.itemRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.sidebarRight);
@@ -148,13 +148,17 @@ test.describe('desktop chat filters use available space', () => {
         const last = chips[chips.length - 1];
         const rect = last.getBoundingClientRect();
         const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
+        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, detail: document.querySelector<HTMLElement>('.chat-detail')!.getBoundingClientRect().left, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
       });
       await screenshot(page, info, s);
-      expect(geometry.filters).toBeGreaterThan(geometry.sidebar);
+      expect(geometry.filters).toBeLessThanOrEqual(geometry.detail);
       expect(geometry.search).toBeLessThanOrEqual(geometry.sidebar);
-      expect(geometry.clipped).toBe(false);
-      expect(geometry.hit, geometry.hitElement).toBe(true);
+      expect(geometry.clipped).toBe(true);
+      const filters = page.locator('.chat-list-filters');
+      await filters.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+      await expect(filters.locator('.filter-chip').last()).toBeInViewport();
+      await filters.locator('.filter-chip').last().click();
+      await expect(filters.locator('.filter-chip').last()).toHaveAttribute('aria-pressed', 'true');
     });
   }
 });

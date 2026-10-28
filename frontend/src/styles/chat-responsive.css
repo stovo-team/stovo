@@ -985,3 +985,21 @@
   transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
   width: 22px;
 }
+
+/* On desktop, filters may use the gap before the centered chat, but never cover it. */
+@media (min-width: 1025px) {
+  :root[data-platform="web"] .messenger-shell .chat-layout {
+    container-type: inline-size;
+  }
+
+  :root[data-platform="web"] .messenger-shell:is(.chat-list-view, .has-active-chat) .chat-list-filters {
+    flex-wrap: nowrap;
+    max-width: calc(100% + var(--float-panel-gap));
+  }
+}
+
+@media (min-width: 1600px) {
+  :root[data-platform="web"] .messenger-shell:is(.chat-list-view, .has-active-chat) .chat-list-filters {
+    max-width: calc(100% + var(--float-panel-gap) + max(0px, (100cqw - 322px - var(--float-panel-gap) - 1400px) / 2));
+  }
+}

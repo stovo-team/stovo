@@ -9,7 +9,7 @@ describe("wide-screen chat width priority", () => {
     const chatLayoutRule = styles.match(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*\{([^}]*)\}/)?.[1] ?? "";
     const chatDetailRule = styles.match(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*>\s*\.chat-detail\s*\{([^}]*)\}/)?.[1] ?? "";
 
-    expect(chatLayoutRule.replace(/\s+/g, " ")).toContain("grid-template-columns: minmax(240px, 280px) minmax(0, 1fr)");
+    expect(chatLayoutRule.replace(/\s+/g, " ")).toContain("grid-template-columns: 322px minmax(0, 1fr)");
     expect(chatDetailRule).toContain("max-width: 1400px;");
     expect(chatDetailRule).toContain("justify-self: center;");
   });
