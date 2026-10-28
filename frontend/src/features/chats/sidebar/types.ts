@@ -3,13 +3,11 @@ import type { FormEvent, ReactNode } from "react";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { QueuedSharedFiles } from "../../../sharedFileQueue";
-import type { ChatFilter, ChatSectionKey, NewChatScreen } from "../shared/types";
+import type { ChatSectionKey, NewChatScreen } from "../shared/types";
 
 export type ChatOverviewController = {
   chatSearch: string;
   setChatSearch: (value: string) => void;
-  chatFilter: ChatFilter;
-  setChatFilter: (filter: ChatFilter) => void;
   filteredChats: Chat[];
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   refreshChats: () => Promise<void>;

@@ -39,14 +39,6 @@ vi.mock("../../../i18n/LanguageContext", () => ({
         createInvitation: "Create invitation",
       },
       searchPlaceholder: "Search",
-      filters: {
-        all: "All",
-        unread: "Unread",
-        groups: "Groups",
-        direct: "Direct",
-        voice: "Voice",
-        muted: "Muted",
-      },
     },
   }),
 }));
@@ -74,8 +66,6 @@ function overview(): ChatOverviewController {
   return {
     chatSearch: "",
     setChatSearch: vi.fn(),
-    chatFilter: "all",
-    setChatFilter: vi.fn(),
     filteredChats: [],
     chatsBySection: { archive: [], voice: [], channels: [], groups: [], dms: [] },
     isNewChatOpen: false,
@@ -99,6 +89,34 @@ function overview(): ChatOverviewController {
 }
 
 describe("ChatSidebar compose action", () => {
+  it("does not render filter tags above the chat list", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        <ChatSidebar
+          familyName="Stovo"
+          familyId="family-1"
+          canCreateFamilyInvite={false}
+          onOpenFamilyInvite={vi.fn()}
+          incomingSharedFiles={null}
+          isLoading={false}
+          accessToken={null}
+          overview={overview()}
+          onSelectChat={vi.fn()}
+          onOpenChat={vi.fn()}
+          onOpenDraftsAndScheduled={vi.fn()}
+          onOpenMessageArchive={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.querySelector(".chat-list-filters")).toBeNull();
+  });
+
   it("shows the localized Connect Space action in the space switcher", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
