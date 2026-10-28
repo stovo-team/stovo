@@ -28,3 +28,10 @@ it("keeps symbol picker arrows neutral and selected icons circular without tinti
   expect(styles).toMatch(/\.symbol-color-controls \.symbol-color-controls__icons button\[aria-pressed="true"\][^{}]*\{[^}]*border-radius:\s*var\(--radius-circle\)/);
   expect(styles).toMatch(/\.symbol-color-controls__icons \.entity-avatar__symbol[^{}]*\{[^}]*color:\s*var\(--text-secondary\)/);
 });
+
+it("keeps icon hit areas square and avatar previews plain, including on hover", () => {
+  const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+  expect(styles).toMatch(/\.symbol-color-controls \.symbol-color-controls__icons button\s*\{[^}]*width:\s*40px/);
+  expect(styles).toMatch(/\.symbol-color-controls \.symbol-color-controls__expand:hover:not\(:disabled\):not\(\.pinned-banner-click-area\)\s*\{[^}]*background:\s*transparent/);
+  expect(styles).toMatch(/\.symbol-color-controls \.entity-avatar\s*\{[^}]*background:\s*transparent/);
+});
