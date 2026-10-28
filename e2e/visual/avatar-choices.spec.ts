@@ -44,6 +44,29 @@ test('voice chat uses its saved symbol and color in the list and header', async 
   await screenshot(page, info, scenario);
 });
 
+test('family chat owner can choose a symbol and color in chat settings', async ({page}, info) => {
+  const scenario: Scenario = {id: 'AV-03-family-chat-settings', viewport: {width: 390, height: 844}, theme: 'dark', locale: 'en', state: 'family-chat-avatar'};
+  await page.setViewportSize(scenario.viewport);
+  await page.emulateMedia({colorScheme: scenario.theme});
+  await page.addInitScript(({theme, locale}) => {
+    localStorage.setItem('familyMessenger.appearance', JSON.stringify({themeMode: theme}));
+    localStorage.setItem('familyMessenger.devicePreferences', JSON.stringify({language: locale}));
+  }, scenario);
+  await page.goto('/app/chats/chat-family-avatar?mockScenario=family-avatar');
+  await ready(page);
+  await expect(page.locator('[data-call-header-chat-id="chat-family-avatar"]')).toBeVisible();
+  await page.getByRole('button', {name: 'Chat details'}).click();
+  await page.getByRole('button', {name: 'Chat options'}).click();
+  await page.getByRole('menuitem', {name: 'Chat settings'}).click();
+  const picker = page.locator('.avatar-choice-picker');
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', {name: 'Star', exact: true}).click();
+  await picker.getByRole('button', {name: 'Blue', exact: true}).click();
+  await expect(picker.getByRole('button', {name: 'Star', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await expect(picker.getByRole('button', {name: 'Blue', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await screenshot(page, info, scenario);
+});
+
 for (const locale of ['en', 'ru'] as const) {
   test(`avatar picker is keyboard accessible on mobile in ${locale}`, async ({page}, info) => {
     const scenario: Scenario = {id: `AV-09-${locale}-dark-mobile`, viewport: {width: 390, height: 844}, theme: 'dark', locale, state: 'symbol-avatar'};

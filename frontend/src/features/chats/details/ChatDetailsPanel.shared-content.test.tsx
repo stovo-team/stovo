@@ -176,6 +176,18 @@ describe("Chat details shared content", () => {
     expect(container.querySelector(".avatar-choice-picker")).not.toBeNull();
   });
 
+  it("offers avatar choices from chat settings for owner-managed family chats", () => {
+    const familyChat = { ...chat, type: "family" as const };
+    const container = renderPanel("files", [], familyChat, true);
+    const options = container.querySelector<HTMLButtonElement>('button[aria-label="Chat options"]');
+    act(() => options?.click());
+    const settings = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((item) => item.textContent?.includes("Chat settings"));
+    act(() => settings?.click());
+    expect(container.querySelector("#chat-settings-title")).not.toBeNull();
+    expect(container.querySelector(".avatar-choice-picker")).not.toBeNull();
+  });
+
   it("renders a loaded video preview and falls back to its video icon after a media error", () => {
     vi.mocked(useFilePreviewUrl).mockReturnValue("blob:chat-video-preview");
     const file = makeFile("video-1", "clip.mp4", "video/mp4");
