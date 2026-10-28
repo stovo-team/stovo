@@ -1,6 +1,45 @@
 import {test,expect} from './fixtures';
 import {prepareVisualScenario,screenshot,type Scenario} from './scenarios';
 
+test('V-17 tablet chat list stays compact and keeps the new-chat button in its panel', async ({ page }, info) => {
+  const s: Scenario = { id: 'V-17', viewport: { width: 1024, height: 900 }, theme: 'dark', locale: 'en' };
+  await prepareVisualScenario(page, s, '/app/chats');
+  const compose = page.locator('.compose-fab');
+  await expect(compose).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const bounds = (selector: string) => {
+      const rect = document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, width: rect.width };
+    };
+    const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
+    return {
+      sidebar: bounds('.chat-sidebar'),
+      compose: bounds('.compose-fab'),
+      search: bounds('.chat-list-search'),
+      filters: bounds('.chat-list-filters'),
+      chat: bounds('.chat-list-item'),
+      detail: bounds('.chat-detail'),
+      composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
+      filterOverflow: getComputedStyle(filters).overflowX,
+      filterScrollWidth: filters.scrollWidth,
+      filterClientWidth: filters.clientWidth,
+    };
+  });
+
+  expect(geometry.sidebar.width).toBeLessThanOrEqual(280);
+  expect(geometry.composePosition).toBe('absolute');
+  expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.filters.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.filterOverflow).toMatch(/auto|scroll/);
+  expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
+  expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
+  expect(geometry.detail.width).toBeGreaterThan(0);
+  await screenshot(page, info, s);
+});
+
 test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>{
  const s:Scenario={id:'V-13',viewport:{width:390,height:844},theme:'dark',locale:'ru'};
  await prepareVisualScenario(page,s,'/app/chats');

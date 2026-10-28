@@ -264,6 +264,11 @@
   background: linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-7b2817bf9b80) 90%, transparent 100%);
 }
 
+:root[data-platform="web"] .messenger-shell.chat-list-view .compose-fab {
+  position: absolute;
+  right: 12px;
+}
+
 :root[data-platform="web"] .messenger-shell.has-active-chat .message-composer {
   background: transparent;
   isolation: isolate;
