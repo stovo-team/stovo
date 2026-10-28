@@ -8,6 +8,8 @@ const mobileStorageGridRules = Array.from(stylesheet.matchAll(/@media \(max-widt
 const removalButtonRule = Array.from(stylesheet.matchAll(/\.storage-collection-file-grid \.collection-file-tile > button:not\(\.collection-file-open\) \{[^}]+\}/g))
   .map((match) => match[0])
   .find((rule) => rule.includes("height: 28px !important"));
+const emptyCollectionRules = Array.from(stylesheet.matchAll(/\.storage-collection-full-page:has\(\.storage-collection-empty\)\s*\{[^}]+\}|\.storage-collection-full-page > \.storage-collection-file-grid:has\(\.storage-collection-empty\)\s*\{[^}]+\}/g))
+  .map((match) => match[0]);
 const rules = [
   stylesheet.match(/(?:^|\n)button \{[^}]+\}/)?.[0],
   removalButtonRule,
@@ -52,6 +54,17 @@ describe("storage file tile sizing", () => {
   it("uses fixed 120px file tiles in a two-column mobile grid", () => {
     expect(mobileStorageGridRules.length).toBeGreaterThan(0);
     expect(mobileStorageGridRules.at(-1)).toContain("repeat(auto-fill, 120px)");
+  });
+});
+
+describe("empty full-page collection state", () => {
+  it("centers the empty message in the available page area", () => {
+    const rules = emptyCollectionRules.join("\n");
+    expect(rules).toContain("display: flex");
+    expect(rules).toContain("flex-direction: column");
+    expect(rules).toContain("flex: 1");
+    expect(rules).toContain("align-items: center");
+    expect(rules).toContain("justify-content: center");
   });
 });
 
