@@ -111,6 +111,30 @@ test.describe('V-18 narrow desktop chat list', () => {
   });
 });
 
+test('wide desktop keeps the list compact and centers the chat in the remaining space', async ({ page }, info) => {
+  const s: Scenario = { id: 'V-21', viewport: { width: 1920, height: 900 }, theme: 'dark', locale: 'en' };
+  await prepareVisualScenario(page, s, '/app/chats/chat-planning-team');
+  const geometry = await page.evaluate(() => {
+    const rect = (selector: string) => document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+    const sidebar = rect('.chat-sidebar');
+    const detail = rect('.chat-detail');
+    const layout = rect('.chat-layout');
+    const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
+    const last = filters.querySelector<HTMLElement>('.filter-chip:last-child')!.getBoundingClientRect();
+    const target = document.elementFromPoint(last.left + last.width / 2, last.top + last.height / 2);
+    return { sidebarWidth: sidebar.width, sidebarRight: sidebar.right, searchRight: rect('.chat-list-search').right, itemRight: rect('.chat-list-item').right, buttonRight: rect('.compose-fab').right, detailCenter: (detail.left + detail.right) / 2, remainingCenter: (sidebar.right + layout.right) / 2, filtersRight: filters.getBoundingClientRect().right, filtersFit: filters.scrollWidth <= filters.clientWidth, target: !!target?.closest('.filter-chip:last-child') };
+  });
+  await screenshot(page, info, s);
+  expect(geometry.sidebarWidth).toBeLessThanOrEqual(280);
+  expect(geometry.searchRight).toBeLessThanOrEqual(geometry.sidebarRight);
+  expect(geometry.itemRight).toBeLessThanOrEqual(geometry.sidebarRight);
+  expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.sidebarRight);
+  expect(geometry.filtersRight).toBeGreaterThan(geometry.sidebarRight);
+  expect(geometry.filtersFit).toBe(true);
+  expect(geometry.target).toBe(true);
+  expect(Math.abs(geometry.detailCenter - geometry.remainingCenter)).toBeLessThanOrEqual(10);
+});
+
 test.describe('desktop chat filters use available space', () => {
   for (const route of ['/app/chats', '/app/chats/chat-planning-team']) {
     test(`filters extend beyond the compact list on ${route}`, async ({ page }, info) => {
