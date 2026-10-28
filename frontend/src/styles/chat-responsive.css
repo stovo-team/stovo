@@ -1000,7 +1000,7 @@
 
 @media (min-width: 1600px) {
   :root[data-platform="web"] .messenger-shell:is(.chat-list-view, .has-active-chat) .chat-list-filters {
-    max-width: calc(100% + var(--float-panel-gap) + max(0px, (100cqw - 322px - var(--float-panel-gap) - 1400px) / 2));
+    max-width: calc(100% + var(--float-panel-gap) + max(0px, (100cqw - var(--desktop-chat-list-width, 322px) - var(--float-panel-gap) - 1400px) / 2));
   }
 }
 
