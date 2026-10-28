@@ -3,12 +3,14 @@
 .symbol-color-controls legend { color: var(--text-secondary); font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); margin-bottom: 10px; }
 .symbol-color-controls__icons { display: grid; gap: 6px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .symbol-color-controls .symbol-color-controls__icons button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: var(--radius-control); color: var(--text-secondary); display: flex; height: 40px; justify-content: center; min-height: 40px; min-width: 0; padding: 0; width: 100%; }
-.symbol-color-controls .symbol-color-controls__icons button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--text-primary); }
+.symbol-color-controls .symbol-color-controls__icons button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-border-soft); border-radius: var(--radius-circle); color: var(--text-primary); }
 .symbol-color-controls__icons svg { height: 24px; width: 24px; }
 .symbol-color-controls__icons .entity-avatar { background: transparent; color: inherit; }
 .symbol-color-controls__icons .entity-avatar__symbol { height: 24px; width: 24px; }
+.symbol-color-controls__icons .entity-avatar__symbol { color: var(--text-secondary); }
 .symbol-color-controls .symbol-color-controls__expand { align-items: center; background: transparent; border: 0; border-radius: 0; color: var(--text-secondary); display: flex; height: 28px; justify-content: center; overflow: hidden; padding: 0; position: relative; width: 100%; }
 .symbol-color-controls__expand > svg { height: 16px; position: relative; width: 16px; z-index: 1; }
+.symbol-color-controls .symbol-color-controls__expand:hover { background: transparent; border-color: transparent; box-shadow: none; color: var(--text-secondary); transform: none; }
 .symbol-color-controls__preview { display: grid; gap: 6px; grid-template-columns: repeat(6, minmax(0, 1fr)); inset: 0; mask-image: linear-gradient(transparent, var(--text-primary)); opacity: .18; pointer-events: none; position: absolute; }
 .symbol-color-controls__preview > span { align-items: center; display: flex; justify-content: center; }
 .symbol-color-controls__preview svg { height: 24px; width: 24px; }
