@@ -582,7 +582,7 @@
   gap: 12px;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 44px;
-  padding: 6px 12px;
+  padding: 6px;
 }
 
 .chat-info-member-list li + li .chat-info-member-row {

@@ -69,6 +69,10 @@ describe("chat details popup sizing", () => {
     expect(styles.includes("@media (max-width: 768px) {\n  .app-frame {\n    display: block;")).toBe(true);
   });
 
+  it("uses equal padding on every side of chat detail member rows", () => {
+    expect(styles).toMatch(/\.chat-info-member-row \{[^}]*padding: 6px;[^}]*\}/);
+  });
+
   it("uses a compact font size for the Add people action", () => {
     expect(styles).toMatch(/\.chat-info-member-invite \{[^}]*font: inherit;[^}]*font-size: var\(--font-size-small\);/);
     expect(chatDetailsPanel).toContain('<UserPlus aria-hidden="true" size={16} />');

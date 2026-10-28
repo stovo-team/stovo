@@ -12,3 +12,12 @@ for(const s of [
  await screenshot(page,info,s);
  if(s.state==='history-error'){await page.evaluate(()=>fetch('/api/dev/visual/recover',{method:'POST'}));await page.getByRole('button',{name:'Try again',exact:true}).click();await expect(page.locator('#msg-planning-kickoff .message-body')).toBeVisible();await expect(page.getByRole('alert')).toHaveCount(0);}
 });
+
+test("V-13 chat details member list desktop light en",async({page},info)=>{
+ const scenario:Scenario={id:"V-13",viewport:{width:1440,height:900},theme:"light",locale:"en",state:"loaded"};
+ await prepareVisualScenario(page,scenario);
+ await page.locator(".chat-title-group").click();
+ await expect(page.locator(".chat-info-screen")).toBeVisible();
+ await expect(page.locator(".chat-info-member-list .chat-info-member-row").first()).toBeVisible();
+ await screenshot(page,info,scenario);
+});
