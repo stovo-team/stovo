@@ -68,6 +68,20 @@ describe("empty full-page collection state", () => {
   });
 });
 
+describe("open collection header layout", () => {
+  const headerRule = stylesheet.match(/\.storage-collection-full-header\s*\{([^}]+)\}/)?.[1] ?? "";
+  const customCoverRule = stylesheet.match(/\.storage-custom-cover\s*\{([^}]+)\}/)?.[1] ?? "";
+
+  it("stretches across the content width so Back and actions sit at opposite edges", () => {
+    expect(headerRule).toMatch(/width:\s*100%/);
+    expect(headerRule).toMatch(/box-sizing:\s*border-box/);
+  });
+
+  it("keeps the custom folder SVG white on its colored cover", () => {
+    expect(customCoverRule).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
+  });
+});
+
 describe("Storage collection creation dialog layout", () => {
   const createDialogRule = stylesheet.match(/\.storage-collection-create\s*\{([^}]+)\}/)?.[1] ?? "";
   const createButtonRule = stylesheet.match(/\.storage-collection-create > \.popup-button--primary\s*\{([^}]+)\}/)?.[1] ?? "";
