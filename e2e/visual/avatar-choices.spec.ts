@@ -60,6 +60,16 @@ test('family chat owner can choose a symbol and color in chat settings', async (
   await page.getByRole('menuitem', {name: 'Chat settings'}).click();
   const picker = page.locator('.avatar-choice-picker');
   await expect(picker).toBeVisible();
+  const selected = picker.locator('.symbol-color-controls__icons button[aria-pressed="true"]');
+  const selectedBox = (await selected.boundingBox())!;
+  expect(selectedBox.width).toBe(selectedBox.height);
+  const expand = picker.getByRole('button', {name: 'More symbols'});
+  const background = await expand.evaluate(node => getComputedStyle(node).backgroundColor);
+  await expand.hover();
+  await expect(expand).toHaveCSS('background-color', background);
+  for (const avatar of await picker.locator('.entity-avatar').all()) {
+    await expect(avatar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  }
   await picker.getByRole('button', {name: 'Star', exact: true}).click();
   await picker.getByRole('button', {name: 'Blue', exact: true}).click();
   await expect(picker.getByRole('button', {name: 'Star', exact: true})).toHaveAttribute('aria-pressed', 'true');

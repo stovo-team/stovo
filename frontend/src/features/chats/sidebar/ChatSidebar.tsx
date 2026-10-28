@@ -3,7 +3,6 @@ import { ChevronDown, Paperclip, Plus, Server, Trash2, UserPlus } from "lucide-r
 import { useNavigate } from "react-router-dom";
 
 import StovoLogo from "../../../components/StovoLogo";
-import type { ChatFilter } from "../shared/types";
 import { ChatList } from "./ChatList";
 import type { ChatSidebarProps } from "./types";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -41,29 +40,17 @@ export function ChatSidebar({
   const canManageFolders = Boolean(currentUser);
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
-  const filterRowRef = useRef<HTMLDivElement | null>(null);
 
   const validServers = savedServers.filter((server) => Boolean(server.url));
   const displayFamilyName = activeServer?.name || familyName || "Stovo";
   const {
     chatSearch,
     setChatSearch,
-    chatFilter,
-    setChatFilter,
     filteredChats,
     chatsBySection,
     refreshChats,
     openNewChatScreen
   } = overview;
-
-  const chatFilters: Array<{ label: string; value: ChatFilter }> = [
-    { label: strings.chats.filters.all, value: "all" },
-    { label: strings.chats.filters.unread, value: "unread" },
-    { label: strings.chats.filters.groups, value: "groups" },
-    { label: strings.chats.filters.direct, value: "direct" },
-    { label: strings.chats.filters.voice, value: "voice" },
-    { label: strings.chats.filters.muted, value: "muted" }
-  ];
 
   useEffect(() => {
     if (!isServerMenuOpen) return;
@@ -82,24 +69,6 @@ export function ChatSidebar({
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, [isServerMenuOpen]);
-
-  useEffect(() => {
-    const filterRow = filterRowRef.current;
-    if (!filterRow) return;
-    const chipScroller: HTMLDivElement = filterRow;
-
-    // React may register wheel handlers as passive. This scroller deliberately
-    // maps a vertical wheel gesture to horizontal chip scrolling, so it needs a
-    // native non-passive listener before it can cancel the page scroll.
-    function handleWheel(event: WheelEvent) {
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      chipScroller.scrollLeft += event.deltaY;
-      event.preventDefault();
-    }
-
-    chipScroller.addEventListener("wheel", handleWheel, { passive: false });
-    return () => chipScroller.removeEventListener("wheel", handleWheel);
-  }, []);
 
   return (
     <aside className="chat-sidebar" aria-label={strings.chats.sidebar.ariaLabel}>
@@ -225,24 +194,6 @@ export function ChatSidebar({
             onChange={(event) => setChatSearch(event.target.value)}
           />
         </label>
-        <div
-          className="filter-chip-row chat-list-filters"
-          aria-label={strings.chats.title}
-          ref={filterRowRef}
-        >
-          {chatFilters.map((filter) => (
-            <button
-              type="button"
-              className={chatFilter === filter.value ? "filter-chip active" : "filter-chip"}
-              aria-pressed={chatFilter === filter.value}
-              key={filter.value}
-              onClick={() => setChatFilter(filter.value)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-
         {mobileCallStrip}
       </div>
 
@@ -252,7 +203,6 @@ export function ChatSidebar({
         chatsBySection={chatsBySection}
         filteredChats={filteredChats}
         refreshChats={refreshChats}
-        chatFilter={chatFilter}
         familyId={familyId}
         canManageFolders={canManageFolders}
         accessToken={accessToken}

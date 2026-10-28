@@ -1345,37 +1345,6 @@
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent-primary) 30%, transparent);
   }
 
-  .messenger-shell.chat-list-view .chat-list-filters {
-    box-sizing: border-box;
-    gap: 8px;
-    max-width: 100%;
-    min-width: 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    padding: 0;
-    scrollbar-width: none;
-    width: 100%;
-  }
-
-  .messenger-shell.chat-list-view .chat-list-filters .filter-chip {
-    backdrop-filter: blur(var(--mobile-glass-blur));
-    -webkit-backdrop-filter: blur(var(--mobile-glass-blur));
-    background: var(--mobile-glass-surface);
-    border: 1px solid var(--mobile-glass-border);
-    border-radius: var(--radius-pill);
-    box-shadow: none;
-    color: var(--text-secondary);
-    height: 36px;
-    min-height: 36px;
-    padding: 0 14px;
-  }
-
-  .messenger-shell.chat-list-view .chat-list-filters .filter-chip.active {
-    background: color-mix(in oklab, var(--accent-soft) 45%, var(--mobile-glass-surface));
-    border-color: var(--mobile-glass-border);
-    color: var(--accent-primary);
-  }
-
   .messenger-shell.chat-list-view .chat-list {
     --mobile-page-inset: 10px;
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, var(--color-palette-7b2817bf9b80) 12px);
@@ -1665,4 +1634,3 @@
     padding: var(--mobile-page-inset, 14px);
   }
 }
-

@@ -11,7 +11,7 @@ import {
 } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
 import { displayChatName } from "../shared/chatPresentation";
-import type { ChatFilter, ChatSectionKey, NewChatScreen } from "../shared/types";
+import type { ChatSectionKey, NewChatScreen } from "../shared/types";
 import type { ChatOverviewController } from "./types";
 
 type UseChatOverviewOptions = {
@@ -35,7 +35,6 @@ export function useChatOverview({
 }: UseChatOverviewOptions): ChatOverviewController {
   const strings = useStrings();
   const [chatSearch, setChatSearch] = useState("");
-  const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [newChatScreen, setNewChatScreen] = useState<NewChatScreen>("pick");
   const [newChatMemberSearch, setNewChatMemberSearch] = useState("");
@@ -77,24 +76,6 @@ export function useChatOverview({
   const filteredChats = useMemo(() => {
     const query = chatSearch.trim().toLowerCase();
     return chats.filter((chat) => {
-      if (chatFilter === "groups" && chat.type !== "group" && chat.type !== "family") {
-        return false;
-      }
-      if (chatFilter === "direct" && chat.type !== "direct") {
-        return false;
-      }
-      if (chatFilter === "channels" && chat.type !== "channel") {
-        return false;
-      }
-      if (chatFilter === "voice" && chat.type !== "voice") {
-        return false;
-      }
-      if (chatFilter === "unread" && chat.unreadCount <= 0) {
-        return false;
-      }
-      if (chatFilter === "muted" && !chat.isMuted) {
-        return false;
-      }
       if (!query) {
         return true;
       }
@@ -105,7 +86,7 @@ export function useChatOverview({
         .toLowerCase();
       return `${chatName} ${chat.type} ${memberText}`.includes(query);
     });
-  }, [chatFilter, chatSearch, chats, currentUserId, strings]);
+  }, [chatSearch, chats, currentUserId, strings]);
 
   const chatsBySection = useMemo(() => {
     const sections: Record<ChatSectionKey, Chat[]> = {
@@ -242,8 +223,6 @@ export function useChatOverview({
   return {
     chatSearch,
     setChatSearch,
-    chatFilter,
-    setChatFilter,
     filteredChats,
     chatsBySection,
     refreshChats,

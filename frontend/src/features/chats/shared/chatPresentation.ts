@@ -8,7 +8,6 @@ import { avatarInitials } from "../../../utils/avatarInitials";
 
 import type {
   ChatAvatarFallbackKind,
-  ChatFilter,
   ChatInfoControl,
   ChatSectionKey,
   SharedContentItem,
@@ -84,15 +83,6 @@ export function chatInfoControlVisibility(activeControl: ChatInfoControl) {
     settings: activeControl === "settings"
   };
 }
-
-export const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
-  { label: "All", value: "all" },
-  { label: "Unread", value: "unread" },
-  { label: "Groups", value: "groups" },
-  { label: "Direct", value: "direct" },
-  { label: "Voice", value: "voice" },
-  { label: "Muted", value: "muted" }
-];
 
 export const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
   { key: "archive", label: "Message Archive" },

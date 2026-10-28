@@ -12,7 +12,6 @@ export type CallTrackStatus = {
 export type ChatAvatarFallbackKind = "direct" | "group" | "channel" | "voice" | "family" | "archive";
 
 export type NewChatScreen = "pick" | "group" | "channel" | "voice";
-export type ChatFilter = "all" | "unread" | "groups" | "direct" | "channels" | "voice" | "muted";
 export type ChatSectionKey = "archive" | "voice" | "channels" | "groups" | "dms";
 export type SharedContentTab = "media" | "audio" | "files" | "links";
 export type ChatInfoControl = "name" | "settings" | null;

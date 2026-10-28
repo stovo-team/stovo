@@ -12,18 +12,14 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
       const rect = document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
       return { left: rect.left, right: rect.right, width: rect.width };
     };
-    const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
     return {
       sidebar: bounds('.chat-sidebar'),
       compose: bounds('.compose-fab'),
       search: bounds('.chat-list-search'),
-      filters: bounds('.chat-list-filters'),
       chat: bounds('.chat-list-item'),
       detail: bounds('.chat-detail'),
       composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
-      filterOverflow: getComputedStyle(filters).overflowX,
-      filterScrollWidth: filters.scrollWidth,
-      filterClientWidth: filters.clientWidth,
+      filterTagsAbsent: document.querySelector('.chat-list-filters') === null,
     };
   });
 
@@ -32,10 +28,8 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.composePosition).toBe('absolute');
   expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
-  expect(geometry.filters.right).toBeLessThanOrEqual(geometry.detail.left);
-  expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
+  expect(geometry.filterTagsAbsent).toBe(true);
   expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
-  expect(geometry.filterOverflow).toMatch(/auto|scroll/);
   expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
   expect(geometry.detail.width).toBeGreaterThan(0);
 });
@@ -57,7 +51,6 @@ test.describe('V-18 narrow desktop chat list', () => {
         sidebar: bounds('.chat-sidebar'),
         compose: bounds('.compose-fab'),
         search: bounds('.chat-list-search'),
-        filters: bounds('.chat-list-filters'),
         chat: bounds('.chat-list-item'),
         detail: bounds('.chat-detail'),
         emptyState: bounds('.chat-empty-state-wrapper'),
@@ -65,18 +58,7 @@ test.describe('V-18 narrow desktop chat list', () => {
         composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
         detailVisibility: getComputedStyle(document.querySelector('.chat-detail')!).visibility,
         sidebarOverflow: getComputedStyle(document.querySelector('.chat-sidebar')!).overflowX,
-        filterOverflow: getComputedStyle(document.querySelector('.chat-list-filters')!).overflowX,
-        filterScrollWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.scrollWidth,
-        filterClientWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.clientWidth,
-        lastFilterHit: (() => {
-          const row = document.querySelector<HTMLElement>('.chat-list-filters')!;
-          row.scrollLeft = row.scrollWidth;
-          const chips = row.querySelectorAll<HTMLElement>('.filter-chip');
-          const last = chips[chips.length - 1];
-          const rect = last.getBoundingClientRect();
-          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-          return last === hit || last.contains(hit);
-        })(),
+        filterTagsAbsent: document.querySelector('.chat-list-filters') === null,
         composeHitTarget: (() => {
           const compose = document.querySelector<HTMLElement>('.compose-fab')!;
           const rect = compose.getBoundingClientRect();
@@ -99,12 +81,8 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.composeHitTarget).toBe(true);
     expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
-    expect(geometry.filters.right).toBeLessThanOrEqual(geometry.detail.left);
-    expect(geometry.filters.right).toBeLessThanOrEqual(s.viewport.width - 12);
-    expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
+    expect(geometry.filterTagsAbsent).toBe(true);
     expect(geometry.sidebarOverflow).toBe('visible');
-    expect(geometry.lastFilterHit).toBe(true);
-    expect(geometry.filterOverflow).toMatch(/auto|scroll/);
     expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
     expect(geometry.detail.width).toBeGreaterThan(0);
     expect(geometry.detailVisibility).toBe('visible');
@@ -114,21 +92,12 @@ test.describe('V-18 narrow desktop chat list', () => {
 });
 
 for (const width of [675, 1024]) {
-  test(`filters stop at the chat pane and scroll at ${width}px`, async ({ page }, info) => {
-    const s: Scenario = { id: `V-filter-${width}`, viewport: { width, height: 900 }, theme: 'dark', locale: 'en' };
+  test(`chat list has no filter tags at ${width}px`, async ({ page }, info) => {
+    const s: Scenario = { id: `V-no-filters-${width}`, viewport: { width, height: 900 }, theme: 'dark', locale: 'en' };
     await prepareVisualScenario(page, s, '/app/chats');
-    const filters = page.locator('.chat-list-filters');
-    const geometry = await page.evaluate(() => {
-      const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
-      const detail = document.querySelector<HTMLElement>('.chat-detail')!;
-      return { right: filters.getBoundingClientRect().right, detailLeft: detail.getBoundingClientRect().left, overflow: filters.scrollWidth > filters.clientWidth };
-    });
     await screenshot(page, info, s);
-    expect(geometry.right).toBeLessThanOrEqual(geometry.detailLeft);
-    expect(geometry.overflow).toBe(true);
-    await filters.evaluate(el => { el.scrollLeft = el.scrollWidth; });
-    await filters.locator('.filter-chip').last().click();
-    await expect(filters.locator('.filter-chip').last()).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.chat-list-filters')).toHaveCount(0);
+    await expect(page.locator('.chat-list-search')).toBeVisible();
   });
 }
 
@@ -140,47 +109,25 @@ test('wide desktop slightly widens the list and centers the chat in the remainin
     const sidebar = rect('.chat-sidebar');
     const detail = rect('.chat-detail');
     const layout = rect('.chat-layout');
-    const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
-    const last = filters.querySelector<HTMLElement>('.filter-chip:last-child')!.getBoundingClientRect();
-    const target = document.elementFromPoint(last.left + last.width / 2, last.top + last.height / 2);
-    return { sidebarWidth: sidebar.width, sidebarRight: sidebar.right, searchRight: rect('.chat-list-search').right, itemRight: rect('.chat-list-item').right, buttonRight: rect('.compose-fab').right, detailCenter: (detail.left + detail.right) / 2, remainingCenter: (sidebar.right + layout.right) / 2, filtersRight: filters.getBoundingClientRect().right, filtersFit: filters.scrollWidth <= filters.clientWidth, target: !!target?.closest('.filter-chip:last-child') };
+    return { sidebarWidth: sidebar.width, sidebarRight: sidebar.right, searchRight: rect('.chat-list-search').right, itemRight: rect('.chat-list-item').right, buttonRight: rect('.compose-fab').right, detailCenter: (detail.left + detail.right) / 2, remainingCenter: (sidebar.right + layout.right) / 2, filterTagsAbsent: document.querySelector('.chat-list-filters') === null };
   });
   await screenshot(page, info, s);
   expect(geometry.sidebarWidth).toBeCloseTo(346, 0);
   expect(geometry.searchRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.itemRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.sidebarRight);
-  expect(geometry.filtersRight).toBeGreaterThan(geometry.sidebarRight);
-  expect(geometry.filtersFit).toBe(true);
-  expect(geometry.target).toBe(true);
+  expect(geometry.filterTagsAbsent).toBe(true);
   expect(Math.abs(geometry.detailCenter - geometry.remainingCenter)).toBeLessThanOrEqual(10);
 });
 
-test.describe('desktop chat filters use available space', () => {
+test.describe('desktop chat list has no filter tags', () => {
   for (const route of ['/app/chats', '/app/chats/chat-planning-team']) {
-    test(`filters extend beyond the compact list on ${route}`, async ({ page }, info) => {
+    test(`omits filter tags on ${route}`, async ({ page }, info) => {
       const s: Scenario = { id: route.endsWith('chat-planning-team') ? 'V-20' : 'V-19', viewport: { width: 1440, height: 900 }, theme: 'dark', locale: 'en' };
       await prepareVisualScenario(page, s, route);
-      const geometry = await page.evaluate(() => {
-        const sidebar = document.querySelector<HTMLElement>('.chat-sidebar')!;
-        const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
-        const search = document.querySelector<HTMLElement>('.chat-list-search')!;
-        const chips = filters.querySelectorAll<HTMLElement>('.filter-chip');
-        const last = chips[chips.length - 1];
-        const rect = last.getBoundingClientRect();
-        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, detail: document.querySelector<HTMLElement>('.chat-detail')!.getBoundingClientRect().left, overflowX: getComputedStyle(filters).overflowX, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
-      });
       await screenshot(page, info, s);
-      expect(geometry.filters).toBeLessThanOrEqual(geometry.detail);
-      expect(geometry.search).toBeLessThanOrEqual(geometry.sidebar);
-      expect(geometry.clipped).toBe(true);
-      expect(geometry.overflowX).toMatch(/auto|scroll/);
-      const filters = page.locator('.chat-list-filters');
-      await filters.evaluate(el => { el.scrollLeft = el.scrollWidth; });
-      await expect(filters.locator('.filter-chip').last()).toBeInViewport();
-      await filters.locator('.filter-chip').last().click();
-      await expect(filters.locator('.filter-chip').last()).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.chat-list-filters')).toHaveCount(0);
+      await expect(page.locator('.chat-list-search')).toBeVisible();
     });
   }
 });
