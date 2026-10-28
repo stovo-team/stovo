@@ -121,3 +121,20 @@ test('V-17 Storage chat list toggle matches the Plans collapsed toggle',async({p
  expect(storageMetrics.height).toBe(36);
  await screenshot(page,info,s);
 });
+
+test('V-18 Plans collapsed toggle uses the Storage button appearance',async({page},info)=>{
+ const s:Scenario={id:'V-18',viewport:{width:1440,height:900},theme:'dark',locale:'en'};
+ await prepareVisualScenario(page,s,'/app/plans');
+ const divider=page.locator('.plans-sidebar-resizer');
+ const bounds=(await divider.boundingBox())!;
+ const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-100,y);await page.mouse.up();
+ const toggle=page.locator('.plans-sidebar-collapse');
+ await expect(toggle).toBeVisible();
+ const metrics=await toggle.evaluate(node=>{
+  const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+  return {width:rect.width,height:rect.height,radius:style.borderTopLeftRadius,boxShadow:style.boxShadow};
+ });
+ expect(metrics).toEqual({width:36,height:36,radius:'50%',boxShadow:'none'});
+ await screenshot(page,info,s);
+});
