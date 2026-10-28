@@ -65,13 +65,23 @@ test.describe('V-18 narrow desktop chat list', () => {
         composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
         detailVisibility: getComputedStyle(document.querySelector('.chat-detail')!).visibility,
         filterOverflow: getComputedStyle(document.querySelector('.chat-list-filters')!).overflowX,
+        composeHitTarget: (() => {
+          const compose = document.querySelector<HTMLElement>('.compose-fab')!;
+          const rect = compose.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return hit === compose || compose.contains(hit);
+        })(),
       };
     });
 
     await screenshot(page, info, s);
     expect(geometry.sidebar.width).toBeLessThanOrEqual(280);
     expect(geometry.composePosition).toBe('absolute');
+    expect(geometry.compose.left).toBeGreaterThanOrEqual(geometry.sidebar.left);
     expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.compose.right).toBeLessThanOrEqual(s.viewport.width);
+    expect(geometry.compose.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.composeHitTarget).toBe(true);
     expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.filters.right).toBeLessThanOrEqual(geometry.sidebar.right);
