@@ -96,4 +96,24 @@ test.describe("chat visual regressions in mock mode", () => {
     ));
     expect(radii.every((radius) => radius >= 16)).toBe(true);
   });
+
+  test("matches chat details overflow menu item roundness to its dropdown", async ({ page }) => {
+    await page.locator(".chat-title-group").click();
+    const details = page.locator(".chat-info-screen");
+    await expect(details).toBeVisible();
+    await details.locator(".chat-info-topbar-action").click();
+
+    const menu = details.locator(".chat-info-overflow-menu");
+    const item = menu.getByRole("menuitem").first();
+    await expect(menu).toBeVisible();
+    const [menuRadius, itemRadius] = await Promise.all([
+      menu.evaluate((element) => getComputedStyle(element).borderTopLeftRadius),
+      item.evaluate((element) => getComputedStyle(element).borderTopLeftRadius),
+    ]);
+    expect(itemRadius).toBe(menuRadius);
+
+    await details.screenshot({
+      path: "../artifacts/agent-workflows/chat-details-menu-radius/chat-details-overflow-dark-en.png",
+    });
+  });
 });

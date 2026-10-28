@@ -9,6 +9,10 @@ export function isMockMode(dev: boolean, mode: string): boolean {
   return dev && mode === "mock";
 }
 
+export function isMockSignedOut(search: string): boolean {
+  return new URLSearchParams(search).get("mockSignedOut") === "1";
+}
+
 export function resolveMockUserId(search: string): string {
   const requestedUserId = new URLSearchParams(search).get("mockUser");
   return fixtureUsers.some((user) => user.id === requestedUserId) ? requestedUserId! : DEMO_USER_ID;
@@ -53,6 +57,13 @@ export function seedMockSession(origin: string, requestedUserId?: string): void 
 }
 
 export async function prepareMockSession(origin: string): Promise<void> {
+  if (isMockSignedOut(window.location.search)) {
+    window.localStorage.removeItem("stovo.multiServerState");
+    window.localStorage.removeItem("familyMessenger.apiUrl");
+    window.localStorage.removeItem("familyMessenger.refreshToken");
+    window.sessionStorage.removeItem(MOCK_USER_SESSION_KEY);
+    return;
+  }
   seedMockSession(origin, resolveMockUserId(window.location.search));
   await clearOutbox(getMockUserId());
 }

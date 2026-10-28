@@ -56,12 +56,18 @@ test("active chat is capped at 1400px and the chat list gets remaining desktop w
   const wide = await page.evaluate(() => {
     const layout = document.querySelector<HTMLElement>(".chat-layout")!;
     const sidebar = document.querySelector<HTMLElement>(".chat-sidebar")!;
+    const sidebarHeader = document.querySelector<HTMLElement>(".chat-sidebar-header")!;
+    const search = document.querySelector<HTMLElement>(".chat-list-search")!;
+    const chatRow = document.querySelector<HTMLElement>('.chat-list-item[data-chat-id="chat-planning-team"]')!;
     const detail = document.querySelector<HTMLElement>(".chat-detail")!;
     const layoutRect = layout.getBoundingClientRect();
     const detailRect = detail.getBoundingClientRect();
     return {
       layoutWidth: layoutRect.width,
       sidebarWidth: sidebar.getBoundingClientRect().width,
+      sidebarHeaderWidth: sidebarHeader.getBoundingClientRect().width,
+      searchWidth: search.getBoundingClientRect().width,
+      chatRowWidth: chatRow.getBoundingClientRect().width,
       detailWidth: detailRect.width,
       rightInset: layoutRect.right - detailRect.right,
     };
@@ -69,6 +75,9 @@ test("active chat is capped at 1400px and the chat list gets remaining desktop w
 
   expect(wide.detailWidth).toBeCloseTo(1400, 0);
   expect(wide.sidebarWidth).toBeGreaterThan(320);
+  expect(wide.sidebarHeaderWidth).toBeLessThanOrEqual(560);
+  expect(wide.searchWidth).toBeLessThanOrEqual(560);
+  expect(wide.chatRowWidth).toBeLessThanOrEqual(560);
   expect(wide.rightInset).toBeLessThanOrEqual(1);
   expect(wide.layoutWidth).toBeCloseTo(wide.sidebarWidth + wide.detailWidth + 16, 0);
 
@@ -80,6 +89,36 @@ test("active chat is capped at 1400px and the chat list gets remaining desktop w
   expect(narrower.detailWidth).toBeGreaterThan(0);
   expect(narrower.detailWidth).toBeLessThan(1400);
   expect(narrower.layoutWidth).toBeGreaterThan(narrower.detailWidth);
+});
+
+test("all chat filters stay visible when the desktop sidebar is narrow", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(mockChatUrl);
+  const filters = page.locator(".chat-list-filters");
+  await expect(filters).toBeVisible();
+  await captureEvidence(page, "chat-filters-narrow-sidebar-1440x900", "Open the populated planning chat at a 1440px desktop viewport");
+
+  const geometry = await filters.evaluate((container) => {
+    const containerRect = container.getBoundingClientRect();
+    const chips = Array.from(container.querySelectorAll<HTMLElement>(".filter-chip"));
+    return {
+      clientWidth: container.clientWidth,
+      scrollWidth: container.scrollWidth,
+      chips: chips.map((chip) => {
+        const rect = chip.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      }),
+      left: containerRect.left,
+      right: containerRect.right,
+    };
+  });
+
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+  expect(geometry.chips.length).toBeGreaterThan(0);
+  for (const chip of geometry.chips) {
+    expect(chip.left).toBeGreaterThanOrEqual(geometry.left);
+    expect(chip.right).toBeLessThanOrEqual(geometry.right);
+  }
 });
 
 test("narrow calendar scrolling and mobile chat width stay unchanged", async ({ page }) => {

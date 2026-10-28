@@ -43,7 +43,7 @@ export interface ChatStats {
     display_name: string;
     message_count: number;
     avg_response_time_seconds: number;
-  }>;
+  }> | null;
 }
 
 export interface AwardWinner {

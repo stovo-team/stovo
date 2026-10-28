@@ -159,7 +159,7 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
   expect(navActiveIndicatorHeight).toBe("44px");
   expect(navActiveIndicatorWidth).toBe("44px");
   expect(pageGridColumn).toBe("2");
-  expect(chatPaneColumns).toContain("minmax(260px, 300px)");
+  expect(chatPaneColumns).toContain("minmax(240px, 280px)");
   expect(chatSidebarBackground).toBe("transparent");
   expect(chatSidebarBorder).toBe("0");
   expect(chatSidebarShadow).toBe("none");
