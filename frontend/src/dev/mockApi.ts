@@ -376,14 +376,14 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
 
   const previousFetch = globalThis.fetch;
   const scenario = options.scenario ?? new URLSearchParams(window.location.search).get("mockScenario");
-  if (scenario === "voice-avatar" && !mockData.chats.some((chat) => chat.id === "chat-voice-avatar")) {
+  if ((scenario === "voice-avatar" || scenario === "family-avatar") && !mockData.chats.some((chat) => chat.id === (scenario === "family-avatar" ? "chat-family-avatar" : "chat-voice-avatar"))) {
     const template = mockData.chats.find((chat) => chat.type === "group");
     if (template) {
       mockData.chats.push({
         ...template,
-        id: "chat-voice-avatar",
-        type: "voice",
-        title: "Creative Voice",
+        id: scenario === "family-avatar" ? "chat-family-avatar" : "chat-voice-avatar",
+        type: scenario === "family-avatar" ? "family" : "voice",
+        title: scenario === "family-avatar" ? "Stovo Family" : "Creative Voice",
         avatarMode: "symbol",
         avatarSymbolId: "audio-lines",
         avatarColorId: "purple",

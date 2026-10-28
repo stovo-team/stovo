@@ -12,8 +12,8 @@ export function ChatAvatarChoiceSettings({
   accessToken: string | null;
   onChange?: (patch: Partial<Pick<Chat, "avatarMode" | "avatarSymbolId" | "avatarColorId">>) => void | Promise<void>;
 }) {
-  if (chat.type !== "group" && chat.type !== "channel" && chat.type !== "voice") return null;
-  const entityKind = chat.type === "group" ? "group" : chat.type === "voice" ? "voice" : "channel";
+  if (chat.type !== "family" && chat.type !== "group" && chat.type !== "channel" && chat.type !== "voice") return null;
+  const entityKind = chat.type === "family" ? "family" : chat.type === "group" ? "group" : chat.type === "voice" ? "voice" : "channel";
   return (
     <div className="chat-info-section chat-info-section--avatar-choices">
       <div className="chat-info-island">
