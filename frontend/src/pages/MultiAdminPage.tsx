@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical, Settings2, UserPlus, RefreshCw, ExternalLink, KeyRound, Trash2 } from "lucide-react";
 import {
   createInviteLink,
@@ -54,6 +55,7 @@ export default function MultiAdminPage() {
   const [chatTypes, setChatTypes] = useState<ChatTypesConfig>({ direct: true, group: true, channel: true, voice: true });
   const [aiSettings, setAiSettings] = useState<TenantAiSettings>({ translationEnabled: true, callRecordingEnabled: true, aiNotesEnabled: true, voiceTranscriptionEnabled: true });
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
   // Notification / Toast info
   const [toast, setToast] = useState<string | null>(null);
@@ -72,14 +74,19 @@ export default function MultiAdminPage() {
   useEffect(() => {
     if (!openMenu) return;
     const closeOnOutside = (event: PointerEvent) => {
-      if (!(event.target instanceof Element) || !event.target.closest(".space-actions-menu-wrap")) setOpenMenu(null);
+      if (!(event.target instanceof Element) || !event.target.closest(".space-actions-menu-wrap, .space-actions-menu")) setOpenMenu(null);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpenMenu(null);
     };
+    const closeOnMove = () => setOpenMenu(null);
+    document.addEventListener("scroll", closeOnMove, true);
+    window.addEventListener("resize", closeOnMove);
     document.addEventListener("pointerdown", closeOnOutside);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
+      document.removeEventListener("scroll", closeOnMove, true);
+      window.removeEventListener("resize", closeOnMove);
       document.removeEventListener("pointerdown", closeOnOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
@@ -396,11 +403,11 @@ export default function MultiAdminPage() {
                             <UserPlus size={19} aria-hidden="true" />
                           </button>
                           <div className="space-actions-menu-wrap">
-                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={copy.actionsFor(s.name)} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
-                            {openMenu === s.slug && <div className="space-actions-menu" role="menu">
+                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={copy.actionsFor(s.name)} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenuPosition({ top: Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 110)), right: Math.max(8, window.innerWidth - rect.right) }); setOpenMenu(openMenu === s.slug ? null : s.slug); }}><MoreVertical size={20} aria-hidden="true" /></button>
+                            {openMenu === s.slug && createPortal(<div className="space-actions-menu" role="menu" style={menuPosition}>
                               <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); void handleCopyGhostToken(s.slug); }}><KeyRound size={16} />{copy.ghostToken}</button>
                               <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenu(null); void handleDelete(s.slug); }}><Trash2 size={16} />{copy.delete}</button>
-                            </div>}
+                            </div>, document.body)}
                           </div>
                         </div>
                       </td>

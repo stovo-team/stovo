@@ -73,8 +73,16 @@ describe("supervisor space management", () => {
     expect(container.querySelector('[aria-label="Настройки: Alpha"]')?.textContent).toBe("");
     expect(container.querySelector('[aria-label="Пригласить в Alpha"]')?.textContent).toBe("");
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Другие действия: Alpha"]')?.click(); });
-    expect(container.querySelector('[role="menu"]')?.textContent).toContain("Ghost Token");
-    expect(container.querySelector('[role="menu"]')?.textContent).toContain("Удалить");
+    expect(document.body.querySelector('[role="menu"]')?.textContent).toContain("Ghost Token");
+    expect(document.body.querySelector('[role="menu"]')?.textContent).toContain("Удалить");
+  });
+
+  it("renders the actions menu outside the scrollable space list", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Другие действия: Alpha"]')?.click(); });
+    const menu = document.body.querySelector('[role="menu"]');
+    expect(menu).toBeTruthy();
+    expect(container.contains(menu)).toBe(false);
   });
 
   it("keeps chat types editable, exposes tabs, and saves AI and chat restrictions", async () => {
