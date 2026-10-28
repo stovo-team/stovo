@@ -63,16 +63,16 @@
     margin-top: 4px;
   }
 
+  .chat-list-filters {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
   :root[data-platform="web"] .messenger-shell .chat-list-filters {
     box-sizing: border-box;
     justify-self: start;
     max-width: calc(100vw - 120px);
     width: max-content;
-  }
-
-  .chat-list-filters {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
   }
 
   .messenger-shell.has-active-chat .messages-panel {
