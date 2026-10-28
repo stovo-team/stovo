@@ -5,7 +5,7 @@ import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
 import { addMobileLayoutMessages, createMockData, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
-import { getMockUserId } from "./mockBootstrap";
+import { getMockUserId, isMockSignedOut } from "./mockBootstrap";
 import { handleMockCollectionRequest, resetMockCollections } from "./mockCollections";
 import { handleMockCanvasRequest, resetMockCanvases } from "./mockCanvasStore";
 import {
@@ -88,9 +88,11 @@ async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Pr
   return new Response(await blob.arrayBuffer(), { status: 200, headers });
 }
 
-async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit): Promise<Response> {
+async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit, scenario?: string): Promise<Response> {
   const path = decodeURI(url.pathname);
-  if (method === "POST" && path === "/api/auth/android-qr-login") return jsonResponse({ requestId: "local-mock-android-qr-grant", expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString() }); if (method === "POST" && path === "/api/auth/refresh") return jsonResponse(responseForRefresh());
+  if (method === "POST" && path === "/api/auth/android-qr-login") return jsonResponse({ requestId: "local-mock-android-qr-grant", expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString() }); if (method === "POST" && path === "/api/auth/refresh") return isMockSignedOut(window.location.search) ? errorResponse(401, "No active session") : jsonResponse(responseForRefresh());
+  if (method === "POST" && path === "/api/auth/qr-login") return jsonResponse({ requestId: "local-mock-browser-qr-login", scanUrl: `stovo://auth/qr-approve/${"a".repeat(48)}`, expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString() });
+  if (method === "GET" && /^\/api\/auth\/qr-login\/[A-Za-z0-9_-]+$/.test(path)) return jsonResponse({ status: "pending" });
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
@@ -117,7 +119,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
     }
   );
   if (canvasResponse) return canvasResponse;
-  const collectionResponse = await handleMockCollectionRequest(path, method, mockData.family.id, getMockUserId()); if (collectionResponse) return collectionResponse;
+  const collectionResponse = await handleMockCollectionRequest(path, method, mockData.family.id, getMockUserId(), scenario); if (collectionResponse) return collectionResponse;
   if (method === "GET" && path === "/api/files") { await seedMockPreviewFiles(mockData.family.id, getMockUserId()); return jsonResponse(await listMockFiles()); }
 
   if (method === "POST" && path === "/api/files/uploads") {
@@ -375,7 +377,7 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
   if (existing) existing.cleanup();
 
   const previousFetch = globalThis.fetch;
-  const scenario = options.scenario ?? new URLSearchParams(window.location.search).get("mockScenario");
+  const scenario = options.scenario ?? new URLSearchParams(window.location.search).get("mockScenario") ?? undefined;
   if (scenario === "voice-avatar" && !mockData.chats.some((chat) => chat.id === "chat-voice-avatar")) {
     const template = mockData.chats.find((chat) => chat.type === "group");
     if (template) {
@@ -419,9 +421,9 @@ export function installMockApi(options: { origin?: string; scenario?: string } =
           else signal?.addEventListener("abort", abort, { once: true });
         });
       }
-      if (scenario === "mobile-layout-canvas" || scenario === "mobile-layout-meetup") return addMobileLayoutMessages(handleMockRequest(url, method, input, init), scenario, getMockUserId(), mockData.users).then(jsonResponse);
+      if (scenario === "mobile-layout-canvas" || scenario === "mobile-layout-meetup") return addMobileLayoutMessages(handleMockRequest(url, method, input, init, scenario), scenario, getMockUserId(), mockData.users).then(jsonResponse);
     }
-    return handleMockRequest(url, method, input, init);
+    return handleMockRequest(url, method, input, init, scenario);
   };
 
   const installation: MockApiInstallation = {

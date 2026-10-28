@@ -34,6 +34,18 @@ describe("chat details controls", () => {
     expect(styles).toContain("border-radius: var(--radius-pill);");
   });
 
+  it("keeps the chat photo button circular despite the global button minimum height", () => {
+    const rule = styles.match(/\.chat-info-avatar-edit \{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toContain("height: 30px;");
+    expect(rule).toContain("width: 30px;");
+    expect(rule).toContain("min-height: 0;");
+    expect(rule).toContain("padding: 0;");
+    expect(rule).toContain("border-radius: var(--radius-circle);");
+    const responsiveRule = styles.match(/\.chat-info-screen \.chat-info-avatar-edit \{([^}]*)\}/)?.[1] ?? "";
+    expect(responsiveRule).toContain("min-height: 0;");
+    expect(responsiveRule).toContain("padding: 0;");
+  });
+
   it("does not show archive or encryption labels in the chat details hero", () => {
     expect(chatDetailsPanel).not.toContain("Saved messages");
     expect(chatDetailsPanel).not.toContain("encryptionProtocolLabel");

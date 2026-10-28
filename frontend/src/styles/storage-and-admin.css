@@ -2060,7 +2060,7 @@
 
 .chat-info-overflow { margin-left: auto; position: relative; }
 .chat-info-overflow-menu { background: var(--card, var(--color-palette-7535adff8b05)); border: 1px solid var(--border, var(--color-palette-2461ce705758)); border-radius: var(--radius-surface); box-shadow: 0 12px 30px var(--color-palette-7be18e16198b); display: grid; min-width: 184px; overflow: hidden; padding: 4px; position: absolute; right: 0; top: calc(100% + 6px); z-index: 25; }
-.chat-info-overflow-menu button { align-items: center; background: transparent; border: 0; border-radius: var(--radius-control); color: var(--foreground, var(--color-palette-5080e9d4b336)); cursor: pointer; display: flex; font: inherit; font-size: var(--font-size-small); gap: 10px; justify-content: flex-start; padding: 10px; text-align: left; white-space: nowrap; width: 100%; }
+.chat-info-overflow-menu button { align-items: center; background: transparent; border: 0; border-radius: inherit; color: var(--foreground, var(--color-palette-5080e9d4b336)); cursor: pointer; display: flex; font: inherit; font-size: var(--font-size-small); gap: 10px; justify-content: flex-start; padding: 10px; text-align: left; white-space: nowrap; width: 100%; }
 .chat-info-overflow-menu button:hover, .chat-info-overflow-menu button:focus-visible { background: var(--secondary, var(--color-palette-8c38ad74038a)); }
 
 /* ── Send Submenu & Scheduled Message / Reminder Modals ── */

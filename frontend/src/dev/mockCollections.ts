@@ -29,15 +29,17 @@ function jsonResponse(value: unknown): Response {
   });
 }
 
-export async function handleMockCollectionRequest(path: string, method: string, familyId: string, userId: string): Promise<Response | null> {
+export async function handleMockCollectionRequest(path: string, method: string, familyId: string, userId: string, scenario?: string): Promise<Response | null> {
   if (method === "GET" && path === "/api/collections") {
     await seedMockPreviewFiles(familyId, userId);
+    if (scenario === "storage-empty") return jsonResponse([{ ...getPreviewFolder(familyId, userId), coverFileId: null, itemCount: 0 }]);
     return jsonResponse([getPreviewFolder(familyId, userId)]);
   }
 
   const itemsMatch = path.match(/^\/api\/collections\/([^/]+)\/items(?:\/([^/]+))?$/);
   if (itemsMatch?.[1] === PREVIEW_FOLDER_ID) {
     if (method === "GET" && !itemsMatch[2]) {
+      if (scenario === "storage-empty") return jsonResponse([]);
       await seedMockPreviewFiles(familyId, userId);
       const file = folderHasPdf ? await getMockFile(PREVIEW_PDF_ID) : null;
       return jsonResponse(file ? [file] : []);

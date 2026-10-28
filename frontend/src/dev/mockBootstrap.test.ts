@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadServerState } from "../api/serverRegistry";
 import { DEMO_USER_ID } from "./mockFixtures";
-import { getMockUserId, isMockMode, prepareMockSession, resolveMockUserId, seedMockSession } from "./mockBootstrap";
+import { getMockUserId, isMockMode, isMockSignedOut, prepareMockSession, resolveMockUserId, seedMockSession } from "./mockBootstrap";
 
 beforeEach(() => {
   localStorage.clear();
 });
 
 describe("local mock session bootstrap", () => {
+  it("recognizes the explicit signed-out visual fixture", () => {
+    expect(isMockSignedOut("?mockSignedOut=1")).toBe(true);
+    expect(isMockSignedOut("")).toBe(false);
+  });
   it("adds the demo account for the mock origin without replacing a normal dev account", () => {
     localStorage.setItem("stovo.multiServerState", JSON.stringify({
       activeServerId: "local-dev",
@@ -77,5 +81,12 @@ describe("local mock session bootstrap", () => {
     expect(localStorage.getItem(otherQueueKey)).toBe(JSON.stringify([{ id: "unrelated-dev-message" }]));
     const state = loadServerState();
     expect(state.servers[state.activeServerId!]).toMatchObject({ user: { displayName: "Stovo Demo" } });
+  });
+
+  it("leaves a signed-out state for login page visual scenarios", async () => {
+    window.history.replaceState({}, "", "/login?mockSignedOut=1");
+    await prepareMockSession("http://127.0.0.1:5174");
+    expect(loadServerState()).toEqual({ activeServerId: null, servers: {} });
+    window.history.replaceState({}, "", "/");
   });
 });
