@@ -51,7 +51,7 @@ test.describe('V-18 narrow desktop chat list', () => {
     const geometry = await page.evaluate(() => {
       const bounds = (selector: string) => {
         const rect = document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
-        return { left: rect.left, right: rect.right, width: rect.width };
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height };
       };
       return {
         sidebar: bounds('.chat-sidebar'),
@@ -79,6 +79,8 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.composePosition).toBe('absolute');
     expect(geometry.compose.left).toBeGreaterThanOrEqual(geometry.sidebar.left);
     expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.compose.top).toBeGreaterThanOrEqual(geometry.sidebar.top);
+    expect(geometry.compose.bottom).toBeLessThanOrEqual(geometry.sidebar.bottom);
     expect(geometry.compose.right).toBeLessThanOrEqual(s.viewport.width);
     expect(geometry.compose.left).toBeGreaterThanOrEqual(0);
     expect(geometry.composeHitTarget).toBe(true);
