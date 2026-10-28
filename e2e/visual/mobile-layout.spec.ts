@@ -27,6 +27,7 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
     };
   });
 
+  await screenshot(page, info, s);
   expect(geometry.sidebar.width).toBeLessThanOrEqual(280);
   expect(geometry.composePosition).toBe('absolute');
   expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
@@ -37,7 +38,6 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
   expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
   expect(geometry.detail.width).toBeGreaterThan(0);
-  await screenshot(page, info, s);
 });
 
 test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>{
