@@ -29,7 +29,7 @@ export function ChatAvatarChoiceSettings({
           colorId={chat.avatarColorId}
           onModeChange={(avatarMode) => void onChange?.({ avatarMode })}
           onSymbolChange={(avatarSymbolId) => void onChange?.({ avatarMode: "symbol", avatarSymbolId })}
-          onColorChange={(avatarColorId) => void onChange?.({ avatarColorId })}
+          onColorChange={(avatarColorId) => void onChange?.({ avatarMode: "symbol", avatarColorId })}
         />
       </div>
     </div>

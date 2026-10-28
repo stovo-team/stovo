@@ -46,10 +46,23 @@ describe("ChatFolderDialog avatar choices", () => {
     const firstFolderIcon = list.indexOf('className="chat-folder-avatar"');
     expect(firstArrow).toBeGreaterThanOrEqual(0);
     expect(firstFolderIcon).toBeGreaterThan(firstArrow);
-    expect(styles).toContain('.entity-avatar[data-avatar-kind="folder"] { background: transparent; color: color-mix(in oklab, var(--avatar-custom-bg) 12%, var(--color-text-secondary)); }');
+    expect(styles).toContain('.entity-avatar[data-avatar-kind="folder"] { background: transparent; color: var(--avatar-custom-bg); }');
     expect(tokens).toContain("--avatar-color-purple: var(--color-palette-97b1caaa7b50);");
     expect(folderStyles).not.toContain(".chat-section-heading:hover .chat-folder-controls");
     expect(headerStyles).toContain(".chat-header-actions button:hover:not(:disabled)");
     expect(headerStyles).toContain("  background: transparent;\n  border-color: transparent;");
   });
+});
+
+it("applies the selected folder color to its icon and name", () => {
+  const styles = readFileSync("src/styles/shared-interactions.css", "utf8");
+  const list = readFileSync("src/features/chats/sidebar/ChatList.tsx", "utf8");
+  expect(styles).toContain('.entity-avatar[data-avatar-kind="folder"] { background: transparent; color: var(--avatar-custom-bg); }');
+  expect(list).toContain('className="chat-folder-name"');
+  expect(styles).toContain('.chat-folder-avatar + .chat-folder-name');
+});
+
+it("does not override the selected chat avatar background with the chat type", () => {
+  const styles = readFileSync("src/styles/app-shell.css", "utf8");
+  expect(styles).not.toMatch(/\.chat-avatar\.(?:group|family)\s*\{\s*background:/);
 });
