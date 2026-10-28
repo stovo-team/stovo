@@ -82,10 +82,13 @@
 @media (max-width: 1024px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 166px;
+    /* Let filters extend into the empty pane; the chat list owns its own scrolling. */
+    overflow: visible;
     position: relative;
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
+    grid-template-columns: minmax(0, 1fr);
     left: 0;
     margin: 0;
     padding: 0 !important;
@@ -254,6 +257,13 @@
   scrollbar-width: none;
   touch-action: pan-x;
   width: 100%;
+}
+
+:root[data-platform="web"] .messenger-shell.chat-list-view .chat-list-filters {
+  box-sizing: border-box;
+  justify-self: start;
+  max-width: calc(100vw - 24px);
+  width: max-content;
 }
 
 :root[data-platform="web"] .chat-list-filters::-webkit-scrollbar {

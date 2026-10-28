@@ -32,10 +32,10 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.composePosition).toBe('absolute');
   expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
-  expect(geometry.filters.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.filters.right).toBeLessThanOrEqual(s.viewport.width - 12);
+  expect(geometry.filterScrollWidth).toBeLessThanOrEqual(geometry.filterClientWidth);
   expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.filterOverflow).toMatch(/auto|scroll/);
-  expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
   expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
   expect(geometry.detail.width).toBeGreaterThan(0);
 });
@@ -64,7 +64,17 @@ test.describe('V-18 narrow desktop chat list', () => {
         emptyCard: bounds('.chat-empty-state-card'),
         composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
         detailVisibility: getComputedStyle(document.querySelector('.chat-detail')!).visibility,
+        sidebarOverflow: getComputedStyle(document.querySelector('.chat-sidebar')!).overflowX,
         filterOverflow: getComputedStyle(document.querySelector('.chat-list-filters')!).overflowX,
+        filterScrollWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.scrollWidth,
+        filterClientWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.clientWidth,
+        lastFilterHit: (() => {
+          const chips = document.querySelectorAll<HTMLElement>('.chat-list-filters .filter-chip');
+          const last = chips[chips.length - 1];
+          const rect = last.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return last === hit || last.contains(hit);
+        })(),
         composeHitTarget: (() => {
           const compose = document.querySelector<HTMLElement>('.compose-fab')!;
           const rect = compose.getBoundingClientRect();
@@ -87,7 +97,11 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.composeHitTarget).toBe(true);
     expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
-    expect(geometry.filters.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.filters.right).toBeGreaterThan(geometry.sidebar.right);
+    expect(geometry.filters.right).toBeLessThanOrEqual(s.viewport.width - 12);
+    expect(geometry.filterScrollWidth).toBeLessThanOrEqual(geometry.filterClientWidth);
+    expect(geometry.sidebarOverflow).toBe('visible');
+    expect(geometry.lastFilterHit).toBe(true);
     expect(geometry.filterOverflow).toMatch(/auto|scroll/);
     expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
     expect(geometry.detail.width).toBeGreaterThan(0);
