@@ -80,7 +80,10 @@
 }
 
 @media (min-width: 1600px) {
-  .messenger-shell .chat-layout:not(.voice-call-expanded) { grid-template-columns: 322px minmax(0, 1fr); }
+  .messenger-shell .chat-layout:not(.voice-call-expanded) {
+    --desktop-chat-list-width: clamp(322px, calc(322px + (100vw - 1800px) / 2), 346px);
+    grid-template-columns: var(--desktop-chat-list-width) minmax(0, 1fr);
+  }
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail { box-sizing: border-box; justify-self: center; max-width: 1400px; width: 100%; }
 }
 

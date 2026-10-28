@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
 import { readCssSource } from "./src/test/cssSource";
 
-it("keeps the wide chat list compact, centers the active chat and lets Plans use the full pane", () => {
+it("slightly widens the chat list, centers the active chat and lets Plans use the full pane", () => {
   const styles = readCssSource("src/styles.css");
-  expect(styles).toMatch(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*\{[^}]*grid-template-columns:\s*322px\s*minmax\(0, 1fr\)/);
+  expect(styles).toMatch(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*\{[^}]*grid-template-columns:\s*var\(--desktop-chat-list-width\)\s*minmax\(0, 1fr\)/);
   expect(styles).toMatch(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*>\s*\.chat-detail\s*\{[^}]*max-width:\s*1400px/);
   expect(styles).toMatch(/\.messenger-shell \.chat-layout:not\(\.voice-call-expanded\)\s*>\s*\.chat-detail\s*\{[^}]*justify-self:\s*center/);
   expect(styles).toMatch(/\.plans-page \.plans-content\s*\{[^}]*max-width:\s*none/);

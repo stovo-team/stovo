@@ -132,7 +132,7 @@ for (const width of [675, 1024]) {
   });
 }
 
-test('wide desktop keeps the list compact and centers the chat in the remaining space', async ({ page }, info) => {
+test('wide desktop slightly widens the list and centers the chat in the remaining space', async ({ page }, info) => {
   const s: Scenario = { id: 'V-21', viewport: { width: 2560, height: 900 }, theme: 'dark', locale: 'en' };
   await prepareVisualScenario(page, s, '/app/chats/chat-planning-team');
   const geometry = await page.evaluate(() => {
@@ -146,7 +146,7 @@ test('wide desktop keeps the list compact and centers the chat in the remaining 
     return { sidebarWidth: sidebar.width, sidebarRight: sidebar.right, searchRight: rect('.chat-list-search').right, itemRight: rect('.chat-list-item').right, buttonRight: rect('.compose-fab').right, detailCenter: (detail.left + detail.right) / 2, remainingCenter: (sidebar.right + layout.right) / 2, filtersRight: filters.getBoundingClientRect().right, filtersFit: filters.scrollWidth <= filters.clientWidth, target: !!target?.closest('.filter-chip:last-child') };
   });
   await screenshot(page, info, s);
-  expect(geometry.sidebarWidth).toBeCloseTo(322, 0);
+  expect(geometry.sidebarWidth).toBeCloseTo(346, 0);
   expect(geometry.searchRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.itemRight).toBeLessThanOrEqual(geometry.sidebarRight);
   expect(geometry.buttonRight).toBeLessThanOrEqual(geometry.sidebarRight);
