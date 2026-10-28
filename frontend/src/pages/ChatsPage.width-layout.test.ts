@@ -14,7 +14,7 @@ describe("wide-screen chat width priority", () => {
   });
 
   it("keeps the chat list minimum and voice-call expanded grid", () => {
-    expect(styles).toContain("grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);");
+    expect(styles).toContain("grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);");
     expect(styles).toContain(".chat-layout.voice-call-expanded,");
     expect(styles).toContain("grid-template-columns: minmax(0, 1fr);");
   });

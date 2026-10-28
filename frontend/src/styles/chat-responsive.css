@@ -269,6 +269,30 @@
   right: 12px;
 }
 
+@media (min-width: 481px) and (max-width: 768px) {
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-layout {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  }
+
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar,
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-detail {
+    grid-row: 1;
+  }
+
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
+    grid-column: 1;
+  }
+
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-detail {
+    animation: none;
+    grid-column: 2;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    visibility: visible;
+  }
+}
+
 :root[data-platform="web"] .messenger-shell.has-active-chat .message-composer {
   background: transparent;
   isolation: isolate;

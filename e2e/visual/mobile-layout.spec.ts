@@ -40,6 +40,50 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.detail.width).toBeGreaterThan(0);
 });
 
+test.describe('V-18 narrow desktop chat list', () => {
+  test.use({ viewport: { width: 512, height: 768 }, deviceScaleFactor: 2 });
+
+  test('keeps the new-chat button beside the compact list at 2x scale', async ({ page }, info) => {
+    const s: Scenario = { id: 'V-18', viewport: { width: 512, height: 768 }, theme: 'dark', locale: 'en' };
+    await prepareVisualScenario(page, s, '/app/chats');
+    await expect(page.locator('.compose-fab')).toBeVisible();
+
+    const geometry = await page.evaluate(() => {
+      const bounds = (selector: string) => {
+        const rect = document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width };
+      };
+      return {
+        sidebar: bounds('.chat-sidebar'),
+        compose: bounds('.compose-fab'),
+        search: bounds('.chat-list-search'),
+        filters: bounds('.chat-list-filters'),
+        chat: bounds('.chat-list-item'),
+        detail: bounds('.chat-detail'),
+        emptyState: bounds('.chat-empty-state-wrapper'),
+        emptyCard: bounds('.chat-empty-state-card'),
+        composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
+        detailVisibility: getComputedStyle(document.querySelector('.chat-detail')!).visibility,
+        filterOverflow: getComputedStyle(document.querySelector('.chat-list-filters')!).overflowX,
+      };
+    });
+
+    await screenshot(page, info, s);
+    expect(geometry.sidebar.width).toBeLessThanOrEqual(280);
+    expect(geometry.composePosition).toBe('absolute');
+    expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.filters.right).toBeLessThanOrEqual(geometry.sidebar.right);
+    expect(geometry.filterOverflow).toMatch(/auto|scroll/);
+    expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
+    expect(geometry.detail.width).toBeGreaterThan(0);
+    expect(geometry.detailVisibility).toBe('visible');
+    expect(Math.abs((geometry.emptyState.left + geometry.emptyState.right) / 2 - (geometry.detail.left + geometry.detail.right) / 2)).toBeLessThanOrEqual(1);
+    expect(geometry.emptyCard.width).toBeLessThanOrEqual(geometry.detail.width);
+  });
+});
+
 test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>{
  const s:Scenario={id:'V-13',viewport:{width:390,height:844},theme:'dark',locale:'ru'};
  await prepareVisualScenario(page,s,'/app/chats');
