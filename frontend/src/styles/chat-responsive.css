@@ -63,18 +63,6 @@
     margin-top: 4px;
   }
 
-  .chat-list-filters {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-
-  :root[data-platform="web"] .messenger-shell .chat-list-filters {
-    box-sizing: border-box;
-    justify-self: start;
-    max-width: calc(100vw - 120px);
-    width: max-content;
-  }
-
   .messenger-shell.has-active-chat .messages-panel {
     margin-bottom: 8px;
     padding-bottom: 18px;
@@ -94,8 +82,7 @@
 /* Browser-only narrow layout. Capacitor keeps its native spacing and chrome. */
 @media (max-width: 1024px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
-    --web-chat-sidebar-header-height: 166px;
-    /* Let filters extend into the empty pane; the chat list owns its own scrolling. */
+    --web-chat-sidebar-header-height: 116px;
     overflow: visible;
     position: relative;
   }
@@ -114,18 +101,6 @@
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-list {
     margin-top: 0;
     padding-top: calc(var(--web-chat-sidebar-header-height) + var(--chat-list-chrome-gap, 16px));
-  }
-
-  :root[data-platform="web"] .chat-list-filters {
-    flex-wrap: nowrap;
-    max-width: 100%;
-    min-width: 0;
-    overflow-x: scroll !important;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    touch-action: pan-x;
-    width: 100%;
   }
 
   :root[data-platform="web"] .messenger-shell.has-active-chat .messages-panel {
@@ -261,37 +236,6 @@
   justify-self: auto;
 }
 
-:root[data-platform="web"] .chat-list-filters {
-  flex-wrap: nowrap;
-  min-width: 0;
-  overflow-x: scroll !important;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  touch-action: pan-x;
-  width: 100%;
-}
-
-:root[data-platform="web"] .messenger-shell.chat-list-view .chat-list-filters {
-  box-sizing: border-box;
-  justify-self: start;
-  max-width: calc(100vw - 24px);
-  width: max-content;
-}
-
-:root[data-platform="web"] .chat-list-filters::-webkit-scrollbar {
-  display: none;
-}
-
-@media (min-width: 1025px) {
-  :root[data-platform="web"] .messenger-shell .chat-list-filters {
-    flex-wrap: nowrap;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    touch-action: pan-x;
-  }
-}
-
 :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
   background: linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-7b2817bf9b80) 90%, transparent 100%);
 }
@@ -393,11 +337,11 @@
 @media (max-width: 1024px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip),
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip) {
-    --web-chat-sidebar-header-height: 254px;
+    --web-chat-sidebar-header-height: 204px;
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
-    --web-chat-sidebar-header-height: 190px;
+    --web-chat-sidebar-header-height: 140px;
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
@@ -443,7 +387,7 @@
 /* Capacitor renders the same narrow chat layout as the mobile browser. */
 @media (max-width: 1024px) {
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
-    --web-chat-sidebar-header-height: 190px;
+    --web-chat-sidebar-header-height: 140px;
     position: relative;
   }
 
@@ -986,27 +930,10 @@
   width: 22px;
 }
 
-/* On desktop, filters may use the gap before the centered chat, but never cover it. */
+/* Keep desktop chat content sized against the available layout space. */
 @media (min-width: 1025px) {
   :root[data-platform="web"] .messenger-shell .chat-layout {
     container-type: inline-size;
   }
 
-  :root[data-platform="web"] .messenger-shell:is(.chat-list-view, .has-active-chat) .chat-list-filters {
-    flex-wrap: nowrap;
-    max-width: calc(100% + var(--float-panel-gap));
-  }
-}
-
-@media (min-width: 1600px) {
-  :root[data-platform="web"] .messenger-shell:is(.chat-list-view, .has-active-chat) .chat-list-filters {
-    max-width: calc(100% + var(--float-panel-gap) + max(0px, (100cqw - var(--desktop-chat-list-width, 322px) - var(--float-panel-gap) - 1400px) / 2));
-  }
-}
-
-/* Keep the filter row out of the adjacent chat pane on compact web layouts. */
-@media (min-width: 481px) and (max-width: 1024px) {
-  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-list-filters {
-    max-width: 100%;
-  }
 }

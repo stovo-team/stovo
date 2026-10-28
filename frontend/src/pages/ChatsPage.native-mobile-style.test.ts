@@ -48,9 +48,6 @@ describe("native mobile chat styling", () => {
     expect(stylesSource).toMatch(
       /\.messenger-shell\.chat-list-view \.chat-list \{[\s\S]*?padding:\s*var\(--chat-list-chrome-gap, 16px\) var\(--mobile-page-inset\) var\(--chat-list-bottom-inset\);/
     );
-    expect(stylesSource).toMatch(
-      /\.messenger-shell\.chat-list-view \.chat-list-filters \.filter-chip \{[\s\S]*?box-shadow:\s*none;/
-    );
   });
 
   it("styles the mobile back button with neutral grey surface instead of accent color tint", () => {

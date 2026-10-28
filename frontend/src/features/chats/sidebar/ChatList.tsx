@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Chat, updateChatPreferences } from "../../../api/chats";
-import type { ChatFilter, ChatSectionKey } from "../shared/types";
+import type { ChatSectionKey } from "../shared/types";
 import { useCallChatReveal } from "./useCallChatReveal";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -56,7 +56,6 @@ export type ChatListProps = {
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   filteredChats: Chat[];
   refreshChats: () => Promise<void>;
-  chatFilter: ChatFilter;
   familyId: string;
   canManageFolders: boolean;
   accessToken: string | null;
@@ -79,7 +78,6 @@ export function ChatList({
   chatsBySection: _chatsBySection,
   filteredChats,
   refreshChats,
-  chatFilter,
   familyId,
   canManageFolders,
   accessToken,
@@ -799,11 +797,7 @@ export function ChatList({
         <div className="empty-state compact-empty">
           <MessageCircle aria-hidden="true" size={28} />
           <strong>
-            {chatFilter === "unread"
-              ? strings.chats.emptyStates.everythingRead
-              : chatFilter === "muted"
-                ? strings.chats.emptyStates.noMutedChats
-                : strings.chats.emptyStates.noChatsFound}
+            {strings.chats.emptyStates.noChatsFound}
           </strong>
           <p>{strings.chats.emptyStates.startChatHint}</p>
           <button type="button" onClick={onStartNewChat}>

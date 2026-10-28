@@ -176,9 +176,6 @@ describe("mobile chat chrome", () => {
     expect(mobileChatRule(".app-frame > .app-nav")).toContain(
       "background: transparent;"
     );
-    expect(rule(".messenger-shell.chat-list-view .chat-list-filters .filter-chip")).toContain(
-      "background: var(--mobile-glass-surface);"
-    );
   });
 });
 
@@ -341,7 +338,6 @@ describe("desktop chat refinements", () => {
     expect(desktopRule(".chat-sidebar-header")).toContain("margin: 0;");
     expect(desktopRule(".chat-sidebar-header")).toContain("position: sticky;");
     expect(desktopRule(".chat-list")).toContain("margin-top: 4px;");
-    expect(desktopRule(".chat-list-filters")).toContain("overflow-x: auto;");
   });
 
   it("uses the floating composer and leaves room below the final message", () => {

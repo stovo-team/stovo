@@ -913,14 +913,6 @@ export const strings = {
       inVoiceChannel: "В голосовом канале", joinedJustNow: "Только что присоединился", inVoiceFor: (minutes: number) => `В голосовом канале ${minutes} мин.`, joinedHours: (hours: number, minutes: number) => `В голосовом канале ${hours} ч.${minutes ? ` ${minutes} мин.` : ""}`,
     },
     searchPlaceholder: "Поиск по сообщениям или участникам",
-    filters: {
-      all: "Все",
-      unread: "Непрочитанные",
-      groups: "Группы",
-      direct: "Личные",
-      voice: "Голосовые",
-      muted: "Без звука",
-    },
     sections: {
       archive: "Архив сообщений",
       voice: "Голосовые каналы",

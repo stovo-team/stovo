@@ -897,14 +897,6 @@ export const strings = {
       inVoiceChannel: "In voice channel", joinedJustNow: "Joined just now", inVoiceFor: (minutes: number) => `In voice for ${minutes}m`, joinedHours: (hours: number, minutes: number) => `In voice for ${hours}h${minutes ? ` ${minutes}m` : ""}`,
     },
     searchPlaceholder: "Search messages or members",
-    filters: {
-      all: "All",
-      unread: "Unread",
-      groups: "Groups",
-      direct: "Direct",
-      voice: "Voice",
-      muted: "Muted",
-    },
     sections: {
       archive: "Message Archive",
       voice: "Audio Channels",
