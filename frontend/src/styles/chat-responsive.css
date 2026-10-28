@@ -260,6 +260,15 @@
   display: none;
 }
 
+@media (min-width: 1025px) {
+  :root[data-platform="web"] .messenger-shell .chat-list-filters {
+    flex-wrap: wrap;
+    overflow-x: visible !important;
+    overflow-y: visible;
+    touch-action: auto;
+  }
+}
+
 :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
   background: linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-7b2817bf9b80) 90%, transparent 100%);
 }

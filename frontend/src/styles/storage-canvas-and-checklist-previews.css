@@ -195,6 +195,8 @@
 .storage-files-upload { background: var(--color-palette-f53074ef7f6d); border: 1px solid var(--color-palette-e6ea9d079931); color: var(--color-palette-f4d519fbd522); height: 38px; width: 38px; }
 .storage-files-upload:hover { background: var(--color-palette-74c5bca9702f); border-color: var(--accent-primary); }
 .storage-collection-dialog { background: var(--color-palette-1cff50754b9a); border-color: var(--color-palette-564270883802); border-radius: var(--radius-panel); gap: 16px; max-width: 680px; padding: 24px; }
+.storage-collection-create { grid-template-rows: auto auto auto 1fr; min-height: 460px; }
+.storage-collection-create > .popup-button--primary { align-self: end; justify-self: start; }
 .storage-collection-dialog select, .storage-collection-dialog input { appearance: none; -webkit-appearance: none; background-color: var(--color-palette-175f28ccdb1f); border: 1px solid var(--color-palette-564270883802); border-radius: var(--radius-surface); color: var(--text-primary); min-height: 44px; padding: 10px 42px 10px 13px; }
 .storage-collection-dialog select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239dbce0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-position: right 14px center; background-repeat: no-repeat; }
 .storage-collection-dialog input:focus, .storage-collection-dialog select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 22%, transparent); outline: 0; }

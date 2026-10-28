@@ -365,7 +365,7 @@ export const strings = {
     androidQrSignInFailed: "Не удалось войти по QR-коду. Отсканируйте новый код.",
     signInWithPasskey: "Войти с помощью ключа доступа", signInWithPasskeyShort: "Ключ доступа",
     signInWithPassword: "Войти с паролем",
-    signInWithQr: "Войти по QR-коду",
+    signInWithQr: "Войти по QR-коду", signInWithQrShort: "QR-код",
     secureContextRequired: "Для ключей доступа требуется защищённое соединение (HTTPS).",
     supportedAndroidWebView: "Для ключей доступа нужна поддерживаемая версия Android WebView. Обновите Android System WebView или войдите с паролем либо QR-кодом.",
     signInFailed: "Не удалось войти с помощью ключа доступа. Попробуйте ещё раз или используйте пароль.",

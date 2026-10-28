@@ -67,3 +67,14 @@ describe("empty full-page collection state", () => {
     expect(rules).toContain("justify-content: center");
   });
 });
+
+describe("Storage collection creation dialog layout", () => {
+  const createDialogRule = stylesheet.match(/\.storage-collection-create\s*\{([^}]+)\}/)?.[1] ?? "";
+  const createButtonRule = stylesheet.match(/\.storage-collection-create > \.popup-button--primary\s*\{([^}]+)\}/)?.[1] ?? "";
+
+  it("leaves room for the type menu and aligns Create to the bottom", () => {
+    expect(createDialogRule).toMatch(/min-height:\s*(4[1-9]\d|[5-9]\d\d)px/);
+    expect(createDialogRule).toMatch(/grid-template-rows:\s*auto\s+auto\s+auto\s+1fr/);
+    expect(createButtonRule).toMatch(/align-self:\s*end/);
+  });
+});
