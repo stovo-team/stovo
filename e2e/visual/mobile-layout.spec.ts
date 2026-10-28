@@ -32,8 +32,8 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.composePosition).toBe('absolute');
   expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
-  expect(geometry.filters.right).toBeLessThanOrEqual(s.viewport.width - 12);
-  expect(geometry.filterScrollWidth).toBeLessThanOrEqual(geometry.filterClientWidth);
+  expect(geometry.filters.right).toBeLessThanOrEqual(geometry.detail.left);
+  expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
   expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.filterOverflow).toMatch(/auto|scroll/);
   expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
@@ -69,7 +69,9 @@ test.describe('V-18 narrow desktop chat list', () => {
         filterScrollWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.scrollWidth,
         filterClientWidth: document.querySelector<HTMLElement>('.chat-list-filters')!.clientWidth,
         lastFilterHit: (() => {
-          const chips = document.querySelectorAll<HTMLElement>('.chat-list-filters .filter-chip');
+          const row = document.querySelector<HTMLElement>('.chat-list-filters')!;
+          row.scrollLeft = row.scrollWidth;
+          const chips = row.querySelectorAll<HTMLElement>('.filter-chip');
           const last = chips[chips.length - 1];
           const rect = last.getBoundingClientRect();
           const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -97,9 +99,9 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.composeHitTarget).toBe(true);
     expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
-    expect(geometry.filters.right).toBeGreaterThan(geometry.sidebar.right);
+    expect(geometry.filters.right).toBeLessThanOrEqual(geometry.detail.left);
     expect(geometry.filters.right).toBeLessThanOrEqual(s.viewport.width - 12);
-    expect(geometry.filterScrollWidth).toBeLessThanOrEqual(geometry.filterClientWidth);
+    expect(geometry.filterScrollWidth).toBeGreaterThan(geometry.filterClientWidth);
     expect(geometry.sidebarOverflow).toBe('visible');
     expect(geometry.lastFilterHit).toBe(true);
     expect(geometry.filterOverflow).toMatch(/auto|scroll/);
@@ -110,6 +112,25 @@ test.describe('V-18 narrow desktop chat list', () => {
     expect(geometry.emptyCard.width).toBeLessThanOrEqual(geometry.detail.width);
   });
 });
+
+for (const width of [675, 1024]) {
+  test(`filters stop at the chat pane and scroll at ${width}px`, async ({ page }, info) => {
+    const s: Scenario = { id: `V-filter-${width}`, viewport: { width, height: 900 }, theme: 'dark', locale: 'en' };
+    await prepareVisualScenario(page, s, '/app/chats');
+    const filters = page.locator('.chat-list-filters');
+    const geometry = await page.evaluate(() => {
+      const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
+      const detail = document.querySelector<HTMLElement>('.chat-detail')!;
+      return { right: filters.getBoundingClientRect().right, detailLeft: detail.getBoundingClientRect().left, overflow: filters.scrollWidth > filters.clientWidth };
+    });
+    await screenshot(page, info, s);
+    expect(geometry.right).toBeLessThanOrEqual(geometry.detailLeft);
+    expect(geometry.overflow).toBe(true);
+    await filters.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+    await filters.locator('.filter-chip').last().click();
+    await expect(filters.locator('.filter-chip').last()).toHaveAttribute('aria-pressed', 'true');
+  });
+}
 
 test('wide desktop keeps the list compact and centers the chat in the remaining space', async ({ page }, info) => {
   const s: Scenario = { id: 'V-21', viewport: { width: 2560, height: 900 }, theme: 'dark', locale: 'en' };

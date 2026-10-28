@@ -1003,3 +1003,10 @@
     max-width: calc(100% + var(--float-panel-gap) + max(0px, (100cqw - 322px - var(--float-panel-gap) - 1400px) / 2));
   }
 }
+
+/* Keep the filter row out of the adjacent chat pane on compact web layouts. */
+@media (min-width: 481px) and (max-width: 1024px) {
+  :root[data-platform="web"] .messenger-shell.chat-list-view .chat-list-filters {
+    max-width: 100%;
+  }
+}
