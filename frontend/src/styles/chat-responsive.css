@@ -45,7 +45,13 @@
     z-index: 1;
   }
 
+  :root[data-platform="web"] .messenger-shell .chat-sidebar {
+    overflow: visible;
+    z-index: 12;
+  }
+
   .chat-sidebar-header {
+    grid-template-columns: minmax(0, 1fr);
     margin: 0;
     padding: var(--float-outer-gap);
     padding-bottom: 0;
@@ -55,6 +61,13 @@
 
   .chat-list {
     margin-top: 4px;
+  }
+
+  :root[data-platform="web"] .messenger-shell .chat-list-filters {
+    box-sizing: border-box;
+    justify-self: start;
+    max-width: calc(100vw - 120px);
+    width: max-content;
   }
 
   .chat-list-filters {

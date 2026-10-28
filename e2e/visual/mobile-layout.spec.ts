@@ -111,6 +111,30 @@ test.describe('V-18 narrow desktop chat list', () => {
   });
 });
 
+test.describe('desktop chat filters use available space', () => {
+  for (const route of ['/app/chats', '/app/chats/chat-planning-team']) {
+    test(`filters extend beyond the compact list on ${route}`, async ({ page }, info) => {
+      const s: Scenario = { id: route.endsWith('chat-planning-team') ? 'V-20' : 'V-19', viewport: { width: 1440, height: 900 }, theme: 'dark', locale: 'en' };
+      await prepareVisualScenario(page, s, route);
+      const geometry = await page.evaluate(() => {
+        const sidebar = document.querySelector<HTMLElement>('.chat-sidebar')!;
+        const filters = document.querySelector<HTMLElement>('.chat-list-filters')!;
+        const search = document.querySelector<HTMLElement>('.chat-list-search')!;
+        const chips = filters.querySelectorAll<HTMLElement>('.filter-chip');
+        const last = chips[chips.length - 1];
+        const rect = last.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
+      });
+      await screenshot(page, info, s);
+      expect(geometry.filters).toBeGreaterThan(geometry.sidebar);
+      expect(geometry.search).toBeLessThanOrEqual(geometry.sidebar);
+      expect(geometry.clipped).toBe(false);
+      expect(geometry.hit, geometry.hitElement).toBe(true);
+    });
+  }
+});
+
 test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>{
  const s:Scenario={id:'V-13',viewport:{width:390,height:844},theme:'dark',locale:'ru'};
  await prepareVisualScenario(page,s,'/app/chats');
