@@ -169,12 +169,13 @@ test.describe('desktop chat filters use available space', () => {
         const last = chips[chips.length - 1];
         const rect = last.getBoundingClientRect();
         const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, detail: document.querySelector<HTMLElement>('.chat-detail')!.getBoundingClientRect().left, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
+        return { sidebar: sidebar.getBoundingClientRect().right, filters: filters.getBoundingClientRect().right, detail: document.querySelector<HTMLElement>('.chat-detail')!.getBoundingClientRect().left, overflowX: getComputedStyle(filters).overflowX, search: search.getBoundingClientRect().right, clipped: filters.scrollWidth > filters.clientWidth, hit: hit === last || last.contains(hit), hitElement: hit?.outerHTML.slice(0, 300) };
       });
       await screenshot(page, info, s);
       expect(geometry.filters).toBeLessThanOrEqual(geometry.detail);
       expect(geometry.search).toBeLessThanOrEqual(geometry.sidebar);
       expect(geometry.clipped).toBe(true);
+      expect(geometry.overflowX).toMatch(/auto|scroll/);
       const filters = page.locator('.chat-list-filters');
       await filters.evaluate(el => { el.scrollLeft = el.scrollWidth; });
       await expect(filters.locator('.filter-chip').last()).toBeInViewport();
