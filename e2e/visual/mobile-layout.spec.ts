@@ -267,3 +267,58 @@ test('V-16 guest meeting actions stay equal and distinct on a narrow phone',asyn
  }
  await screenshot(page,info,s);
 });
+
+test('V-17 Storage chat list toggle matches the Plans collapsed toggle',async({page},info)=>{
+ const s:Scenario={id:'V-17',viewport:{width:1440,height:900},theme:'dark',locale:'en'};
+ await prepareVisualScenario(page,s,'/app/plans');
+ const plansDivider=page.locator('.plans-sidebar-resizer');
+ const plansDividerBounds=(await plansDivider.boundingBox())!;
+ const plansDividerX=plansDividerBounds.x+plansDividerBounds.width/2;
+ const plansDividerY=plansDividerBounds.y+plansDividerBounds.height/2;
+ await page.mouse.move(plansDividerX,plansDividerY);
+ await page.mouse.down();
+ await page.mouse.move(plansDividerX-100,plansDividerY);
+ await page.mouse.up();
+ const plansToggle=page.locator('.plans-sidebar-collapse');
+ await expect(plansToggle).toBeVisible();
+ const plansMetrics=await plansToggle.evaluate(node=>{
+  const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+  return {width:rect.width,height:rect.height,radius:style.borderTopLeftRadius};
+ });
+ await prepareVisualScenario(page,s,'/app/files');
+ const storageDivider=page.locator('.storage-source-resizer');
+ const storageDividerBounds=(await storageDivider.boundingBox())!;
+ const storageDividerX=storageDividerBounds.x+storageDividerBounds.width/2;
+ const storageDividerY=storageDividerBounds.y+storageDividerBounds.height/2;
+ await page.mouse.move(storageDividerX,storageDividerY);
+ await page.mouse.down();
+ await page.mouse.move(storageDividerX-140,storageDividerY);
+ await page.mouse.up();
+ const storageToggle=page.locator('.storage-source-collapse');
+ await expect(storageToggle).toBeVisible();
+ const storageMetrics=await storageToggle.evaluate(node=>{
+  const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+  return {width:rect.width,height:rect.height,radius:style.borderTopLeftRadius};
+ });
+ expect(storageMetrics).toEqual(plansMetrics);
+ expect(storageMetrics.width).toBe(36);
+ expect(storageMetrics.height).toBe(36);
+ await screenshot(page,info,s);
+});
+
+test('V-18 Plans collapsed toggle uses the Storage button appearance',async({page},info)=>{
+ const s:Scenario={id:'V-18',viewport:{width:1440,height:900},theme:'dark',locale:'en'};
+ await prepareVisualScenario(page,s,'/app/plans');
+ const divider=page.locator('.plans-sidebar-resizer');
+ const bounds=(await divider.boundingBox())!;
+ const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-100,y);await page.mouse.up();
+ const toggle=page.locator('.plans-sidebar-collapse');
+ await expect(toggle).toBeVisible();
+ const metrics=await toggle.evaluate(node=>{
+  const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+  return {width:rect.width,height:rect.height,radius:style.borderTopLeftRadius,boxShadow:style.boxShadow};
+ });
+ expect(metrics).toEqual({width:36,height:36,radius:'50%',boxShadow:'none'});
+ await screenshot(page,info,s);
+});
