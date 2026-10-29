@@ -71,7 +71,9 @@ func (m *MasterLock) Acquire(ctx context.Context, timeout time.Duration) (int64,
 	token := m.fencingToken.Add(1)
 
 	release := func() {
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 		_, _ = conn.ExecContext(context.Background(), "SELECT pg_advisory_unlock($1)", AdvisoryLockID)
 	}
 
