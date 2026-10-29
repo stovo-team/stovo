@@ -1,0 +1,58 @@
+name: GitOps Release Promotion
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'GitOps target branch (e.g. gitops/stage)'
+        required: true
+        default: 'gitops/stage'
+      candidate_sha:
+        description: 'Tested commit SHA to promote (defaults to current commit SHA)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote GitOps Release
+    runs-on: [self-hosted, tests, Windows]
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - name: Detect available shell
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'."
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Validate release promotion policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/gitops/release.test.mjs scripts/gitops/promote.test.mjs
+
+      - name: Execute GitOps atomic branch promotion
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch || 'gitops/stage' }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Target GitOps branch: $TARGET_BRANCH"
+          echo "Candidate source SHA: $CANDIDATE_SHA"
