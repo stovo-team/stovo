@@ -7,10 +7,13 @@ type: workflow
 
 Implementation requests include publishing the focused task branch and opening/updating its PR, unless the user explicitly requests local-only work. Review-only tasks do not publish changes. Merge and deployment require separate authorization.
 
-1. Verify the task branch, exact diff, regression/acceptance evidence and relevant checks. Keep each PR at most **445 additions + deletions** across every file; generated files, tests, documentation and lockfiles count. Use the GitHub PR metadata count as the remote authority. Split coherent work before publication.
+1. Verify the task branch, exact diff, regression/acceptance evidence and relevant checks. Keep each PR near or below 300–400 changed lines, with a hard cap of at most **445 additions + deletions** across every file; generated files, tests, documentation and lockfiles count. Use the GitHub PR metadata count as the remote authority. Split coherent work before publication into a logical stack of PRs if changes exceed this threshold.
 2. Run `gh` outside the sandbox using the host's escalation mechanism. Resolve the actual target with `gh repo view --json nameWithOwner,defaultBranchRef`; this checkout's old origin redirects to `stovo-team/stovo`. Use that explicit `--repo` for reads and writes. Keep credentials out of logs.
 3. Outside the sandbox run `node scripts/agent-workflows/pr-ci.mjs --publish --repo <owner/repo> --branch <branch> --title "<prefix>: <behavior>" --body-file <body.md>`. This verifies the repository/branch and local size, pushes, creates or updates the PR with `gh`, then immediately watches CI. Attach its URL through the host's artifact tool when available. Publication is a required delivery step under the standing authorization above.
-For a dependent PR, pass `--base <predecessor-branch>` and link its PR. Its 445-line budget is measured against that base. Retarget `master` after the predecessor merges.
+For stacked / dependent PRs:
+- Pass `--base <predecessor-branch>` when publishing. The 445-line budget is measured against that base.
+- Create or review the stack connection via GitHub's native stacked PR interface ("Preview stack" / "Create stack") and cross-link PRs in the description.
+- Retarget the successor PR to `master` (or its next active predecessor) after the predecessor merges (`gh pr edit <pr> --base master`), then re-run CI verification.
 
 4. Immediately inspect all current-head checks outside the sandbox:
 
