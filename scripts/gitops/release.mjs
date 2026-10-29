@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
 const sourcePattern = /^[0-9a-f]{40}$/;
 const imagePattern = /^(?:[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?@sha256:[0-9a-f]{64}$/;
 const requiredImages = [
@@ -76,3 +80,143 @@ export function planPromotion(current, candidate, checks) {
   }
   return { ok: true, expectedHead: current.head, release: candidate };
 }
+
+/** Write deploy/gitops/release.json into a new git commit without checking out the branch. */
+export function writeReleaseCommit({ git, expectedHead = null, release, message }) {
+  const content = JSON.stringify(release, null, 2) + '\n';
+  const blobSha = git(['hash-object', '-w', '--stdin'], { input: content }).trim();
+  const tempIndex = path.join(os.tmpdir(), `stovo-idx-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  try {
+    const env = { ...process.env, GIT_INDEX_FILE: tempIndex };
+    if (expectedHead) {
+      git(['read-tree', expectedHead], { env });
+    }
+    git(['update-index', '--add', '--cacheinfo', '100644', blobSha, 'deploy/gitops/release.json'], { env });
+    const treeSha = git(['write-tree'], { env }).trim();
+    const parentArgs = expectedHead ? ['-p', expectedHead] : [];
+    return git(['commit-tree', treeSha, ...parentArgs, '-m', message], { env }).trim();
+  } finally {
+    try { fs.rmSync(tempIndex, { force: true }); } catch {}
+  }
+}
+
+/** Read the current release record from a commit or branch ref. */
+export function readBranchRelease(git, ref) {
+  try {
+    const raw = git(['show', `${ref}:deploy/gitops/release.json`]);
+    const parsed = JSON.parse(raw);
+    const head = git(['rev-parse', ref]).trim();
+    return { head, ...parsed };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Execute promotion to a release branch using atomic compare-and-swap (force-with-lease).
+ * Never permits force-push without lease.
+ */
+export function promoteBranch({ git, remote = 'origin', targetBranch = 'gitops/stage', candidate, checks }) {
+  let expectedHead;
+  try {
+    expectedHead = git(['rev-parse', '--verify', `refs/remotes/${remote}/${targetBranch}`]).trim();
+  } catch {
+    try {
+      expectedHead = git(['rev-parse', '--verify', `refs/heads/${targetBranch}`]).trim();
+    } catch {
+      expectedHead = null;
+    }
+  }
+
+  const current = expectedHead ? readBranchRelease(git, expectedHead) : null;
+  if (!current) return reject('target branch has no valid current release');
+
+  if (checks && !checks.source_ancestry && current.source_sha && candidate?.source_sha) {
+    let isDescendant = false;
+    try {
+      git(['merge-base', '--is-ancestor', current.source_sha, candidate.source_sha]);
+      isDescendant = true;
+    } catch {
+      isDescendant = false;
+    }
+    checks.source_ancestry = {
+      base_sha: current.source_sha,
+      target_sha: candidate.source_sha,
+      is_descendant: isDescendant,
+    };
+  }
+
+  const planned = planPromotion(current, candidate, checks);
+  if (!planned.ok) return planned;
+
+  const commitSha = writeReleaseCommit({
+    git,
+    expectedHead,
+    release: planned.release,
+    message: `Release sequence ${planned.release.sequence}: ${planned.release.source_sha.slice(0, 8)}`,
+  });
+
+  try {
+    const leaseArg = `--force-with-lease=refs/heads/${targetBranch}:${expectedHead}`;
+    git(['push', remote, leaseArg, `${commitSha}:refs/heads/${targetBranch}`]);
+    return { ok: true, commit: commitSha, release: planned.release };
+  } catch (err) {
+    return reject(`push rejected by compare-and-swap lease: ${err.message || err}`);
+  }
+}
+
+/** Set rollback hold on the target release branch. */
+export function setRollbackHold({ git, remote = 'origin', targetBranch = 'gitops/stage', reason = 'Manual rollback hold' }) {
+  let head;
+  try {
+    head = git(['rev-parse', '--verify', `refs/remotes/${remote}/${targetBranch}`]).trim();
+  } catch {
+    try { head = git(['rev-parse', '--verify', `refs/heads/${targetBranch}`]).trim(); } catch { return reject('branch not found'); }
+  }
+  const current = readBranchRelease(git, head);
+  if (!current) return reject('cannot read current release');
+  if (current.rollback_hold) return reject('branch is already on hold');
+  const updated = { ...current, rollback_hold: true, hold_reason: reason };
+  delete updated.head;
+  const commitSha = writeReleaseCommit({
+    git,
+    expectedHead: head,
+    release: updated,
+    message: `Hold release promotion: ${reason}`,
+  });
+  try {
+    git(['push', remote, `--force-with-lease=refs/heads/${targetBranch}:${head}`, `${commitSha}:refs/heads/${targetBranch}`]);
+    return { ok: true, commit: commitSha, release: updated };
+  } catch (err) {
+    return reject(`hold push rejected by lease: ${err.message || err}`);
+  }
+}
+
+/** Clear rollback hold on the target release branch. */
+export function resumeRollbackHold({ git, remote = 'origin', targetBranch = 'gitops/stage', reason = 'Resumed promotion' }) {
+  let head;
+  try {
+    head = git(['rev-parse', '--verify', `refs/remotes/${remote}/${targetBranch}`]).trim();
+  } catch {
+    try { head = git(['rev-parse', '--verify', `refs/heads/${targetBranch}`]).trim(); } catch { return reject('branch not found'); }
+  }
+  const current = readBranchRelease(git, head);
+  if (!current) return reject('cannot read current release');
+  if (!current.rollback_hold) return reject('branch is not on hold');
+  const updated = { ...current, rollback_hold: false };
+  delete updated.head;
+  delete updated.hold_reason;
+  const commitSha = writeReleaseCommit({
+    git,
+    expectedHead: head,
+    release: updated,
+    message: `Resume release promotion: ${reason}`,
+  });
+  try {
+    git(['push', remote, `--force-with-lease=refs/heads/${targetBranch}:${head}`, `${commitSha}:refs/heads/${targetBranch}`]);
+    return { ok: true, commit: commitSha, release: updated };
+  } catch (err) {
+    return reject(`resume push rejected by lease: ${err.message || err}`);
+  }
+}
+

@@ -157,3 +157,143 @@ test('validates the copied release, not an earlier getter value', () => {
   const result = planPromotion(current(), candidate, checks());
   assert.ok(!result.ok || result.release.images.backend !== 'bad:latest');
 });
+
+test('promotes a release branch with atomic compare-and-swap and handles rollback hold/resume', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const os = await import('node:os');
+  const {
+    writeReleaseCommit,
+    readBranchRelease,
+    promoteBranch,
+    setRollbackHold,
+    resumeRollbackHold,
+  } = await import('./release.mjs');
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gitops-stage-test-'));
+  const bareDir = path.join(tmp, 'remote.git');
+  const workDir = path.join(tmp, 'work');
+  try {
+    fs.mkdirSync(bareDir);
+    execFileSync('git', ['init', '--bare', '--initial-branch=gitops/stage'], { cwd: bareDir });
+    execFileSync('git', ['clone', bareDir, workDir]);
+    const git = (...args) => {
+      const last = args[args.length - 1];
+      const hasOptions = typeof last === 'object' && last !== null && !Array.isArray(last);
+      const options = hasOptions ? args.pop() : {};
+      const flatArgs = args.flat();
+      return execFileSync('git', flatArgs, { cwd: workDir, encoding: 'utf8', ...options });
+    };
+    git('config', 'user.name', 'GitOps Bot');
+    git('config', 'user.email', 'gitops@stovo.internal');
+
+    git('commit', '--allow-empty', '-m', 'source 1');
+    const source1 = git('rev-parse', 'HEAD').trim();
+    git('commit', '--allow-empty', '-m', 'source 2');
+    const source2 = git('rev-parse', 'HEAD').trim();
+
+    const initRelease = {
+      source_sha: source1,
+      sequence: 1,
+      secret_version: 1,
+      rollback_hold: false,
+      images: Object.fromEntries(imageNames.map(name => [name, `ghcr.io/example/${name}@sha256:${digest}`])),
+    };
+    const initCommit = writeReleaseCommit({ git, release: initRelease, message: 'Initial release' });
+    git('update-ref', 'refs/heads/gitops/stage', initCommit);
+    git('push', 'origin', 'refs/heads/gitops/stage');
+
+    const candidate2 = {
+      source_sha: source2,
+      sequence: 2,
+      secret_version: 1,
+      rollback_hold: false,
+      images: Object.fromEntries(imageNames.map(name => [name, `ghcr.io/example/${name}@sha256:${digest}`])),
+    };
+    const checkResults = {
+      source_sha: source2,
+      bypass: false,
+      required: ['changes', 'solid-boundaries'],
+      conditional: { 'backend-ci': true, 'frontend-ci': true },
+      results: { changes: 'success', 'solid-boundaries': 'success', 'backend-ci': 'success', 'frontend-ci': 'success' },
+    };
+
+    const promoResult = promoteBranch({
+      git,
+      remote: 'origin',
+      targetBranch: 'gitops/stage',
+      candidate: candidate2,
+      checks: structuredClone(checkResults),
+    });
+    assert.equal(promoResult.ok, true);
+
+    git('fetch', 'origin');
+    const stageRelease = readBranchRelease(git, 'refs/remotes/origin/gitops/stage');
+    assert.equal(stageRelease.sequence, 2);
+    assert.equal(stageRelease.source_sha, source2);
+
+    git('commit', '--allow-empty', '-m', 'source 3');
+    const source3 = git('rev-parse', 'HEAD').trim();
+    const candidate3 = { ...candidate2, source_sha: source3, sequence: 3 };
+
+    // Simulate concurrent push on remote
+    const concurrentCommit = writeReleaseCommit({
+      git,
+      expectedHead: stageRelease.head,
+      release: candidate3,
+      message: 'Concurrent writer',
+    });
+    git('push', 'origin', `${concurrentCommit}:refs/heads/gitops/stage`);
+
+    // Stale push is rejected by lease
+    const staleResult = promoteBranch({
+      git,
+      remote: 'origin',
+      targetBranch: 'gitops/stage',
+      candidate: candidate3,
+      checks: { ...checkResults, source_sha: source3 },
+    });
+    assert.equal(staleResult.ok, false);
+
+    // Rollback hold blocks promotions
+    git('fetch', 'origin');
+    const holdRes = setRollbackHold({ git, remote: 'origin', targetBranch: 'gitops/stage', reason: 'Incident #123' });
+    assert.equal(holdRes.ok, true);
+    git('fetch', 'origin');
+    const heldRelease = readBranchRelease(git, 'refs/remotes/origin/gitops/stage');
+    assert.equal(heldRelease.rollback_hold, true);
+
+    git('commit', '--allow-empty', '-m', 'source 4');
+    const source4 = git('rev-parse', 'HEAD').trim();
+    const candidate4 = { ...candidate2, source_sha: source4, sequence: 4 };
+    const promoWhileHeld = promoteBranch({
+      git,
+      remote: 'origin',
+      targetBranch: 'gitops/stage',
+      candidate: candidate4,
+      checks: { ...checkResults, source_sha: source4 },
+    });
+    assert.equal(promoWhileHeld.ok, false);
+    assert.equal(promoWhileHeld.reason, 'promotion is on hold');
+
+    // Resume rollback hold unblocks
+    const resumeRes = resumeRollbackHold({ git, remote: 'origin', targetBranch: 'gitops/stage', reason: 'Incident resolved' });
+    assert.equal(resumeRes.ok, true);
+    git('fetch', 'origin');
+    const resumedRelease = readBranchRelease(git, 'refs/remotes/origin/gitops/stage');
+    assert.equal(resumedRelease.rollback_hold, false);
+
+    const promoAfterResume = promoteBranch({
+      git,
+      remote: 'origin',
+      targetBranch: 'gitops/stage',
+      candidate: candidate4,
+      checks: { ...checkResults, source_sha: source4 },
+    });
+    assert.equal(promoAfterResume.ok, true);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
