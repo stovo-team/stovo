@@ -526,8 +526,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		return fallback
 	})
 
+	desiredImage := getTenantBackendImage()
 	cfg := &container.Config{
-		Image:  "stovo-backend:latest",
+		Image:  desiredImage,
 		Env:    desiredEnv,
 		Labels: map[string]string{"stovo-server": slug},
 	}
@@ -549,6 +550,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		if inspectErr != nil {
 			needsRecreate = true
 		} else {
+			if inspect.Config != nil && inspect.Config.Image != desiredImage && inspect.Image != desiredImage {
+				needsRecreate = true
+			}
 			existingEnv := parseEnvSlice(inspect.Config.Env)
 			desiredEnvMap := parseEnvSlice(desiredEnv)
 			for k, v := range desiredEnvMap {
@@ -711,7 +715,7 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 	}()
 
 	created, err := o.dockerClient.ContainerCreate(ctx, &container.Config{
-		Image:      "stovo-backend:latest",
+		Image:      getTenantBackendImage(),
 		Env:        env,
 		Entrypoint: []string{"/bin/sh", "-ec"},
 		Cmd:        []string{"database_url=\"$(stovo-database-url)\"; atlas migrate apply --dir file:///app/migrations --url \"$database_url\""},
