@@ -376,6 +376,14 @@ if ! grep -Fq '!cancelled()' <<< "$backend_ci_contract"; then
   exit 1
 fi
 
+trusted_pr_backend_shards=$(sed -n '/^  backend_test_shards:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in 'Ensure Git Bash is available on Windows' 'shell: bash'; do
+  if ! grep -Fq "$required" <<< "$trusted_pr_backend_shards"; then
+    echo "Trusted PR backend CI test shards must run with Git Bash on Windows ($required)." >&2
+    exit 1
+  fi
+done
+
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
   echo "Missing pinned golangci-lint configuration at $lint_config" >&2
