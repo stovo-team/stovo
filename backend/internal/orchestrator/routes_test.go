@@ -1,6 +1,9 @@
 package orchestrator
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,3 +268,106 @@ func TestDefaultNavTabs(t *testing.T) {
 		t.Fatalf("expected all tabs true by default, got: %+v", tabs)
 	}
 }
+
+func TestProductionMultiserverOrchestratorReceivesGitOpsReleaseVariables(t *testing.T) {
+	composePath := filepath.Join("..", "..", "..", "deploy", "compose", "production-multiserver.yml")
+	composeYAML, err := os.ReadFile(composePath)
+	if err != nil {
+		t.Fatalf("read production multi-server Compose config: %v", err)
+	}
+
+	var compose struct {
+		Services map[string]struct {
+			Environment map[string]string `yaml:"environment"`
+		} `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(composeYAML, &compose); err != nil {
+		t.Fatalf("parse production multi-server Compose config: %v", err)
+	}
+
+	orchestrator, ok := compose.Services["orchestrator"]
+	if !ok {
+		t.Fatal("production multi-server Compose config has no orchestrator service")
+	}
+	if got, want := orchestrator.Environment["TENANT_BACKEND_IMAGE"], "${TENANT_BACKEND_IMAGE:-}"; got != want {
+		t.Fatalf("orchestrator TENANT_BACKEND_IMAGE mapping = %q, want %q", got, want)
+	}
+	if got, want := orchestrator.Environment["RELEASE_ID"], "${RELEASE_ID:-}"; got != want {
+		t.Fatalf("orchestrator RELEASE_ID mapping = %q, want %q", got, want)
+	}
+}
+
+func TestGetTenantBackendImageDefaultsAndOverride(t *testing.T) {
+	t.Setenv("TENANT_BACKEND_IMAGE", "")
+	if got, want := getTenantBackendImage(), "stovo-backend:latest"; got != want {
+		t.Fatalf("default image = %q, want %q", got, want)
+	}
+
+	custom := "ghcr.io/stovo-team/stovo-backend@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	t.Setenv("TENANT_BACKEND_IMAGE", custom)
+	if got, want := getTenantBackendImage(), custom; got != want {
+		t.Fatalf("custom image = %q, want %q", got, want)
+	}
+}
+
+func TestGetReleaseIDDefaultsAndOverride(t *testing.T) {
+	t.Setenv("RELEASE_ID", "")
+	if got, want := getReleaseID(), "development"; got != want {
+		t.Fatalf("default release ID = %q, want %q", got, want)
+	}
+
+	t.Setenv("RELEASE_ID", "release-2026-10-29-01")
+	if got, want := getReleaseID(), "release-2026-10-29-01"; got != want {
+		t.Fatalf("custom release ID = %q, want %q", got, want)
+	}
+}
+
+func TestRolloutStatusEndpointReporting(t *testing.T) {
+	orch := &Orchestrator{
+		rolloutStatus: RolloutStatus{
+			ReleaseID:    "rel-123",
+			DesiredImage: "ghcr.io/stovo/backend@sha256:abc",
+			Phase:        "ready",
+			Completed:    true,
+			Tenants: map[string]TenantRolloutStatus{
+				"alpha": {
+					Slug:   "alpha",
+					Status: "running",
+					Image:  "ghcr.io/stovo/backend@sha256:abc",
+				},
+				"beta": {
+					Slug:   "beta",
+					Status: "failed",
+					Image:  "ghcr.io/stovo/backend@sha256:abc",
+					Error:  "port conflict",
+				},
+			},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/internal/gitops/rollout", nil)
+	rr := httptest.NewRecorder()
+	orch.handleRolloutStatus(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	var status RolloutStatus
+	if err := json.Unmarshal(rr.Body.Bytes(), &status); err != nil {
+		t.Fatalf("unmarshal rollout status: %v", err)
+	}
+	if status.ReleaseID != "rel-123" {
+		t.Errorf("release ID = %q, want %q", status.ReleaseID, "rel-123")
+	}
+	if status.DesiredImage != "ghcr.io/stovo/backend@sha256:abc" {
+		t.Errorf("desired image = %q, want %q", status.DesiredImage, "ghcr.io/stovo/backend@sha256:abc")
+	}
+	if len(status.Tenants) != 2 {
+		t.Fatalf("got %d tenants, want 2", len(status.Tenants))
+	}
+	if status.Tenants["beta"].Error != "port conflict" {
+		t.Errorf("beta error = %q, want %q", status.Tenants["beta"].Error, "port conflict")
+	}
+}
+

@@ -3,16 +3,52 @@ package orchestrator
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
 
 	"github.com/docker/docker/client"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+type TenantRolloutStatus struct {
+	Slug   string `json:"slug"`
+	Status string `json:"status"`
+	Image  string `json:"image,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+type RolloutStatus struct {
+	ReleaseID    string                         `json:"release_id"`
+	DesiredImage string                         `json:"desired_image"`
+	Phase        string                         `json:"phase"`
+	Completed    bool                           `json:"completed"`
+	Tenants      map[string]TenantRolloutStatus `json:"tenants"`
+}
+
 type Orchestrator struct {
-	dockerClient *client.Client
-	masterDB     *sql.DB
+	dockerClient  *client.Client
+	masterDB      *sql.DB
+	rolloutMu     sync.RWMutex
+	rolloutStatus RolloutStatus
+}
+
+func getTenantBackendImage() string {
+	if img := strings.TrimSpace(os.Getenv("TENANT_BACKEND_IMAGE")); img != "" {
+		return img
+	}
+	return "stovo-backend:latest"
+}
+
+func getReleaseID() string {
+	if id := strings.TrimSpace(os.Getenv("RELEASE_ID")); id != "" {
+		return id
+	}
+	return "development"
 }
 
 // NewOrchestrator creates a new Orchestrator instance. masterDBURL should be a PostgreSQL connection string.
@@ -25,7 +61,17 @@ func NewOrchestrator(dockerClient *client.Client, masterDBURL string) *Orchestra
 	if err := db.Ping(); err != nil {
 		log.Fatalf("cannot ping master DB: %v", err)
 	}
-	orch := &Orchestrator{dockerClient: dockerClient, masterDB: db}
+	orch := &Orchestrator{
+		dockerClient: dockerClient,
+		masterDB:     db,
+		rolloutStatus: RolloutStatus{
+			ReleaseID:    getReleaseID(),
+			DesiredImage: getTenantBackendImage(),
+			Phase:        "reconciling",
+			Completed:    false,
+			Tenants:      make(map[string]TenantRolloutStatus),
+		},
+	}
 	if err := orch.initSchema(); err != nil {
 		log.Printf("[orchestrator] failed to init master DB schema: %v", err)
 	}
@@ -55,20 +101,86 @@ func (o *Orchestrator) initSchema() error {
 
 // ReconcileContainers ensures all registered servers have active running backend containers.
 func (o *Orchestrator) ReconcileContainers() {
+	desiredImage := getTenantBackendImage()
+	releaseID := getReleaseID()
+
+	o.rolloutMu.Lock()
+	o.rolloutStatus.ReleaseID = releaseID
+	o.rolloutStatus.DesiredImage = desiredImage
+	o.rolloutStatus.Phase = "reconciling"
+	o.rolloutStatus.Completed = false
+	if o.rolloutStatus.Tenants == nil {
+		o.rolloutStatus.Tenants = make(map[string]TenantRolloutStatus)
+	}
+	o.rolloutMu.Unlock()
+
 	rows, err := o.masterDB.Query(`SELECT slug FROM servers`)
 	if err != nil {
 		log.Printf("[orchestrator] Reconcile query error: %v", err)
+		o.rolloutMu.Lock()
+		o.rolloutStatus.Phase = "failed"
+		o.rolloutStatus.Completed = false
+		o.rolloutMu.Unlock()
 		return
 	}
 	defer func() { _ = rows.Close() }()
+
+	hasFailures := false
 	for rows.Next() {
 		var slug string
 		if err := rows.Scan(&slug); err == nil && slug != "" {
-			if err := o.startBackendContainer(slug); err != nil {
+			err := o.startBackendContainer(slug)
+			o.rolloutMu.Lock()
+			if err != nil {
+				hasFailures = true
+				o.rolloutStatus.Tenants[slug] = TenantRolloutStatus{
+					Slug:   slug,
+					Status: "failed",
+					Image:  desiredImage,
+					Error:  err.Error(),
+				}
 				log.Printf("[orchestrator] failed to reconcile server %s: %v", slug, err)
+			} else {
+				o.rolloutStatus.Tenants[slug] = TenantRolloutStatus{
+					Slug:   slug,
+					Status: "running",
+					Image:  desiredImage,
+				}
 			}
+			o.rolloutMu.Unlock()
 		}
 	}
+
+	o.rolloutMu.Lock()
+	if hasFailures {
+		o.rolloutStatus.Phase = "failed"
+		o.rolloutStatus.Completed = false
+	} else {
+		o.rolloutStatus.Phase = "ready"
+		o.rolloutStatus.Completed = true
+	}
+	o.rolloutMu.Unlock()
+}
+
+func (o *Orchestrator) handleRolloutStatus(w http.ResponseWriter, r *http.Request) {
+	o.rolloutMu.RLock()
+	status := o.rolloutStatus
+	tenantsCopy := make(map[string]TenantRolloutStatus, len(status.Tenants))
+	for k, v := range status.Tenants {
+		tenantsCopy[k] = v
+	}
+	status.Tenants = tenantsCopy
+	o.rolloutMu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	if !status.Completed && status.Phase == "failed" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else if !status.Completed {
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // Close releases resources.
@@ -81,6 +193,7 @@ func (o *Orchestrator) Close() error {
 
 // RegisterRoutes attaches HTTP handlers for the master API.
 func (o *Orchestrator) RegisterRoutes(r chi.Router) {
+	r.Get("/internal/gitops/rollout", o.handleRolloutStatus)
 	r.Post("/api/v1/master/auth/login", o.handleLogin)
 	r.Get("/api/v1/master/resolve", o.handleResolve)
 

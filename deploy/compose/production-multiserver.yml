@@ -95,6 +95,8 @@ services:
       TURN_REALM: ${TURN_REALM}
       TURN_USERNAME: ${TURN_USERNAME}
       TURN_PASSWORD: ${TURN_PASSWORD}
+      TENANT_BACKEND_IMAGE: ${TENANT_BACKEND_IMAGE:-}
+      RELEASE_ID: ${RELEASE_ID:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
