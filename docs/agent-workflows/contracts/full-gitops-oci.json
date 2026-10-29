@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "taskId": "full-gitops-oci",
+  "state": "approved",
+  "artifacts": [
+    {
+      "role": "spec",
+      "path": "docs/agent-workflows/specs/full-gitops-oci.md",
+      "sha256": "0711728c3c21b1b8b4a492a865433f0ec99699ae3346a0a6ab3bc532ff2f16ed"
+    },
+    {
+      "role": "test-plan",
+      "path": "docs/agent-workflows/test-plans/full-gitops-oci.md",
+      "sha256": "ba2923d20c915360172046b8fe1372dfcc1cb6bb39d6396f0a05bfcb9783f17f"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "GITOPS-01",
+      "expected": "Only tested, atomically promoted, current source and image digests are eligible for production."
+    },
+    {
+      "id": "GITOPS-02",
+      "expected": "Doco-CD polls the designated release branch and deploys pinned images without SSH deployment."
+    },
+    {
+      "id": "GITOPS-03",
+      "expected": "Shared services and registered dynamic tenants converge while tenant lifecycle remains functional."
+    },
+    {
+      "id": "GITOPS-04",
+      "expected": "Master and tenant migrations execute safely and report failures."
+    },
+    {
+      "id": "GITOPS-05",
+      "expected": "Version-pinned OCI Vault secrets reach intended workloads without leaking."
+    },
+    {
+      "id": "GITOPS-06",
+      "expected": "Failures surface and retries preserve existing workloads and data."
+    },
+    {
+      "id": "GITOPS-07",
+      "expected": "Doco-CD and all selected workloads run on actual ARM64."
+    },
+    {
+      "id": "GITOPS-08",
+      "expected": "Existing production resources and data survive adoption and tested recovery."
+    },
+    {
+      "id": "GITOPS-09",
+      "expected": "One deployment writer is active and old SSH jobs are retired only after authorized validation."
+    }
+  ],
+  "checks": [
+    {
+      "id": "release-unit",
+      "acceptanceIds": [
+        "GITOPS-01"
+      ],
+      "layer": "unit",
+      "command": [
+        "node",
+        "--test",
+        "scripts/gitops/release.test.mjs"
+      ],
+      "required": true
+    },
+    {
+      "id": "orchestrator-integration",
+      "acceptanceIds": [
+        "GITOPS-03",
+        "GITOPS-04",
+        "GITOPS-06"
+      ],
+      "layer": "integration",
+      "command": [
+        "bash",
+        "-c",
+        "cd backend && go test ./internal/orchestrator"
+      ],
+      "required": true
+    },
+    {
+      "id": "oci-adapter",
+      "acceptanceIds": [
+        "GITOPS-05",
+        "GITOPS-06"
+      ],
+      "layer": "unit",
+      "command": [
+        "bash",
+        "-c",
+        "cd backend && go test ./internal/ocisecret"
+      ],
+      "required": true
+    },
+    {
+      "id": "stage-gitops-e2e",
+      "acceptanceIds": [
+        "GITOPS-01",
+        "GITOPS-02",
+        "GITOPS-03",
+        "GITOPS-04",
+        "GITOPS-05",
+        "GITOPS-06",
+        "GITOPS-07",
+        "GITOPS-08",
+        "GITOPS-09"
+      ],
+      "layer": "e2e",
+      "command": [
+        "bash",
+        "deploy/gitops/tests/stage-gitops-e2e.sh"
+      ],
+      "required": true
+    }
+  ],
+  "approvals": [
+    {
+      "actor": "user",
+      "source": "Codex conversation 2026-10-29: user replied «да» to the combined review of spec and test plan at commit 0f7cd707 and transition to implementation preparation.",
+      "decision": "approved",
+      "artifacts": {
+        "docs/agent-workflows/specs/full-gitops-oci.md": "0711728c3c21b1b8b4a492a865433f0ec99699ae3346a0a6ab3bc532ff2f16ed",
+        "docs/agent-workflows/test-plans/full-gitops-oci.md": "ba2923d20c915360172046b8fe1372dfcc1cb6bb39d6396f0a05bfcb9783f17f"
+      }
+    }
+  ],
+  "authorizations": []
+}
