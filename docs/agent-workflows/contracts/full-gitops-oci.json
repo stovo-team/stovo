@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "taskId": "full-gitops-oci",
-  "state": "approved",
+  "state": "implementing",
   "artifacts": [
     {
       "role": "spec",
@@ -12,6 +12,11 @@
       "role": "test-plan",
       "path": "docs/agent-workflows/test-plans/full-gitops-oci.md",
       "sha256": "ba2923d20c915360172046b8fe1372dfcc1cb6bb39d6396f0a05bfcb9783f17f"
+    },
+    {
+      "role": "implementation-plan",
+      "path": "docs/superpowers/plans/2026-10-29-full-gitops.md",
+      "sha256": "cc3d02e2d322c3b1950caf7b0352479b0c6e80106a8e6394a3f1b008c2811641"
     }
   ],
   "acceptance": [
@@ -125,7 +130,30 @@
         "docs/agent-workflows/specs/full-gitops-oci.md": "0711728c3c21b1b8b4a492a865433f0ec99699ae3346a0a6ab3bc532ff2f16ed",
         "docs/agent-workflows/test-plans/full-gitops-oci.md": "ba2923d20c915360172046b8fe1372dfcc1cb6bb39d6396f0a05bfcb9783f17f"
       }
+    },
+    {
+      "actor": "user",
+      "source": "Codex conversation 2026-10-29: user approved the specification and test plan at 0f7cd707, then replied «да» to review of the implementation plan at 5d918b82 and starting implementation.",
+      "decision": "approved",
+      "artifacts": {
+        "docs/agent-workflows/specs/full-gitops-oci.md": "0711728c3c21b1b8b4a492a865433f0ec99699ae3346a0a6ab3bc532ff2f16ed",
+        "docs/agent-workflows/test-plans/full-gitops-oci.md": "ba2923d20c915360172046b8fe1372dfcc1cb6bb39d6396f0a05bfcb9783f17f",
+        "docs/superpowers/plans/2026-10-29-full-gitops.md": "cc3d02e2d322c3b1950caf7b0352479b0c6e80106a8e6394a3f1b008c2811641"
+      }
     }
   ],
-  "authorizations": []
+  "authorizations": [
+    {
+      "scope": "local-implementation",
+      "source": "User reply «да» to starting implementation of the plan at 5d918b82."
+    },
+    {
+      "scope": "local-tests",
+      "source": "User reply «да» to starting implementation of the plan at 5d918b82."
+    },
+    {
+      "scope": "publication",
+      "source": "User-provided AGENTS.md grants standing authorization for implementation task branches and pull requests."
+    }
+  ]
 }
