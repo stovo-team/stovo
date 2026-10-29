@@ -845,7 +845,8 @@
   width: 34px;
 }
 
-.chat-info-back:hover {
+.chat-info-back:hover,
+.chat-info-topbar-action:hover {
   background: color-mix(in oklab, var(--text-primary) 8%, transparent);
 }
 
