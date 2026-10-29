@@ -849,13 +849,6 @@
   background: color-mix(in oklab, var(--text-primary) 8%, transparent);
 }
 
-.chat-info-topbar-action:hover:not(:disabled):not(.pinned-banner-click-area) {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-  transform: none;
-}
-
 .chat-info-title-edit:hover {
   background: transparent;
   border-color: transparent;

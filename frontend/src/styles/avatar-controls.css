@@ -39,3 +39,5 @@
 @media (max-width: 1024px) {
   .storage-page .storage-collection-full-page { padding: 16px 16px calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 16px); }
 }
+
+.chat-info-topbar-action:hover:not(:disabled):not(.pinned-banner-click-area) { background: transparent; border-color: transparent; box-shadow: none; transform: none; }
