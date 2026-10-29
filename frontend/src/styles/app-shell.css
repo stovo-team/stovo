@@ -1116,11 +1116,11 @@ h2 {
 }
 
 .app-avatar,
-.chat-avatar.family {
+.chat-avatar.family:not(.entity-avatar) {
   background: var(--color-palette-16bf6f3e4d13);
 }
 
-.chat-avatar.group {
+.chat-avatar.group:not(.entity-avatar) {
   background: var(--color-palette-97b1caaa7b50);
 }
 

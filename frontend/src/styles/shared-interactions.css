@@ -391,7 +391,7 @@
   background: var(--avatar-custom-bg);
   color: var(--color-text-primary);
 }
-.entity-avatar[data-avatar-kind="folder"] { background: transparent; color: color-mix(in oklab, var(--avatar-custom-bg) 12%, var(--color-text-secondary)); }
+.entity-avatar[data-avatar-kind="folder"] { background: transparent; color: var(--avatar-custom-bg); }
 .entity-avatar > img { height: 100%; object-fit: cover; width: 100%; }
 .entity-avatar__symbol { height: 55%; stroke-width: 1.75; width: 55%; }
 .avatar-choice-picker { display: grid; gap: var(--font-size-body); }
@@ -414,3 +414,5 @@
 .avatar-choice-picker__color-swatch { border-radius: var(--radius-circle); display: block; height: 20px; width: 20px; }
 .avatar-choice-picker__photo-selected { align-items: center; color: var(--color-text-secondary); display: flex; gap: var(--font-size-caption); }
 .chat-folder-avatar { height: 22px !important; width: 22px !important; }
+
+.chat-folder-avatar + .chat-folder-name { color: var(--folder-color); }

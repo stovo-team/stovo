@@ -2,7 +2,7 @@
 .symbol-color-controls fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 .symbol-color-controls legend { color: var(--text-secondary); font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); margin-bottom: 10px; }
 .symbol-color-controls__icons { display: grid; gap: 6px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.symbol-color-controls .symbol-color-controls__icons button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: var(--radius-control); color: var(--text-secondary); display: flex; height: 40px; justify-content: center; min-height: 40px; min-width: 0; padding: 0; width: 40px; max-width: 100%; justify-self: center; }
+.symbol-color-controls .symbol-color-controls__icons button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: var(--radius-circle); color: var(--text-secondary); display: flex; height: 40px; justify-content: center; min-height: 40px; min-width: 0; padding: 0; width: 40px; max-width: 100%; justify-self: center; }
 .symbol-color-controls .symbol-color-controls__icons button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-border-soft); border-radius: var(--radius-circle); color: var(--text-primary); }
 .symbol-color-controls__icons svg { height: 24px; width: 24px; }
 .symbol-color-controls .entity-avatar { background: transparent; color: var(--text-secondary); }

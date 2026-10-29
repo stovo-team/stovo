@@ -74,7 +74,18 @@ test('family chat owner can choose a symbol and color in chat settings', async (
   await picker.getByRole('button', {name: 'Blue', exact: true}).click();
   await expect(picker.getByRole('button', {name: 'Star', exact: true})).toHaveAttribute('aria-pressed', 'true');
   await expect(picker.getByRole('button', {name: 'Blue', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  const hovered = picker.getByRole('button', {name: 'Heart', exact: true});
+  await hovered.hover();
+  await expect(hovered).toHaveCSS('border-radius', '50%');
+  const box = await hovered.boundingBox();
+  expect(box?.width).toBe(box?.height);
   await screenshot(page, info, scenario);
+  await page.getByRole('button', {name: 'Back to chat', exact: true}).click();
+  const avatar = page.locator('[data-call-header-chat-id="chat-family-avatar"] .entity-avatar').first();
+  await expect(avatar).toHaveAttribute('data-avatar-color', 'blue');
+  await expect(avatar.locator('svg.lucide-star')).toBeVisible();
+  await expect(avatar).toHaveCSS('background-color', 'rgb(59, 130, 246)');
+  await screenshot(page, info, {...scenario, id: 'AV-03-chat-avatar', state: 'saved-family-avatar'});
 });
 
 for (const locale of ['en', 'ru'] as const) {
@@ -102,3 +113,50 @@ for (const locale of ['en', 'ru'] as const) {
     await screenshot(page, info, scenario);
   });
 }
+
+test('folder color applies to its label and symbol', async ({page}, info) => {
+  const scenario: Scenario = {id: 'AV-folder-color', viewport: {width: 1440, height: 900}, theme: 'dark', locale: 'en'};
+  await page.setViewportSize(scenario.viewport);
+  await page.emulateMedia({colorScheme: scenario.theme});
+  await page.addInitScript(() => {
+    localStorage.setItem('familyMessenger.appearance', JSON.stringify({themeMode: 'dark'}));
+    localStorage.setItem('familyMessenger.devicePreferences', JSON.stringify({language: 'en'}));
+  });
+  await page.goto('/app/chats');
+  await ready(page);
+  const section = page.locator('.chat-list-section:not(.chat-list-section--quick-access)').first();
+  const settings = section.locator('.chat-folder-controls button').first();
+  await settings.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog');
+  const picker = dialog.locator('.avatar-choice-picker');
+  await picker.getByRole('button', {name: 'Blue', exact: true}).click();
+  const hovered = picker.getByRole('button', {name: 'Heart', exact: true});
+  await hovered.hover();
+  await expect(hovered).toHaveCSS('border-radius', '50%');
+  await screenshot(page, info, scenario);
+  await dialog.getByRole('button', {name: 'Save folder', exact: true}).click();
+  await expect(section.locator('.chat-folder-name')).toHaveCSS('color', 'rgb(59, 130, 246)');
+  await expect(section.locator('.chat-folder-avatar')).toHaveCSS('color', 'rgb(59, 130, 246)');
+  await screenshot(page, info, {...scenario, id: 'AV-folder-saved'});
+});
+
+test('storage folder symbol hover is circular', async ({page}, info) => {
+  const scenario: Scenario = {id: 'AV-storage-hover', viewport: {width: 1440, height: 900}, theme: 'dark', locale: 'en'};
+  await page.setViewportSize(scenario.viewport);
+  await page.emulateMedia({colorScheme: scenario.theme});
+  await page.addInitScript(() => {
+    localStorage.setItem('familyMessenger.appearance', JSON.stringify({themeMode: 'dark'}));
+    localStorage.setItem('familyMessenger.devicePreferences', JSON.stringify({language: 'en'}));
+  });
+  await page.goto('/app/files?mockScenario=storage-empty');
+  await ready(page);
+  await page.getByRole('button', {name: /Storage preview folder/}).click();
+  await page.locator('.storage-collection-cover-edit').click();
+  const hovered = page.locator('.storage-cover-menu').getByRole('button', {name: 'Heart', exact: true});
+  await hovered.hover();
+  await expect(hovered).toHaveCSS('border-radius', '50%');
+  const box = await hovered.boundingBox();
+  expect(box?.width).toBe(box?.height);
+  await screenshot(page, info, scenario);
+});
