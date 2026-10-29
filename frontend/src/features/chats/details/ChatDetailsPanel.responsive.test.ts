@@ -47,6 +47,10 @@ describe("chat details popup sizing", () => {
     expect(mediaRuleContaining(".chat-layout.details-open::before", 768)).toBe("");
   });
 
+  it("keeps the chat options button transparent on hover", () => {
+    expect(styles).toMatch(/\.chat-info-topbar-action:hover:not\(:disabled\):not\(\.pinned-banner-click-area\)\s*\{[^}]*background:\s*transparent;/);
+  });
+
   it("keeps compact controls, scrollable content, and call visibility", () => {
     expect(styles).toMatch(/\.chat-info-screen \.chat-info-avatar-wrap\s*\{[^}]*height:\s*72px;/);
     expect(styles).toMatch(/\.chat-info-screen \.chat-info-action\s*\{[^}]*border-radius:\s*var\(--radius-surface\);/);
