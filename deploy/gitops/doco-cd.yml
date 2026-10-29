@@ -1,0 +1,31 @@
+# Doco-CD service configuration for Stovo GitOps deployment
+# Runs on stage/production host, polling the protected gitops release branch.
+version: "3.8"
+
+services:
+  doco-cd:
+    image: ghcr.io/kimdre/doco-cd:0.125.1
+    container_name: stovo-doco-cd
+    restart: unless-stopped
+    environment:
+      DOCO_POLL_INTERVAL: "3m"
+      DOCO_GIT_REPOSITORY: "https://github.com/stovo-team/stovo.git"
+      DOCO_GIT_BRANCH: "gitops/stage"
+      DOCO_COMPOSE_FILE: "deploy/gitops/compose.yaml"
+      DOCO_SECRET_STORES_FILE: "deploy/gitops/secret-stores.yml"
+      DOCO_REMOVE_ORPHANS: "false"
+      DOCO_PRUNE_IMAGES: "false"
+      ADAPTER_AUTH_TOKEN: "${ADAPTER_AUTH_TOKEN:-}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - doco-cd-data:/data
+    networks:
+      - host-adapter
+
+networks:
+  host-adapter:
+    external: true
+    name: host
+
+volumes:
+  doco-cd-data:
