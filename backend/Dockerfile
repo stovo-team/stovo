@@ -2,7 +2,10 @@
 
 FROM arigaio/atlas:1.3.2 AS atlas
 
-FROM golang:1.25.5-alpine3.21 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine3.21 AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -16,12 +19,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /family-messenger ./cmd/server && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /storage-migrate ./cmd/storage-migrate && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /stovo-database-url ./cmd/database-url && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /intelligence-source-ops ./cmd/intelligence-source-ops
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w" -o /family-messenger ./cmd/server && \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w" -o /storage-migrate ./cmd/storage-migrate && \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w" -o /stovo-database-url ./cmd/database-url && \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -trimpath -ldflags="-s -w" -o /intelligence-source-ops ./cmd/intelligence-source-ops
 
 FROM alpine:3.21
+
+LABEL org.opencontainers.image.source="https://github.com/stovo-team/stovo"
 
 RUN apk add --no-cache ffmpeg && addgroup -S app && adduser -S -G app app
 
