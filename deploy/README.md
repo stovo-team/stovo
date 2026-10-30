@@ -11,3 +11,8 @@ gh workflow run pipeline.yml --ref master -f backend_deploy_only=true
 ```
 
 This manual option skips Backend CI. Normal pipeline runs still require it. Deployment checks both the public website and the root authentication API after tenant rollout.
+
+## GitOps Deployment Pipeline
+
+For Doco-CD pull-based deployment, secret rotation procedures, and rollback hold runbooks, see [GitOps Runbook](gitops/runbook.md).
+
