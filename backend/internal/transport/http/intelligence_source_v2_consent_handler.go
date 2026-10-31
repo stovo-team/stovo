@@ -255,7 +255,7 @@ func (h *IntelligenceSourceV2ConsentHandler) createBrowserSession(w stdhttp.Resp
 		writeSourceV2ConsentError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return
 	}
-	cookieName, cookiePath := browserCookieForSessionRequest(r, request.Flow)
+	cookieName, cookiePath := browserCookieForSessionRequest(h.config.BrowserAppURL, request.Flow)
 	setIntelligenceBrowserCookie(w, h.config.BrowserAppURL, cookieName, cookiePath, ticket.Value)
 	writeSourceV2ConsentJSON(w, stdhttp.StatusOK, map[string]int64{"expires_in": ticket.ExpiresIn})
 }
@@ -312,11 +312,11 @@ func (h *IntelligenceSourceV2ConsentHandler) authorizeBrowser(w stdhttp.Response
 	result, err := h.config.Operations.AuthorizeBrowser(ctx, r, cookie.Value, request)
 	if err != nil {
 		if errors.Is(err, ErrIntelligenceSourceV2ConsentUnauthorized) {
-			clearIntelligenceBrowserCookie(w, h.config.BrowserAppURL, intelligenceSourceV2BrowserCookieName, r.URL.Path)
+			clearIntelligenceBrowserCookie(w, h.config.BrowserAppURL, intelligenceSourceV2BrowserCookieName, intelligenceSourceV2BrowserCookiePath(h.config.BrowserAppURL))
 		}
 		writeSourceV2ConsentOperationError(w, err)
 		return
 	}
-	clearIntelligenceBrowserCookie(w, h.config.BrowserAppURL, intelligenceSourceV2BrowserCookieName, r.URL.Path)
+	clearIntelligenceBrowserCookie(w, h.config.BrowserAppURL, intelligenceSourceV2BrowserCookieName, intelligenceSourceV2BrowserCookiePath(h.config.BrowserAppURL))
 	redirectIntelligenceAuthorization(w, r, result, parameters.RedirectURI, parameters.State)
 }

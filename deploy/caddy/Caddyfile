@@ -5,6 +5,12 @@
 		reverse_proxy orchestrator:8001
 	}
 
+	# Root source and OIDC endpoints belong to the explicitly selected backend.
+	@intelligence path /.well-known/openid-configuration /oauth2/* /api/v2/intelligence/*
+	handle @intelligence {
+		reverse_proxy {$INTELLIGENCE_BACKEND_UPSTREAM:backend-blue:8000}
+	}
+
 	@clusterApi path_regexp clusterApi ^/s/([a-zA-Z0-9_-]+)/api/(.*)$
 	handle @clusterApi {
 		rewrite * /api/{re.clusterApi.2}

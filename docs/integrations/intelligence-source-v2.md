@@ -18,6 +18,10 @@ Keep both false in development, staging, and production until the Intelligence o
 
 ## Preparing Messenger credentials
 
+For the blue/green deployment, the OIDC and source environment values below are passed to both backend colors. Caddy routes root OIDC and `/api/v2/intelligence/*` requests to `INTELLIGENCE_BACKEND_UPSTREAM`; by default it follows the configured backend upstreams. For the multi-server deployment, set `INTELLIGENCE_INTEGRATION_TENANT_SLUG` to the one authorized server slug and set `INTELLIGENCE_BACKEND_UPSTREAM=stovo-backend-<slug>:8000` on the gateway. Only the selected tenant receives the integration credentials. The GitOps orchestrator also accepts the tenant and integration settings; its separately managed gateway must route those root endpoints to that same selected tenant. Configure both settings consistently and verify the routes before enabling source access. Other tenant backends receive no integration credentials.
+
+The browser consent ticket uses the configured `APP_URL` path, including `/s/<slug>` for a tenant, and is cleared on the same path after use. The tenant identity remains determined by the selected backend and authenticated session, never by a caller-supplied tenant field.
+
 Run `scripts/generate-messenger-intelligence-secrets.sh` on a trusted operator workstation. Pass the exact `issuer` value advertised by Messenger's `/.well-known/openid-configuration` endpoint, followed by the public HTTPS origin of Intelligence. Both arguments must be HTTPS origins without a path or trailing slash. For example:
 
 ```sh

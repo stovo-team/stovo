@@ -8,6 +8,7 @@ grep -Fq 'frontend/** text eol=lf' .gitattributes || {
 
 bash .github/workflows/backend-dockerfiles.test.sh
 node .github/workflows/multiserver-routing.test.mjs
+node --test .github/intelligence-deployment.test.mjs
 bash deploy/scripts/ensure-tenant-proxy-network.test.sh
 
 awk '
