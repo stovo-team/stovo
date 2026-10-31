@@ -472,18 +472,6 @@ func parseEnvSlice(env []string) map[string]string {
 	return m
 }
 
-// Remove old integration credentials when the selected tenant changes.
-func intelligenceEnvironmentChanged(existing, desired map[string]string) bool {
-	for name := range existing {
-		if strings.HasPrefix(name, "INTELLIGENCE_") {
-			if _, ok := desired[name]; !ok {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (o *Orchestrator) getNavTabsForServer(slug string) string {
 	if o.masterDB == nil {
 		return `{"chats":true,"storage":true,"plans":true,"settings":true}`
@@ -648,7 +636,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		redisURL = "redis://redis:6379/0"
 	}
 
-	environment := []string{
+	return appendIntelligenceEnvironment([]string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
 		fmt.Sprintf("APP_URL=%s", serverURL),
 		fmt.Sprintf("API_URL=%s", serverURL),
@@ -685,19 +673,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
 		fmt.Sprintf("CHAT_TYPES=%s", chatTypes),
 		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.34.0.2/32")),
-	}
-	if slug != "" && slug == get("INTELLIGENCE_INTEGRATION_TENANT_SLUG", "") {
-		for _, name := range []string{
-			"INTELLIGENCE_OIDC_ENABLED", "INTELLIGENCE_SOURCE_ENABLED",
-			"INTELLIGENCE_OIDC_ISSUER", "INTELLIGENCE_OIDC_CLIENT_ID", "INTELLIGENCE_OIDC_CLIENT_SECRET",
-			"INTELLIGENCE_OIDC_REDIRECT_URIS", "INTELLIGENCE_OIDC_SIGNING_KEY_ID",
-			"INTELLIGENCE_OIDC_SIGNING_PRIVATE_KEY_PEM", "INTELLIGENCE_OIDC_PREVIOUS_SIGNING_KEYS_JSON",
-			"INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH",
-		} {
-			environment = append(environment, fmt.Sprintf("%s=%s", name, get(name, "")))
-		}
-	}
-	return environment
+	}, slug, get)
 }
 
 func (o *Orchestrator) stopAndRemoveContainer(slug string) error {
