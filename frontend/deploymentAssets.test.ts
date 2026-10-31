@@ -19,6 +19,10 @@ describe("frontend deployment asset policy", () => {
     expect(cspDirective("font-src")).toContain("https://fonts.gstatic.com");
   });
 
+  it("allows the inline script hash in script-src CSP directive", () => {
+    expect(cspDirective("script-src")).toContain("'sha256-gwi6t1ZMpOCFEK1egzdBjvOeiIK9ltJa9nqBFjnp5QA='");
+  });
+
   it("serves PDF.js module workers with a JavaScript MIME type at both proxy layers", () => {
     expect(nginxConfig).toMatch(/location ~ \^\/assets\/\.\*\\\.mjs\$[\s\S]*?default_type application\/javascript;/);
     expect(caddyfile).toMatch(/@pdfModuleWorker path_regexp pdfModuleWorker \\\.mjs\$[\s\S]*?header @pdfModuleWorker Content-Type application\/javascript/);
