@@ -19,6 +19,7 @@ import { useStrings } from "../i18n/LanguageContext";
 import { PopupDialog } from "../components/ui/Popup";
 import { PopupButton } from "../components/ui/PopupButton";
 import { PopupField } from "../components/ui/PopupField";
+import InviteModal from "../components/InviteModal";
 import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
@@ -59,6 +60,7 @@ export default function MultiAdminPage() {
 
   // Notification / Toast info
   const [toast, setToast] = useState<string | null>(null);
+  const [spaceInvite, setSpaceInvite] = useState<{ name: string; url: string } | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -226,16 +228,15 @@ export default function MultiAdminPage() {
     }
   };
 
-  const handleCopyInvite = async (slug: string) => {
+  const handleOpenInvite = async (s: ServerRecord) => {
     if (!token) return;
     try {
-      const inviteUrl = await createInviteLink(token, slug);
+      const inviteUrl = await createInviteLink(token, s.slug);
       const url = new URL(inviteUrl, window.location.origin);
       const fullUrl = `${window.location.origin}${url.pathname}${url.search}`;
-      await navigator.clipboard.writeText(fullUrl);
-      showToast(copy.inviteCopied(slug));
-    } catch (err: any) {
-      alert(err.message || "Failed to generate invite link");
+      setSpaceInvite({ name: s.name, url: fullUrl });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to generate invite link");
     }
   };
 
@@ -394,7 +395,7 @@ export default function MultiAdminPage() {
                             <Settings2 size={19} aria-hidden="true" />
                           </button>
                           <button
-                            onClick={() => handleCopyInvite(s.slug)}
+                            onClick={() => void handleOpenInvite(s)}
                             title={copy.inviteFor(s.name)}
                             style={styles.iconActionButton}
                             className="iconActionButton"
@@ -503,8 +504,7 @@ export default function MultiAdminPage() {
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      navigator.clipboard.writeText(createResult.inviteUrl);
-                      showToast(copy.copyInviteLink);
+                      setSpaceInvite({ name: newName || copy.activeSpaces, url: createResult.inviteUrl });
                     }}
                   >
                     {copy.copyInviteLink}
@@ -562,6 +562,14 @@ export default function MultiAdminPage() {
               </form>
             )}
         </PopupDialog>
+      )}
+      {spaceInvite && (
+        <InviteModal
+          familyName={spaceInvite.name}
+          inviteUrl={spaceInvite.url}
+          open={Boolean(spaceInvite)}
+          onClose={() => setSpaceInvite(null)}
+        />
       )}
     </div>
   );

@@ -11,8 +11,9 @@ import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 
 type InviteModalProps = {
-  accessToken: string;
+  accessToken?: string;
   familyName: string;
+  inviteUrl?: string | null;
   open: boolean;
   onClose: () => void;
 };
@@ -38,7 +39,7 @@ async function dataUrlToBlob(dataUrl: string) {
   return response.blob();
 }
 
-export default function InviteModal({ accessToken, familyName, open, onClose }: InviteModalProps) {
+export default function InviteModal({ accessToken, familyName, inviteUrl: customInviteUrl, open, onClose }: InviteModalProps) {
   const strings = useStrings();
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -59,6 +60,28 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       setCopiedQr(false);
       return;
     }
+
+    if (customInviteUrl) {
+      let cancelled = false;
+      setIsCreating(false);
+      setInviteUrl(customInviteUrl);
+      void QRCode.toDataURL(customInviteUrl, {
+        margin: 2,
+        width: 240,
+        color: DESIGN_COLOR_VALUES.inviteQr
+      })
+        .then((dataUrl) => {
+          if (!cancelled) setQrDataUrl(dataUrl);
+        })
+        .catch(() => {
+          if (!cancelled) setError(strings.sharedUi.copyQrFailed);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!accessToken) return;
 
     let cancelled = false;
     setIsCreating(true);
@@ -96,7 +119,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
     return () => {
       cancelled = true;
     };
-  }, [accessToken, open]);
+  }, [accessToken, customInviteUrl, open]);
 
   if (!open) {
     return null;

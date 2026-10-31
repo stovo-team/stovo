@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  masterLogin: vi.fn(), fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(),
+  masterLogin: vi.fn(), fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(), createInviteLink: vi.fn(),
 }));
 
 vi.mock("../api/masterAdmin", () => ({
@@ -11,7 +11,7 @@ vi.mock("../api/masterAdmin", () => ({
   fetchTenantAiSettings: mocks.fetchTenantAiSettings,
   updateServerSettings: mocks.updateServerSettings,
   updateTenantAiSettings: mocks.updateTenantAiSettings,
-  createInviteLink: vi.fn(), createServer: vi.fn(), deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: mocks.masterLogin,
+  createInviteLink: mocks.createInviteLink, createServer: vi.fn(), deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: mocks.masterLogin,
 }));
 vi.mock("../i18n/LanguageContext", async () => {
   const { getAppStrings } = await import("../config/strings");
@@ -32,6 +32,7 @@ describe("supervisor space management", () => {
     mocks.fetchTenantAiSettings.mockResolvedValue({ translationEnabled: true, callRecordingEnabled: true, aiNotesEnabled: true, voiceTranscriptionEnabled: true });
     mocks.updateServerSettings.mockImplementation(async (_token, slug, updates) => ({ id: 2, slug, name: updates.name, ...updates }));
     mocks.updateTenantAiSettings.mockImplementation(async (_token, _slug, settings) => settings);
+    mocks.createInviteLink.mockResolvedValue("https://example.com/s/alpha/setup?token=inv-123");
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -115,5 +116,14 @@ describe("supervisor space management", () => {
     const saveButton = container.querySelector<HTMLButtonElement>(".supervisor-save-settings-button");
     expect(saveButton).toBeTruthy();
     expect(container.querySelector(".supervisor-settings-tabs")).toBeTruthy();
+  });
+
+  it("opens the space invite modal with QR and invite link when clicking invite", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Пригласить в Alpha"]')?.click(); });
+    expect(mocks.createInviteLink).toHaveBeenCalledWith("test-token", "alpha");
+    expect(document.body.querySelector(".invite-modal")).toBeTruthy();
+    expect(document.body.querySelector(".invite-modal-qr")).toBeTruthy();
+    expect(document.body.querySelector(".invite-modal-link")?.textContent).toContain("/s/alpha/setup?token=inv-123");
   });
 });
