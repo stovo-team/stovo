@@ -462,7 +462,7 @@ export default function MultiAdminPage() {
                 <PopupButton type="button" variant="secondary" onClick={() => setEditingServer(null)} disabled={savingSettings}>
                   {copy.cancel}
                 </PopupButton>
-                <PopupButton type="submit" variant="primary" disabled={savingSettings}>
+                <PopupButton type="submit" variant="primary" disabled={savingSettings} className="supervisor-save-settings-button">
                   {savingSettings ? copy.saving : copy.save}
                 </PopupButton>
               </div>
@@ -495,7 +495,7 @@ export default function MultiAdminPage() {
                     href={createResult.clusterUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="popup-button popup-button--primary"
+                    className="popup-button popup-button--primary supervisor-open-login-link"
                   >
                     {copy.openLogin}
                   </a>
@@ -555,7 +555,7 @@ export default function MultiAdminPage() {
                   >
                     {copy.cancel}
                   </PopupButton>
-                  <PopupButton type="submit" variant="primary">
+                  <PopupButton type="submit" variant="primary" className="supervisor-provision-button">
                     {copy.provisionServer}
                   </PopupButton>
                 </div>
