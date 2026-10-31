@@ -34,15 +34,19 @@ func validIntelligenceBrowserSessionRequest(request IntelligenceBrowserSessionRe
 	}
 }
 
-func browserCookieForSessionRequest(request *http.Request, flow string) (string, string) {
+func browserCookieForSessionRequest(appURL, flow string) (string, string) {
 	if flow == "oidc" {
 		return intelligenceOIDCBrowserCookieName, "/oauth2/authorize"
 	}
-	path := strings.TrimSuffix(request.URL.Path, "-session")
-	if path == "" || path == request.URL.Path {
-		path = "/api/v2/intelligence/authorize"
+	return intelligenceSourceV2BrowserCookieName, intelligenceSourceV2BrowserCookiePath(appURL)
+}
+
+func intelligenceSourceV2BrowserCookiePath(appURL string) string {
+	base, err := url.Parse(appURL)
+	if err != nil {
+		return "/api/v2/intelligence/authorize"
 	}
-	return intelligenceSourceV2BrowserCookieName, path
+	return strings.TrimRight(base.EscapedPath(), "/") + "/api/v2/intelligence/authorize"
 }
 
 func redirectIntelligenceAuthorization(w http.ResponseWriter, r *http.Request, result IntelligenceSourceV2ConsentRedirect, redirectURI, state string) bool {

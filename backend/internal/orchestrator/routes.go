@@ -555,6 +555,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 			}
 			existingEnv := parseEnvSlice(inspect.Config.Env)
 			desiredEnvMap := parseEnvSlice(desiredEnv)
+			if intelligenceEnvironmentChanged(existingEnv, desiredEnvMap) {
+				needsRecreate = true
+			}
 			for k, v := range desiredEnvMap {
 				if existingEnv[k] != v {
 					needsRecreate = true
@@ -633,7 +636,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		redisURL = "redis://redis:6379/0"
 	}
 
-	return []string{
+	return appendIntelligenceEnvironment([]string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
 		fmt.Sprintf("APP_URL=%s", serverURL),
 		fmt.Sprintf("API_URL=%s", serverURL),
@@ -670,7 +673,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
 		fmt.Sprintf("CHAT_TYPES=%s", chatTypes),
 		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.34.0.2/32")),
-	}
+	}, slug, get)
 }
 
 func (o *Orchestrator) stopAndRemoveContainer(slug string) error {
