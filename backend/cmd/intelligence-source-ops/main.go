@@ -48,6 +48,9 @@ func runMain() int {
 
 	operationCtx, cancelOperation := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancelOperation()
+	if len(os.Args) > 1 && os.Args[1] == "enroll" {
+		return runEnrollment(operationCtx, os.Args[2:], os.Stdout, os.Stderr, db, cfg.IntelligenceOIDCIssuer)
+	}
 	operations := app.NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(db))
 	return run(operationCtx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, operations)
 }
