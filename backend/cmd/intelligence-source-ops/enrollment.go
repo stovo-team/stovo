@@ -45,7 +45,7 @@ func enrollInstallation(ctx context.Context, db *sql.DB, request enrollmentReque
 	if err != nil {
 		return enrollmentResult{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var id string
 	if err := tx.QueryRowContext(ctx, `SELECT id FROM public.families WHERE id=$1 FOR UPDATE`, request.FamilyID).Scan(&id); err != nil {
 		return enrollmentResult{}, err
@@ -62,13 +62,15 @@ func enrollInstallation(ctx context.Context, db *sql.DB, request enrollmentReque
 	for rows.Next() {
 		var row enrollmentResult
 		if err := rows.Scan(&row.InstallationID, &row.TenantID); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return enrollmentResult{}, err
 		}
 		existing = append(existing, row)
 	}
 	err = rows.Err()
-	rows.Close()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return enrollmentResult{}, err
 	}
