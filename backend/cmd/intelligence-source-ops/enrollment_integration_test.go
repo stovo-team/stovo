@@ -40,7 +40,7 @@ func TestPilotEnrollmentBindsOneActiveUserAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Subject == "" || first.Subject == request.UserID || first.InstallationID == "" {
+	if first.Subject == "" || first.Subject == request.UserID || first.InstallationID == "" || first.PrincipalID != request.UserID {
 		t.Fatalf("invalid result: %+v", first)
 	}
 	second, err := enrollInstallation(ctx, db, request)

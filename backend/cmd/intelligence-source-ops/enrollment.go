@@ -18,6 +18,7 @@ type enrollmentResult struct {
 	InstallationID string `json:"installation_id"`
 	Subject        string `json:"subject"`
 	TenantID       string `json:"tenant_id"`
+	PrincipalID    string `json:"principal_id"`
 }
 
 func runEnrollment(ctx context.Context, args []string, stdout, stderr io.Writer, db *sql.DB, issuer string) int {
@@ -74,7 +75,7 @@ func enrollInstallation(ctx context.Context, db *sql.DB, request enrollmentReque
 	if len(existing) > 1 || (len(existing) == 1 && existing[0].TenantID != request.TenantID) {
 		return enrollmentResult{}, invalid
 	}
-	result := enrollmentResult{TenantID: request.TenantID}
+	result := enrollmentResult{TenantID: request.TenantID, PrincipalID: request.UserID}
 	if len(existing) == 1 {
 		result.InstallationID = existing[0].InstallationID
 	} else {
