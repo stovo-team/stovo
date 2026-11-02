@@ -93,17 +93,17 @@ awk '
   job == "changes" && /GIT_CONFIG_VALUE_0: .false./ { checkout_autocrlf_disabled = 1 }
   job == "changes" && /GIT_CONFIG_KEY_1: http\.version/ { checkout_http_version_key = 1 }
   job == "changes" && /GIT_CONFIG_VALUE_1: HTTP\/1\.1/ { checkout_http_version_http1 = 1 }
-  job == "frontend-ci" && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
-  job == "frontend-ci" && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
-  job == "frontend-ci" && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
-  job == "frontend-ci" && /npm cache clean --force/ { frontend_npm_cache_cleaned = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /GIT_CONFIG_COUNT: 1/ { frontend_git_config_count = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /GIT_CONFIG_KEY_0: core\.autocrlf/ { frontend_autocrlf_key = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /GIT_CONFIG_VALUE_0: .false./ { frontend_autocrlf_disabled = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /npm cache clean --force/ { frontend_npm_cache_cleaned = 1 }
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
   job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
   job == "changes" && /^[[:space:]]+filter:[[:space:]]+blob:none[[:space:]]*$/ { changes_skips_historical_blobs = 1 }
-  (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
-  job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
   job == "deploy-android" && /^      - name: Build frontend for Android release$/ { android_builds_frontend = 1 }
   job == "deploy-android" && /git fetch --tags/ { android_fetches_tags = 1 }
@@ -126,11 +126,14 @@ awk '
     if (job_condition["backend_test_shards"] != "${{ !cancelled() && needs.changes.outputs.backend == '\''true'\'' && !inputs.backend_deploy_only }}") {
       fail("Backend test shards must run only when backend paths changed.")
     }
+    if (job_needs["frontend_test_shards"] != "changes" || job_needs["frontend-ci"] != "[changes, frontend_test_shards]") {
+      fail("Frontend shards must run independently and Frontend CI must aggregate the shards.")
+    }
     if (job_needs["backend_test_shards"] != "changes" || job_needs["backend-ci"] != "[changes, backend_test_shards]") {
       fail("Backend shards must run independently of Frontend CI and Backend CI must aggregate the shards.")
     }
-    if (job_runner["frontend-ci"] != "[self-hosted, e2e]") {
-      fail("Frontend CI must stay on the frontend runner labeled e2e.")
+    if (job_runner["frontend_test_shards"] != "[self-hosted, e2e]" || job_runner["frontend-ci"] != "[self-hosted, e2e]") {
+      fail("Frontend shards and aggregate must stay on the frontend runner labeled e2e.")
     }
     if (job_runner["changes"] != "[self-hosted, Windows, tests]") {
       fail("The changes job must use the Windows self-hosted tests runner instead of GitHub-hosted Windows.")
@@ -323,6 +326,7 @@ require_trusted_pr_runner() {
 
 require_trusted_pr_runner changes '["self-hosted","Windows","tests"]' ubuntu-latest
 require_trusted_pr_runner pipeline-contract '["self-hosted","Windows","tests"]' ubuntu-latest
+require_trusted_pr_runner frontend_test_shards '["self-hosted","e2e"]' ubuntu-latest
 require_trusted_pr_runner frontend-ci '["self-hosted","e2e"]' ubuntu-latest
 backend_runner=$(trusted_pr_job_runner backend-ci)
 if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
@@ -356,7 +360,7 @@ grep -Fq "github.event.pull_request.author_association" "$trusted_pr_workflow" |
   exit 1
 }
 
-frontend_ci_contract=$(sed -n '/^  frontend-ci:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+frontend_ci_contract=$(sed -n '/^  frontend_test_shards:/,/^  backend_test_shards:/p' "$trusted_pr_workflow")
 for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' 'run: npm ci' 'run: npm test' 'run: npm run build'; do
   if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
     echo "Trusted PR frontend checks must run on Linux and Windows e2e runners with a working Bash shell ($required)." >&2

@@ -109,14 +109,20 @@ jobs:
         shell: bash
         run: bash scripts/check-solid-boundaries.sh all
 
-  frontend-ci:
-    name: Frontend CI
+  frontend_test_shards:
+    name: Frontend CI test shards
     needs: changes
     if: >-
+      !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
     runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
-    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [1, 2]
+    timeout-minutes: 20
     env:
       GIT_CONFIG_COUNT: 1
       GIT_CONFIG_KEY_0: core.autocrlf
@@ -151,17 +157,39 @@ jobs:
         working-directory: frontend
         run: npm ci
       - name: CSS size guard
+        if: matrix.shard == 1
         shell: bash
         working-directory: frontend
         run: npm run check:css-size
       - name: Test
         shell: bash
         working-directory: frontend
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/2
       - name: Build
+        if: matrix.shard == 1
         shell: bash
         working-directory: frontend
         run: npm run build
+
+  frontend-ci:
+    name: Frontend CI
+    needs: [changes, frontend_test_shards]
+    if: >-
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.changes.outputs.frontend == 'true'
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
+    steps:
+      - name: Require successful frontend test shards
+        env:
+          FRONTEND_SHARD_RESULT: ${{ needs.frontend_test_shards.result }}
+        shell: powershell
+        run: |
+          if ($env:FRONTEND_SHARD_RESULT -ne 'success') {
+            throw "Frontend test shards did not succeed: $env:FRONTEND_SHARD_RESULT"
+          }
+      - name: Aggregate successful frontend shards
+        run: echo "All frontend test shards and build passed."
 
   backend_test_shards:
     name: Backend CI test shards
