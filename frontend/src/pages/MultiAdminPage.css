@@ -79,6 +79,13 @@
   white-space: nowrap;
   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
+.supervisor-admin-page .supervisor-settings-tabs button:hover:not(.active):not([aria-selected="true"]) {
+  background: var(--surface-card, var(--color-palette-e6505b2c1235)) !important;
+  border-color: var(--border-default, var(--color-palette-35bd0b3c87df)) !important;
+  color: var(--text-secondary, var(--color-palette-b14132ba5d1f)) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
 .supervisor-admin-page .supervisor-settings-tabs button.active,
 .supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"] {
   background: var(--color-brand-gradient, var(--accent-soft));
@@ -109,9 +116,9 @@
   box-shadow: none;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked {
-  border-color: var(--accent-primary, var(--color-palette-cb2995bdeeb5));
-  background: var(--accent-primary, var(--color-palette-cb2995bdeeb5));
-  box-shadow: none;
+  border-color: var(--accent-primary) !important;
+  background: var(--accent-primary) !important;
+  box-shadow: none !important;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked::after {
   content: "";
@@ -125,8 +132,8 @@
   transform: rotate(45deg);
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--accent-primary, var(--color-palette-cb2995bdeeb5));
-  outline-offset: 2px;
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: 2px !important;
 }
 .supervisor-admin-page .supervisor-setting-row.is-locked { opacity: .42; }
 .supervisor-admin-page .supervisor-setting-row.is-locked strong, .supervisor-admin-page .supervisor-setting-row.is-locked small { color: var(--color-palette-5c235b0966d4); }
@@ -145,10 +152,16 @@
   border-color: var(--accent-primary) !important;
   color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
 }
-.supervisor-admin-page .supervisor-save-settings-button:hover {
-  background: var(--accent-primary) !important;
-  border-color: var(--accent-primary) !important;
+.supervisor-admin-page .supervisor-save-settings-button {
+  background: var(--color-brand-gradient, var(--accent-primary)) !important;
+  border-color: transparent !important;
   color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+}
+.supervisor-admin-page .supervisor-save-settings-button:hover {
+  background: var(--color-brand-gradient, var(--accent-primary)) !important;
+  border-color: transparent !important;
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+  opacity: 0.92;
 }
 .supervisor-admin-page .multi-admin-dialog .popup-close:hover {
   background: var(--color-palette-66341b70b395);

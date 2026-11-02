@@ -1149,9 +1149,10 @@
   align-items: center;
   margin-left: 8px;
   padding: 1px 6px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary, var(--color-palette-a5384157bc1a)) 55%, transparent);
+  border: 1px solid var(--accent-border-soft, color-mix(in srgb, var(--accent-primary) 55%, transparent));
   border-radius: var(--radius-pill);
-  color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  color: var(--accent-primary);
+  background: var(--accent-soft, transparent);
   font-size: var(--font-size-micro);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.04em;

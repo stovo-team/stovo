@@ -349,7 +349,7 @@ export default function MultiAdminPage() {
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              {copy.noSpaces} <strong style={{ color: "var(--color-palette-bfc4cd8eb6c3)" }}>{copy.createSpace}</strong>
+              {copy.noSpaces} <strong style={{ color: "var(--accent-primary)" }}>{copy.createSpace}</strong>
             </div>
           ) : (
             <div style={styles.tableWrapper} className="tableWrapper">
@@ -607,13 +607,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-block",
     padding: "6px 14px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
     marginBottom: 0,
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    border: "1px solid var(--accent-border-soft)",
   },
   title: {
     fontSize: "var(--font-size-heading)",
@@ -816,9 +816,9 @@ const styles: Record<string, React.CSSProperties> = {
   linkPill: {
     display: "inline-flex",
     alignItems: "center",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
+    border: "1px solid var(--accent-border-soft)",
     padding: "6px 16px",
     borderRadius: "var(--radius-pill)",
     fontFamily: "monospace",
@@ -830,9 +830,9 @@ const styles: Record<string, React.CSSProperties> = {
   statusPill: {
     padding: "6px 14px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
+    border: "1px solid var(--accent-border-soft)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
@@ -857,9 +857,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   invitePillButton: {
     padding: "8px 18px",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
+    border: "1px solid var(--accent-border-soft)",
     borderRadius: "var(--radius-pill)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
@@ -868,9 +868,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   ghostPillButton: {
     padding: "8px 18px",
-    backgroundColor: "var(--color-palette-ec16b30f59c0)",
-    color: "var(--color-palette-7fc7d174cccb)",
-    border: "1px solid var(--color-palette-fe07ce2b0bb3)",
+    backgroundColor: "transparent",
+    color: "var(--text-primary)",
+    border: "1px solid var(--border-default)",
     borderRadius: "var(--radius-pill)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
@@ -883,9 +883,9 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     width: 44,
     height: 44,
-    backgroundColor: "var(--color-palette-a6f391cd38f2)",
-    color: "var(--color-palette-42705fa9a635)",
-    border: "1px solid var(--color-palette-774f5df9b3a3)",
+    backgroundColor: "var(--danger-soft)",
+    color: "var(--danger)",
+    border: "1px solid var(--danger)",
     borderRadius: "var(--radius-pill)",
     cursor: "pointer",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -914,9 +914,9 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     gap: 8,
     padding: "8px 18px",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
+    border: "1px solid var(--accent-border-soft)",
     borderRadius: "var(--radius-pill)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
@@ -933,9 +933,9 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: "var(--font-weight-bold)",
     padding: "3px 8px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--color-palette-7db6383a124b)",
-    color: "var(--color-palette-bfc4cd8eb6c3)",
-    border: "1px solid var(--color-palette-72f821d0596b)",
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--accent-primary)",
+    border: "1px solid var(--accent-border-soft)",
   },
   tabBadgeInactive: {
     fontSize: "var(--font-size-caption)",

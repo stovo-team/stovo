@@ -57,6 +57,8 @@ interface AppearanceContextValue {
 export const APPEARANCE_STORAGE_KEY = "familyMessenger.appearance";
 /** One-time migration: legacy default was Enter=newline; web default is now Enter=send. */
 const SEND_ON_ENTER_DEFAULT_V2_KEY = "familyMessenger.appearance.sendOnEnterDefaultV2";
+/** One-time migration: legacy default was blue; brand default is now rose. */
+const ACCENT_DEFAULT_V2_KEY = "familyMessenger.appearance.accentDefaultV2";
 
 export const THEME_MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
   { label: "System", value: "system" },
@@ -180,7 +182,7 @@ export function messageFontFamily(font: MessageFontChoice) {
 
 const AppearanceContext = createContext<AppearanceContextValue | null>(null);
 
-function readAppearanceSettings(): AppearanceSettings {
+export function readAppearanceSettings(): AppearanceSettings {
   if (typeof window === "undefined") {
     return DEFAULT_APPEARANCE;
   }
@@ -188,19 +190,19 @@ function readAppearanceSettings(): AppearanceSettings {
     const parsed = JSON.parse(
       window.localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? "{}"
     ) as Partial<AppearanceSettings>;
-    const accent =
-      parsed.accent === "green" ||
-      parsed.accent === "purple" ||
-      parsed.accent === "rose" ||
-      parsed.accent === "amber" ||
-      parsed.accent === "custom"
+    let accent: AccentChoice =
+      parsed.accent && ["blue", "green", "purple", "rose", "amber", "custom"].includes(parsed.accent)
         ? parsed.accent
-        : "blue";
+        : DEFAULT_APPEARANCE.accent;
+    // Promote legacy default (blue) to brand default (rose) once, then respect user choice.
+    if (!window.localStorage.getItem(ACCENT_DEFAULT_V2_KEY)) {
+      window.localStorage.setItem(ACCENT_DEFAULT_V2_KEY, "1");
+      if (parsed.accent === "blue" || !parsed.accent) {
+        accent = DEFAULT_APPEARANCE.accent;
+      }
+    }
     const wallpaper =
-      parsed.wallpaper === "paper" ||
-      parsed.wallpaper === "aurora" ||
-      parsed.wallpaper === "plain" ||
-      parsed.wallpaper === "custom"
+      parsed.wallpaper && ["paper", "aurora", "plain", "custom"].includes(parsed.wallpaper)
         ? parsed.wallpaper
         : "dots";
     const customWallpaperFileId =
@@ -216,10 +218,7 @@ function readAppearanceSettings(): AppearanceSettings {
         ? Math.min(24, Math.max(4, Math.round(parsed.bubbleRadius)))
         : bubbleRadiusFromShape(bubbleShape);
     const messageFont =
-      parsed.messageFont === "sans" ||
-      parsed.messageFont === "serif" ||
-      parsed.messageFont === "rounded" ||
-      parsed.messageFont === "mono"
+      parsed.messageFont && ["sans", "serif", "rounded", "mono"].includes(parsed.messageFont)
         ? parsed.messageFont
         : "system";
     const messageScale =
@@ -239,9 +238,7 @@ function readAppearanceSettings(): AppearanceSettings {
     }
     return {
       themeMode:
-        parsed.themeMode === "light" ||
-        parsed.themeMode === "dark" ||
-        parsed.themeMode === "amoled"
+        parsed.themeMode && ["light", "dark", "amoled"].includes(parsed.themeMode)
           ? parsed.themeMode
           : "system",
       accent,
