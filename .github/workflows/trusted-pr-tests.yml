@@ -51,13 +51,15 @@ jobs:
     needs: pr-size
     if: github.event.pull_request.draft == false
     runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      actions: write
     timeout-minutes: 10
     steps:
-      - name: Terminate lingering runner processes
+      - name: Configure Git long paths
         if: runner.os == 'Windows'
         shell: powershell
-        run: |
-          Get-Process node, git -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue
+        run: git config --global core.longpaths true
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -83,6 +85,12 @@ jobs:
       - name: Verify PR size policy regressions
         shell: bash
         run: node --test .github/pr-budget.test.mjs
+      - name: Cancel workflow run on failure
+        if: failure()
+        shell: bash
+        run: gh run cancel ${{ github.run_id }} || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   solid-boundaries:
     name: SOLID architecture boundaries
@@ -92,13 +100,15 @@ jobs:
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true')
     runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      actions: write
     timeout-minutes: 10
     steps:
-      - name: Terminate lingering runner processes
+      - name: Configure Git long paths
         if: runner.os == 'Windows'
         shell: powershell
-        run: |
-          Get-Process node, git -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue
+        run: git config --global core.longpaths true
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -118,6 +128,12 @@ jobs:
       - name: SOLID architecture boundaries
         shell: bash
         run: bash scripts/check-solid-boundaries.sh all
+      - name: Cancel workflow run on failure
+        if: failure()
+        shell: bash
+        run: gh run cancel ${{ github.run_id }} || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   frontend_test_shards:
     name: Frontend CI test shards
@@ -138,11 +154,14 @@ jobs:
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
     steps:
-      - name: Terminate lingering runner processes
+      - name: Configure Git long paths and workspace
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          Get-Process node, git -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue
+          git config --global core.longpaths true
+          if (Test-Path frontend\node_modules) {
+            Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
+          }
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
@@ -220,11 +239,11 @@ jobs:
         shell: bash
         working-directory: backend
     steps:
-      - name: Terminate lingering runner processes
+      - name: Configure Git long paths
         if: runner.os == 'Windows'
         shell: powershell
-        run: |
-          Get-Process node, git -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue
+        working-directory: .
+        run: git config --global core.longpaths true
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge

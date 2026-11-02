@@ -17,3 +17,8 @@ it("allows overriding CI workers via VITEST_MAX_WORKERS", async () => {
   const { default: config } = await import("./vite.config");
   expect(config.test?.maxWorkers).toBe(4);
 });
+it("configures node environment for pure style and logic tests", async () => {
+  const { default: config } = await import("./vite.config");
+  expect(config.test?.environmentMatchGlobs).toBeDefined();
+  expect(config.test?.environmentMatchGlobs?.some(([pattern, env]) => pattern === "src/styles.*.test.ts" && env === "node")).toBe(true);
+});
