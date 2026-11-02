@@ -15,7 +15,7 @@ export const DESIGN_COLOR_VALUES = {
     sky: "#0ea5e9",
   },
   appearance: {
-    defaultAccent: "#d97706",
+    defaultAccent: "#e11d48",
     avatar: "#0ea5e9",
     darkBlendBackground: "#0f172a",
   },

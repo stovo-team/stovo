@@ -20,6 +20,7 @@ import { PopupDialog } from "../components/ui/Popup";
 import { PopupButton } from "../components/ui/PopupButton";
 import { PopupField } from "../components/ui/PopupField";
 import InviteModal from "../components/InviteModal";
+import StovoLogo from "../components/StovoLogo";
 import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
@@ -244,7 +245,10 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={styles.badgePill}>{copy.supervisor}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <StovoLogo size={36} />
+            <div style={styles.badgePill}>{copy.supervisor}</div>
+          </div>
           <h1 style={styles.title}>{copy.title}</h1>
           <p style={styles.subtitle}>{copy.login}</p>
 
@@ -603,13 +607,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-block",
     padding: "6px 14px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--color-palette-6ec89f6c7b63)",
-    color: "var(--color-palette-8940f2c623d0)",
+    backgroundColor: "var(--color-palette-7db6383a124b)",
+    color: "var(--color-palette-bfc4cd8eb6c3)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
-    marginBottom: 16,
-    border: "1px solid var(--color-palette-f2803fa10e99)",
+    marginBottom: 0,
+    border: "1px solid var(--color-palette-72f821d0596b)",
   },
   title: {
     fontSize: "var(--font-size-heading)",
@@ -649,14 +653,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryPillButton: {
     padding: "12px 24px",
-    backgroundColor: "var(--color-palette-9eaa7706f04a)",
+    background: "var(--color-brand-gradient)",
     color: "var(--color-palette-f2074b6cef37)",
     border: "none",
     borderRadius: "var(--radius-pill)",
     fontWeight: "var(--font-weight-bold)",
     fontSize: "var(--font-size-small)",
     cursor: "pointer",
-    boxShadow: "none",
+    boxShadow: "0 4px 14px var(--color-palette-9bd3ad92fa9e)",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   secondaryPillButton: {
