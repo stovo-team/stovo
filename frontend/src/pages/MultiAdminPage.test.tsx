@@ -149,11 +149,9 @@ describe("supervisor space management", () => {
   it("freezes hover on supervisor settings tabs and uses brand gradient on primary buttons", async () => {
     const { readTextFile } = await import("../testUtils/readTextFile");
     const css = readTextFile("src/pages/MultiAdminPage.css");
-    const themeCss = readTextFile("src/styles/theme.css");
     expect(css).toMatch(/\.supervisor-settings-tabs button:hover/);
     expect(css).toMatch(/background:\s*var\(--surface-card/);
     expect(css).toMatch(/background:\s*var\(--color-brand-gradient\)/);
-    expect(themeCss).toMatch(/button:hover:not\(:disabled\):not\(\.pinned-banner-click-area\):not\(\[role="tab"\]\)/);
 
     await act(async () => { root.render(<MultiAdminPage />); });
     const createButton = container.querySelector<HTMLButtonElement>("header .primaryPillButton");

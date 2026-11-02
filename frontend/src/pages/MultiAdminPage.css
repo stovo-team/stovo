@@ -81,9 +81,13 @@
   transition: none !important;
 }
 .supervisor-settings-tabs button:hover,
+.supervisor-settings-tabs button:hover:not(:disabled):not(.pinned-banner-click-area),
 .supervisor-admin-page .supervisor-settings-tabs button:hover,
+.supervisor-admin-page .supervisor-settings-tabs button:hover:not(:disabled):not(.pinned-banner-click-area),
 .supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover,
-.supervisor-admin-page .supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover {
+.supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover:not(:disabled):not(.pinned-banner-click-area),
+.supervisor-admin-page .supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover,
+.supervisor-admin-page .supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover:not(:disabled):not(.pinned-banner-click-area) {
   background: var(--surface-card, var(--color-palette-e6505b2c1235)) !important;
   border-color: var(--border-default, var(--color-palette-35bd0b3c87df)) !important;
   color: var(--text-secondary, var(--color-palette-b14132ba5d1f)) !important;
@@ -102,9 +106,13 @@
   font-weight: var(--font-weight-bold);
 }
 .supervisor-settings-tabs button.active:hover,
+.supervisor-settings-tabs button.active:hover:not(:disabled):not(.pinned-banner-click-area),
 .supervisor-settings-tabs button[aria-selected="true"]:hover,
+.supervisor-settings-tabs button[aria-selected="true"]:hover:not(:disabled):not(.pinned-banner-click-area),
 .supervisor-admin-page .supervisor-settings-tabs button.active:hover,
-.supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"]:hover {
+.supervisor-admin-page .supervisor-settings-tabs button.active:hover:not(:disabled):not(.pinned-banner-click-area),
+.supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"]:hover,
+.supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"]:hover:not(:disabled):not(.pinned-banner-click-area) {
   background: var(--color-brand-gradient) !important;
   border-color: transparent !important;
   color: var(--color-palette-f2074b6cef37) !important;
