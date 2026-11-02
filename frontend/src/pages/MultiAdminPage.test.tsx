@@ -145,4 +145,17 @@ describe("supervisor space management", () => {
     expect(document.body.querySelector(".invite-modal-qr")).toBeTruthy();
     expect(document.body.querySelector(".invite-modal-link")?.textContent).toContain("/s/alpha/setup?token=inv-123");
   });
+
+  it("removes hover on supervisor settings tabs and uses unified brand accent across action pills", async () => {
+    const { readTextFile } = await import("../testUtils/readTextFile");
+    const css = readTextFile("src/pages/MultiAdminPage.css");
+    expect(css).not.toMatch(/\.supervisor-settings-tabs button:hover/);
+
+    await act(async () => { root.render(<MultiAdminPage />); });
+    const spaceLink = container.querySelector<HTMLAnchorElement>('a[href="/s/alpha"]');
+    expect(spaceLink).toBeTruthy();
+    expect(spaceLink?.getAttribute("style")).not.toContain("var(--color-palette-928ee44540c3)");
+    expect(spaceLink?.getAttribute("style")).toContain("var(--color-palette-bfc4cd8eb6c3)");
+  });
 });
+
