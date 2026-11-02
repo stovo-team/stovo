@@ -245,9 +245,8 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ marginBottom: 16 }}>
             <StovoLogo size={36} />
-            <div style={styles.badgePill}>{copy.supervisor}</div>
           </div>
           <h1 style={styles.title}>{copy.title}</h1>
           <p style={styles.subtitle}>{copy.login}</p>
@@ -294,7 +293,7 @@ export default function MultiAdminPage() {
 
       <header style={styles.header} className="header">
         <div style={styles.headerTitleGroup}>
-          <div style={styles.badgePill}>{copy.supervisor}</div>
+          <StovoLogo size={32} />
           <h1 style={styles.headerTitle}>{copy.title}</h1>
         </div>
         <div style={styles.headerActions}>
@@ -323,10 +322,7 @@ export default function MultiAdminPage() {
           </div>
           <div style={styles.statCard} className="statCard">
             <div style={styles.statLabel} className="statLabel">{copy.advancedMonitoring}</div>
-            <div style={styles.monitoringStatus} className="monitoringStatus">
-              <span style={styles.monitoringDisabledButton}>{copy.monitoringDisabled}</span>
-              <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>
-            </div>
+            <div style={{ ...styles.statValue, color: "var(--color-palette-177804c22590)" }} className="statValue">{copy.monitoringDisabled}</div>
           </div>
         </div>
 
@@ -707,8 +703,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   headerTitleGroup: {
     display: "flex",
-    flexDirection: "column",
-    gap: 4,
+    alignItems: "center",
+    gap: 12,
   },
   headerTitle: {
     fontSize: "var(--font-size-heading)",
@@ -750,22 +746,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "var(--font-size-heading)",
     fontWeight: "var(--font-weight-extrabold)",
     color: "var(--color-palette-f2074b6cef37)",
-  },
-  monitoringStatus: {
-    display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  monitoringDisabledButton: {
-    padding: "6px 10px",
-    border: "1px solid var(--color-palette-b749cc259197)",
-    borderRadius: "var(--radius-control)",
-    background: "var(--color-palette-0c501f182ba9)",
-    color: "var(--color-palette-177804c22590)",
-    fontSize: "var(--font-size-caption)",
-    fontWeight: "var(--font-weight-bold)",
-    cursor: "default",
   },
   panelCard: {
     backgroundColor: "var(--color-palette-95b1a9665923)",
