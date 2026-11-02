@@ -14,24 +14,24 @@ describe("AppearanceContext default accent migration", () => {
     window.localStorage.clear();
   });
 
-  it("defaults to brand rose accent when localStorage is empty", () => {
+  it("defaults to brand amber accent when localStorage is empty", () => {
     const settings = readAppearanceSettings();
-    expect(settings.accent).toBe("rose");
+    expect(settings.accent).toBe("amber");
   });
 
-  it("migrates legacy stored blue accent to brand rose once", () => {
+  it("migrates legacy stored blue and rose accents to brand amber once", () => {
     window.localStorage.setItem(
       APPEARANCE_STORAGE_KEY,
       JSON.stringify({ accent: "blue", themeMode: "dark" })
     );
 
     const settings = readAppearanceSettings();
-    expect(settings.accent).toBe("rose");
-    expect(window.localStorage.getItem("familyMessenger.appearance.accentDefaultV2")).toBe("1");
+    expect(settings.accent).toBe("amber");
+    expect(window.localStorage.getItem("familyMessenger.appearance.accentDefaultV3")).toBe("1");
   });
 
   it("respects user choice of blue after migration flag is set", () => {
-    window.localStorage.setItem("familyMessenger.appearance.accentDefaultV2", "1");
+    window.localStorage.setItem("familyMessenger.appearance.accentDefaultV3", "1");
     window.localStorage.setItem(
       APPEARANCE_STORAGE_KEY,
       JSON.stringify({ accent: "blue", themeMode: "dark" })

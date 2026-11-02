@@ -133,6 +133,8 @@ describe("supervisor space management", () => {
     const dialog = container.querySelector(".multi-admin-dialog");
     expect(dialog).toBeTruthy();
     expect(dialog?.classList.contains("popup-dialog--lg")).toBe(true);
+    expect(dialog?.querySelector("#space-settings-title")?.textContent).toBe("Настройки пространства");
+    expect(dialog?.querySelector(".badgePill")).toBeNull();
     const tabs = container.querySelectorAll<HTMLButtonElement>(".supervisor-settings-tabs button");
     expect(tabs.length).toBe(4);
   });
@@ -152,6 +154,7 @@ describe("supervisor space management", () => {
     expect(css).toMatch(/\.supervisor-settings-tabs button:hover/);
     expect(css).toMatch(/background:\s*var\(--surface-card/);
     expect(css).toMatch(/background:\s*var\(--color-brand-gradient\)/);
+    expect(css).toMatch(/input\[type="checkbox"\]:checked\s*\{[^}]*background:\s*var\(--color-brand-gradient\)/);
 
     await act(async () => { root.render(<MultiAdminPage />); });
     const createButton = container.querySelector<HTMLButtonElement>("header .primaryPillButton");

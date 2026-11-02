@@ -142,8 +142,8 @@
   box-shadow: none;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked {
-  border-color: var(--accent-primary) !important;
-  background: var(--accent-primary) !important;
+  border-color: transparent !important;
+  background: var(--color-brand-gradient) !important;
   box-shadow: none !important;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked::after {
