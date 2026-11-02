@@ -118,6 +118,16 @@ describe("supervisor space management", () => {
     expect(container.querySelector(".supervisor-settings-tabs")).toBeTruthy();
   });
 
+  it("renders settings popup with expanded lg size and detached tabs", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Настройки: Alpha"]')?.click(); });
+    const dialog = container.querySelector(".multi-admin-dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.classList.contains("popup-dialog--lg")).toBe(true);
+    const tabs = container.querySelectorAll<HTMLButtonElement>(".supervisor-settings-tabs button");
+    expect(tabs.length).toBe(4);
+  });
+
   it("opens the space invite modal with QR and invite link when clicking invite", async () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Пригласить в Alpha"]')?.click(); });
