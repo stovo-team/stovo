@@ -79,10 +79,6 @@
   white-space: nowrap;
   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
-.supervisor-admin-page .supervisor-settings-tabs button:hover:not(.active):not([aria-selected="true"]) {
-  background: var(--surface-hover, var(--color-palette-cbb2e4db5d4f));
-  color: var(--text-primary, var(--color-palette-f2074b6cef37));
-}
 .supervisor-admin-page .supervisor-settings-tabs button.active,
 .supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"] {
   background: var(--color-brand-gradient, var(--accent-soft));
@@ -113,8 +109,8 @@
   box-shadow: none;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked {
-  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
-  background: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  border-color: var(--accent-primary, var(--color-palette-cb2995bdeeb5));
+  background: var(--accent-primary, var(--color-palette-cb2995bdeeb5));
   box-shadow: none;
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked::after {
@@ -129,7 +125,7 @@
   transform: rotate(45deg);
 }
 .supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline: 2px solid var(--accent-primary, var(--color-palette-cb2995bdeeb5));
   outline-offset: 2px;
 }
 .supervisor-admin-page .supervisor-setting-row.is-locked { opacity: .42; }

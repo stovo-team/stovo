@@ -48,8 +48,8 @@
   --color-background-panel: var(--background-panel, var(--color-palette-f2074b6cef37));
   --color-surface: var(--surface-card, var(--color-palette-f2074b6cef37));
   --color-border: var(--border-default, var(--color-palette-bfd4f8ffcad7));
-  --color-accent: var(--accent-primary, var(--color-palette-a5384157bc1a));
-  --color-focus: var(--focus-ring, var(--accent-primary, var(--color-palette-a5384157bc1a)));
+  --color-accent: var(--accent-primary, var(--color-palette-cb2995bdeeb5));
+  --color-focus: var(--focus-ring, var(--accent-primary, var(--color-palette-cb2995bdeeb5)));
   --color-brand-gradient: linear-gradient(135deg, var(--color-palette-cb2995bdeeb5) 0%, var(--color-palette-bfc4cd8eb6c3) 100%);
   --color-danger: var(--danger, var(--color-palette-c36d4cdccdc9));
   --color-success: var(--success, var(--color-palette-8b8f7c3d4541));
