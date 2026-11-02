@@ -158,5 +158,26 @@ describe("supervisor space management", () => {
     expect(spaceLink?.getAttribute("style")).toContain("var(--accent-primary)");
     expect(spaceLink?.getAttribute("style")).toContain("var(--accent-soft)");
   });
+
+  it("renders Stovo logo in header, removes supervisor badge, and renders monitoring disabled as plain stat value", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    const header = container.querySelector("header");
+    expect(header).toBeTruthy();
+    expect(header?.querySelector('img[alt="Stovo logo"]')).toBeTruthy();
+    expect(header?.querySelector("h1")?.textContent).toMatch(/Stovo Spaces|Пространства Stovo/);
+    expect(container.textContent).not.toContain("КЛАСТЕРНЫЙ СУПЕРВИЗОР");
+    expect(container.textContent).not.toContain("CLUSTER SUPERVISOR");
+
+    const statCards = container.querySelectorAll(".statCard");
+    const monitoringCard = Array.from(statCards).find(
+      (card) => card.textContent?.includes("Расширенный мониторинг") || card.textContent?.includes("Advanced Monitoring")
+    );
+    expect(monitoringCard).toBeTruthy();
+    expect(monitoringCard?.querySelector("button")).toBeNull();
+    expect(monitoringCard?.querySelector(".premium-feature-badge")).toBeNull();
+    const statValue = monitoringCard?.querySelector(".statValue");
+    expect(statValue).toBeTruthy();
+    expect(statValue?.textContent).toMatch(/Мониторинг отключ[её]н|Monitoring disabled/);
+  });
 });
 
