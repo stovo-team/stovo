@@ -1127,7 +1127,7 @@ h2 {
 .chat-avatar.archive,
 .chat-avatar--archive,
 .avatar.archive {
-  background: var(--accent-primary) !important;
+  background: var(--color-brand-gradient) !important;
   color: var(--color-palette-f2074b6cef37) !important;
 }
 

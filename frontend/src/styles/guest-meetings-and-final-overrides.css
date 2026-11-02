@@ -260,9 +260,9 @@
   color: var(--text-primary);
 }
 .quick-access-panel-tabs button.active {
-  background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface));
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary), 0 2px 8px var(--color-palette-279245c0d6e0);
+  background: var(--color-brand-gradient) !important;
+  border-color: transparent;
+  box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
   color: var(--color-palette-f2074b6cef37);
 }
 .archive-group-back-button, .thread-back-button { display: inline-flex; }
@@ -278,7 +278,7 @@
 
 /* Quick Access matches chat-row metrics in full layout; minimized stays compact. */
 .quick-access-item.chat-list-item { border-radius: var(--radius-panel); gap: 10px; grid-template-columns: auto minmax(0, 1fr) auto; min-height: 0; padding: 9px; }
-.quick-access-item .quick-access-icon { align-items: center; background: var(--accent-primary) !important; border-radius: var(--radius-circle); color: var(--color-palette-f2074b6cef37) !important; display: inline-flex; height: 44px; justify-content: center; width: 44px; }
+.quick-access-item .quick-access-icon { align-items: center; background: var(--color-brand-gradient) !important; border-radius: var(--radius-circle); color: var(--color-palette-f2074b6cef37) !important; display: inline-flex; height: 44px; justify-content: center; width: 44px; }
 .quick-access-item .quick-access-icon svg { height: 21px; width: 21px; }
 .quick-access-item > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
 .quick-access-item strong { font-size: var(--font-size-body); line-height: normal; }
