@@ -358,7 +358,7 @@ button {
 
 /* Android can retain :hover after a tap. Hover feedback belongs to real pointers only. */
 @media (hover: hover) and (pointer: fine) {
-  button:hover:not(:disabled):not(.pinned-banner-click-area) {
+  button:hover:not(:disabled):not(.pinned-banner-click-area):not([role="tab"]) {
     background: var(--accent-soft);
     border-color: var(--accent-border-soft);
   }

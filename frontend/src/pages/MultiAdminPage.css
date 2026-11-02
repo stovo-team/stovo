@@ -21,8 +21,8 @@
 .space-actions-menu button { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: calc(var(--radius-surface) - 5px); color: var(--color-palette-4ce8179368dc); background: transparent; text-align: left; font: inherit; font-size: var(--font-size-small); cursor: pointer; }
 .space-actions-menu button:hover { background: var(--color-palette-cbb2e4db5d4f); }
 .space-actions-menu button.danger { color: var(--color-palette-1e989053067e); }
-.supervisor-admin-page .primaryPillButton { background: var(--color-brand-gradient, var(--accent-primary)) !important; color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important; box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e) !important; }
-.supervisor-admin-page .primaryPillButton:hover { background: var(--color-brand-gradient, var(--accent-primary)) !important; box-shadow: 0 6px 18px var(--color-palette-9bd3ad92fa9e) !important; }
+.supervisor-admin-page .primaryPillButton { background: var(--color-brand-gradient) !important; border: 0 !important; color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important; box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e) !important; }
+.supervisor-admin-page .primaryPillButton:hover { background: var(--color-brand-gradient) !important; border: 0 !important; opacity: 0.94; box-shadow: 0 6px 18px var(--color-palette-9bd3ad92fa9e) !important; }
 .supervisor-admin-page .modalOverlay { padding: 16px !important; overflow-y: auto; }
 .supervisor-admin-page .modalCard { position: relative; width: min(100%, 520px) !important; max-width: 520px !important; max-height: calc(100vh - 32px); overflow-y: auto; padding: 22px 24px 20px !important; border-radius: var(--radius-panel) !important; }
 .supervisor-admin-page .modalTitle { font-size: var(--font-size-heading) !important; margin: 0 48px 3px 0 !important; }
@@ -50,7 +50,7 @@
 .supervisor-admin-page .secondaryPillButton, .supervisor-admin-page .primaryPillButton { padding: 9px 16px !important; font-size: var(--font-size-small) !important; }
 .supervisor-admin-page .monitoringStatus { margin-top: 8px; gap: 8px; }
 .supervisor-admin-page .monitoringDisabledButton { padding: 6px 9px; border-radius: var(--radius-control); font-size: var(--font-size-caption); }
-.supervisor-admin-page .supervisor-settings-tabs {
+.supervisor-settings-tabs {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -62,9 +62,10 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.supervisor-admin-page .supervisor-settings-tabs::-webkit-scrollbar {
+.supervisor-settings-tabs::-webkit-scrollbar {
   display: none;
 }
+.supervisor-settings-tabs button,
 .supervisor-admin-page .supervisor-settings-tabs button {
   flex: 0 0 auto;
   padding: 8px 16px;
@@ -77,22 +78,39 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition: none !important;
 }
-.supervisor-admin-page .supervisor-settings-tabs button:hover:not(.active):not([aria-selected="true"]) {
+.supervisor-settings-tabs button:hover,
+.supervisor-admin-page .supervisor-settings-tabs button:hover,
+.supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover,
+.supervisor-admin-page .supervisor-settings-tabs button:not(.active):not([aria-selected="true"]):hover {
   background: var(--surface-card, var(--color-palette-e6505b2c1235)) !important;
   border-color: var(--border-default, var(--color-palette-35bd0b3c87df)) !important;
   color: var(--text-secondary, var(--color-palette-b14132ba5d1f)) !important;
   box-shadow: none !important;
   transform: none !important;
+  outline: none !important;
 }
+.supervisor-settings-tabs button.active,
+.supervisor-settings-tabs button[aria-selected="true"],
 .supervisor-admin-page .supervisor-settings-tabs button.active,
 .supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"] {
-  background: var(--color-brand-gradient, var(--accent-soft));
-  border-color: transparent;
-  color: var(--color-palette-f2074b6cef37);
-  box-shadow: 0 3px 12px var(--color-palette-9bd3ad92fa9e);
+  background: var(--color-brand-gradient) !important;
+  border-color: transparent !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  box-shadow: 0 3px 12px var(--color-palette-9bd3ad92fa9e) !important;
   font-weight: var(--font-weight-bold);
+}
+.supervisor-settings-tabs button.active:hover,
+.supervisor-settings-tabs button[aria-selected="true"]:hover,
+.supervisor-admin-page .supervisor-settings-tabs button.active:hover,
+.supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"]:hover {
+  background: var(--color-brand-gradient) !important;
+  border-color: transparent !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  box-shadow: 0 3px 12px var(--color-palette-9bd3ad92fa9e) !important;
+  transform: none !important;
+  outline: none !important;
 }
 .supervisor-admin-page .supervisor-settings-tab-panel { min-height: 200px; }
 .supervisor-admin-page .supervisor-settings-help { margin: 0 0 10px; color: var(--color-palette-58bea7ac093e); font-size: var(--font-size-caption); line-height: 1.45; }
@@ -138,30 +156,50 @@
 .supervisor-admin-page .supervisor-setting-row.is-locked { opacity: .42; }
 .supervisor-admin-page .supervisor-setting-row.is-locked strong, .supervisor-admin-page .supervisor-setting-row.is-locked small { color: var(--color-palette-5c235b0966d4); }
 .supervisor-admin-page .supervisor-open-login-link,
-.supervisor-admin-page .supervisor-open-login-link:visited {
+.supervisor-admin-page .supervisor-open-login-link:visited,
+.multi-admin-dialog .supervisor-open-login-link,
+.multi-admin-dialog .supervisor-open-login-link:visited {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e) !important;
   text-decoration: none !important;
 }
-.supervisor-admin-page .supervisor-open-login-link:hover {
-  background: var(--accent-primary) !important;
-  border-color: var(--accent-primary) !important;
-  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+.supervisor-admin-page .supervisor-open-login-link:hover,
+.multi-admin-dialog .supervisor-open-login-link:hover {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  opacity: 0.94;
   text-decoration: none !important;
 }
-.supervisor-admin-page .supervisor-provision-button:hover {
-  background: var(--accent-primary) !important;
-  border-color: var(--accent-primary) !important;
-  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+.supervisor-admin-page .supervisor-provision-button,
+.multi-admin-dialog .supervisor-provision-button {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e) !important;
 }
-.supervisor-admin-page .supervisor-save-settings-button {
-  background: var(--color-brand-gradient, var(--accent-primary)) !important;
-  border-color: transparent !important;
-  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+.supervisor-admin-page .supervisor-provision-button:hover,
+.multi-admin-dialog .supervisor-provision-button:hover {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  opacity: 0.94;
 }
-.supervisor-admin-page .supervisor-save-settings-button:hover {
-  background: var(--color-brand-gradient, var(--accent-primary)) !important;
-  border-color: transparent !important;
-  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
-  opacity: 0.92;
+.supervisor-admin-page .supervisor-save-settings-button,
+.multi-admin-dialog .supervisor-save-settings-button {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e) !important;
+}
+.supervisor-admin-page .supervisor-save-settings-button:hover,
+.multi-admin-dialog .supervisor-save-settings-button:hover {
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  color: var(--color-palette-f2074b6cef37) !important;
+  opacity: 0.94;
 }
 .supervisor-admin-page .multi-admin-dialog .popup-close:hover {
   background: var(--color-palette-66341b70b395);
