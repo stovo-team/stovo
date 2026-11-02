@@ -242,7 +242,7 @@
 
 .compose-fab {
   align-items: center;
-  background: var(--accent-primary);
+  background: var(--color-brand-gradient, var(--accent-primary));
   border: 0;
   border-radius: var(--radius-circle);
   box-sizing: border-box;

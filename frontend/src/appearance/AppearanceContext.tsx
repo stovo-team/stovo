@@ -57,8 +57,8 @@ interface AppearanceContextValue {
 export const APPEARANCE_STORAGE_KEY = "familyMessenger.appearance";
 /** One-time migration: legacy default was Enter=newline; web default is now Enter=send. */
 const SEND_ON_ENTER_DEFAULT_V2_KEY = "familyMessenger.appearance.sendOnEnterDefaultV2";
-/** One-time migration: legacy default was blue; brand default is now rose. */
-const ACCENT_DEFAULT_V2_KEY = "familyMessenger.appearance.accentDefaultV2";
+/** One-time migration: legacy defaults were blue/rose; brand default is now amber (orange). */
+const ACCENT_DEFAULT_V3_KEY = "familyMessenger.appearance.accentDefaultV3";
 
 export const THEME_MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
   { label: "System", value: "system" },
@@ -89,7 +89,7 @@ export const DENSITY_OPTIONS: Array<{ label: string; value: DensityChoice }> = [
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   themeMode: "system",
-  accent: "rose",
+  accent: "amber",
   customAccent: DESIGN_COLOR_VALUES.appearance.defaultAccent,
   density: "comfortable",
   wallpaper: "dots",
@@ -194,10 +194,10 @@ export function readAppearanceSettings(): AppearanceSettings {
       parsed.accent && ["blue", "green", "purple", "rose", "amber", "custom"].includes(parsed.accent)
         ? parsed.accent
         : DEFAULT_APPEARANCE.accent;
-    // Promote legacy default (blue) to brand default (rose) once, then respect user choice.
-    if (!window.localStorage.getItem(ACCENT_DEFAULT_V2_KEY)) {
-      window.localStorage.setItem(ACCENT_DEFAULT_V2_KEY, "1");
-      if (parsed.accent === "blue" || !parsed.accent) {
+    // Promote legacy defaults (blue, rose) to warm brand default (amber) once, then respect user choice.
+    if (!window.localStorage.getItem(ACCENT_DEFAULT_V3_KEY)) {
+      window.localStorage.setItem(ACCENT_DEFAULT_V3_KEY, "1");
+      if (parsed.accent === "blue" || parsed.accent === "rose" || !parsed.accent) {
         accent = DEFAULT_APPEARANCE.accent;
       }
     }

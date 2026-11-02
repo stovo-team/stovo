@@ -425,9 +425,7 @@ export default function MultiAdminPage() {
       {/* Server Settings Modal */}
       {editingServer && (
         <PopupDialog className="multi-admin-dialog" ariaLabelledBy="space-settings-title" onClose={savingSettings ? undefined : () => setEditingServer(null)} closeOnBackdrop={!savingSettings} closeOnEscape={false} size="lg">
-            <div style={styles.badgePill} className="badgePill">{copy.spaceSettings}</div>
-            <h2 id="space-settings-title">{editingServer.name}</h2>
-            <p>{copy.manageSpace}</p>
+            <h2 id="space-settings-title" style={{ ...styles.title, marginBottom: 16 }}>{copy.spaceSettings}</h2>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
               <div className="supervisor-settings-tabs" role="tablist" aria-label={copy.spaceSettings}>

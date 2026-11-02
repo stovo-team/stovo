@@ -1259,9 +1259,9 @@
 .message-composer .composer-voice-button,
 .message-composer .attachment-picker-message-send {
   align-items: center;
-  background: var(--accent-primary);
+  background: var(--color-brand-gradient, var(--accent-primary));
   border: 0;
-  border-color: var(--accent-primary);
+  border-color: transparent;
   border-radius: var(--radius-circle);
   color: var(--color-palette-f2074b6cef37);
   cursor: pointer;
