@@ -1159,8 +1159,7 @@
   line-height: 1.2;
   text-transform: uppercase;
   vertical-align: middle;
-  width: fit-content;
-  max-width: max-content;
+  width: fit-content; max-width: max-content;
   box-sizing: border-box;
 }
 
