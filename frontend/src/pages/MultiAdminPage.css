@@ -18,11 +18,11 @@
 .supervisor-admin-page .iconActionButton:hover { background: var(--color-palette-cbb2e4db5d4f); color: var(--color-palette-f2074b6cef37); }
 .supervisor-admin-page .space-actions-menu-wrap { position: relative; }
 .space-actions-menu { position: fixed; z-index: 1000; min-width: 168px; padding: 5px; border: 1px solid var(--color-palette-f23dbc60903d); border-radius: var(--radius-surface); background: var(--color-palette-b3fd66482950); box-shadow: 0 12px 28px var(--color-palette-7fd79c00875b); }
-.space-actions-menu button { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--radius-control); color: var(--color-palette-4ce8179368dc); background: transparent; text-align: left; font: inherit; font-size: var(--font-size-small); cursor: pointer; }
+.space-actions-menu button { display: flex; align-items: center; justify-content: flex-start; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: calc(var(--radius-surface) - 5px); color: var(--color-palette-4ce8179368dc); background: transparent; text-align: left; font: inherit; font-size: var(--font-size-small); cursor: pointer; }
 .space-actions-menu button:hover { background: var(--color-palette-cbb2e4db5d4f); }
 .space-actions-menu button.danger { color: var(--color-palette-1e989053067e); }
-.supervisor-admin-page .primaryPillButton { background: var(--color-palette-9eaa7706f04a) !important; box-shadow: none !important; }
-.supervisor-admin-page .primaryPillButton:hover { background: var(--color-palette-189a10aa4447) !important; box-shadow: none !important; }
+.supervisor-admin-page .primaryPillButton { background: var(--accent-primary) !important; color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important; box-shadow: none !important; }
+.supervisor-admin-page .primaryPillButton:hover { background: var(--accent-primary) !important; box-shadow: none !important; }
 .supervisor-admin-page .modalOverlay { padding: 16px !important; overflow-y: auto; }
 .supervisor-admin-page .modalCard { position: relative; width: min(100%, 520px) !important; max-width: 520px !important; max-height: calc(100vh - 32px); overflow-y: auto; padding: 22px 24px 20px !important; border-radius: var(--radius-panel) !important; }
 .supervisor-admin-page .modalTitle { font-size: var(--font-size-heading) !important; margin: 0 48px 3px 0 !important; }
@@ -41,9 +41,10 @@
 .supervisor-admin-page .secondaryPillButton, .supervisor-admin-page .primaryPillButton { padding: 9px 16px !important; font-size: var(--font-size-small) !important; }
 .supervisor-admin-page .monitoringStatus { margin-top: 8px; gap: 8px; }
 .supervisor-admin-page .monitoringDisabledButton { padding: 6px 9px; border-radius: var(--radius-control); font-size: var(--font-size-caption); }
-.supervisor-admin-page .supervisor-settings-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 4px 0 14px; padding: 3px; border-radius: var(--radius-surface); background: var(--color-palette-e6505b2c1235); }
-.supervisor-admin-page .supervisor-settings-tabs button { flex: 1 0 auto; padding: 8px 10px; border: 0; border-radius: var(--radius-control); color: var(--color-palette-b14132ba5d1f); background: transparent; font: inherit; font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); cursor: pointer; }
-.supervisor-admin-page .supervisor-settings-tabs button.active { color: var(--color-palette-f2074b6cef37); background: var(--color-palette-ab488a84422b); }
+.supervisor-admin-page .supervisor-settings-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 4px 0 16px; padding: 4px; border: 1px solid var(--border-default, var(--color-palette-35bd0b3c87df)); border-radius: var(--radius-pill); background: var(--background-secondary, var(--color-palette-e6505b2c1235)); }
+.supervisor-admin-page .supervisor-settings-tabs button { flex: 1 0 auto; padding: 8px 14px; border: 1px solid transparent; border-radius: var(--radius-pill); color: var(--text-secondary, var(--color-palette-b14132ba5d1f)); background: transparent; font: inherit; font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); cursor: pointer; white-space: nowrap; }
+.supervisor-admin-page .supervisor-settings-tabs button:hover:not(.active) { color: var(--text-primary, var(--color-palette-f2074b6cef37)); }
+.supervisor-admin-page .supervisor-settings-tabs button.active, .supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent-border-soft); color: var(--accent-primary); }
 .supervisor-admin-page .supervisor-settings-tab-panel { min-height: 160px; }
 .supervisor-admin-page .supervisor-settings-help { margin: 0 0 10px; color: var(--color-palette-58bea7ac093e); font-size: var(--font-size-caption); line-height: 1.45; }
 .supervisor-admin-page .supervisor-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 2px; border-bottom: 1px solid var(--color-palette-35bd0b3c87df); }
@@ -51,9 +52,65 @@
 .supervisor-admin-page .supervisor-setting-row > span:first-child { display: grid; gap: 3px; }
 .supervisor-admin-page .supervisor-setting-row strong { color: var(--color-palette-bfd4f8ffcad7); font-size: var(--font-size-small); }
 .supervisor-admin-page .supervisor-setting-row small { color: var(--color-palette-c82dff512e54); font-size: var(--font-size-caption); line-height: 1.35; }
-.supervisor-admin-page .supervisor-setting-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--color-palette-4a08e4d0db13); flex: 0 0 auto; }
+.supervisor-admin-page .supervisor-setting-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--color-palette-66341b70b395);
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+  box-shadow: none;
+}
+.supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked {
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  background: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  box-shadow: none;
+}
+.supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid var(--color-palette-f2074b6cef37);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.supervisor-admin-page .supervisor-setting-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline-offset: 2px;
+}
 .supervisor-admin-page .supervisor-setting-row.is-locked { opacity: .42; }
 .supervisor-admin-page .supervisor-setting-row.is-locked strong, .supervisor-admin-page .supervisor-setting-row.is-locked small { color: var(--color-palette-5c235b0966d4); }
+.supervisor-admin-page .supervisor-open-login-link,
+.supervisor-admin-page .supervisor-open-login-link:visited {
+  text-decoration: none !important;
+}
+.supervisor-admin-page .supervisor-open-login-link:hover {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+  text-decoration: none !important;
+}
+.supervisor-admin-page .supervisor-provision-button:hover {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+}
+.supervisor-admin-page .supervisor-save-settings-button:hover {
+  background: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37)) !important;
+}
+.supervisor-admin-page .multi-admin-dialog .popup-close:hover {
+  background: var(--color-palette-66341b70b395);
+}
 @media (max-width: 760px) {
   .supervisor-admin-page .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .supervisor-admin-page .header { align-items: flex-start; gap: 12px; }

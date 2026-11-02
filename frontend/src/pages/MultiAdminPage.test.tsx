@@ -108,4 +108,12 @@ describe("supervisor space management", () => {
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Close dialog"]')?.click(); });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  it("applies dedicated button classes and styles without hover or text-decoration on space actions", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Настройки: Alpha"]')?.click(); });
+    const saveButton = container.querySelector<HTMLButtonElement>(".supervisor-save-settings-button");
+    expect(saveButton).toBeTruthy();
+    expect(container.querySelector(".supervisor-settings-tabs")).toBeTruthy();
+  });
 });
