@@ -100,6 +100,11 @@ jobs:
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
     steps:
+      - name: Terminate lingering runner processes
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Get-Process node, git -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -468,6 +473,8 @@ jobs:
           if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
             $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
             docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+            docker container prune -f 2>$null | Out-Null
+            docker buildx prune -f --filter "until=24h" 2>$null | Out-Null
           }
 
   backend-ci:
@@ -1582,3 +1589,7 @@ jobs:
               --tag "ghcr.io/stovo-team/stovo-frontend:$COMMIT_SHA" \
               --push ./frontend
           fi
+
+          echo "Pruning temporary BuildKit builder cache..."
+          docker buildx prune -f --filter "until=24h" 2>/dev/null || true
+          docker container prune -f 2>/dev/null || true

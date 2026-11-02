@@ -11,3 +11,9 @@ it("retains automatic local worker selection outside CI", async () => {
   const { default: config } = await import("./vite.config");
   expect(config.test?.maxWorkers).toBeUndefined();
 });
+it("allows overriding CI workers via VITEST_MAX_WORKERS", async () => {
+  vi.stubEnv("CI", "true");
+  vi.stubEnv("VITEST_MAX_WORKERS", "4");
+  const { default: config } = await import("./vite.config");
+  expect(config.test?.maxWorkers).toBe(4);
+});

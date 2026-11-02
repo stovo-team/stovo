@@ -32,7 +32,11 @@ export default defineConfig({
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
     // Limit CI concurrency to keep memory available on the shared self-hosted E2E runners.
-    maxWorkers: process.env.CI ? 2 : undefined,
+    maxWorkers: process.env.CI
+      ? process.env.VITEST_MAX_WORKERS
+        ? Number(process.env.VITEST_MAX_WORKERS)
+        : 2
+      : undefined,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
