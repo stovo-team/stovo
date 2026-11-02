@@ -297,9 +297,10 @@ export default function MultiAdminPage() {
           <h1 style={styles.headerTitle}>{copy.title}</h1>
         </div>
         <div style={styles.headerActions}>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-            style={styles.secondaryPillButton}
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            style={styles.primaryPillButton}
+            className="primaryPillButton"
           >
             {copy.createSpace}
           </button>
@@ -345,7 +346,7 @@ export default function MultiAdminPage() {
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              {copy.noSpaces} <strong style={{ color: "var(--accent-primary)" }}>{copy.createSpace}</strong>
+              {copy.noSpaces} <strong style={{ color: "var(--color-palette-f2074b6cef37)" }}>{copy.createSpace}</strong>
             </div>
           ) : (
             <div style={styles.tableWrapper} className="tableWrapper">
@@ -601,15 +602,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   badgePill: {
     display: "inline-block",
-    padding: "6px 14px",
+    padding: "4px 12px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--accent-soft)",
-    color: "var(--accent-primary)",
-    fontSize: "var(--font-size-caption)",
+    backgroundColor: "var(--surface-card, var(--color-palette-95b1a9665923))",
+    color: "var(--text-secondary, var(--color-palette-177804c22590))",
+    fontSize: "var(--font-size-micro)",
     fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",
-    marginBottom: 0,
-    border: "1px solid var(--accent-border-soft)",
+    marginBottom: 12,
+    border: "1px solid var(--border-default, var(--color-palette-c34f5a2a4d80))",
   },
   title: {
     fontSize: "var(--font-size-heading)",
@@ -796,23 +797,23 @@ const styles: Record<string, React.CSSProperties> = {
   linkPill: {
     display: "inline-flex",
     alignItems: "center",
-    backgroundColor: "var(--accent-soft)",
-    color: "var(--accent-primary)",
-    border: "1px solid var(--accent-border-soft)",
-    padding: "6px 16px",
+    backgroundColor: "var(--surface-card, var(--color-palette-95b1a9665923))",
+    color: "var(--text-primary, var(--color-palette-f2074b6cef37))",
+    border: "1px solid var(--border-default, var(--color-palette-c34f5a2a4d80))",
+    padding: "6px 14px",
     borderRadius: "var(--radius-pill)",
-    fontFamily: "monospace",
+    fontFamily: "var(--font-family-mono, monospace)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-semibold)",
     textDecoration: "none",
-    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+    transition: "none",
   },
   statusPill: {
     padding: "6px 14px",
     borderRadius: "var(--radius-pill)",
-    backgroundColor: "var(--accent-soft)",
-    color: "var(--accent-primary)",
-    border: "1px solid var(--accent-border-soft)",
+    backgroundColor: "color-mix(in srgb, var(--success, var(--color-palette-0f176030df85)) 15%, transparent)",
+    color: "var(--success, var(--color-palette-0f176030df85))",
+    border: "1px solid color-mix(in srgb, var(--success, var(--color-palette-0f176030df85)) 30%, transparent)",
     fontSize: "var(--font-size-caption)",
     fontWeight: "var(--font-weight-bold)",
     letterSpacing: "0.5px",

@@ -146,17 +146,21 @@ describe("supervisor space management", () => {
     expect(document.body.querySelector(".invite-modal-link")?.textContent).toContain("/s/alpha/setup?token=inv-123");
   });
 
-  it("freezes hover on supervisor settings tabs and uses unified accent variables across action pills", async () => {
+  it("freezes hover on supervisor settings tabs and uses brand gradient on primary buttons", async () => {
     const { readTextFile } = await import("../testUtils/readTextFile");
     const css = readTextFile("src/pages/MultiAdminPage.css");
     expect(css).toMatch(/\.supervisor-settings-tabs button:hover/);
     expect(css).toMatch(/background:\s*var\(--surface-card/);
+    expect(css).toMatch(/background:\s*var\(--color-brand-gradient\)/);
 
     await act(async () => { root.render(<MultiAdminPage />); });
+    const createButton = container.querySelector<HTMLButtonElement>("header .primaryPillButton");
+    expect(createButton).toBeTruthy();
+    expect(createButton?.getAttribute("style")).toContain("var(--color-brand-gradient)");
+
     const spaceLink = container.querySelector<HTMLAnchorElement>('a[href="/s/alpha"]');
     expect(spaceLink).toBeTruthy();
-    expect(spaceLink?.getAttribute("style")).toContain("var(--accent-primary)");
-    expect(spaceLink?.getAttribute("style")).toContain("var(--accent-soft)");
+    expect(spaceLink?.getAttribute("style")).toContain("var(--surface-card");
   });
 
   it("renders Stovo logo in header, removes supervisor badge, and renders monitoring disabled as plain stat value", async () => {
