@@ -20,16 +20,16 @@
 :root[data-accent="amber"] {
   --accent-primary-light: var(--color-palette-4a08e4d0db13);
   --accent-primary-hover-light: var(--color-palette-13b406d84d60);
-  --accent-soft-light: var(--color-palette-5106142d0dc5);
-  --accent-border-soft-light: var(--color-palette-f8e175950dc1);
-  --focus-ring-light: var(--color-palette-0893ed5c5654);
+  --accent-soft-light: var(--color-palette-11d9e35d5c6f);
+  --accent-border-soft-light: var(--color-palette-e36caa45db11);
+  --focus-ring-light: var(--color-palette-0da75c40e531);
   --focus-shadow-light: var(--color-palette-da72197d9f13);
   --outline-soft-light: var(--color-palette-621e36260a8d);
   --accent-ring-light: var(--color-palette-29235c7bc27f);
   --accent-primary-dark: var(--color-palette-1661f4af04d2);
   --accent-primary-hover-dark: var(--color-palette-cc0822e25c32);
-  --accent-soft-dark: var(--color-palette-84ff0ef19f41);
-  --accent-border-soft-dark: var(--color-palette-9eaa7706f04a);
+  --accent-soft-dark: var(--color-palette-0da75c40e531);
+  --accent-border-soft-dark: var(--color-palette-e36caa45db11);
   --focus-ring-dark: var(--color-palette-e36caa45db11);
   --focus-shadow-dark: var(--color-palette-0da75c40e531);
   --outline-soft-dark: var(--color-palette-11d9e35d5c6f);

@@ -21,7 +21,7 @@ describe("quick access service row styles", () => {
     // Full layout (minimized chat layout off) must match normal chat rows.
     expect(row).toMatch(/grid-template-columns:\s*auto minmax\(0,\s*1fr\)(?:\s*auto)?/);
     expect(row).toMatch(/padding:\s*9px/);
-    expect(icon).toMatch(/background:\s*var\(--accent-primary\) !important/);
+    expect(icon).toMatch(/background:\s*var\(--color-brand-gradient\) !important/);
     expect(icon).toMatch(/border-radius:\s*var\(--radius-circle\)/);
     expect(icon).toMatch(/height:\s*44px/);
     expect(icon).toMatch(/width:\s*44px/);
