@@ -68,6 +68,15 @@ describe("supervisor space management", () => {
     expect(container.querySelector<HTMLInputElement>('input[type="text"]')!.autocomplete).toBe("username");
   });
 
+  it("renders Stovo logo and brand gradient login button on login screen", async () => {
+    localStorage.removeItem("master_admin_token");
+    await act(async () => { root.render(<MultiAdminPage />); });
+    expect(container.querySelector('img[alt="Stovo logo"]')).toBeTruthy();
+    const loginButton = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(loginButton).toBeTruthy();
+    expect(loginButton?.getAttribute("style")).toContain("var(--color-brand-gradient)");
+  });
+
   it("shows icon-only Settings and Invite, and puts destructive actions in the overflow menu", async () => {
     await act(async () => { root.render(<MultiAdminPage />); });
     expect(container.textContent).toContain("Ваши Space");
