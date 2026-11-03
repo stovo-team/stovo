@@ -71,34 +71,26 @@ input[type="radio"] {
 
 :root[data-theme-mode="dark"][data-wallpaper="dots"],
 :root[data-theme-mode="amoled"][data-wallpaper="dots"] {
-  --messages-panel-background:
-    radial-gradient(circle at 1px 1px, var(--color-palette-084e319cfa96) 1px, transparent 0),
+  --messages-panel-background: radial-gradient(circle at 1px 1px, var(--color-palette-084e319cfa96) 1px, transparent 0),
+    radial-gradient(ellipse 90% 55% at 50% -10%, color-mix(in oklab, var(--accent-primary) 12%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 65% 45% at 90% 100%, color-mix(in oklab, var(--color-palette-cb2995bdeeb5) 8%, transparent) 0%, transparent 60%),
     var(--canvas-amoled);
 }
 
 :root[data-theme-mode="dark"][data-wallpaper="paper"],
 :root[data-theme-mode="amoled"][data-wallpaper="paper"] {
-  --messages-panel-background:
-    linear-gradient(90deg, var(--color-palette-c7d424e71ccb) 1px, transparent 1px),
+  --messages-panel-background: linear-gradient(90deg, var(--color-palette-c7d424e71ccb) 1px, transparent 1px),
     linear-gradient(180deg, var(--color-palette-29f214e2f04b) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 50% at 20% 0%, color-mix(in oklab, var(--accent-primary) 10%, transparent) 0%, transparent 60%),
     var(--canvas-amoled);
 }
 
 :root[data-theme-mode="dark"][data-wallpaper="aurora"],
 :root[data-theme-mode="amoled"][data-wallpaper="aurora"] {
   --messages-panel-background:
-    radial-gradient(
-      ellipse 90% 70% at 18% 14%,
-      color-mix(in oklab, var(--accent-primary) 26%, transparent) 0%,
-      color-mix(in oklab, var(--accent-primary) 12%, transparent) 34%,
-      transparent 74%
-    ),
-    radial-gradient(
-      ellipse 75% 60% at 84% 10%,
-      var(--color-palette-0d39cde93c6d) 0%,
-      var(--color-palette-839465209c5f) 38%,
-      transparent 72%
-    ),
+    radial-gradient(ellipse 90% 70% at 18% 14%, color-mix(in oklab, var(--accent-primary) 32%, transparent) 0%, color-mix(in oklab, var(--accent-primary) 14%, transparent) 34%, transparent 74%),
+    radial-gradient(ellipse 75% 60% at 84% 10%, var(--color-palette-0d39cde93c6d) 0%, var(--color-palette-839465209c5f) 38%, transparent 72%),
+    radial-gradient(ellipse 60% 45% at 50% 90%, color-mix(in oklab, var(--color-palette-cb2995bdeeb5) 15%, transparent) 0%, transparent 65%),
     var(--canvas-amoled);
 }
 

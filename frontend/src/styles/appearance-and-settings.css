@@ -509,21 +509,24 @@
 }
 
 .settings-page.settings-appearance-view .appearance-done-button {
-  background: var(--accent-primary);
+  background: var(--color-brand-gradient) !important;
   border: 0;
   border-radius: var(--radius-pill);
+  box-shadow: 0 4px 14px var(--color-palette-9bd3ad92fa9e);
   color: var(--color-palette-f2074b6cef37);
+  cursor: pointer;
   display: block;
-  margin: 20px 0 0 auto;
+  font-weight: var(--font-weight-bold);
+  justify-self: stretch;
+  margin: 8px 0 0 auto;
   min-width: 120px;
   padding: 12px 22px;
-  width: auto;
-}
-
-.settings-page.settings-appearance-view .appearance-done-button {
-  justify-self: stretch;
-  margin-top: 8px;
+  transition: all var(--motion-route-duration-fast) var(--motion-route-ease);
   width: 100%;
+}
+.settings-page.settings-appearance-view .appearance-done-button:hover {
+  opacity: 0.94;
+  box-shadow: 0 6px 18px var(--color-palette-9bd3ad92fa9e);
 }
 
 .settings-page.settings-detail-view input[type="checkbox"],
@@ -694,48 +697,36 @@
 
 /* Unified segmented bars instead of separate circled pills. */
 .settings-page.settings-appearance-view .appearance-segment--bar {
-  background: var(--color-palette-d5d53cd7a124);
-  border: 1px solid var(--color-palette-42e7924c7b57);
-  border-radius: var(--radius-pill);
-  display: grid;
-  gap: 2px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 3px;
+  background: transparent; border: 0; border-radius: 0;
+  display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 0;
 }
 .settings-page.settings-appearance-view .appearance-segment--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .settings-page.settings-appearance-view .appearance-segment--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .settings-page.settings-appearance-view .appearance-segment--fonts {
-  border-radius: var(--radius-bubble);
-  gap: 4px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  padding: 4px;
+  background: transparent; border: 0; border-radius: 0; gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr)); padding: 0;
 }
-.settings-page.settings-appearance-view .appearance-segment--fonts button:nth-child(-n + 3) {
-  grid-column: span 2;
-}
-.settings-page.settings-appearance-view .appearance-segment--fonts button:nth-child(n + 4) {
-  grid-column: span 3;
-}
+.settings-page.settings-appearance-view .appearance-segment--fonts button:nth-child(-n + 3) { grid-column: span 2; }
+.settings-page.settings-appearance-view .appearance-segment--fonts button:nth-child(n + 4) { grid-column: span 3; }
 .settings-page.settings-appearance-view .appearance-segment--bar button {
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-pill);
-  color: var(--text-secondary);
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-semibold);
-  min-height: 40px;
-  min-width: 0;
-  padding: 0 8px;
+  background: var(--color-palette-d5d53cd7a124); border: 1px solid var(--color-palette-42e7924c7b57);
+  border-radius: var(--radius-pill); color: var(--text-secondary);
+  font-size: var(--font-size-small); font-weight: var(--font-weight-semibold);
+  min-height: 40px; min-width: 0; padding: 0 8px;
+  transition: all var(--motion-route-duration-fast) var(--motion-route-ease);
 }
-.settings-page.settings-appearance-view .appearance-segment--fonts button {
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-small);
+.settings-page.settings-appearance-view .appearance-segment--fonts button { border-radius: var(--radius-pill); font-size: var(--font-size-small); }
+.settings-page.settings-appearance-view .appearance-segment--bar button:not(.active):hover {
+  background: color-mix(in srgb, var(--accent-primary) 12%, var(--color-palette-d5d53cd7a124));
+  border-color: color-mix(in srgb, var(--accent-primary) 35%, var(--color-palette-42e7924c7b57));
+  color: var(--text-primary);
 }
 .settings-page.settings-appearance-view .appearance-segment--bar button.active,
 .settings-page.settings-appearance-view .appearance-segment--bar button[aria-selected="true"] {
-  background: color-mix(in srgb, var(--accent-primary) 18%, var(--color-palette-b9e92bd0b37d));
-  box-shadow: inset 0 0 0 1px var(--accent-primary);
-  color: var(--accent-primary);
+  background: var(--color-brand-gradient) !important;
+  border: 0 !important;
+  box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0) !important;
+  color: var(--color-palette-f2074b6cef37) !important;
 }
 
 .settings-page.settings-appearance-view .appearance-swatch-row {

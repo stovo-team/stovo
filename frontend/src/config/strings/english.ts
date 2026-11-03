@@ -543,7 +543,7 @@ export const strings = {
 
     // section labels
     theme: "Theme",
-    accentColour: "Accent colour",
+    accentColour: "Accent color",
     chatBackground: "Chat background",
     messageStyle: "Message style",
     chatMedia: "Chat media",
@@ -630,7 +630,7 @@ export const strings = {
     // preview aria
     themePreviewAria: "Theme preview",
     themeModeAria: "Theme mode",
-    accentColourAria: "Accent colour",
+    accentColourAria: "Accent color",
     chatBackgroundAria: "Chat background",
 
     // accent labels

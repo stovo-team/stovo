@@ -24,4 +24,9 @@ describe("brand gradient active states", () => {
   it("configures vibrant orange accent tokens for amber accent", () => {
     expect(css).toMatch(/:root\[data-accent="amber"\]\s*\{[^}]*--accent-primary-light:\s*var\(--color-palette-367909d8ceaa\)/);
   });
+
+  it("applies brand gradient to active appearance segment tabs and done button", () => {
+    expect(css).toMatch(/\.appearance-segment--bar button\.active[^{]*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+    expect(css).toMatch(/\.appearance-done-button\s*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+  });
 });
