@@ -46,6 +46,7 @@ interface CustomSavedTheme {
   bubbleShape: BubbleShapeChoice;
   messageFont: MessageFontChoice;
   messageScale?: number;
+  variants?: Array<"light" | "dark">;
 }
 
 function loadSavedThemes(): CustomSavedTheme[] {
@@ -80,7 +81,7 @@ export function AppearanceThemeControls({ appearance, strings, updateAppearance,
           const isActive = appearance.themeMode === preset.themeMode && appearance.accent === preset.presetTone && appearance.wallpaper === preset.wallpaper && appearance.bubbleRadius === preset.bubbleRadius;
           return <button type="button" key={preset.id} className={`appearance-preset-card${isActive ? " is-active" : ""}`} onClick={() => updateAppearance({ themeMode: preset.themeMode, accent: preset.presetTone, messageFont: preset.messageFont, bubbleShape: preset.bubbleShape, bubbleRadius: preset.bubbleRadius, wallpaper: preset.wallpaper })}><span className={`appearance-preset-swatch appearance-preset-swatch--${preset.id}`} /><span className="appearance-preset-name">{strings.appearance.presets?.[preset.id] ?? preset.name}</span></button>;
         })}
-        {savedThemes.map((saved, idx) => {
+        {savedThemes.filter((saved) => !saved.variants || appearance.themeMode === "system" || saved.variants.includes(appearance.themeMode === "light" ? "light" : "dark")).map((saved, idx) => {
           const isActive = appearance.themeMode === saved.themeMode && appearance.accent === saved.accent && appearance.wallpaper === saved.wallpaper && appearance.bubbleRadius === saved.bubbleRadius;
           return <button type="button" key={`custom-${idx}`} className={`appearance-preset-card${isActive ? " is-active" : ""}`} onClick={() => updateAppearance({ themeMode: saved.themeMode, accent: saved.accent, customAccent: saved.customAccent, wallpaper: saved.wallpaper, bubbleRadius: saved.bubbleRadius, bubbleShape: saved.bubbleShape, messageFont: saved.messageFont, messageScale: saved.messageScale })}><span className="appearance-preset-swatch appearance-preset-swatch--custom" style={{ background: saved.customAccent || "var(--color-brand-gradient)" }} /><span className="appearance-preset-name">{saved.name}</span></button>;
         })}
@@ -133,6 +134,7 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
   const [gradientNotice, setGradientNotice] = useState<string | null>(null);
   const [customThemeName, setCustomThemeName] = useState("");
   const [themeSaveNotice, setThemeSaveNotice] = useState<string | null>(null);
+  const [themeVariants, setThemeVariants] = useState<Array<"light" | "dark">>(["light", "dark"]);
 
   const gradientPreviewCss = `linear-gradient(${gradientAngle}deg, ${gradientStart}, ${gradientEnd})`;
 
@@ -160,7 +162,8 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
         bubbleRadius: appearance.bubbleRadius,
         bubbleShape: appearance.bubbleShape,
         messageFont: appearance.messageFont,
-        messageScale: appearance.messageScale
+        messageScale: appearance.messageScale,
+        variants: themeVariants
       });
       localStorage.setItem("familyMessenger.customThemes", JSON.stringify(savedThemes));
     } catch {
@@ -222,7 +225,12 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
       <p className="appearance-section-label">{strings.appearance.saveCurrentTheme}</p>
       <div className="custom-theme-builder-row">
         <input type="text" className="settings-text-input" placeholder={strings.appearance.themeName} value={customThemeName} onChange={(e) => setCustomThemeName(e.target.value)} />
-        <button type="button" className="secondary-button" onClick={handleSaveTheme}>{strings.appearance.saveCurrentTheme}</button>
+        <div className="custom-theme-variants" role="group">
+          {(["light", "dark"] as const).map((variant) => (
+            <label key={variant} className="custom-theme-variant"><input type="checkbox" checked={themeVariants.includes(variant)} onChange={(e) => setThemeVariants((prev) => e.target.checked ? [...prev, variant] : prev.filter((v) => v !== variant))} /><span>{strings.appearance.themes[variant]}</span></label>
+          ))}
+        </div>
+        <button type="button" className="secondary-button custom-theme-save-btn" disabled={themeVariants.length === 0} onClick={handleSaveTheme}>{strings.appearance.saveCurrentTheme}</button>
       </div>
       {themeSaveNotice && <span className="appearance-notice-badge">{themeSaveNotice}</span>}
     </section>
