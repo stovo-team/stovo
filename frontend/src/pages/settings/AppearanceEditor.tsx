@@ -111,17 +111,15 @@ export function AppearanceEditor({
   return (
     <>
       <div className="appearance-editor appearance-editor-enter">
-        <header className="section-title-row appearance-editor-header">
+        <div className="section-title-row appearance-editor-header">
           <BackButton
             buttonRef={backButtonRef}
-            className="appearance-editor-back mobile-back-button"
+            className="mobile-back-button"
             ariaLabel={strings.appearance.backToSettings}
             onClick={discardAndClose}
           />
-          <h2 className="appearance-editor-title" tabIndex={-1}>
-            {strings.appearance.title}
-          </h2>
-        </header>
+          <h2>{strings.appearance.title}</h2>
+        </div>
 
 
         <div className="appearance-editor-preview-column">{previewHero}</div>

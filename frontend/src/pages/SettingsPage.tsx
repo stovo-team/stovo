@@ -447,12 +447,14 @@ export default function SettingsPage() {
         aria-busy={isLoading}
       >
         {isAppearanceEditor ? (
-          <AppearanceEditor
-            accessToken={accessToken}
-            displayName={profileForm.displayName}
-            backButtonRef={appearanceBackRef}
-            onBack={() => setActiveSettingsItem(null)}
-          />
+          <section className="settings-detail-panel" role="region" aria-label={strings.appearance.title}>
+            <AppearanceEditor
+              accessToken={accessToken}
+              displayName={profileForm.displayName}
+              backButtonRef={appearanceBackRef}
+              onBack={() => setActiveSettingsItem(null)}
+            />
+          </section>
         ) : (
           <>
             {!activeSettingsItem && (
