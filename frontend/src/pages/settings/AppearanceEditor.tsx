@@ -3,10 +3,10 @@ import { RotateCcw } from "lucide-react";
 import { useStrings } from "../../i18n/LanguageContext";
 import { ApiError } from "../../api/client";
 import { uploadFile } from "../../api/files";
-import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
-import { AppearanceMessageControls, AppearanceThemeControls, GeneralChatControls } from "./AppearanceControls";
-import { BackButton } from "../../components/BackButton";
 import { avatarInitials } from "../../utils/avatarInitials";
+import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
+import { AppearanceAdvancedControls, AppearanceMessageControls, AppearanceThemeControls } from "./AppearanceControls";
+import { BackButton } from "../../components/BackButton";
 import { PopupDialog } from "../../components/ui/Popup";
 import { PopupButton } from "../../components/ui/PopupButton";
 
@@ -135,15 +135,14 @@ export function AppearanceEditor({
           ) : (
             <>
               <AppearanceMessageControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} />
-              <section className="appearance-section-card appearance-section-card--stack">
-                <p className="appearance-section-label">{strings.appearance.chatMedia}</p>
-                <GeneralChatControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} />
-              </section>
+              <AppearanceAdvancedControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} wallpaperInputRef={wallpaperInputRef} isUploadingWallpaper={isUploadingWallpaper} error={wallpaperUploadError} onSelectWallpaper={selectWallpaper} onUpload={(event) => void handleCustomWallpaperSelect(event)} />
             </>
           )}
 
-          <button type="button" className="ghost-button appearance-reset-button" onClick={() => setResetConfirmOpen(true)}><RotateCcw aria-hidden="true" size={16} />{strings.appearance.resetAppearance}</button>
-          <button type="button" className="appearance-done-button" onClick={commitAndClose}>{strings.appearance.done}</button>
+          <div className="appearance-footer-actions">
+            <button type="button" className="ghost-button appearance-reset-button" onClick={() => setResetConfirmOpen(true)}><RotateCcw aria-hidden="true" size={16} />{strings.appearance.resetAppearance}</button>
+            <button type="button" className="appearance-done-button" onClick={commitAndClose}>{strings.appearance.save ?? strings.appearance.done}</button>
+          </div>
         </div>
       </div>
 

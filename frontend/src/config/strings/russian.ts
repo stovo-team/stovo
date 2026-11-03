@@ -568,6 +568,7 @@ export const strings = {
     font: "Шрифт",
     simpleTab: "Общие",
     advancedTab: "Дополнительно",
+    bubbleShapeLabel: "Форма сообщений", gradientConstructor: "Градиентный акцент", gradientPreview: "Предпросмотр", colorStart: "Начало", colorEnd: "Конец", gradientAngle: "Угол", applyGradient: "Применить", gradientApplied: "Применено!", customThemeConstructor: "Сохранить текущую тему", themeName: "Название темы", saveTheme: "Сохранить текущую тему", saveCurrentTheme: "Сохранить текущую тему", customPresets: "Свои пресеты", themeSaved: "Сохранено в пресеты!", save: "Сохранить",
 
     // theme options
     themes: {
