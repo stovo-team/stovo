@@ -75,7 +75,7 @@ export function AppearanceThemeControls({ appearance, strings, updateAppearance,
         ))}
       </div>
     </section>
-    <section className="appearance-section-card appearance-section-card--stack">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.themePresets}</p>
       <div className="appearance-presets-grid" role="group" aria-label={strings.appearance.themePresets}>
         {THEME_PRESETS.map((preset) => {
@@ -92,7 +92,7 @@ export function AppearanceThemeControls({ appearance, strings, updateAppearance,
         </ColorPickerPopover>
       </div>
     </section>
-    <section className="appearance-section-card appearance-section-card--stack">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.chatBackground}</p>
       <div className="appearance-wallpaper-grid" role="radiogroup" aria-label={strings.appearance.chatBackgroundAria}>{wallpaperTiles.map((tile) => { const label = strings.appearance.wallpapers[tile.value] ?? tile.value; return <button type="button" className={`appearance-wallpaper-tile ${tile.thumbClass}`} role="radio" aria-checked={appearance.wallpaper === tile.value} aria-label={label} title={label} key={tile.value} disabled={isUploadingWallpaper && tile.value === "custom"} onClick={() => onSelectWallpaper(tile.value)}>{tile.value === "custom" ? <span>{appearance.customWallpaperFileId ? strings.appearance.photo : strings.appearance.upload}</span> : null}</button>; })}</div>
       <input ref={wallpaperInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" type="file" onChange={onUpload} />
@@ -205,7 +205,7 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
       </div>
     </section>
 
-    <section className="appearance-section-card">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.chatBackground}</p>
       <div className="appearance-wallpaper-grid" role="radiogroup" aria-label={strings.appearance.chatBackgroundAria}>{wallpaperTiles.map((tile) => { const label = strings.appearance.wallpapers[tile.value] ?? tile.value; return <button type="button" className={`appearance-wallpaper-tile ${tile.thumbClass}`} role="radio" aria-checked={appearance.wallpaper === tile.value} aria-label={label} title={label} key={tile.value} disabled={isUploadingWallpaper && tile.value === "custom"} onClick={() => onSelectWallpaper(tile.value)}>{tile.value === "custom" ? <span>{appearance.customWallpaperFileId ? strings.appearance.photo : strings.appearance.upload}</span> : null}</button>; })}</div>
       <input ref={wallpaperInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" type="file" onChange={onUpload} />
@@ -216,11 +216,13 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
     <section className="appearance-section-card appearance-section-card--stack">
       <p className="appearance-section-label">{strings.appearance.saveCurrentTheme}</p>
       <div className="custom-theme-builder-row">
-        <input type="text" className="settings-text-input" placeholder={strings.appearance.themeName} value={customThemeName} onChange={(e) => setCustomThemeName(e.target.value)} />
-        <div className="custom-theme-variants" role="group">
-          {(["light", "dark"] as const).map((variant) => (
-            <label key={variant} className="custom-theme-variant"><input type="checkbox" checked={themeVariants.includes(variant)} onChange={(e) => setThemeVariants((prev) => e.target.checked ? [...prev, variant] : prev.filter((v) => v !== variant))} /><span>{strings.appearance.themes[variant]}</span></label>
-          ))}
+        <div className="custom-theme-builder-fields">
+          <input type="text" className="settings-text-input" placeholder={strings.appearance.themeName} value={customThemeName} onChange={(e) => setCustomThemeName(e.target.value)} />
+          <div className="custom-theme-variants" role="group">
+            {(["light", "dark"] as const).map((variant) => (
+              <label key={variant} className="custom-theme-variant"><input type="checkbox" checked={themeVariants.includes(variant)} onChange={(e) => setThemeVariants((prev) => e.target.checked ? [...prev, variant] : prev.filter((v) => v !== variant))} /><span>{strings.appearance.themes[variant]}</span></label>
+            ))}
+          </div>
         </div>
         <button type="button" className="secondary-button custom-theme-save-btn" disabled={themeVariants.length === 0} onClick={handleSaveTheme}>{strings.appearance.saveCurrentTheme}</button>
       </div>
