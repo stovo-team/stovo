@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 const css = readCssSource("src/styles.css");
 
 describe("brand gradient active states", () => {
-  it("applies brand gradient to active space switcher item", () => {
-    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
-    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*color:\s*var\(--color-palette-f2074b6cef37\) !important/);
+  it("applies transparent plain accent to active space switcher item", () => {
+    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--accent-primary\)\s*18%,\s*transparent\) !important/);
+    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--accent-primary\)\s*35%,\s*transparent\)/);
   });
 
   it("applies brand gradient to active left navigation pill", () => {

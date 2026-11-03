@@ -1962,22 +1962,23 @@ h2 {
 
 .server-switcher-item.is-active,
 .server-switcher-item.is-active:disabled {
-  background: var(--color-brand-gradient) !important;
-  color: var(--color-palette-f2074b6cef37) !important;
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  color: var(--text-primary) !important;
   cursor: default;
   opacity: 1;
 }
 
 .server-switcher-item.is-active strong {
-  color: var(--color-palette-f2074b6cef37) !important;
+  color: var(--text-primary) !important;
 }
 
 .server-switcher-item.is-active small {
-  color: var(--color-palette-ec8f9ad7eab9) !important;
+  color: var(--text-secondary) !important;
 }
 
 .server-switcher-item.is-active svg {
-  color: var(--color-palette-f2074b6cef37) !important;
+  color: var(--accent-primary) !important;
 }
 
 .server-switcher-connect {
