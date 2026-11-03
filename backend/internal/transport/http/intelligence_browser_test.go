@@ -184,3 +184,28 @@ func TestOIDCBrowserAuthorizeReturnsToLoginThenConsumesBoundTicket(t *testing.T)
 		t.Fatalf("OIDC callback = %q (err %v)", response.Header().Get("Location"), err)
 	}
 }
+
+func TestOIDCBrowserAuthorizeAcceptsOpenIDScope(t *testing.T) {
+	handler := NewIntelligenceOIDCHandler(IntelligenceOIDCHandlerConfig{Enabled: true, BrowserAppURL: "https://messenger.example"})
+	query := url.Values{
+		"response_type": {"code"}, "client_id": {"intelligence-client"}, "redirect_uri": {"https://intelligence.example/callback"},
+		"state": {"state-one"}, "nonce": {"nonce-one"}, "code_challenge": {browserTestChallenge}, "code_challenge_method": {"S256"}, "scope": {"openid"},
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/oauth2/authorize?"+query.Encode(), nil))
+	if response.Code != http.StatusFound {
+		t.Fatalf("OIDC openid scope: status=%d body=%s", response.Code, response.Body.String())
+	}
+	location, err := url.Parse(response.Header().Get("Location"))
+	if err != nil || location.Query().Has("scope") || location.Query().Get("flow") != "oidc" {
+		t.Fatalf("OIDC consent continuation = %q (err %v)", response.Header().Get("Location"), err)
+	}
+	for _, scopes := range [][]string{{"profile"}, {"openid profile"}, {"openid", "openid"}, {""}} {
+		query["scope"] = scopes
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/oauth2/authorize?"+query.Encode(), nil))
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("scope %q: status=%d, want 400", scopes, response.Code)
+		}
+	}
+}
