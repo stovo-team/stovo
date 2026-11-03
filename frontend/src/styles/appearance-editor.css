@@ -775,14 +775,15 @@
 .appearance-gradient-box { border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; }
 .gradient-constructor-preview { border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); height: 24px; }
 .gradient-constructor-controls { align-items: center; display: flex; gap: 8px; }
-.gradient-color-swatch-btn { border: 1.5px solid var(--border-default); border-radius: var(--radius-circle); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); cursor: pointer; display: inline-block; flex: 0 0 24px; height: 24px; width: 24px; }
+.gradient-color-swatch-btn { box-sizing: border-box; min-height: 24px; min-width: 24px; padding: 0; border: 1.5px solid var(--border-default); border-radius: var(--radius-circle); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); cursor: pointer; display: inline-block; flex: 0 0 24px; height: 24px; width: 24px; }
 .gradient-angle-buttons { display: flex; gap: 4px; }
 .gradient-angle-pill { background: var(--surface-raised, #23272e); border: 1px solid var(--border-default); border-radius: var(--radius-pill); color: var(--text-secondary); cursor: pointer; font-size: var(--font-size-caption); min-width: 38px; padding: 4px 10px; }
 .gradient-angle-pill.active { background: var(--color-brand-gradient); border-color: transparent; color: var(--color-palette-f2074b6cef37); }
 .gradient-apply-btn { border-radius: var(--radius-pill); font-size: var(--font-size-caption); margin-left: auto; padding: 4px 12px; }
 .appearance-notice-badge { color: var(--color-palette-6fe2857611b4); font-size: var(--font-size-caption); font-weight: var(--font-weight-medium); }
 .custom-theme-builder-row { align-items: flex-start; display: flex; flex-direction: column; gap: 10px; }
-.custom-theme-builder-row .settings-text-input { font-size: var(--font-size-ui-small); max-width: 220px; padding: 6px 12px; width: 100%; }
+.custom-theme-builder-fields { align-items: center; display: flex; gap: 12px; width: 100%; }
+.custom-theme-builder-row .settings-text-input { font-size: var(--font-size-ui-small); flex: 1 1 140px; max-width: 200px; padding: 6px 12px; width: auto; }
 .custom-theme-variants { display: flex; gap: 16px; }
 .custom-theme-variant { align-items: center; color: var(--text-secondary); display: inline-flex; font-size: var(--font-size-ui-small); gap: 6px; }
 .custom-theme-save-btn { border-radius: var(--radius-pill); padding: 6px 18px; width: auto; }
@@ -790,7 +791,11 @@
 .settings-page.settings-appearance-view .appearance-footer-actions .appearance-reset-button { background: transparent !important; border: 1px solid var(--border-default) !important; box-shadow: none !important; color: var(--text-secondary) !important; cursor: pointer; margin: 0 !important; padding: 8px 16px !important; width: auto !important; }
 .settings-page.settings-appearance-view .appearance-footer-actions .appearance-done-button { margin: 0 !important; min-width: 120px !important; padding: 8px 24px !important; width: auto !important; }
 .settings-page.settings-appearance-view .appearance-presets-grid { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; justify-content: flex-end !important; }
-.settings-page.settings-appearance-view .appearance-preset-card { align-items: center !important; background: color-mix(in oklab, var(--surface-raised, #23272e) 85%, transparent) !important; border: 1px solid var(--border-default) !important; border-radius: var(--radius-surface) !important; color: var(--text-primary) !important; display: flex !important; flex-direction: column !important; gap: 4px !important; justify-content: center !important; min-width: 84px !important; padding: 6px 10px !important; text-align: center !important; width: auto !important; }
+.settings-page.settings-appearance-view .appearance-preset-card { align-items: center !important; background: color-mix(in oklab, var(--surface-raised, #23272e) 85%, transparent) !important; border: 1px solid var(--border-default) !important; border-radius: var(--radius-surface) !important; color: var(--text-primary) !important; display: flex !important; flex-direction: column !important; gap: 4px !important; justify-content: center !important; min-width: 0 !important; padding: 6px 8px !important; text-align: center !important; width: auto !important; }
 .settings-page.settings-appearance-view .appearance-wallpaper-grid { display: flex !important; gap: 8px !important; justify-content: flex-end !important; width: 100% !important; }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile { aspect-ratio: unset !important; border-radius: 8px !important; flex: 0 0 56px !important; height: 38px !important; min-height: 38px !important; padding: 0 !important; }
 .settings-page.settings-appearance-view .appearance-mode-cards { align-items: center !important; display: flex !important; gap: 8px !important; justify-self: end !important; margin-left: auto !important; }
+.gradient-constructor-controls .color-picker__popover { left: 0; right: auto; }
+.settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline { align-items: center; gap: 12px; grid-template-columns: auto minmax(0, 1fr); }
+.settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .appearance-section-label { margin: 0; }
+.settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .appearance-wallpaper-upload-row, .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .error-text { grid-column: 1 / -1; }

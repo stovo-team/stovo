@@ -1,5 +1,6 @@
 import { ChangeEvent, RefObject, useState } from "react";
 import { Palette } from "lucide-react";
+import { ColorPickerPopover } from "../../components/ui/ColorPickerPopover";
 import { PopupSelect } from "../../components/ui/PopupSelect";
 import { DESIGN_COLOR_VALUES } from "../../design-system/palette";
 import {
@@ -74,7 +75,7 @@ export function AppearanceThemeControls({ appearance, strings, updateAppearance,
         ))}
       </div>
     </section>
-    <section className="appearance-section-card appearance-section-card--stack">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.themePresets}</p>
       <div className="appearance-presets-grid" role="group" aria-label={strings.appearance.themePresets}>
         {THEME_PRESETS.map((preset) => {
@@ -85,14 +86,13 @@ export function AppearanceThemeControls({ appearance, strings, updateAppearance,
           const isActive = appearance.themeMode === saved.themeMode && appearance.accent === saved.accent && appearance.wallpaper === saved.wallpaper && appearance.bubbleRadius === saved.bubbleRadius;
           return <button type="button" key={`custom-${idx}`} className={`appearance-preset-card${isActive ? " is-active" : ""}`} onClick={() => updateAppearance({ themeMode: saved.themeMode, accent: saved.accent, customAccent: saved.customAccent, wallpaper: saved.wallpaper, bubbleRadius: saved.bubbleRadius, bubbleShape: saved.bubbleShape, messageFont: saved.messageFont, messageScale: saved.messageScale })}><span className="appearance-preset-swatch appearance-preset-swatch--custom" style={{ background: saved.customAccent || "var(--color-brand-gradient)" }} /><span className="appearance-preset-name">{saved.name}</span></button>;
         })}
-        <label className={`appearance-preset-card appearance-preset-card--custom${appearance.accent === "custom" ? " is-active" : ""}`} title={strings.appearance.customColor}>
+        <ColorPickerPopover value={appearance.customAccent} label={strings.appearance.customAccentAria} className={`appearance-preset-card appearance-preset-card--custom${appearance.accent === "custom" ? " is-active" : ""}`} onChange={(hex) => updateAppearance({ accent: "custom", customAccent: hex })}>
           <span className="appearance-preset-swatch appearance-preset-swatch--custom" style={{ background: appearance.customAccent }}><Palette size={14} aria-hidden="true" /></span>
           <span className="appearance-preset-name">{strings.appearance.customColor}</span>
-          <input type="color" className="visually-hidden" value={appearance.customAccent} aria-label={strings.appearance.customAccentAria} onChange={(e) => updateAppearance({ accent: "custom", customAccent: e.target.value })} />
-        </label>
+        </ColorPickerPopover>
       </div>
     </section>
-    <section className="appearance-section-card appearance-section-card--stack">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.chatBackground}</p>
       <div className="appearance-wallpaper-grid" role="radiogroup" aria-label={strings.appearance.chatBackgroundAria}>{wallpaperTiles.map((tile) => { const label = strings.appearance.wallpapers[tile.value] ?? tile.value; return <button type="button" className={`appearance-wallpaper-tile ${tile.thumbClass}`} role="radio" aria-checked={appearance.wallpaper === tile.value} aria-label={label} title={label} key={tile.value} disabled={isUploadingWallpaper && tile.value === "custom"} onClick={() => onSelectWallpaper(tile.value)}>{tile.value === "custom" ? <span>{appearance.customWallpaperFileId ? strings.appearance.photo : strings.appearance.upload}</span> : null}</button>; })}</div>
       <input ref={wallpaperInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" type="file" onChange={onUpload} />
@@ -181,25 +181,17 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
           const label = strings.appearance.accents[accent.value] ?? accent.label;
           return <button type="button" className={`color-swatch ${accent.swatchClassName} ${appearance.accent === accent.value ? "active" : ""}`} aria-label={strings.appearance.accentOptionLabel(label)} aria-pressed={appearance.accent === accent.value} title={strings.appearance.accentOptionLabel(label)} key={accent.value} onClick={() => updateAppearance({ accent: accent.value })} />;
         })}
-        <label className={`color-swatch custom appearance-custom-swatch${appearance.accent === "custom" ? " active" : ""}`} title={strings.appearance.customColor} style={{ background: appearance.customAccent }}>
+        <ColorPickerPopover value={appearance.customAccent} label={strings.appearance.customAccentAria} className={`color-swatch custom appearance-custom-swatch${appearance.accent === "custom" ? " active" : ""}`} style={{ background: appearance.customAccent }} onChange={(hex) => { updateAppearance({ accent: "custom", customAccent: hex }); applyGradient(hex, gradientEnd, gradientAngle); }}>
           <Palette aria-hidden="true" size={15} strokeWidth={2.25} />
-          <span className="visually-hidden">{strings.appearance.customColor}</span>
-          <input type="color" value={appearance.customAccent} aria-label={strings.appearance.customAccentAria} onChange={(event) => { updateAppearance({ accent: "custom", customAccent: event.target.value }); applyGradient(event.target.value, gradientEnd, gradientAngle); }} />
-        </label>
+        </ColorPickerPopover>
       </div>
 
       <div className="appearance-gradient-box">
         <span className="appearance-row-label">{strings.appearance.gradientConstructor}</span>
         <div className="gradient-constructor-preview" style={{ backgroundImage: gradientPreviewCss }} />
         <div className="gradient-constructor-controls">
-          <label className="gradient-color-swatch-btn" title={strings.appearance.colorStart} style={{ background: gradientStart }}>
-            <span className="visually-hidden">{strings.appearance.colorStart}</span>
-            <input type="color" className="visually-hidden" value={gradientStart} onChange={(e) => { setGradientStart(e.target.value); applyGradient(e.target.value, gradientEnd, gradientAngle); }} />
-          </label>
-          <label className="gradient-color-swatch-btn" title={strings.appearance.colorEnd} style={{ background: gradientEnd }}>
-            <span className="visually-hidden">{strings.appearance.colorEnd}</span>
-            <input type="color" className="visually-hidden" value={gradientEnd} onChange={(e) => { setGradientEnd(e.target.value); applyGradient(gradientStart, e.target.value, gradientAngle); }} />
-          </label>
+          <ColorPickerPopover value={gradientStart} label={strings.appearance.colorStart} className="gradient-color-swatch-btn" style={{ background: gradientStart }} onChange={(hex) => { setGradientStart(hex); applyGradient(hex, gradientEnd, gradientAngle); }} />
+          <ColorPickerPopover value={gradientEnd} label={strings.appearance.colorEnd} className="gradient-color-swatch-btn" style={{ background: gradientEnd }} onChange={(hex) => { setGradientEnd(hex); applyGradient(gradientStart, hex, gradientAngle); }} />
           <div className="gradient-angle-buttons">
             {[45, 90, 135, 180].map((deg) => (
               <button key={deg} type="button" className={`gradient-angle-pill${gradientAngle === deg ? " active" : ""}`} onClick={() => { setGradientAngle(deg); applyGradient(gradientStart, gradientEnd, deg); }}>{deg}°</button>
@@ -213,7 +205,7 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
       </div>
     </section>
 
-    <section className="appearance-section-card">
+    <section className="appearance-section-card appearance-section-card--inline">
       <p className="appearance-section-label">{strings.appearance.chatBackground}</p>
       <div className="appearance-wallpaper-grid" role="radiogroup" aria-label={strings.appearance.chatBackgroundAria}>{wallpaperTiles.map((tile) => { const label = strings.appearance.wallpapers[tile.value] ?? tile.value; return <button type="button" className={`appearance-wallpaper-tile ${tile.thumbClass}`} role="radio" aria-checked={appearance.wallpaper === tile.value} aria-label={label} title={label} key={tile.value} disabled={isUploadingWallpaper && tile.value === "custom"} onClick={() => onSelectWallpaper(tile.value)}>{tile.value === "custom" ? <span>{appearance.customWallpaperFileId ? strings.appearance.photo : strings.appearance.upload}</span> : null}</button>; })}</div>
       <input ref={wallpaperInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" type="file" onChange={onUpload} />
@@ -224,11 +216,13 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
     <section className="appearance-section-card appearance-section-card--stack">
       <p className="appearance-section-label">{strings.appearance.saveCurrentTheme}</p>
       <div className="custom-theme-builder-row">
-        <input type="text" className="settings-text-input" placeholder={strings.appearance.themeName} value={customThemeName} onChange={(e) => setCustomThemeName(e.target.value)} />
-        <div className="custom-theme-variants" role="group">
-          {(["light", "dark"] as const).map((variant) => (
-            <label key={variant} className="custom-theme-variant"><input type="checkbox" checked={themeVariants.includes(variant)} onChange={(e) => setThemeVariants((prev) => e.target.checked ? [...prev, variant] : prev.filter((v) => v !== variant))} /><span>{strings.appearance.themes[variant]}</span></label>
-          ))}
+        <div className="custom-theme-builder-fields">
+          <input type="text" className="settings-text-input" placeholder={strings.appearance.themeName} value={customThemeName} onChange={(e) => setCustomThemeName(e.target.value)} />
+          <div className="custom-theme-variants" role="group">
+            {(["light", "dark"] as const).map((variant) => (
+              <label key={variant} className="custom-theme-variant"><input type="checkbox" checked={themeVariants.includes(variant)} onChange={(e) => setThemeVariants((prev) => e.target.checked ? [...prev, variant] : prev.filter((v) => v !== variant))} /><span>{strings.appearance.themes[variant]}</span></label>
+            ))}
+          </div>
         </div>
         <button type="button" className="secondary-button custom-theme-save-btn" disabled={themeVariants.length === 0} onClick={handleSaveTheme}>{strings.appearance.saveCurrentTheme}</button>
       </div>

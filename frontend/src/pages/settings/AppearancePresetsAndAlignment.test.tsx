@@ -111,7 +111,10 @@ describe("Appearance Presets and Alignment", () => {
 
     const customCard = container.querySelector(".appearance-preset-card--custom");
     expect(customCard).toBeTruthy();
-    expect(customCard?.querySelector('input[type="color"]')).toBeTruthy();
+    expect(customCard?.tagName).toBe("BUTTON");
+    expect(container.querySelector('input[type="color"]')).toBeNull();
+    act(() => { (customCard as HTMLButtonElement).click(); });
+    expect(container.querySelector(".color-picker__popover .color-picker__hex")).toBeTruthy();
   });
 
   it("uses dropdowns for curvature shape and font, slider only for message size without buttons", () => {
