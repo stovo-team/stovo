@@ -1894,15 +1894,15 @@ h2 {
   flex-direction: column;
   gap: 8px;
   left: 50% !important;
-  max-width: calc(100vw - 32px);
-  min-width: min(300px, calc(100vw - 32px));
+  max-width: min(240px, calc(100vw - 32px));
+  min-width: 0;
   padding: 8px;
   position: absolute;
   right: auto !important;
   top: calc(100% + 10px);
   transform: translateX(-50%) !important;
   transform-origin: top center !important;
-  width: max-content;
+  width: min(240px, calc(100vw - 32px));
   z-index: 9999;
 }
 
