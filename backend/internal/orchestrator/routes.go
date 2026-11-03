@@ -472,29 +472,20 @@ func parseEnvSlice(env []string) map[string]string {
 	return m
 }
 
-func (o *Orchestrator) getNavTabsForServer(slug string) string {
+func (o *Orchestrator) getServerColumn(slug, col, fallback string) string {
 	if o.masterDB == nil {
-		return `{"chats":true,"storage":true,"plans":true,"settings":true}`
+		return fallback
 	}
-	var navTabsStr string
-	err := o.masterDB.QueryRow(`SELECT COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).Scan(&navTabsStr)
-	if err != nil || navTabsStr == "" {
-		return `{"chats":true,"storage":true,"plans":true,"settings":true}`
+	var val string
+	if err := o.masterDB.QueryRow(fmt.Sprintf(`SELECT COALESCE(%s::text, '') FROM servers WHERE slug=$1`, col), slug).Scan(&val); err != nil || val == "" {
+		return fallback
 	}
-	return navTabsStr
+	return val
 }
 
-func (o *Orchestrator) getChatTypesForServer(slug string) string {
-	if o.masterDB == nil {
-		return `{"direct":true,"group":true,"channel":true,"voice":true}`
-	}
-	var chatTypesStr string
-	err := o.masterDB.QueryRow(`SELECT COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).Scan(&chatTypesStr)
-	if err != nil || chatTypesStr == "" {
-		return `{"direct":true,"group":true,"channel":true,"voice":true}`
-	}
-	return chatTypesStr
-}
+func (o *Orchestrator) getNavTabsForServer(slug string) string { return o.getServerColumn(slug, "nav_tabs", `{"chats":true,"storage":true,"plans":true,"settings":true}`) }
+func (o *Orchestrator) getChatTypesForServer(slug string) string { return o.getServerColumn(slug, "chat_types", `{"direct":true,"group":true,"channel":true,"voice":true}`) }
+func (o *Orchestrator) getNameForServer(slug string) string { return o.getServerColumn(slug, "name", "") }
 
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
@@ -519,6 +510,8 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 			return o.getNavTabsForServer(slug)
 		case "CHAT_TYPES":
 			return o.getChatTypesForServer(slug)
+		case "SERVER_NAME":
+			return o.getNameForServer(slug)
 		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
@@ -672,6 +665,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
 		fmt.Sprintf("CHAT_TYPES=%s", chatTypes),
+		fmt.Sprintf("SERVER_NAME=%s", strings.TrimSpace(get("SERVER_NAME", ""))),
 		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.34.0.2/32")),
 	}, slug, get)
 }
@@ -704,6 +698,14 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 		netName = "stovo_default"
 	}
 	env := backendContainerEnv(slug, func(key, fallback string) string {
+		switch key {
+		case "NAV_TABS":
+			return o.getNavTabsForServer(slug)
+		case "CHAT_TYPES":
+			return o.getChatTypesForServer(slug)
+		case "SERVER_NAME":
+			return o.getNameForServer(slug)
+		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
 		}

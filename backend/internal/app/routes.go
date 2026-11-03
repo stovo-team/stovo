@@ -293,21 +293,18 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 }
 
 func (s *Server) setupStatusHandler() http.Handler {
-	handler := httptransport.NewSetupStatusHandler(httptransport.SetupStatusOperations{
+	return httptransport.NewSetupStatusHandler(httptransport.SetupStatusOperations{
 		Load: func(ctx context.Context) (httptransport.SetupStatus, error) {
 			status, err := s.setupStatus.Load(ctx)
-			return httptransport.SetupStatus{
-				ActiveUserCount: status.ActiveUserCount,
-				FamilyName:      status.FamilyName,
-			}, err
+			fn := status.FamilyName
+			if s.cfg.ServerName != "" {
+				fn = &s.cfg.ServerName
+			}
+			return httptransport.SetupStatus{ActiveUserCount: status.ActiveUserCount, FamilyName: fn}, err
 		},
-		NavTabs: func() any {
-			navTabs := parseNavTabsEnv()
-			return &navTabs
-		},
+		NavTabs: func() any { navTabs := parseNavTabsEnv(); return &navTabs },
 		LogError: func(operation string, err error) { s.logger.Errorf("auth", "%s error=%v", operation, err) },
 	})
-	return handler
 }
 
 func (s *Server) familyRoutes() httptransport.FamilyRoutes {

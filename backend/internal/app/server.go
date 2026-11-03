@@ -377,34 +377,31 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 		return familyPublic{}, err
 	}
 	family := familyPublicFromDetails(f)
+	if s.cfg.ServerName != "" {
+		family.Name = s.cfg.ServerName
+		if f.Name != s.cfg.ServerName && s.familyProfile != nil {
+			name := s.cfg.ServerName
+			_ = s.familyProfile.Update(context.Background(), familyID, featurefamily.ProfilePatch{Name: &name, UpdatedAt: nowString()})
+		}
+	}
 	quality, err := s.callMediaQualityForFamily(context.Background(), familyID)
 	if err != nil {
 		return familyPublic{}, err
 	}
-	family.ScreenShareBitrateKbps = quality.ScreenShareBitrateKbps
-	family.CameraBitrateKbps = quality.CameraBitrateKbps
-	family.GroupCallScreenShareBitrateKbps = quality.GroupCallScreenShareBitrateKbps
-	family.GroupCallCameraBitrateKbps = quality.GroupCallCameraBitrateKbps
-	family.DMCallScreenShareBitrateKbps = quality.DMCallScreenShareBitrateKbps
-	family.DMCallCameraBitrateKbps = quality.DMCallCameraBitrateKbps
+	family.ScreenShareBitrateKbps, family.CameraBitrateKbps = quality.ScreenShareBitrateKbps, quality.CameraBitrateKbps
+	family.GroupCallScreenShareBitrateKbps, family.GroupCallCameraBitrateKbps = quality.GroupCallScreenShareBitrateKbps, quality.GroupCallCameraBitrateKbps
+	family.DMCallScreenShareBitrateKbps, family.DMCallCameraBitrateKbps = quality.DMCallScreenShareBitrateKbps, quality.DMCallCameraBitrateKbps
 	aiFeatures, err := s.familyAIFeatureSettings(context.Background(), familyID)
 	if err != nil {
 		return familyPublic{}, err
 	}
-	family.TranslationEnabled = aiFeatures.Translation
-	family.CallRecordingEnabled = aiFeatures.CallRecording
-	family.AINotesEnabled = aiFeatures.AINotes
-	family.VoiceTranscriptionEnabled = aiFeatures.VoiceTranscription
+	family.TranslationEnabled, family.CallRecordingEnabled = aiFeatures.Translation, aiFeatures.CallRecording
+	family.AINotesEnabled, family.VoiceTranscriptionEnabled = aiFeatures.AINotes, aiFeatures.VoiceTranscription
 	return family, nil
 }
 
 func parseNavTabsEnv() NavTabsConfig {
-	cfg := NavTabsConfig{
-		Chats:    true,
-		Storage:  true,
-		Plans:    true,
-		Settings: true,
-	}
+	cfg := NavTabsConfig{Chats: true, Storage: true, Plans: true, Settings: true}
 	raw := strings.TrimSpace(os.Getenv("NAV_TABS"))
 	if raw == "" {
 		return cfg

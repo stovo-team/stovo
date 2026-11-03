@@ -2475,16 +2475,13 @@ button.minimized-call-button--end:active:not(:disabled) {
   .app-frame > .app-nav.app-nav--active-variant-a a.active {
     background: transparent;
     border-radius: 0;
-    color: var(--accent-primary);
+    color: var(--color-palette-f2074b6cef37) !important;
   }
 
   .app-frame > .app-nav.app-nav--active-variant-a a.active::before {
-    background: color-mix(
-      in oklab,
-      var(--accent-soft) calc(var(--nav-active-pill-opacity) * 100%),
-      transparent
-    );
+    background: var(--color-brand-gradient) !important;
     border-radius: var(--radius-pill);
+    box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
     content: "";
     display: block;
     height: 44px;

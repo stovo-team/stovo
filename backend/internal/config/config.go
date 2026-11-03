@@ -14,10 +14,9 @@ type Config struct {
 	AppName    string
 	AppVersion string
 	AppEnv     string
-	Host       string
-	Port       int
-	ServerID   string
-	AppURL     string
+	Host, ServerID, ServerName string
+	Port                       int
+	AppURL                     string
 	// CORSAllowedOrigins contains additional exact browser origins, for
 	// example the Capacitor WebView origin. AppURL is always allowed too.
 	CORSAllowedOrigins []string
@@ -169,8 +168,7 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("parse LOG_BUFFER_MAX_RECORDS: %w", err)
 	}
 
-	storagePath := filepath.Clean(getenv("LOCAL_STORAGE_PATH", filepath.Join(".", "uploads")))
-	logPath := filepath.Clean(getenv("LOG_FILE_PATH", filepath.Join(".", "logs", "backend.log")))
+	storagePath, logPath := filepath.Clean(getenv("LOCAL_STORAGE_PATH", filepath.Join(".", "uploads"))), filepath.Clean(getenv("LOG_FILE_PATH", filepath.Join(".", "logs", "backend.log")))
 
 	cfg := Config{
 		AppName:                      getenv("APP_NAME", "family-messenger-backend"),
@@ -179,6 +177,7 @@ func Load() (Config, error) {
 		Host:                         getenv("HOST", "0.0.0.0"),
 		Port:                         port,
 		ServerID:                     strings.TrimSpace(os.Getenv("SERVER_ID")),
+		ServerName:                   strings.TrimSpace(os.Getenv("SERVER_NAME")),
 		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
 		CORSAllowedOrigins:           splitCSV(getenv("CORS_ALLOWED_ORIGINS", "https://localhost,capacitor://localhost")),
 		TrustedProxyCIDRs:            splitCSV(getenv("TRUSTED_PROXY_CIDRS", "172.30.0.2/32")),

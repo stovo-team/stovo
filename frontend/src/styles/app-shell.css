@@ -2049,22 +2049,22 @@ h2 {
 
 .server-switcher-item.is-active,
 .server-switcher-item.is-active:disabled {
-  background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface));
-  color: var(--text-primary);
+  background: var(--color-brand-gradient) !important;
+  color: var(--color-palette-f2074b6cef37) !important;
   cursor: default;
   opacity: 1;
 }
 
 .server-switcher-item.is-active strong {
-  color: var(--text-primary);
+  color: var(--color-palette-f2074b6cef37) !important;
 }
 
 .server-switcher-item.is-active small {
-  color: color-mix(in oklab, var(--text-primary) 72%, var(--text-secondary));
+  color: var(--color-palette-ec8f9ad7eab9) !important;
 }
 
 .server-switcher-item.is-active svg {
-  color: var(--accent-primary);
+  color: var(--color-palette-f2074b6cef37) !important;
 }
 
 .server-switcher-connect {
