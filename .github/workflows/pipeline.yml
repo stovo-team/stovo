@@ -1594,6 +1594,7 @@ jobs:
             docker buildx build \
               --platform linux/amd64,linux/arm64 \
               --file backend/Dockerfile.orchestrator \
+              --label "org.opencontainers.image.revision=$COMMIT_SHA" \
               --tag ghcr.io/stovo-team/stovo-orchestrator:latest \
               --tag "ghcr.io/stovo-team/stovo-orchestrator:$COMMIT_SHA" \
               --push ./backend
@@ -1602,6 +1603,7 @@ jobs:
             docker buildx build \
               --platform linux/amd64,linux/arm64 \
               --file backend/Dockerfile \
+              --label "org.opencontainers.image.revision=$COMMIT_SHA" \
               --tag ghcr.io/stovo-team/stovo-backend:latest \
               --tag "ghcr.io/stovo-team/stovo-backend:$COMMIT_SHA" \
               --push ./backend

@@ -543,8 +543,8 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		if inspectErr != nil {
 			needsRecreate = true
 		} else {
-			if inspect.Config != nil && inspect.Config.Image != desiredImage && inspect.Image != desiredImage {
-				needsRecreate = true
+			if needsRecreate, err = o.backendImageChanged(ctx, desiredImage, inspect); err != nil {
+				return err
 			}
 			existingEnv := parseEnvSlice(inspect.Config.Env)
 			desiredEnvMap := parseEnvSlice(desiredEnv)
