@@ -126,23 +126,17 @@ describe("Appearance Presets and Alignment", () => {
       );
     });
 
-    const selects = container.querySelectorAll("select.appearance-dropdown-select");
+    const selects = container.querySelectorAll(".appearance-popup-select");
     expect(selects.length).toBe(2);
 
-    const bubbleShapeSelect = container.querySelector("#bubble-shape-select") as HTMLSelectElement | null;
-    expect(bubbleShapeSelect).toBeTruthy();
-
-    const fontSelect = container.querySelector("#message-font-select") as HTMLSelectElement | null;
-    expect(fontSelect).toBeTruthy();
+    const selectTriggers = container.querySelectorAll(".popup-select__trigger");
+    expect(selectTriggers.length).toBe(2);
 
     const rangeSliders = container.querySelectorAll('input[type="range"]');
     expect(rangeSliders.length).toBe(2);
-
-    const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBe(0);
   });
 
-  it("uses unified section-title-row in AppearanceEditor and excludes chat media from appearance", () => {
+  it("uses unified section-title-row in AppearanceEditor, footer save button and excludes chat media", () => {
     const onBack = vi.fn();
     const backButtonRef = createRef<HTMLButtonElement>();
 
@@ -173,5 +167,10 @@ describe("Appearance Presets and Alignment", () => {
     expect(title?.textContent).toBe("Appearance");
 
     expect(container.textContent).not.toContain("Auto-download media");
+
+    const footer = container.querySelector(".appearance-footer-actions");
+    expect(footer).toBeTruthy();
+    expect(footer?.querySelector(".appearance-done-button")?.textContent).toBe("Save");
+    expect(footer?.querySelector(".appearance-reset-button")).toBeTruthy();
   });
 });

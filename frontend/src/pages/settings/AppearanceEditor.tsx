@@ -139,8 +139,10 @@ export function AppearanceEditor({
             </>
           )}
 
-          <button type="button" className="ghost-button appearance-reset-button" onClick={() => setResetConfirmOpen(true)}><RotateCcw aria-hidden="true" size={16} />{strings.appearance.resetAppearance}</button>
-          <button type="button" className="appearance-done-button" onClick={commitAndClose}>{strings.appearance.done}</button>
+          <div className="appearance-footer-actions">
+            <button type="button" className="ghost-button appearance-reset-button" onClick={() => setResetConfirmOpen(true)}><RotateCcw aria-hidden="true" size={16} />{strings.appearance.resetAppearance}</button>
+            <button type="button" className="appearance-done-button" onClick={commitAndClose}>{strings.appearance.save ?? strings.appearance.done}</button>
+          </div>
         </div>
       </div>
 

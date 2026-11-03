@@ -552,7 +552,7 @@ export const strings = {
     font: "Font",
     simpleTab: "General",
     advancedTab: "Advanced",
-    bubbleShapeLabel: "Bubble shape", gradientConstructor: "Gradient constructor", gradientPreview: "Live preview", colorStart: "Start", colorEnd: "End", gradientAngle: "Angle", applyGradient: "Apply gradient", gradientApplied: "Applied!", customThemeConstructor: "Custom theme constructor", themeName: "Theme name", saveTheme: "Save theme to server", themeSaved: "Theme saved successfully",
+    bubbleShapeLabel: "Bubble shape", gradientConstructor: "Gradient accent", gradientPreview: "Gradient preview", colorStart: "Start", colorEnd: "End", gradientAngle: "Angle", applyGradient: "Apply", gradientApplied: "Applied!", customThemeConstructor: "Save current theme", themeName: "Theme name", saveTheme: "Save current theme", saveCurrentTheme: "Save current theme", customPresets: "Custom presets", themeSaved: "Saved to presets!", save: "Save",
 
     // theme options
     themes: {
