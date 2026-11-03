@@ -119,7 +119,9 @@ func (h *IntelligenceOIDCHandler) authorize(w stdhttp.ResponseWriter, r *stdhttp
 					return
 				}
 			}
-			location, locationErr := intelligenceBrowserConsentPage(h.config.BrowserAppURL, "oidc", r.URL.Query())
+			parameters := r.URL.Query()
+			parameters.Del("scope")
+			location, locationErr := intelligenceBrowserConsentPage(h.config.BrowserAppURL, "oidc", parameters)
 			if locationErr != nil {
 				writeOIDCError(w, stdhttp.StatusServiceUnavailable, "server_error")
 				return
@@ -197,7 +199,12 @@ func (h *IntelligenceOIDCHandler) token(w stdhttp.ResponseWriter, r *stdhttp.Req
 }
 
 func parseOIDCAuthorizationRequest(query url.Values) (IntelligenceOIDCAuthorizationRequest, bool) {
-	if len(query) != 7 {
+	if _, exists := query["scope"]; exists {
+		scope, valid := singleFormValue(query, "scope")
+		if !valid || scope != "openid" || len(query) != 8 {
+			return IntelligenceOIDCAuthorizationRequest{}, false
+		}
+	} else if len(query) != 7 {
 		return IntelligenceOIDCAuthorizationRequest{}, false
 	}
 	responseType, a := singleFormValue(query, "response_type")
