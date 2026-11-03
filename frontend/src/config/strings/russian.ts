@@ -559,6 +559,8 @@ export const strings = {
 
     // section labels
     theme: "Тема",
+    themePresets: "Пресеты",
+    presets: { sunset: "Закат", aurora: "Северное сияние", cyber: "Кибер-фиолет", ocean: "Морской бриз", rose: "Теплая роза", midnight: "Полночный обсидиан" },
     accentColour: "Акцентный цвет",
     chatBackground: "Фон чата",
     messageStyle: "Стиль сообщений",

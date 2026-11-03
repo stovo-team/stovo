@@ -543,6 +543,8 @@ export const strings = {
 
     // section labels
     theme: "Theme",
+    themePresets: "Presets",
+    presets: { sunset: "Sunset Glow", aurora: "Northern Aurora", cyber: "Cyber Violet", ocean: "Ocean Breeze", rose: "Warm Rose", midnight: "Midnight Obsidian" },
     accentColour: "Accent color",
     chatBackground: "Chat background",
     messageStyle: "Message style",
