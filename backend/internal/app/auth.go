@@ -58,7 +58,11 @@ func (s *Server) processSetup(ctx context.Context, payload transporthttp.SetupRe
 	if err != nil {
 		return nil, http.StatusInternalServerError, "Could not create session"
 	}
-	command := identity.SetupCommand{FamilyName: payload.FamilyName, UserID: userID, Username: payload.Username, PasswordHash: passwordHash, DisplayName: payload.DisplayName, Role: ownerRole, ChatID: uuid.NewString(), RefreshTokenID: uuid.NewString(), TokenHash: tokenHash, ExpiresAt: expiresAt, CreatedAt: nowString(), IPAddress: clientIP}
+	familyName := payload.FamilyName
+	if s.cfg.ServerName != "" {
+		familyName = s.cfg.ServerName
+	}
+	command := identity.SetupCommand{FamilyName: familyName, UserID: userID, Username: payload.Username, PasswordHash: passwordHash, DisplayName: payload.DisplayName, Role: ownerRole, ChatID: uuid.NewString(), RefreshTokenID: uuid.NewString(), TokenHash: tokenHash, ExpiresAt: expiresAt, CreatedAt: nowString(), IPAddress: clientIP}
 	status := http.StatusCreated
 	if setupStatus.ActiveUserCount > 0 {
 		if err = s.setup.CreateAdmin(ctx, command); err != nil {

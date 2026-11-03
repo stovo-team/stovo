@@ -1,0 +1,32 @@
+import { readCssSource } from "./test/cssSource";
+import { describe, expect, it } from "vitest";
+
+const css = readCssSource("src/styles.css");
+
+describe("brand gradient active states", () => {
+  it("applies transparent plain accent to active space switcher item", () => {
+    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--accent-primary\)\s*18%,\s*transparent\) !important/);
+    expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--accent-primary\)\s*35%,\s*transparent\)/);
+  });
+
+  it("applies brand gradient to active left navigation pill", () => {
+    expect(css).toMatch(/\.app-frame > \.app-nav.*a\.active::before\s*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+  });
+
+  it("constrains space switcher menu width to fit within chat list", () => {
+    expect(css).toMatch(/\.server-switcher-menu\s*\{[^}]*max-width:\s*min\(240px,\s*calc\(100vw - 32px\)\)/);
+  });
+
+  it("applies brand gradient to outgoing message bubble background", () => {
+    expect(css).toMatch(/\.message-bubble\.mine\s*\{[^}]*background:\s*var\(--color-brand-gradient/);
+  });
+
+  it("configures vibrant orange accent tokens for amber accent", () => {
+    expect(css).toMatch(/:root\[data-accent="amber"\]\s*\{[^}]*--accent-primary-light:\s*var\(--color-palette-367909d8ceaa\)/);
+  });
+
+  it("applies brand gradient to active appearance segment tabs and done button", () => {
+    expect(css).toMatch(/\.appearance-segment--bar button\.active[^{]*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+    expect(css).toMatch(/\.appearance-done-button\s*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+  });
+});

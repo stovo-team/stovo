@@ -18,16 +18,16 @@
 }
 
 :root[data-accent="amber"] {
-  --accent-primary-light: var(--color-palette-4a08e4d0db13);
-  --accent-primary-hover-light: var(--color-palette-13b406d84d60);
+  --accent-primary-light: var(--color-palette-367909d8ceaa);
+  --accent-primary-hover-light: var(--color-palette-18315ad7cebe);
   --accent-soft-light: var(--color-palette-11d9e35d5c6f);
   --accent-border-soft-light: var(--color-palette-e36caa45db11);
   --focus-ring-light: var(--color-palette-0da75c40e531);
   --focus-shadow-light: var(--color-palette-da72197d9f13);
   --outline-soft-light: var(--color-palette-621e36260a8d);
   --accent-ring-light: var(--color-palette-29235c7bc27f);
-  --accent-primary-dark: var(--color-palette-1661f4af04d2);
-  --accent-primary-hover-dark: var(--color-palette-cc0822e25c32);
+  --accent-primary-dark: var(--color-palette-367909d8ceaa);
+  --accent-primary-hover-dark: var(--color-palette-18315ad7cebe);
   --accent-soft-dark: var(--color-palette-0da75c40e531);
   --accent-border-soft-dark: var(--color-palette-e36caa45db11);
   --focus-ring-dark: var(--color-palette-e36caa45db11);
@@ -1142,12 +1142,9 @@
 
   .app-frame > .app-nav.app-nav--active-variant-a a.active::before,
   .app-frame > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c) a.active::before {
-    background: color-mix(
-      in oklab,
-      var(--accent-soft) calc(var(--nav-active-pill-opacity) * 100%),
-      transparent
-    );
+    background: var(--color-brand-gradient) !important;
     border-radius: var(--radius-pill);
+    box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
     content: "";
     height: 44px;
     left: 50%;
@@ -1161,12 +1158,15 @@
     z-index: 0;
   }
 
+  .app-frame > .app-nav a.active,
+  .app-frame > .app-nav a.active .ms-icon,
+  .app-frame > .app-nav a.active svg,
   .app-frame > .app-nav.app-nav--active-variant-a a.active > span:not(.ms-icon),
   .app-frame
     > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c)
     a.active
     > span:not(.ms-icon) {
-    color: var(--accent-primary);
+    color: var(--color-palette-f2074b6cef37) !important;
     font-size: var(--font-size-caption);
     font-weight: var(--font-weight-bold);
   }
@@ -1617,8 +1617,9 @@
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
-    max-width: calc(100vw - 32px);
-    width: max-content;
+    max-width: min(240px, calc(100vw - 32px));
+    min-width: 0;
+    width: min(240px, calc(100vw - 32px));
     z-index: 9999;
   }
 

@@ -380,7 +380,7 @@
 }
 
 .message-bubble.mine {
-  background: var(--bubble-outgoing);
+  background: var(--color-brand-gradient, var(--bubble-outgoing));
   border: 0;
   border-radius: var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
   color: var(--color-palette-f2074b6cef37);

@@ -162,7 +162,7 @@
 }
 
 .appearance-preview-hero .preview-bubble.mine {
-  background: var(--bubble-outgoing);
+  background: var(--color-brand-gradient, var(--bubble-outgoing));
   color: var(--color-palette-f2074b6cef37);
 }
 

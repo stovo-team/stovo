@@ -4,7 +4,7 @@ import { useStrings } from "../../i18n/LanguageContext";
 import { ApiError } from "../../api/client";
 import { uploadFile } from "../../api/files";
 import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
-import { AppearanceMessageControls, AppearanceThemeControls } from "./AppearanceControls";
+import { AppearanceMessageControls, AppearanceThemeControls, GeneralChatControls } from "./AppearanceControls";
 import { BackButton } from "../../components/BackButton";
 import { avatarInitials } from "../../utils/avatarInitials";
 import { PopupDialog } from "../../components/ui/Popup";
@@ -23,6 +23,7 @@ export function AppearanceEditor({
 }) {
   const strings = useStrings();
   const { appearance, setAppearance, updateAppearance } = useAppearance();
+  const [activeTab, setActiveTab] = useState<"simple" | "advanced">("simple");
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [wallpaperUploadError, setWallpaperUploadError] = useState<string | null>(null);
   const [isUploadingWallpaper, setIsUploadingWallpaper] = useState(false);
@@ -126,8 +127,23 @@ export function AppearanceEditor({
         <div className="appearance-editor-preview-column">{previewHero}</div>
 
         <div className="appearance-editor-controls">
-          <AppearanceThemeControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} wallpaperInputRef={wallpaperInputRef} isUploadingWallpaper={isUploadingWallpaper} error={wallpaperUploadError} onSelectWallpaper={selectWallpaper} onUpload={(event) => void handleCustomWallpaperSelect(event)} />
-          <AppearanceMessageControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} />
+          <div className="appearance-segment appearance-segment--bar appearance-segment--2 appearance-editor-nav" role="tablist" aria-label={strings.appearance.title}>
+            <button type="button" role="tab" aria-selected={activeTab === "simple"} className={activeTab === "simple" ? "active" : ""} onClick={() => setActiveTab("simple")}>{strings.appearance.simpleTab}</button>
+            <button type="button" role="tab" aria-selected={activeTab === "advanced"} className={activeTab === "advanced" ? "active" : ""} onClick={() => setActiveTab("advanced")}>{strings.appearance.advancedTab}</button>
+          </div>
+
+          {activeTab === "simple" ? (
+            <AppearanceThemeControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} wallpaperInputRef={wallpaperInputRef} isUploadingWallpaper={isUploadingWallpaper} error={wallpaperUploadError} onSelectWallpaper={selectWallpaper} onUpload={(event) => void handleCustomWallpaperSelect(event)} />
+          ) : (
+            <>
+              <AppearanceMessageControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} />
+              <section className="appearance-section-card appearance-section-card--stack">
+                <p className="appearance-section-label">{strings.appearance.chatMedia}</p>
+                <GeneralChatControls appearance={appearance} strings={strings} updateAppearance={updateAppearance} />
+              </section>
+            </>
+          )}
+
           <button type="button" className="ghost-button appearance-reset-button" onClick={() => setResetConfirmOpen(true)}><RotateCcw aria-hidden="true" size={16} />{strings.appearance.resetAppearance}</button>
           <button type="button" className="appearance-done-button" onClick={commitAndClose}>{strings.appearance.done}</button>
         </div>
