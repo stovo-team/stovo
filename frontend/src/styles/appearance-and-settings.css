@@ -728,7 +728,8 @@
   box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0) !important;
   color: var(--color-palette-f2074b6cef37) !important;
 }
-
+.settings-page.settings-appearance-view .appearance-editor-nav { margin-bottom: 12px; }
+.settings-page.settings-appearance-view .appearance-font-label { margin-top: 14px; }
 .settings-page.settings-appearance-view .appearance-swatch-row {
   align-items: center;
   display: flex;

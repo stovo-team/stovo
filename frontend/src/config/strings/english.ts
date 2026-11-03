@@ -547,6 +547,9 @@ export const strings = {
     chatBackground: "Chat background",
     messageStyle: "Message style",
     chatMedia: "Chat media",
+    font: "Font",
+    simpleTab: "General",
+    advancedTab: "Advanced",
 
     // theme options
     themes: {

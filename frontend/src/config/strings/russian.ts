@@ -563,6 +563,9 @@ export const strings = {
     chatBackground: "Фон чата",
     messageStyle: "Стиль сообщений",
     chatMedia: "Медиа в чате",
+    font: "Шрифт",
+    simpleTab: "Общие",
+    advancedTab: "Дополнительно",
 
     // theme options
     themes: {
