@@ -40,6 +40,12 @@ for (const baseScenario of shellScenarios) {
       requestParameters.redirect_uri,
     ]);
     await expect(page.getByRole("button", { name: continueLabel })).toBeVisible();
+    const overflowingConsentElements = await page.locator(
+      ".intelligence-identity-panel, .intelligence-identity-details, .intelligence-identity-details dd, .intelligence-identity-details code",
+    ).evaluateAll((elements) => elements
+      .filter((element) => element.scrollWidth > element.clientWidth)
+      .map((element) => element.className || element.tagName));
+    expect(overflowingConsentElements).toEqual([]);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await screenshot(page, info, scenario);
   });

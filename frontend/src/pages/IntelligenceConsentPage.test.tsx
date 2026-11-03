@@ -82,7 +82,10 @@ describe("IntelligenceConsentPage", () => {
       oidcParameters.client_id,
       oidcParameters.redirect_uri,
     ]);
-    expect(container.querySelector<HTMLButtonElement>("button")?.textContent).toBe(englishStrings.intelligence.continueToIntelligence);
+    const continueButton = container.querySelector<HTMLButtonElement>("button");
+    expect(continueButton?.getAttribute("aria-label")).toBeNull();
+    expect(continueButton?.getAttribute("aria-labelledby")).toBeNull();
+    expect(continueButton?.textContent?.trim()).toBe(englishStrings.intelligence.continueToIntelligence);
   });
 
   it("sends the unchanged OIDC request parameters when creating a browser session", async () => {
