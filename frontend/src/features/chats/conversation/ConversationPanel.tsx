@@ -339,19 +339,8 @@ export function ConversationPanel({
       );
     }
     return (
-      <div className="chat-empty-state-wrapper">
-        <div className="chat-empty-state-card">
-          <div className="chat-empty-icon-pill">
-            <MessageCircle aria-hidden="true" size={38} />
-          </div>
-          <h2 className="chat-empty-title">{copy.selectChat}</h2>
-          <p className="chat-empty-subtitle">
-              {copy.chooseConversation}
-          </p>
-          <button type="button" className="chat-empty-action-pill" onClick={onOpenNewChat}>
-            {copy.newMessage}
-          </button>
-        </div>
+      <div className="chat-empty-state-wrapper" aria-hidden="true">
+        <div className="chat-empty-state-card" />
       </div>
     );
   }
