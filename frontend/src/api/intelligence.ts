@@ -40,7 +40,7 @@ export interface IntelligenceConnectionsResponse {
 export type IntelligenceAuthRequest = <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>;
 
 export function intelligenceBrowserSessionEndpoint() {
-  return getClusterPath("/api/v2/intelligence/authorize-session");
+  return "/api/v2/intelligence/authorize-session";
 }
 
 export function intelligenceSourceAuthorizeEndpoint() {
@@ -55,7 +55,7 @@ export function intelligenceSourceOfferEndpoint(parameters: IntelligenceConsentP
     code_challenge: parameters.code_challenge,
     code_challenge_method: parameters.code_challenge_method,
   });
-  return `${intelligenceSourceAuthorizeEndpoint()}?${query.toString()}`;
+  return `/api/v2/intelligence/authorize?${query.toString()}`;
 }
 
 export function intelligenceOIDCAuthorizeURL(parameters: IntelligenceConsentParameters): string {
