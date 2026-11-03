@@ -103,8 +103,8 @@ export function AppearanceMessageControls({ appearance, strings, updateAppearanc
 }
 
 export function AppearanceAdvancedControls({ appearance, strings, updateAppearance, wallpaperInputRef, isUploadingWallpaper, error, onSelectWallpaper, onUpload }: Props & { wallpaperInputRef: RefObject<HTMLInputElement | null>; isUploadingWallpaper: boolean; error: string | null; onSelectWallpaper: (value: WallpaperChoice) => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void }) {
-  const [gradientStart, setGradientStart] = useState(DESIGN_COLOR_VALUES.avatarPalette.orange);
-  const [gradientEnd, setGradientEnd] = useState(DESIGN_COLOR_VALUES.avatarPalette.red);
+  const [gradientStart, setGradientStart] = useState<string>(DESIGN_COLOR_VALUES.avatarPalette.orange);
+  const [gradientEnd, setGradientEnd] = useState<string>(DESIGN_COLOR_VALUES.avatarPalette.red);
   const [gradientAngle, setGradientAngle] = useState(135);
   const [gradientNotice, setGradientNotice] = useState<string | null>(null);
   const [customThemeName, setCustomThemeName] = useState("");
