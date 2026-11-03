@@ -1,5 +1,9 @@
 .intelligence-identity-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow);
   box-sizing: border-box;
+  color: var(--color-text-primary);
   display: grid;
   gap: 0;
   max-width: 860px;
