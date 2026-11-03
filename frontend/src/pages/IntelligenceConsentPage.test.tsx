@@ -27,6 +27,16 @@ const offer = {
 };
 
 const consentQuery = "?flow=source_v2&response_type=code&client_id=intelligence-client&redirect_uri=https%3A%2F%2Fintelligence.example%2Fcallback%3Ftenant%3Done&state=opaque-state&code_challenge=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&code_challenge_method=S256";
+const oidcParameters = {
+  response_type: "code",
+  client_id: "intelligence-client-with-a-long-registered-name-for-narrow-screen-wrapping",
+  redirect_uri: "https://intelligence.example/callback/with/a/long/path?tenant=one&region=north",
+  state: "opaque-oidc-state",
+  nonce: "opaque-oidc-nonce",
+  code_challenge: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+  code_challenge_method: "S256",
+};
+const oidcConsentQuery = `?${new URLSearchParams({ flow: "oidc", ...oidcParameters }).toString()}`;
 
 const mountedRoots: Root[] = [];
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -59,6 +69,52 @@ async function renderConsent(entry = `/intelligence/consent${consentQuery}`) {
 }
 
 describe("IntelligenceConsentPage", () => {
+  it("shows OIDC request details as labeled values and exposes Continue as a button", async () => {
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+    const details = container.querySelector("dl");
+
+    expect(details).not.toBeNull();
+    expect(Array.from(details!.querySelectorAll("dt"), (term) => term.textContent)).toEqual([
+      englishStrings.intelligence.consentClient,
+      englishStrings.intelligence.consentCallback,
+    ]);
+    expect(Array.from(details!.querySelectorAll("dd code"), (value) => value.textContent)).toEqual([
+      oidcParameters.client_id,
+      oidcParameters.redirect_uri,
+    ]);
+    expect(container.querySelector<HTMLButtonElement>("button")?.textContent).toBe(englishStrings.intelligence.continueToIntelligence);
+  });
+
+  it("sends the unchanged OIDC request parameters when creating a browser session", async () => {
+    mocks.authRequest.mockRejectedValue(new Error("unavailable"));
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>("button")!.click();
+    });
+
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/v2/intelligence/authorize-session", {
+      method: "POST",
+      body: { flow: "oidc", ...oidcParameters },
+    });
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(englishStrings.intelligence.consentUnavailable);
+  });
+
+  it("disables Continue while the OIDC browser session is pending and shows a safe failure", async () => {
+    let rejectSession: (reason: unknown) => void = () => undefined;
+    mocks.authRequest.mockReturnValue(new Promise((_resolve, reject) => { rejectSession = reject; }));
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+    const button = container.querySelector<HTMLButtonElement>("button")!;
+
+    await act(async () => { button.click(); });
+    expect(button.disabled).toBe(true);
+
+    await act(async () => { rejectSession(new Error("untrusted server detail")); });
+    expect(button.disabled).toBe(false);
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(englishStrings.intelligence.consentUnavailable);
+    expect(container.textContent).not.toContain("untrusted server detail");
+  });
+
   it("shows the exact client and callback, one-chat choices, and four grants denied by default", async () => {
     setOfferResponse(offer);
 
