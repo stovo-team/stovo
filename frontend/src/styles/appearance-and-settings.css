@@ -1154,7 +1154,7 @@
 }
 
 .settings-appearance-preview .preview-bubble.mine {
-  background: var(--bubble-outgoing, var(--accent-primary));
+  background: var(--color-brand-gradient, var(--bubble-outgoing, var(--accent-primary)));
   border-radius: var(--radius-surface) var(--radius-surface) var(--radius-small) var(--radius-surface);
   color: var(--color-palette-f2074b6cef37);
   justify-self: end;

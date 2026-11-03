@@ -16,4 +16,12 @@ describe("brand gradient active states", () => {
   it("constrains space switcher menu width to fit within chat list", () => {
     expect(css).toMatch(/\.server-switcher-menu\s*\{[^}]*max-width:\s*min\(240px,\s*calc\(100vw - 32px\)\)/);
   });
+
+  it("applies brand gradient to outgoing message bubble background", () => {
+    expect(css).toMatch(/\.message-bubble\.mine\s*\{[^}]*background:\s*var\(--color-brand-gradient/);
+  });
+
+  it("configures vibrant orange accent tokens for amber accent", () => {
+    expect(css).toMatch(/:root\[data-accent="amber"\]\s*\{[^}]*--accent-primary-light:\s*var\(--color-palette-367909d8ceaa\)/);
+  });
 });

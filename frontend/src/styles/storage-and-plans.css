@@ -18,16 +18,16 @@
 }
 
 :root[data-accent="amber"] {
-  --accent-primary-light: var(--color-palette-1661f4af04d2);
-  --accent-primary-hover-light: var(--color-palette-189a10aa4447);
+  --accent-primary-light: var(--color-palette-367909d8ceaa);
+  --accent-primary-hover-light: var(--color-palette-18315ad7cebe);
   --accent-soft-light: var(--color-palette-11d9e35d5c6f);
   --accent-border-soft-light: var(--color-palette-e36caa45db11);
   --focus-ring-light: var(--color-palette-0da75c40e531);
   --focus-shadow-light: var(--color-palette-da72197d9f13);
   --outline-soft-light: var(--color-palette-621e36260a8d);
   --accent-ring-light: var(--color-palette-29235c7bc27f);
-  --accent-primary-dark: var(--color-palette-1661f4af04d2);
-  --accent-primary-hover-dark: var(--color-palette-cc0822e25c32);
+  --accent-primary-dark: var(--color-palette-367909d8ceaa);
+  --accent-primary-hover-dark: var(--color-palette-18315ad7cebe);
   --accent-soft-dark: var(--color-palette-0da75c40e531);
   --accent-border-soft-dark: var(--color-palette-e36caa45db11);
   --focus-ring-dark: var(--color-palette-e36caa45db11);
