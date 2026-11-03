@@ -550,16 +550,8 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		if inspectErr != nil {
 			needsRecreate = true
 		} else {
-			desiredImageInfo, imageErr := o.dockerClient.ImageInspect(ctx, desiredImage)
-			if imageErr != nil {
-				return fmt.Errorf("inspect desired backend image: %w", imageErr)
-			}
-			runningReference := ""
-			if inspect.Config != nil {
-				runningReference = inspect.Config.Image
-			}
-			if backendImageRequiresRecreation(runningReference, desiredImage, inspect.Image, desiredImageInfo.ID) {
-				needsRecreate = true
+			if needsRecreate, err = o.backendImageChanged(ctx, desiredImage, inspect); err != nil {
+				return err
 			}
 			existingEnv := parseEnvSlice(inspect.Config.Env)
 			desiredEnvMap := parseEnvSlice(desiredEnv)
