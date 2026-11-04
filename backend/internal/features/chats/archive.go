@@ -6,6 +6,7 @@ import "context"
 // archive lookup.
 type ArchiveStore interface {
 	FindArchive(context.Context, string, string) (string, error)
+	EnsureArchive(context.Context, CreateChat) (string, error)
 	MediaApprovalUserIDs(context.Context, string) ([]string, error)
 	DirectChatIDs(context.Context) ([]string, error)
 	Members(context.Context, string) ([]Member, error)
@@ -33,6 +34,10 @@ type ArchiveService struct{ store ArchiveStore }
 func NewArchiveService(store ArchiveStore) *ArchiveService { return &ArchiveService{store: store} }
 func (s *ArchiveService) Existing(ctx context.Context, familyID, userID string) (string, error) {
 	return s.store.FindArchive(ctx, familyID, userID)
+}
+
+func (s *ArchiveService) Ensure(ctx context.Context, command CreateChat) (string, error) {
+	return s.store.EnsureArchive(ctx, command)
 }
 
 func (s *ArchiveService) MediaApprovalUserIDs(ctx context.Context, chatID string) ([]string, error) {

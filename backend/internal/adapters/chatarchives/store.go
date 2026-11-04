@@ -12,6 +12,9 @@ func NewStore(repository *repository.Store) *Store { return &Store{repository: r
 func (s *Store) FindArchive(ctx context.Context, familyID, userID string) (string, error) {
 	return s.repository.FindArchiveChatID(ctx, familyID, userID)
 }
+func (s *Store) EnsureArchive(ctx context.Context, command featurechats.CreateChat) (string, error) {
+	return s.repository.EnsureArchiveChatID(ctx, repository.CreateChatParams{ID: command.ID, FamilyID: command.FamilyID, CreatedBy: command.CreatedBy, Title: command.Title, MediaVisibility: command.MediaVisibility, EncryptionProtocol: command.EncryptionProtocol, CreatedAt: command.CreatedAt})
+}
 func (s *Store) MediaApprovalUserIDs(ctx context.Context, chatID string) ([]string, error) {
 	return s.repository.ListMediaApprovalUserIDs(ctx, chatID)
 }
