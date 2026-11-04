@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { IntelligenceConsentPage } from "./IntelligenceConsentPage";
@@ -63,9 +63,17 @@ async function renderConsent(entry = `/intelligence/consent${consentQuery}`) {
   const root = createRoot(container);
   mountedRoots.push(root);
   await act(async () => {
-    root.render(<MemoryRouter initialEntries={[entry]}><IntelligenceConsentPage strings={englishStrings} /></MemoryRouter>);
+    root.render(<MemoryRouter initialEntries={[entry]}>
+      <IntelligenceConsentPage strings={englishStrings} />
+      <LocationProbe />
+    </MemoryRouter>);
   });
   return container;
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="current-path">{location.pathname}</output>;
 }
 
 describe("IntelligenceConsentPage", () => {
@@ -82,10 +90,31 @@ describe("IntelligenceConsentPage", () => {
       oidcParameters.client_id,
       oidcParameters.redirect_uri,
     ]);
-    const continueButton = container.querySelector<HTMLButtonElement>("button");
+    const continueButton = container.querySelector<HTMLButtonElement>(".intelligence-identity-continue");
     expect(continueButton?.getAttribute("aria-label")).toBeNull();
     expect(continueButton?.getAttribute("aria-labelledby")).toBeNull();
     expect(continueButton?.textContent?.trim()).toBe(englishStrings.intelligence.continueToIntelligence);
+  });
+
+  it("cancels the OIDC request by returning home without creating a browser session", async () => {
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+    const cancelButton = Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.trim() === englishStrings.intelligence.cancelConsent);
+
+    expect(cancelButton).toBeDefined();
+    await act(async () => { cancelButton!.click(); });
+
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/");
+    expect(mocks.authRequest).not.toHaveBeenCalled();
+  });
+
+  it("places Continue before Cancel in the OIDC action row", async () => {
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+    const actionLabels = Array.from(container.querySelectorAll(".intelligence-identity-actions button"), (button) => button.textContent?.trim());
+
+    expect(actionLabels).toEqual([
+      englishStrings.intelligence.continueToIntelligence,
+      englishStrings.intelligence.cancelConsent,
+    ]);
   });
 
   it("sends the unchanged OIDC request parameters when creating a browser session", async () => {
@@ -93,7 +122,7 @@ describe("IntelligenceConsentPage", () => {
     const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>("button")!.click();
+      container.querySelector<HTMLButtonElement>(".intelligence-identity-continue")!.click();
     });
 
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/v2/intelligence/authorize-session", {
@@ -107,7 +136,7 @@ describe("IntelligenceConsentPage", () => {
     let rejectSession: (reason: unknown) => void = () => undefined;
     mocks.authRequest.mockReturnValue(new Promise((_resolve, reject) => { rejectSession = reject; }));
     const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
-    const button = container.querySelector<HTMLButtonElement>("button")!;
+    const button = container.querySelector<HTMLButtonElement>(".intelligence-identity-continue")!;
 
     await act(async () => { button.click(); });
     expect(button.disabled).toBe(true);

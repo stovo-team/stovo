@@ -70,19 +70,40 @@
   white-space: normal;
 }
 
+.intelligence-identity-panel .intelligence-identity-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.intelligence-identity-panel .intelligence-identity-cancel,
 .intelligence-identity-panel .intelligence-identity-continue {
-  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  min-height: 52px;
+}
+
+.intelligence-identity-panel .intelligence-identity-cancel {
+  min-width: 0;
+  width: 100%;
+}
+
+.intelligence-identity-panel .intelligence-identity-continue {
+  background: var(--color-brand-gradient, var(--color-accent));
   border-color: var(--color-accent);
-  border-radius: var(--radius-control);
-  color: var(--color-palette-f2074b6cef37);
+  color: var(--text-on-accent, var(--color-palette-f2074b6cef37));
   font-family: var(--font-family-ui);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
-  justify-self: stretch;
-  margin-top: 24px;
-  min-height: 52px;
+  min-width: 0;
   padding: 0 20px;
   width: 100%;
+}
+
+.intelligence-identity-panel .intelligence-identity-continue:hover:not(:disabled) {
+  background: var(--color-brand-gradient, var(--color-accent));
+  border-color: var(--color-accent);
 }
 
 .intelligence-identity-panel .intelligence-identity-continue:focus-visible {
@@ -103,6 +124,7 @@
   .intelligence-identity-panel .intelligence-identity-details {
     grid-template-columns: minmax(0, 1fr);
   }
+
 }
 
 @media (max-width: 380px) {

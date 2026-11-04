@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { getClusterPath } from "../api/client";
@@ -63,6 +63,7 @@ function parseConsentRequest(search: string): ParsedConsentRequest | null {
 export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProps) {
   const { currentUser, authRequest } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const parsed = useMemo(() => parseConsentRequest(location.search), [location.search]);
   const [offer, setOffer] = useState<IntelligenceConsentOffer | null>(null);
   const [chatID, setChatID] = useState("");
@@ -147,7 +148,10 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
         </div>
       </dl>
       {error && <p role="alert" className="error-text">{error}</p>}
-      <button className="intelligence-identity-continue" type="button" disabled={isSubmitting} onClick={() => void continueOIDC()}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.continueToIntelligence}</button>
+      <div className="intelligence-identity-actions">
+        <button className="intelligence-identity-continue" type="button" disabled={isSubmitting} onClick={() => void continueOIDC()}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.continueToIntelligence}</button>
+        <button className="intelligence-identity-cancel" type="button" onClick={() => navigate("/")}>{strings.intelligence.cancelConsent}</button>
+      </div>
     </section></main>;
   }
 

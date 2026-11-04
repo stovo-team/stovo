@@ -725,6 +725,7 @@ export const strings = {
     identityDescription: "Continue to share your Messenger identity with the registered Intelligence client.",
     continuing: "Continuing…",
     continueToIntelligence: "Continue",
+    cancelConsent: "Cancel",
     loadingConsent: "Loading your accessible chats…",
     consentClient: "Application",
     consentCallback: "Verified return address",

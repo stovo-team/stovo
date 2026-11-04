@@ -39,7 +39,27 @@ for (const baseScenario of shellScenarios) {
       requestParameters.client_id,
       requestParameters.redirect_uri,
     ]);
-    await expect(page.getByRole("button", { name: continueLabel })).toBeVisible();
+    const continueButton = page.getByRole("button", { name: continueLabel });
+    const cancelButton = page.getByRole("button", { name: scenario.locale === "ru" ? "Отмена" : "Cancel" });
+    await expect(continueButton).toBeVisible();
+    await expect(cancelButton).toBeVisible();
+    const actionPositions = await page.locator(".intelligence-identity-actions button").evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const { x, width } = button.getBoundingClientRect();
+        return { x, width };
+      }));
+    expect(actionPositions[0].x).toBeLessThan(actionPositions[1].x);
+    expect(Math.abs(actionPositions[0].width - actionPositions[1].width)).toBeLessThan(1);
+    const defaultContinueStyle = await continueButton.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return { backgroundImage: style.backgroundImage, borderColor: style.borderColor };
+    });
+    await continueButton.hover();
+    await expect.poll(() => continueButton.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return { backgroundImage: style.backgroundImage, borderColor: style.borderColor };
+    })).toEqual(defaultContinueStyle);
+    await page.mouse.move(0, 0);
     const overflowingConsentElements = await page.locator(
       ".intelligence-identity-panel, .intelligence-identity-details, .intelligence-identity-details dd, .intelligence-identity-details code",
     ).evaluateAll((elements) => elements
