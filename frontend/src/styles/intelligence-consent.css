@@ -132,3 +132,206 @@
     padding: 16px;
   }
 }
+
+.intelligence-consent-shell {
+  align-content: center;
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  min-height: 100dvh;
+  padding: 32px 20px;
+}
+
+.intelligence-consent-panel {
+  box-sizing: border-box;
+  color: var(--text-primary);
+  display: grid;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 840px;
+  padding: 32px;
+  width: 100%;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--popup-dialog-shadow);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-body);
+}
+
+.intelligence-consent-header {
+  display: grid;
+  gap: 12px;
+}
+
+.intelligence-consent-panel h1 {
+  color: var(--text-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-heading-small);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-heading);
+  margin: 0;
+}
+
+.intelligence-consent-client,
+.intelligence-consent-details {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.intelligence-consent-client > span,
+.intelligence-consent-details > span {
+  color: var(--text-secondary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}
+
+.intelligence-consent-client strong,
+.intelligence-consent-details code {
+  color: var(--text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.intelligence-consent-details {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+  padding: 16px;
+}
+
+.intelligence-consent-form {
+  display: grid;
+  gap: 24px;
+  margin: 0;
+}
+
+.intelligence-consent-fieldset {
+  border: 0;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.intelligence-consent-fieldset legend {
+  color: var(--text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  margin-bottom: 2px;
+  padding: 0;
+}
+
+.intelligence-consent-chat-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.intelligence-consent-chat-list legend,
+.intelligence-consent-grants legend {
+  grid-column: 1 / -1;
+}
+
+.intelligence-consent-choice {
+  align-items: flex-start;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.intelligence-consent-choice:hover {
+  background: var(--background-secondary);
+}
+
+.intelligence-consent-choice:has(input:checked) {
+  background: var(--background-secondary);
+  border-color: var(--accent-primary);
+}
+
+.intelligence-consent-choice input {
+  accent-color: var(--accent-primary);
+  flex: 0 0 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  width: 18px;
+}
+
+.intelligence-consent-choice input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.intelligence-consent-choice-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.intelligence-consent-choice-copy > span {
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.intelligence-consent-choice-copy small {
+  color: var(--text-secondary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.intelligence-consent-fieldset:disabled .intelligence-consent-choice {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.intelligence-consent-panel .popup-button {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .intelligence-consent-shell {
+    padding: 16px;
+  }
+
+  .intelligence-consent-panel {
+    gap: 16px;
+    padding: 24px 20px;
+  }
+
+  .intelligence-consent-chat-list,
+  .intelligence-consent-grants {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .intelligence-consent-form {
+    gap: 16px;
+  }
+
+  .intelligence-consent-fieldset {
+    gap: 8px;
+  }
+
+  .intelligence-consent-choice {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}

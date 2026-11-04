@@ -45,6 +45,33 @@ describe("local mock chat API", () => {
     const loaded = await request<Chat>(`/api/chats/${FIRST_CHAT_ID}`);
     expect(loaded.body).toMatchObject({ avatarSymbolId: "briefcase", avatarColorId: "#786a91" });
   });
+  it("provides a safe Intelligence consent offer with distinct archive records", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const query = new URLSearchParams({
+      client_id: "local-intelligence-client",
+      redirect_uri: "https://intelligence.example/callback",
+      state: "local-consent-state",
+    });
+    const { response, body } = await request<{
+      client_id: string;
+      redirect_uri: string;
+      state: string;
+      chats: Array<{ id: string; title: string; type: string }>;
+      grants: Record<string, boolean>;
+    }>(`/api/v2/intelligence/authorize?${query.toString()}`);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      client_id: "local-intelligence-client",
+      redirect_uri: "https://intelligence.example/callback",
+      state: "local-consent-state",
+      chats: [
+        { id: "archive-a-001", title: "Message Archive", type: "archive" },
+        { id: "archive-b-002", title: "Message Archive", type: "archive" },
+      ],
+      grants: { read: false, process: false, external_transfer: false, export: false },
+    });
+  });
   it("lists a seeded canvas and returns its document", async () => {
     seedMockSession(MOCK_ORIGIN);
     const canvases = await getStorageCanvases("local-mock-access-token");

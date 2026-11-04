@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { getClusterPath } from "../api/client";
+import { PopupButton } from "../components/ui/PopupButton";
 import {
   intelligenceBrowserSessionEndpoint,
   intelligenceConsentQuery,
@@ -60,12 +61,34 @@ function parseConsentRequest(search: string): ParsedConsentRequest | null {
   };
 }
 
+function duplicateChatIDPrefixes(chats: IntelligenceConsentOffer["chats"]) {
+  const groups = new Map<string, typeof chats>();
+  for (const chat of chats) {
+    const title = chat.title || chat.id;
+    groups.set(title, [...(groups.get(title) ?? []), chat]);
+  }
+
+  const prefixes = new Map<string, string>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    for (const chat of group) {
+      let length = Math.min(8, chat.id.length);
+      while (length < chat.id.length && group.some((other) => other.id !== chat.id && other.id.slice(0, length) === chat.id.slice(0, length))) {
+        length += 1;
+      }
+      prefixes.set(chat.id, chat.id.slice(0, length));
+    }
+  }
+  return prefixes;
+}
+
 export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProps) {
   const { currentUser, authRequest } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const parsed = useMemo(() => parseConsentRequest(location.search), [location.search]);
   const [offer, setOffer] = useState<IntelligenceConsentOffer | null>(null);
+  const chatIDPrefixes = useMemo(() => duplicateChatIDPrefixes(offer?.chats ?? []), [offer]);
   const [chatID, setChatID] = useState("");
   const [grants, setGrants] = useState<IntelligenceGrants>({ read: false, process: false, external_transfer: false, export: false });
   const [error, setError] = useState<string | null>(null);
@@ -155,24 +178,35 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
     </section></main>;
   }
 
-  return <main className="app-shell"><section className="auth-panel intelligence-consent-panel">
-    <h1>{strings.intelligence.consentTitle}</h1>
+  return <main className="app-shell intelligence-consent-shell"><section className="auth-panel intelligence-consent-panel">
+    <header className="intelligence-consent-header">
+      <h1>{strings.intelligence.consentTitle}</h1>
+      {offer && <div className="intelligence-consent-client">
+        <span>{strings.intelligence.consentClient}</span>
+        <strong>{offer.client_id}</strong>
+      </div>}
+    </header>
     {error && <p role="alert" className="error-text">{error}</p>}
     {!offer && !error && <p>{strings.intelligence.loadingConsent}</p>}
     {offer && <>
-      <p>{strings.intelligence.consentClient}: <strong>{offer.client_id}</strong></p>
-      <p className="intelligence-consent-callback">{strings.intelligence.consentCallback}: <code>{offer.redirect_uri}</code></p>
-      <form ref={formRef} method="post" action={intelligenceSourceAuthorizeEndpoint()} onSubmit={(event) => void handleSourceAuthorize(event)}>
-        <fieldset disabled={isSubmitting}>
+      <div className="intelligence-consent-details">
+        <span>{strings.intelligence.consentCallback}</span>
+        <code>{offer.redirect_uri}</code>
+      </div>
+      <form className="intelligence-consent-form" ref={formRef} method="post" action={intelligenceSourceAuthorizeEndpoint()} onSubmit={(event) => void handleSourceAuthorize(event)}>
+        <fieldset className="intelligence-consent-fieldset intelligence-consent-chat-list" disabled={isSubmitting}>
           <legend>{strings.intelligence.chooseOneChat}</legend>
-          {offer.chats.map((chat) => <label className="privacy-row" key={chat.id}>
+          {offer.chats.map((chat) => <label className="intelligence-consent-choice" key={chat.id}>
             <input type="radio" name="chat_id" value={chat.id} checked={chatID === chat.id} onChange={() => setChatID(chat.id)} />
-            <span>{chat.title || chat.id}</span>
+            <span className="intelligence-consent-choice-copy">
+              <span>{chat.title || chat.id}</span>
+              {chatIDPrefixes.has(chat.id) && <small>{strings.intelligence.chatIdLabel} · {chatIDPrefixes.get(chat.id)}</small>}
+            </span>
           </label>)}
         </fieldset>
-        <fieldset disabled={isSubmitting}>
+        <fieldset className="intelligence-consent-fieldset intelligence-consent-grants" disabled={isSubmitting}>
           <legend>{strings.intelligence.chooseGrants}</legend>
-          {grantKeys.map((grant) => <label className="privacy-row" key={grant}>
+          {grantKeys.map((grant) => <label className="intelligence-consent-choice" key={grant}>
             <input type="checkbox" checked={grants[grant]} onChange={(event) => setGrants((current) => ({ ...current, [grant]: event.target.checked }))} />
             <span>{strings.intelligence.grants[grant]}</span>
           </label>)}
@@ -184,7 +218,7 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
         <input type="hidden" name="code_challenge" value={parsed.parameters.code_challenge} />
         <input type="hidden" name="code_challenge_method" value={parsed.parameters.code_challenge_method} />
         {grantKeys.map((grant) => <input key={grant} type="hidden" name={grant} value={grants[grant] ? "true" : "false"} />)}
-        <button type="submit" disabled={isSubmitting || !chatID}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.approveConsent}</button>
+        <PopupButton variant="primary" type="submit" loading={isSubmitting} disabled={!chatID}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.approveConsent}</PopupButton>
       </form>
     </>}
   </section></main>;

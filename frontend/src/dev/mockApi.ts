@@ -3,7 +3,7 @@ import { mockCanvasResponse } from "./mockCanvas";
 import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
-import { addMobileLayoutMessages, createMockData, createMockManifest } from "./mockFixtures";
+import { addMobileLayoutMessages, createMockData, createMockIntelligenceConsentOffer, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId, isMockSignedOut } from "./mockBootstrap";
 import { handleMockCollectionRequest, resetMockCollections } from "./mockCollections";
@@ -87,7 +87,6 @@ async function blobResponse(blob: Blob, mimeType: string, fileName?: string): Pr
   if (fileName) headers.set("Content-Disposition", "attachment; filename*=UTF-8''" + encodeURIComponent(fileName));
   return new Response(await blob.arrayBuffer(), { status: 200, headers });
 }
-
 async function handleMockRequest(url: URL, method: string, input: FetchInput, init?: RequestInit, scenario?: string): Promise<Response> {
   const path = decodeURI(url.pathname);
   if (method === "POST" && path === "/api/auth/android-qr-login") return jsonResponse({ requestId: "local-mock-android-qr-grant", expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString() }); if (method === "POST" && path === "/api/auth/refresh") return isMockSignedOut(window.location.search) ? errorResponse(401, "No active session") : jsonResponse(responseForRefresh());
@@ -96,6 +95,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   if (method === "GET" && path === "/api/auth/setup-status") {
     return jsonResponse({ setupRequired: false, setupComplete: true, familyName: mockData.family.name, navTabs: mockData.family.navTabs });
   }
+  if (method === "GET" && path === "/api/v2/intelligence/authorize") return jsonResponse(createMockIntelligenceConsentOffer(url.searchParams));
   if (path.startsWith("/api/v1/plugins/canvas/canvases/canvas-planning-notes")) return mockCanvasResponse(path, method, mockData.family.id, getMockUserId(), await requestBody(input, init));
   if (method === "GET" && path === "/api/family") return jsonResponse(mockData.family);
   if ((method === "GET" || method === "PATCH") && path === "/api/family") {
