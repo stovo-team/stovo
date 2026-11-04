@@ -683,7 +683,7 @@
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
 }
 .plans-create-fab:hover:not(:disabled) {
-  background: var(--accent-primary-hover, var(--accent-primary));
+  background: var(--accent-primary);
   transform: scale(1.08);
   box-shadow: none !important;
 }

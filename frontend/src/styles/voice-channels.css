@@ -807,7 +807,7 @@
 }
 
 .voice-room-primary-join-btn:hover:not(:disabled) {
-  background: var(--color-palette-3c5c1ab6c5fd);
+  background: var(--color-palette-8b8f7c3d4541);
   transform: translateY(-1px);
 }
 

@@ -1,0 +1,108 @@
+/* Solid accent fills stay stable on hover; non-filled controls keep the shared hover treatment. */
+@media (hover: hover) and (pointer: fine) {
+  .popup-button--primary:hover:not(:disabled),
+  .plans-create-fab:hover:not(:disabled),
+  .btn-primary:hover:not(:disabled),
+  .crop-ratio-btn.is-active:hover:not(:disabled),
+  .image-editor-btn-save:hover:not(:disabled),
+  .avatar-editor-btn-save:hover:not(:disabled),
+  .checklist-card-add-btn:hover:not(:disabled),
+  .checklist-creator-submit-btn:hover:not(:disabled),
+  .checklist-btn-primary:hover:not(:disabled),
+  .checklist-cat-btn.active:hover:not(:disabled),
+  .checklist-add-btn:hover:not(:disabled),
+  .checklist-action-btn.primary:hover:not(:disabled),
+  .checklist-card-add-submit:hover:not(:disabled),
+  .checklist-item-check-btn.checked:hover:not(:disabled),
+  .plan-rsvp button.active:hover:not(:disabled),
+  .plan-details-rsvp button.active:hover:not(:disabled),
+  .time-preset-chips button.active:hover:not(:disabled),
+  .poll-submit-btn:hover:not(:disabled),
+  .chat-info-description-save:hover:not(:disabled),
+  .guest-prejoin-panel .guest-meeting-join-button:hover:not(:disabled),
+  .guest-link-create-button:hover:not(:disabled),
+  .quick-access-switch.is-on:hover:not(:disabled),
+  .call-invite-modal-actions .action-button.primary:hover:not(:disabled),
+  .form-grid button:hover:not(:disabled),
+  .modal-form > button[type="submit"]:hover:not(:disabled),
+  .settings-form > button[type="submit"]:hover:not(:disabled),
+  .details-form > button[type="submit"]:hover:not(:disabled),
+  .toolbar-form > button[type="submit"]:hover:not(:disabled),
+  .message-inline-editor-btn.save:hover:not(:disabled),
+  .message-enlarge-btn--primary:hover:not(:disabled),
+  .message-enlarge-circle-btn--send:hover:not(:disabled),
+  .popover-submit-btn:hover:not(:disabled),
+  .attachment-picker-primary-action-btn:hover:not(:disabled),
+  .storage-page .storage-collection-new:hover:not(:disabled),
+  .storage-page .storage-files-upload:hover:not(:disabled),
+  .storage-selection-bar .primary-button:hover:not(:disabled),
+  .modal-form > button[type="submit"]:hover:not(:disabled),
+  .settings-form > button[type="submit"]:hover:not(:disabled),
+  .details-form > button[type="submit"]:hover:not(:disabled),
+  .toolbar-form > button[type="submit"]:hover:not(:disabled),
+  .copy-sheet-actions .copy-sheet-copy-btn:hover:not(:disabled),
+  .guest-meeting-invitation-join:hover:not(:disabled),
+  .call-popup-header-invite.is-active:hover:not(:disabled) {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    filter: none;
+    opacity: 1;
+  }
+
+  .quick-access-switch.is-on:hover:not(:disabled) {
+    border-color: transparent;
+  }
+
+  .call-popup-header-invite.is-active:hover:not(:disabled) {
+    border-color: var(--accent-border-soft);
+  }
+
+  .compose-fab:hover:not(:disabled),
+  .message-composer button[type="submit"]:hover:not(:disabled),
+  .message-composer .composer-voice-button:hover:not(:disabled),
+  .attachment-picker-message-send:hover:not(:disabled),
+  .supervisor-admin-page .primaryPillButton:hover:not(:disabled),
+  .supervisor-settings-tabs button.active:hover:not(:disabled),
+  .supervisor-settings-tabs button[aria-selected="true"]:hover:not(:disabled),
+  .supervisor-admin-page .supervisor-settings-tabs button.active:hover:not(:disabled),
+  .supervisor-admin-page .supervisor-settings-tabs button[aria-selected="true"]:hover:not(:disabled),
+  .supervisor-admin-page .supervisor-provision-button:hover:not(:disabled),
+  .multi-admin-dialog .supervisor-provision-button:hover:not(:disabled),
+  .supervisor-admin-page .supervisor-save-settings-button:hover:not(:disabled),
+  .multi-admin-dialog .supervisor-save-settings-button:hover:not(:disabled),
+  .supervisor-admin-page .supervisor-open-login-link:hover,
+  .multi-admin-dialog .supervisor-open-login-link:hover,
+  .settings-page.settings-appearance-view .appearance-done-button:hover:not(:disabled),
+  .settings-page.settings-appearance-view .appearance-segment--bar button.active:hover:not(:disabled),
+  .settings-page.settings-appearance-view .appearance-segment--bar button[aria-selected="true"]:hover:not(:disabled),
+  .appearance-segment button[aria-selected="true"]:hover:not(:disabled),
+  .appearance-segment button.active:hover:not(:disabled),
+  .quick-access-panel-tabs button.active:hover:not(:disabled) {
+    background: var(--color-brand-gradient, var(--accent-primary));
+    border-color: transparent;
+    filter: none;
+    opacity: 1;
+  }
+
+  .intelligence-identity-panel .intelligence-identity-continue:hover:not(:disabled) {
+    background: var(--color-brand-gradient, var(--color-accent));
+    border-color: var(--color-accent);
+    filter: none;
+  }
+
+  .message-enlarge-circle-btn--action.is-active:hover:not(:disabled),
+  .toolbar-btn.is-active:hover:not(:disabled) {
+    background: var(--accent-primary-light);
+    filter: none;
+  }
+
+  .stats-wrapped-button:hover,
+  .wrapped-next:hover {
+    filter: none;
+  }
+
+  .stats-wrapped-button:hover:not(:disabled) {
+    background: linear-gradient(115deg, var(--color-palette-bb741ad5532f), var(--color-palette-d47bbc23b804));
+    border-color: transparent;
+  }
+}

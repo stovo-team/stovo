@@ -219,7 +219,7 @@
 }
 
 .chat-list-item:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent);
+  background: color-mix(in oklab, var(--accent-primary) 14%, transparent);
   border-radius: var(--radius-panel);
 }
 
@@ -229,8 +229,9 @@
   transform: scale(0.985);
 }
 
-.chat-list-item.active {
-  background: color-mix(in oklab, var(--accent-soft) 28%, transparent);
+.chat-list-item.active,
+.chat-list-item.active:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent-primary) 18%, transparent);
   border-radius: var(--radius-panel);
 }
 
@@ -262,7 +263,7 @@
 }
 
 .compose-fab:hover:not(:disabled) {
-  background: var(--accent-primary-hover, var(--accent-primary));
+  background: var(--color-brand-gradient, var(--accent-primary));
   transform: scale(1.08);
 }
 
@@ -392,8 +393,10 @@
   color: var(--color-text-primary);
 }
 .entity-avatar[data-avatar-kind="folder"] { background: transparent; color: var(--avatar-custom-bg); }
+.entity-avatar:not([data-avatar-kind="person"]) { border-radius: var(--radius-circle); }
 .entity-avatar > img { height: 100%; object-fit: cover; width: 100%; }
 .entity-avatar__symbol { height: 55%; stroke-width: 1.75; width: 55%; }
+.chat-avatar .entity-avatar__symbol { height: 50%; width: 50%; }
 .avatar-choice-picker { display: grid; gap: var(--font-size-body); }
 .avatar-choice-picker fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
 .avatar-choice-picker legend { color: var(--color-text-secondary); font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); margin-bottom: var(--font-size-caption); }

@@ -13,6 +13,6 @@ describe("floating action buttons", () => {
     expect(styles).toMatch(/\.plans-create-fab\s*\{[^}]*height:\s*40px;[^}]*width:\s*40px;/s);
     expect(chatSidebar).toContain("<Plus aria-hidden={true} size={16} />");
     expect(plansPage).toContain('<Plus size={16} aria-hidden="true" />');
-    expect(styles).toMatch(/\.compose-fab:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--accent-primary-hover, var\(--accent-primary\)\);[^}]*transform:\s*scale\(1\.08\);/s);
+    expect(styles).toMatch(/\.compose-fab:hover:not\(:disabled\)\s*\{[^}]*background:\s*var\(--color-brand-gradient, var\(--accent-primary\)\);[^}]*transform:\s*scale\(1\.08\);/s);
   });
 });

@@ -87,8 +87,8 @@
 }
 
 .popup-button--primary:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
-  border-color: var(--accent-primary-hover);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .popup-button--secondary {

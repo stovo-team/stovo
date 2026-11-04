@@ -5,7 +5,7 @@ import { PopupSelect } from "../../components/ui/PopupSelect";
 import { DESIGN_COLOR_VALUES } from "../../design-system/palette";
 import {
   AppearanceSettings, BUBBLE_SHAPE_OPTIONS, BubbleShapeChoice,
-  MESSAGE_FONT_OPTIONS, MessageFontChoice, PRESET_ACCENT_OPTIONS,
+  MESSAGE_FONT_OPTIONS, MessageFontChoice, messageFontFamily, PRESET_ACCENT_OPTIONS,
   THEME_MODE_OPTIONS, WallpaperChoice
 } from "../../appearance/AppearanceContext";
 import type { AppStrings } from "../../config/strings";
@@ -121,7 +121,7 @@ export function AppearanceMessageControls({ appearance, strings, updateAppearanc
     </div>
     <div className="appearance-control-row">
       <span className="appearance-row-label">{strings.appearance.font}</span>
-      <PopupSelect className="appearance-popup-select" value={appearance.messageFont} onChange={(val) => updateAppearance({ messageFont: val as MessageFontChoice })} ariaLabel={strings.appearance.messageFontAria} options={MESSAGE_FONT_OPTIONS.map((opt) => ({ value: opt.value, label: strings.appearance.messageFonts[opt.value] ?? opt.label }))} />
+      <PopupSelect className="appearance-popup-select" value={appearance.messageFont} onChange={(val) => updateAppearance({ messageFont: val as MessageFontChoice })} ariaLabel={strings.appearance.messageFontAria} options={MESSAGE_FONT_OPTIONS.map((opt) => ({ value: opt.value, label: strings.appearance.messageFonts[opt.value] ?? opt.label }))} renderOption={(option) => <span style={{ fontFamily: messageFontFamily(option.value as MessageFontChoice) }}>{option.label}</span>} />
     </div>
     <label className="range-field"><span className="appearance-row-label"><span>{strings.appearance.messageSize}</span><strong>{Math.round(appearance.messageScale * 100)}%</strong></span><input type="range" min="0.9" max="1.18" step="0.02" value={appearance.messageScale} onChange={(event) => updateAppearance({ messageScale: Number(event.target.value) })} /></label>
   </section>;

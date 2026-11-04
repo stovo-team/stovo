@@ -107,9 +107,6 @@ export function NewChatDialog({
             }}
           />
           <PopupField label={strings.chats.searchPlaceholder} type="search" placeholder={strings.chats.searchPlaceholder} value={memberSearch} onChange={(event) => onMemberSearchChange(event.target.value)} />
-          <PopupButton type="submit" variant="primary" disabled={!canCreateCompose}>
-            {strings.chats.newChat.create}
-          </PopupButton>
           <p className="new-chat-section-label">
             {strings.chats.details.members} ({groupMemberIds.length + (currentUser ? 1 : 0)})
           </p>
@@ -184,6 +181,9 @@ export function NewChatDialog({
               </span>
             </div>
           )}
+          <PopupButton type="submit" variant="primary" disabled={!canCreateCompose}>
+            {strings.chats.newChat.create}
+          </PopupButton>
         </form>
       </>
     );

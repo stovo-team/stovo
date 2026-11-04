@@ -1131,10 +1131,12 @@
 }
 
 .settings-appearance-preview .preview-bubble {
-  background: var(--message-bubble-bg);
-  border-radius: var(--radius-surface) var(--radius-surface) var(--radius-surface) var(--radius-small);
+  background: var(--bubble-incoming);
+  border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22);
   color: var(--text-primary);
-  font-size: var(--font-size-small);
+  font-family: var(--message-font-family, inherit);
+  font-size: calc(var(--font-size-body) * var(--message-scale));
+  font-weight: var(--font-weight-regular);
   justify-self: start;
   line-height: 1.3;
   padding: 7px 10px;
@@ -1142,7 +1144,7 @@
 
 .settings-appearance-preview .preview-bubble.mine {
   background: var(--color-brand-gradient, var(--bubble-outgoing, var(--accent-primary)));
-  border-radius: var(--radius-surface) var(--radius-surface) var(--radius-small) var(--radius-surface);
+  border-radius: var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
   color: var(--color-palette-f2074b6cef37);
   justify-self: end;
 }
@@ -1184,7 +1186,6 @@
   }
 
   .settings-appearance-preview .preview-bubble {
-    font-size: var(--font-size-caption);
     padding: 6px 8px;
   }
 }
