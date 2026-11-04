@@ -636,7 +636,7 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
+  background: var(--accent-primary);
 }
 
 .btn-primary:disabled {

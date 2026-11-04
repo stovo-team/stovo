@@ -62,6 +62,20 @@ it("applies the selected folder color to its icon and name", () => {
   expect(styles).toContain('.chat-folder-avatar + .chat-folder-name');
 });
 
+it("truncates long folder names without centering or wrapping them", () => {
+  const styles = readFileSync("src/styles/avatar-controls.css", "utf8");
+  const collapseRule = styles.match(/\.chat-section-collapse\s*\{([^}]*)\}/)?.[1] ?? "";
+  const nameRule = styles.match(/\.chat-folder-name\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  expect(collapseRule).toMatch(/flex:\s*1 1 auto;/);
+  expect(collapseRule).toMatch(/min-width:\s*0;/);
+  expect(nameRule).toMatch(/min-width:\s*0;/);
+  expect(nameRule).toMatch(/overflow:\s*hidden;/);
+  expect(nameRule).toMatch(/text-overflow:\s*ellipsis;/);
+  expect(nameRule).toMatch(/white-space:\s*nowrap;/);
+  expect(nameRule).toMatch(/text-align:\s*left;/);
+});
+
 it("does not override the selected chat avatar background with the chat type", () => {
   const styles = readFileSync("src/styles/app-shell.css", "utf8");
   expect(styles).not.toMatch(/\.chat-avatar\.(?:group|family)\s*\{\s*background:/);

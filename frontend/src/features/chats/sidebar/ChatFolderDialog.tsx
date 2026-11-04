@@ -60,7 +60,7 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete, title, all
           <AvatarChoicePicker
             entityId={draft.id}
             entityKind="folder"
-            label={draft.name}
+            label={draft.name.trim() || strings.chats.folders.newFolder}
             mode="symbol"
             symbolId={draft.symbolId}
             colorId={draft.colorId}

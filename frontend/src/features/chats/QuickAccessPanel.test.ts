@@ -50,7 +50,7 @@ describe("message archive grouped view", () => {
 
   it("keeps quick-access sidebar hover on the shared chat-row surface", () => {
     const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
-    expect(styles).toMatch(/\.chat-list-item:hover:not\(:disabled\)\s*\{[^}]*background:\s*color-mix\(in oklab, var\(--background-panel-accent\) 60%, transparent\);/);
+    expect(styles).toMatch(/\.chat-list-item:hover:not\(:disabled\)\s*\{[^}]*background:\s*color-mix\(in oklab, var\(--accent-primary\) 14%, transparent\);/);
   });
 
   it("lists archive-origin groups rather than unrelated recently active chats", () => {

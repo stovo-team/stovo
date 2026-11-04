@@ -629,7 +629,7 @@ export default function FilesPage() {
                     setIsSourceMenuOpen(false);
                   }}
                 >
-                  <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
+                  <span className="storage-source-avatar storage-source-avatar--all" aria-hidden="true"><MessageCircle size={19} /></span>
                   <span><strong>{strings.files.allChats}</strong><small>{files.length} files</small></span>
                 </button>
                 {sourceGroups.map((group) => (
@@ -673,7 +673,7 @@ export default function FilesPage() {
             className={!sourceChatId ? "storage-source active" : "storage-source"}
             onClick={() => setSourceChatId(null)}
           >
-            <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={family?.minimizedChatLayout ? 16 : 19} /></span>
+            <span className="storage-source-avatar storage-source-avatar--all" aria-hidden="true"><MessageCircle size={family?.minimizedChatLayout ? 16 : 19} /></span>
             <span className="storage-source-copy"><strong>{strings.files.allChats}</strong><small>{files.length} files</small></span>
           </button>
           {sourceGroups.map((group) => (

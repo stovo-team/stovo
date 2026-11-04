@@ -134,7 +134,7 @@ export const MESSAGE_FONT_OPTIONS: Array<{
   {
     label: "Sans",
     value: "sans",
-    family: "Inter, ui-sans-serif, system-ui, sans-serif"
+    family: 'Arial, "Helvetica Neue", sans-serif'
   },
   {
     label: "Serif",
@@ -144,7 +144,7 @@ export const MESSAGE_FONT_OPTIONS: Array<{
   {
     label: "Rounded",
     value: "rounded",
-    family: '"Nunito", "Segoe UI Rounded", "SF Pro Rounded", system-ui, sans-serif'
+    family: 'ui-rounded, "Nunito", "Segoe UI Rounded", "SF Pro Rounded", "Trebuchet MS", sans-serif'
   },
   {
     label: "Mono",
