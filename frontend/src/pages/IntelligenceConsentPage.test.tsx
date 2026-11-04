@@ -160,6 +160,24 @@ describe("IntelligenceConsentPage", () => {
     expect(grants.every((checkbox) => !checkbox.checked)).toBe(true);
   });
 
+  it("distinguishes separate chats that have the same title by their stable IDs", async () => {
+    setOfferResponse({
+      ...offer,
+      chats: [
+        { id: "archive-a-001", title: "Message Archive" },
+        { id: "archive-b-002", title: "Message Archive" },
+      ],
+    });
+
+    const container = await renderConsent();
+    const chatRows = Array.from(container.querySelectorAll<HTMLInputElement>('input[name="chat_id"]'), (input) => input.closest("label"));
+
+    expect(chatRows.map((row) => row?.querySelector("small")?.textContent?.trim())).toEqual([
+      `${englishStrings.intelligence.chatIdLabel} · archive-a`,
+      `${englishStrings.intelligence.chatIdLabel} · archive-b`,
+    ]);
+  });
+
   it("creates the browser session for only the selected chat and selected grants", async () => {
     setOfferResponse(offer);
     const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => undefined);

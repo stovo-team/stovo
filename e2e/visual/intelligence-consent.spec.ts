@@ -11,6 +11,15 @@ const requestParameters = {
   code_challenge_method: "S256",
 };
 const consentURL = `/intelligence/consent?${new URLSearchParams({ flow: "oidc", ...requestParameters }).toString()}`;
+const sourceRequestParameters = {
+  response_type: "code",
+  client_id: "intelligence-source-client",
+  redirect_uri: "https://intelligence.example/source/callback?tenant=one",
+  state: "opaque-source-state",
+  code_challenge: "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+  code_challenge_method: "S256",
+};
+const sourceConsentURL = `/intelligence/consent?${new URLSearchParams({ flow: "source_v2", ...sourceRequestParameters }).toString()}`;
 
 async function prepareConsent(page: import("@playwright/test").Page, scenario: Scenario, redesigned = true) {
   await page.setViewportSize(scenario.viewport);
@@ -23,6 +32,41 @@ async function prepareConsent(page: import("@playwright/test").Page, scenario: S
   await expect(page.locator(redesigned ? ".intelligence-identity-panel" : ".auth-panel")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;caret-color:transparent!important}" });
+}
+
+for (const baseScenario of shellScenarios) {
+  const scenario = { ...baseScenario, id: `SOURCE-${baseScenario.id}` };
+  test(`source_v2 consent ${scenario.id} ${scenario.viewport.width}px ${scenario.theme} ${scenario.locale}`, async ({ page }, info) => {
+    await page.setViewportSize(scenario.viewport);
+    await page.emulateMedia({ colorScheme: scenario.theme });
+    await page.addInitScript(({ theme, locale }) => {
+      localStorage.setItem("familyMessenger.appearance", JSON.stringify({ themeMode: theme }));
+      localStorage.setItem("familyMessenger.devicePreferences", JSON.stringify({ language: locale }));
+    }, { theme: scenario.theme, locale: scenario.locale });
+    await page.goto(sourceConsentURL);
+    await expect(page.locator(".intelligence-consent-panel")).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;caret-color:transparent!important}" });
+
+    const heading = scenario.locale === "ru"
+      ? "Подключить чат Stovo к Intelligence"
+      : "Connect a Stovo chat to Intelligence";
+    const idLabel = scenario.locale === "ru" ? "ID чата" : "Chat ID";
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.locator('input[name="chat_id"]')).toHaveCount(2);
+    await expect(page.locator(".intelligence-consent-choice-copy small")).toHaveText([
+      `${idLabel} · archive-a`,
+      `${idLabel} · archive-b`,
+    ]);
+    await expect(page.locator('input[type="checkbox"]:checked')).toHaveCount(0);
+    const approveButton = page.getByRole("button", { name: scenario.locale === "ru" ? "Подтвердить и продолжить" : "Approve and continue" });
+    await expect(approveButton).toBeDisabled();
+    const approveButtonBox = await approveButton.boundingBox();
+    expect(approveButtonBox).not.toBeNull();
+    expect(approveButtonBox!.y + approveButtonBox!.height).toBeLessThanOrEqual(scenario.viewport.height);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await screenshot(page, info, scenario);
+  });
 }
 
 for (const baseScenario of shellScenarios) {

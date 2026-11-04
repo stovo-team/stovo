@@ -746,6 +746,7 @@ export const strings = {
     consentClient: "Приложение",
     consentCallback: "Проверенный адрес возврата",
     chooseOneChat: "Выберите один чат",
+    chatIdLabel: "ID чата",
     chooseGrants: "Выберите разрешения (все выключены изначально)",
     approveConsent: "Подтвердить и продолжить",
     connectionsTitle: "Подключения Intelligence",

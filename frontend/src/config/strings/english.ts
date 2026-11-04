@@ -730,6 +730,7 @@ export const strings = {
     consentClient: "Application",
     consentCallback: "Verified return address",
     chooseOneChat: "Choose one chat",
+    chatIdLabel: "Chat ID",
     chooseGrants: "Choose permissions (all start off)",
     approveConsent: "Approve and continue",
     connectionsTitle: "Intelligence connections",

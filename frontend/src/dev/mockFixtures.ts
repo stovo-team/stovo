@@ -356,3 +356,16 @@ export async function addMobileLayoutMessages(
     ];
   return { ...page, messages: [...page.messages, ...messages] };
 }
+
+export function createMockIntelligenceConsentOffer(query: URLSearchParams) {
+  return {
+    client_id: query.get("client_id") ?? "intelligence-client",
+    redirect_uri: query.get("redirect_uri") ?? "https://intelligence.example/callback",
+    state: query.get("state") ?? "local-mock-state",
+    chats: [
+      { id: "archive-a-001", title: "Message Archive", type: "archive" },
+      { id: "archive-b-002", title: "Message Archive", type: "archive" },
+    ],
+    grants: { read: false, process: false, external_transfer: false, export: false },
+  };
+}
