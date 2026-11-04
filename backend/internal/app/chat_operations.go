@@ -484,7 +484,7 @@ func (s *Server) ensureMessageArchive(user userPublic) (chatPublic, error) {
 	chatID = uuid.NewString()
 	now := nowString()
 	title := "Message Archive"
-	if err := s.chatCreation.Create(context.Background(), featurechats.CreateChat{
+	chatID, err = s.chatArchive.Ensure(context.Background(), featurechats.CreateChat{
 		ID:                 chatID,
 		FamilyID:           user.FamilyID,
 		Type:               "archive",
@@ -495,7 +495,8 @@ func (s *Server) ensureMessageArchive(user userPublic) (chatPublic, error) {
 		CreatedAt:          now,
 		MemberIDs:          []string{user.ID},
 		CreatePreferences:  false,
-	}); err != nil {
+	})
+	if err != nil {
 		return chatPublic{}, err
 	}
 	return s.buildChatPublic(chatID, user)
