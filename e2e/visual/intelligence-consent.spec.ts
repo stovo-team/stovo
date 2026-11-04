@@ -39,7 +39,19 @@ for (const baseScenario of shellScenarios) {
       requestParameters.client_id,
       requestParameters.redirect_uri,
     ]);
-    await expect(page.getByRole("button", { name: continueLabel })).toBeVisible();
+    const continueButton = page.getByRole("button", { name: continueLabel });
+    await expect(continueButton).toBeVisible();
+    await expect(page.getByRole("button", { name: scenario.locale === "ru" ? "Отмена" : "Cancel" })).toBeVisible();
+    const defaultContinueStyle = await continueButton.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return { backgroundImage: style.backgroundImage, borderColor: style.borderColor };
+    });
+    await continueButton.hover();
+    await expect.poll(() => continueButton.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return { backgroundImage: style.backgroundImage, borderColor: style.borderColor };
+    })).toEqual(defaultContinueStyle);
+    await page.mouse.move(0, 0);
     const overflowingConsentElements = await page.locator(
       ".intelligence-identity-panel, .intelligence-identity-details, .intelligence-identity-details dd, .intelligence-identity-details code",
     ).evaluateAll((elements) => elements

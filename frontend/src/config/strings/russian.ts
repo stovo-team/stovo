@@ -741,6 +741,7 @@ export const strings = {
     identityDescription: "Продолжите, чтобы передать ваш идентификатор Messenger зарегистрированному клиенту Intelligence.",
     continuing: "Продолжаем…",
     continueToIntelligence: "Продолжить",
+    cancelConsent: "Отмена",
     loadingConsent: "Загружаем доступные вам чаты…",
     consentClient: "Приложение",
     consentCallback: "Проверенный адрес возврата",
