@@ -133,13 +133,21 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
   }
 
   if (parsed.flow === "oidc") {
-    return <main className="app-shell"><section className="auth-panel">
+    return <main className="app-shell"><section className="auth-panel intelligence-identity-panel">
       <h1>{strings.intelligence.identityTitle}</h1>
-      <p>{strings.intelligence.identityDescription}</p>
-      <p>{strings.intelligence.consentClient}: <strong>{parsed.parameters.client_id}</strong></p>
-      <p className="intelligence-consent-callback">{strings.intelligence.consentCallback}: <code>{parsed.parameters.redirect_uri}</code></p>
+      <p className="intelligence-identity-description">{strings.intelligence.identityDescription}</p>
+      <dl className="intelligence-identity-details">
+        <div>
+          <dt>{strings.intelligence.consentClient}</dt>
+          <dd><code>{parsed.parameters.client_id}</code></dd>
+        </div>
+        <div>
+          <dt>{strings.intelligence.consentCallback}</dt>
+          <dd><code>{parsed.parameters.redirect_uri}</code></dd>
+        </div>
+      </dl>
       {error && <p role="alert" className="error-text">{error}</p>}
-      <button type="button" disabled={isSubmitting} onClick={() => void continueOIDC()}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.continueToIntelligence}</button>
+      <button className="intelligence-identity-continue" type="button" disabled={isSubmitting} onClick={() => void continueOIDC()}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.continueToIntelligence}</button>
     </section></main>;
   }
 

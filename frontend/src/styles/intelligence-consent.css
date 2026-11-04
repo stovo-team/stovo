@@ -1,0 +1,112 @@
+.intelligence-identity-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  color: var(--color-text-primary);
+  display: grid;
+  gap: 0;
+  max-width: 860px;
+  padding: clamp(24px, 4vw, 48px);
+  width: 100%;
+}
+
+.intelligence-identity-panel h1 {
+  color: var(--color-text-primary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-display-small);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  margin: 0 0 12px;
+}
+
+.intelligence-identity-panel .intelligence-identity-description {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body-large);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-relaxed);
+  margin: 0 0 28px;
+  max-width: 62ch;
+}
+
+.intelligence-identity-panel .intelligence-identity-details {
+  background: var(--background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-surface);
+  display: grid;
+  gap: 18px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 20px;
+}
+
+.intelligence-identity-panel .intelligence-identity-details > div {
+  min-width: 0;
+}
+
+.intelligence-identity-panel .intelligence-identity-details dt {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-body);
+  margin: 0 0 8px;
+}
+
+.intelligence-identity-panel .intelligence-identity-details dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.intelligence-identity-panel .intelligence-identity-details code {
+  color: var(--color-text-primary);
+  display: block;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.intelligence-identity-panel .intelligence-identity-continue {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  border-radius: var(--radius-control);
+  color: var(--color-palette-f2074b6cef37);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  justify-self: stretch;
+  margin-top: 24px;
+  min-height: 52px;
+  padding: 0 20px;
+  width: 100%;
+}
+
+.intelligence-identity-panel .intelligence-identity-continue:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.intelligence-identity-panel .intelligence-identity-continue:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@media (max-width: 600px) {
+  .intelligence-identity-panel h1 {
+    font-size: var(--font-size-heading);
+  }
+
+  .intelligence-identity-panel .intelligence-identity-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .intelligence-identity-panel .intelligence-identity-details {
+    padding: 16px;
+  }
+}
