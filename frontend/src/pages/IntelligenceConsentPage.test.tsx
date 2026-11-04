@@ -107,6 +107,16 @@ describe("IntelligenceConsentPage", () => {
     expect(mocks.authRequest).not.toHaveBeenCalled();
   });
 
+  it("places Continue before Cancel in the OIDC action row", async () => {
+    const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);
+    const actionLabels = Array.from(container.querySelectorAll(".intelligence-identity-actions button"), (button) => button.textContent?.trim());
+
+    expect(actionLabels).toEqual([
+      englishStrings.intelligence.continueToIntelligence,
+      englishStrings.intelligence.cancelConsent,
+    ]);
+  });
+
   it("sends the unchanged OIDC request parameters when creating a browser session", async () => {
     mocks.authRequest.mockRejectedValue(new Error("unavailable"));
     const container = await renderConsent(`/intelligence/consent${oidcConsentQuery}`);

@@ -149,8 +149,8 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
       </dl>
       {error && <p role="alert" className="error-text">{error}</p>}
       <div className="intelligence-identity-actions">
-        <button className="intelligence-identity-cancel" type="button" onClick={() => navigate("/")}>{strings.intelligence.cancelConsent}</button>
         <button className="intelligence-identity-continue" type="button" disabled={isSubmitting} onClick={() => void continueOIDC()}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.continueToIntelligence}</button>
+        <button className="intelligence-identity-cancel" type="button" onClick={() => navigate("/")}>{strings.intelligence.cancelConsent}</button>
       </div>
     </section></main>;
   }
