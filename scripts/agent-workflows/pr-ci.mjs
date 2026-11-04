@@ -37,6 +37,9 @@ export async function watchPr({read, required=[], sleep=delay, interval=15000, t
 
 const requiredChecks = ['PR size','Pipeline Contract','Agent workflow gate'];
 const execute = (tool,args) => execFileSync(tool,args,{encoding:'utf8',timeout:60000});
+export function isTaskBranch(branch) {
+  return /^(feature|hotfix|release|left-try)\//.test(branch) || /^ao\/[^/]+\/[^/]+$/.test(branch);
+}
 function readPrChecks(repo, pr, run=execute) {
   const result=JSON.parse(run('gh',['pr','view',String(pr),'--repo',repo,'--json','headRefOid,statusCheckRollup'])), seen=new Set();
   for(const w of JSON.parse(run('gh',['run','list','--repo',repo,'--commit',result.headRefOid,'--limit','100','--json','workflowName,conclusion,url']))) { if(seen.has(w.workflowName))continue;seen.add(w.workflowName);if(w.conclusion==='startup_failure')(result.statusCheckRollup??=[]).push({name:`Workflow: ${w.workflowName}`,workflowName:w.workflowName,status:'COMPLETED',conclusion:'STARTUP_FAILURE',detailsUrl:w.url}); }
@@ -46,7 +49,7 @@ export async function deliverPr({repo,branch,title,bodyFile,base='master',run=ex
   const actual=JSON.parse(run('gh',['repo','view','--json','nameWithOwner'])).nameWithOwner;
   if (repo !== actual) throw Error(`Target repository is ${actual}, not ${repo}`);
   const current=run('git',['branch','--show-current']).trim();
-  if (!branch || branch !== current || !/^(feature|hotfix|release|left-try)\//.test(branch)) throw Error('Publish the current dedicated task branch');
+  if (!branch || branch !== current || !isTaskBranch(branch)) throw Error('Publish the current dedicated task branch');
   if (!/^(Feature|Fix|CritFix|Test|Docs): /.test(title ?? '') || !bodyFile) throw Error('PR title and body file required');
   const count=run('git',['diff','--numstat',`origin/${base}...HEAD`]).trim().split('\n').filter(Boolean).reduce((sum,line)=>sum+line.split('\t').slice(0,2).reduce((n,v)=>n+(v==='-'?0:Number(v)),0),0);
   if (!Number.isSafeInteger(count) || count>445) throw Error(`Split the ${count}-line PR before publishing (limit 445)`);

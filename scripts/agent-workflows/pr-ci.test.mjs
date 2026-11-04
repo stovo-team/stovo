@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyChecks, watchPr } from './pr-ci.mjs';
+import { classifyChecks, isTaskBranch, watchPr } from './pr-ci.mjs';
 const check = (name, conclusion='SUCCESS', status='COMPLETED', workflowName='CI/CD Pipeline') => ({name,conclusion,status,workflowName});
 const pr = (checks, head='a') => ({headRefOid:head,statusCheckRollup:checks});
 test('every CI cell matters while CodeQL is explicitly ignored', () => {
@@ -31,6 +31,13 @@ test('red returns immediately and pending times out without a false pass', async
   assert.equal(red.state,'failed');let time=0;
   const yellow=await watchPr({read:()=>pr([]),sleep:async()=>{time+=10;},interval:1,timeout:5,now:()=>time});
   assert.equal(yellow.state,'pending');assert.equal(yellow.reason,'timeout');
+});
+
+test('recognizes AO task branches without accepting arbitrary branch paths', () => {
+  assert.equal(isTaskBranch('ao/connection-buttons/codex-consent-actions'), true);
+  assert.equal(isTaskBranch('feature/codex-consent-actions'), true);
+  assert.equal(isTaskBranch('ao/connection-buttons/root/nested'), false);
+  assert.equal(isTaskBranch('other/codex-consent-actions'), false);
 });
 
 test('publication creates/reuses a PR then waits for its actual CI', async () => {
