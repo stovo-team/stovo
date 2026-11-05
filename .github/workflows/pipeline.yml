@@ -191,9 +191,9 @@ jobs:
     runs-on: [self-hosted, tests, Windows]
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2]
     timeout-minutes: 45
     defaults:
       run:
@@ -350,64 +350,13 @@ jobs:
             git diff -- ent
             exit 1
           fi
-      - name: Cache golangci-lint binary
-        if: matrix.shard == 0
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ${{ runner.temp }}/golangci-lint/v2.14.0
-          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
-      - name: Install golangci-lint binary
-        if: matrix.shard == 0
-        shell: powershell
-        run: |
-          $version = '2.14.0'
-          $toolDirectory = Join-Path $env:RUNNER_TEMP 'golangci-lint\v2.14.0'
-          $binaryPath = Join-Path $toolDirectory 'golangci-lint.exe'
-          if (-not (Test-Path $binaryPath)) {
-            New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
-            $archivePath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-windows-amd64.zip"
-            $extractPath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-extract"
-            $downloadUrl = "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-windows-amd64.zip"
-
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
-            Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
-            $downloadedBinary = Join-Path $extractPath "golangci-lint-$version-windows-amd64\golangci-lint.exe"
-            if (-not (Test-Path $downloadedBinary)) {
-              throw "The golangci-lint archive did not contain '$downloadedBinary'."
-            }
-
-            Copy-Item -LiteralPath $downloadedBinary -Destination $binaryPath -Force
-            Remove-Item -LiteralPath $archivePath, $extractPath -Force -Recurse
-          }
-
-          Add-Content -Path $env:GITHUB_PATH -Value $toolDirectory
-          & $binaryPath version
-          if ($LASTEXITCODE -ne 0) {
-            throw "golangci-lint $version could not start."
-          }
-      - name: Configure runner-local golangci-lint cache
-        if: matrix.shard == 0
-        shell: powershell
-        run: |
-          $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
-          New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
-          Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
-      - name: Go lint
-        if: matrix.shard == 0
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
-        with:
-          version: v2.14.0
-          install-mode: none
-          working-directory: backend
-          verify: true
-          skip-cache: true
-          args: --timeout=5m
       - name: Sharded unit and integration tests with coverage
         env:
           BACKEND_TEST_SHARD: ${{ matrix.shard }}
         run: |
-          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 2)"
-          go test -count=1 -covermode=atomic -coverprofile="coverage-app-$BACKEND_TEST_SHARD.out" -run "$testRegex" ./internal/app
+          set -o pipefail
+          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3)"
+          go test -json -count=1 -covermode=atomic -coverprofile="coverage-app-$BACKEND_TEST_SHARD.out" -run "$testRegex" ./internal/app | tee "test-events-$BACKEND_TEST_SHARD.jsonl"
           if [ "$BACKEND_TEST_SHARD" = "0" ]; then
             mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
             if [ "${#packages[@]}" -gt 0 ]; then
@@ -496,6 +445,14 @@ jobs:
             exit 1
           fi
           echo "app SQL gate passed"
+      - name: Upload backend test events
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-test-events-${{ matrix.shard }}
+          path: backend/test-events-${{ matrix.shard }}.jsonl
+          if-no-files-found: warn
       - name: Stop backend test containers
         if: always()
         shell: powershell
@@ -505,9 +462,70 @@ jobs:
             docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }
 
+  backend_lint:
+    name: Backend Go lint
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+      - name: Cache golangci-lint binary
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/golangci-lint/v2.14.0
+          key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
+      - name: Install golangci-lint binary
+        shell: powershell
+        run: |
+          $version = '2.14.0'
+          $toolDirectory = Join-Path $env:RUNNER_TEMP 'golangci-lint\v2.14.0'
+          $binaryPath = Join-Path $toolDirectory 'golangci-lint.exe'
+          if (-not (Test-Path $binaryPath)) {
+            New-Item -ItemType Directory -Path $toolDirectory -Force | Out-Null
+            $archivePath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-windows-amd64.zip"
+            $extractPath = Join-Path $env:RUNNER_TEMP "golangci-lint-$version-extract"
+            $downloadUrl = "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-windows-amd64.zip"
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+            Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath -Force
+            $downloadedBinary = Join-Path $extractPath "golangci-lint-$version-windows-amd64\golangci-lint.exe"
+            if (-not (Test-Path $downloadedBinary)) {
+              throw "The golangci-lint archive did not contain '$downloadedBinary'."
+            }
+
+            Copy-Item -LiteralPath $downloadedBinary -Destination $binaryPath -Force
+            Remove-Item -LiteralPath $archivePath, $extractPath -Force -Recurse
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $toolDirectory
+          & $binaryPath version
+          if ($LASTEXITCODE -ne 0) {
+            throw "golangci-lint $version could not start."
+          }
+      - name: Configure runner-local golangci-lint cache
+        shell: powershell
+        run: |
+          $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
+          New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
+          Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
+      - name: Go lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
+        with:
+          version: v2.14.0
+          install-mode: none
+          working-directory: backend
+          verify: true
+          skip-cache: true
+          args: --timeout=5m
+
   backend-ci:
     name: Backend CI
-    needs: [changes, backend_test_shards]
+    needs: [changes, backend_test_shards, backend_lint]
     if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
     permissions:
@@ -533,9 +551,10 @@ jobs:
       - name: Require successful backend test shards
         env:
           BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
+          BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}
         run: |
-          if [[ "$BACKEND_SHARD_RESULT" != "success" ]]; then
-            echo "Backend test shards did not succeed: $BACKEND_SHARD_RESULT" >&2
+          if [[ "$BACKEND_SHARD_RESULT" != "success" || "$BACKEND_LINT_RESULT" != "success" ]]; then
+            echo "Backend test shards or lint did not succeed: $BACKEND_SHARD_RESULT / $BACKEND_LINT_RESULT" >&2
             exit 1
           fi
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -557,7 +576,7 @@ jobs:
           $artifactResponse = Invoke-RestMethod -Method Get -Uri $artifactsUri -Headers $headers
           $destination = Join-Path $env:GITHUB_WORKSPACE 'backend'
 
-          foreach ($shard in @(0, 1)) {
+          foreach ($shard in @(0, 1, 2)) {
             $artifactName = "backend-coverage-shard-$shard"
             $artifactMatches = @($artifactResponse.artifacts | Where-Object { $_.name -eq $artifactName -and -not $_.expired })
             if ($artifactMatches.Count -ne 1) {
@@ -571,7 +590,7 @@ jobs:
             Invoke-WebRequest -Uri $artifactMatches[0].archive_download_url -Headers $headers -OutFile $zipPath -UseBasicParsing
             Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
 
-            $expectedProfiles = if ($shard -eq 0) { @('coverage-app-0.out', 'coverage-other.out') } else { @('coverage-app-1.out') }
+            $expectedProfiles = if ($shard -eq 0) { @('coverage-app-0.out', 'coverage-other.out') } else { @("coverage-app-$shard.out") }
             foreach ($profile in $expectedProfiles) {
               $profilePath = Join-Path $extractPath $profile
               if (-not (Test-Path $profilePath -PathType Leaf)) {
@@ -583,8 +602,8 @@ jobs:
           }
       - name: Merge backend coverage profiles
         run: |
-          if [ -f coverage-app-0.out ] && [ -f coverage-app-1.out ] && [ -f coverage-other.out ]; then
-            go run ./cmd/test-shard merge -output coverage.out coverage-app-0.out coverage-app-1.out coverage-other.out
+          if [ -f coverage-app-0.out ] && [ -f coverage-app-1.out ] && [ -f coverage-app-2.out ] && [ -f coverage-other.out ]; then
+            go run ./cmd/test-shard merge -output coverage.out coverage-app-0.out coverage-app-1.out coverage-app-2.out coverage-other.out
             go tool cover -func=coverage.out | tee coverage-summary.txt
             {
               echo "## Backend coverage"

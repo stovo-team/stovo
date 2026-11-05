@@ -228,9 +228,9 @@ jobs:
     runs-on: [self-hosted, tests, Windows]
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2]
     timeout-minutes: 45
     defaults:
       run:
@@ -379,14 +379,57 @@ jobs:
           cache: false
       - name: Download modules
         run: go mod download
+      - name: Sharded unit and integration tests
+        env:
+          BACKEND_TEST_SHARD: ${{ matrix.shard }}
+        run: |
+          set -o pipefail
+          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3)"
+          go test -json -count=1 -run "$testRegex" ./internal/app | tee "test-events-$BACKEND_TEST_SHARD.jsonl"
+          if [ "$BACKEND_TEST_SHARD" = "0" ]; then
+            mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
+            if [ "${#packages[@]}" -gt 0 ]; then
+              go test -count=1 "${packages[@]}"
+            fi
+          fi
+      - name: Upload backend test events
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-test-events-${{ matrix.shard }}
+          path: backend/test-events-${{ matrix.shard }}.jsonl
+          if-no-files-found: warn
+      - name: Stop backend test containers
+        if: always()
+        shell: powershell
+        run: |
+          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
+            docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+          }
+
+  backend_lint:
+    name: Backend Go lint
+    needs: changes
+    if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true' }}
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
       - name: Cache golangci-lint binary
-        if: matrix.shard == 0
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ runner.temp }}/golangci-lint/v2.14.0
           key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
       - name: Install golangci-lint binary
-        if: matrix.shard == 0
         shell: powershell
         run: |
           $version = '2.14.0'
@@ -415,14 +458,12 @@ jobs:
             throw "golangci-lint $version could not start."
           }
       - name: Configure runner-local golangci-lint cache
-        if: matrix.shard == 0
         shell: powershell
         run: |
           $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
           New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
           Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
       - name: Go lint
-        if: matrix.shard == 0
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
           version: v2.14.0
@@ -431,30 +472,10 @@ jobs:
           verify: true
           skip-cache: true
           args: --timeout=5m
-      - name: Sharded unit and integration tests
-        env:
-          BACKEND_TEST_SHARD: ${{ matrix.shard }}
-        run: |
-          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 2)"
-          go test -count=1 -run "$testRegex" ./internal/app
-          if [ "$BACKEND_TEST_SHARD" = "0" ]; then
-            mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
-            if [ "${#packages[@]}" -gt 0 ]; then
-              go test -count=1 "${packages[@]}"
-            fi
-          fi
-      - name: Stop backend test containers
-        if: always()
-        shell: powershell
-        run: |
-          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
-            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
-            docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
-          }
 
   backend-ci:
     name: Backend CI
-    needs: [changes, backend_test_shards]
+    needs: [changes, backend_test_shards, backend_lint]
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&
@@ -464,10 +485,11 @@ jobs:
       - name: Require successful backend test shards
         env:
           BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
+          BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}
         shell: powershell
         run: |
-          if ($env:BACKEND_SHARD_RESULT -ne 'success') {
-            throw "Backend test shards did not succeed: $env:BACKEND_SHARD_RESULT"
+          if ($env:BACKEND_SHARD_RESULT -ne 'success' -or $env:BACKEND_LINT_RESULT -ne 'success') {
+            throw "Backend test shards or lint did not succeed: $env:BACKEND_SHARD_RESULT / $env:BACKEND_LINT_RESULT"
           }
       - name: Aggregate successful backend shards
-        run: echo "Both backend test shards and lint passed."
+        run: echo "All backend test shards and lint passed."
