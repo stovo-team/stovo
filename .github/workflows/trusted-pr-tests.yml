@@ -133,14 +133,92 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+  frontend_dependencies:
+    name: Prepare frontend dependencies
+    needs: changes
+    if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.frontend == 'true' }}
+    runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
+    timeout-minutes: 20
+    cache-mode: read
+    outputs:
+      os: ${{ steps.versions.outputs.os }}
+      arch: ${{ steps.versions.outputs.arch }}
+      node: ${{ steps.versions.outputs.node }}
+      npm: ${{ steps.versions.outputs.npm }}
+      artifact-ready: ${{ steps.upload.outcome == 'success' }}
+    env:
+      GIT_CONFIG_COUNT: 1
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+    steps:
+      - name: Configure Git long paths and workspace
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          git config --global core.longpaths true
+          if (Test-Path frontend\node_modules) {
+            Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
+          }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          persist-credentials: false
+      - name: Ensure Git Bash is available on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) { throw "Git for Windows Bash was not found at '$gitBash'." }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Record dependency runtime
+        id: versions
+        shell: bash
+        run: |
+          echo "os=$RUNNER_OS" >> "$GITHUB_OUTPUT"
+          echo "arch=$RUNNER_ARCH" >> "$GITHUB_OUTPUT"
+          echo "node=$(node --version)" >> "$GITHUB_OUTPUT"
+          echo "npm=$(npm --version)" >> "$GITHUB_OUTPUT"
+          rm -f frontend-dependencies.tar
+      - name: Restore installed frontend dependencies
+        id: dependencies-cache
+        continue-on-error: true
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: frontend-dependencies.tar
+          key: frontend-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.npm }}-${{ hashFiles('frontend/package.json', 'frontend/package-lock.json', 'frontend/.npmrc', '.npmrc') }}
+      - name: Install and package frontend dependencies
+        if: steps.dependencies-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          (cd frontend && npm ci)
+          tar -cf frontend-dependencies.tar -C frontend node_modules
+      - name: Upload frontend dependencies for this run
+        id: upload
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-dependencies
+          path: frontend-dependencies.tar
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
   frontend_test_shards:
     name: Frontend CI test shards
-    needs: changes
+    needs: [changes, frontend_dependencies]
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
     runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -151,6 +229,7 @@ jobs:
       GIT_CONFIG_COUNT: 1
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
+      VITEST_MAX_WORKERS: '2'
     steps:
       - name: Configure Git long paths and workspace
         if: runner.os == 'Windows'
@@ -179,10 +258,36 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - name: Install dependencies
+      - name: Restore shared frontend dependencies or install locally
         shell: bash
-        working-directory: frontend
-        run: npm ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREP_RESULT: ${{ needs.frontend_dependencies.result }}
+          ARTIFACT_READY: ${{ needs.frontend_dependencies.outputs.artifact-ready }}
+          PREP_OS: ${{ needs.frontend_dependencies.outputs.os }}
+          PREP_ARCH: ${{ needs.frontend_dependencies.outputs.arch }}
+          PREP_NODE: ${{ needs.frontend_dependencies.outputs.node }}
+          PREP_NPM: ${{ needs.frontend_dependencies.outputs.npm }}
+        run: |
+          set -euo pipefail
+          restored=false
+          artifact_dir="$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID"
+          rm -rf "$artifact_dir"
+          if [ "$PREP_RESULT" = success ] && [ "$ARTIFACT_READY" = true ] &&
+             [ "$PREP_OS" = "$RUNNER_OS" ] && [ "$PREP_ARCH" = "$RUNNER_ARCH" ] &&
+             [ "$PREP_NODE" = "$(node --version)" ] && [ "$PREP_NPM" = "$(npm --version)" ]; then
+            if gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name frontend-dependencies --dir "$artifact_dir" &&
+               tar -xf "$artifact_dir/frontend-dependencies.tar" -C frontend; then
+              restored=true
+            fi
+          fi
+          if [ "$restored" = true ]; then
+            echo "Restored frontend dependencies from this workflow run."
+          else
+            echo "Shared dependencies unavailable; running npm ci locally."
+            unset GH_TOKEN
+            (cd frontend && npm ci)
+          fi
       - name: CSS size guard
         if: matrix.shard == 1
         shell: bash
