@@ -2,7 +2,7 @@ backend/internal/adapters/statsstore/postgres_store.go	893
 backend/internal/app/admin_operations.go	535
 backend/internal/app/call_operations.go	1409
 backend/internal/app/canvas_operations.go	608
-backend/internal/app/chat_operations.go	1689
+backend/internal/app/chat_operations.go	1690
 backend/internal/app/checklist_operations.go	1016
 backend/internal/app/collection_operations.go	557
 backend/internal/app/file_operations.go	594

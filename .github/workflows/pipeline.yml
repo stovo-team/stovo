@@ -18,6 +18,7 @@ on:
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
       - '.github/workflows/trusted-pr-tests.yml'
+      - '.github/workflows/caddy-watchdog.yml'
   workflow_dispatch:
     inputs:
       backend_deploy_only:

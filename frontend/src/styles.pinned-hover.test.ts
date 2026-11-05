@@ -20,7 +20,7 @@ it("keeps the pinned banner click area visually unchanged on hover", () => {
   expect(css).not.toMatch(/\.pinned-banner-click-area:is\([^)]*:hover/);
   // Global button hover must not paint the pinned banner (regression after PR #294).
   expect(css).toMatch(
-    /@media \(hover: hover\) and \(pointer: fine\) \{\s*button:hover:not\(:disabled\):not\(\.pinned-banner-click-area\) \{/,
+    /@media \(hover: hover\) and \(pointer: fine\) \{\s*button:hover:not\(:disabled\):where\(:not\(\.pinned-banner-click-area\)\) \{/,
   );
   expect(css).toMatch(/\.pinned-banner-click-area:focus-visible\s*\{[^}]*background:\s*var\(--surface-hover\)/);
 });

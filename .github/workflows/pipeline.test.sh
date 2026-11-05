@@ -464,6 +464,18 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
   fi
 done
 
+caddy_watchdog_contract=$(cat .github/workflows/caddy-watchdog.yml)
+for required in 'runs-on: [self-hosted, Windows]' 'name: Prefer Git for Windows Bash over the WSL shim' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH'; do
+  if ! grep -Fq "$required" <<< "$caddy_watchdog_contract"; then
+    echo "The Caddy watchdog must select Git for Windows Bash before running its SSH action ($required)." >&2
+    exit 1
+  fi
+done
+if ! awk '/name: Prefer Git for Windows Bash over the WSL shim/ { setup = NR } /uses: appleboy\/ssh-action@/ { ssh = NR } END { exit !(setup > 0 && ssh > setup) }' <<< "$caddy_watchdog_contract"; then
+  echo "The Caddy watchdog must prepare Git Bash before the SSH action." >&2
+  exit 1
+fi
+
 backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
