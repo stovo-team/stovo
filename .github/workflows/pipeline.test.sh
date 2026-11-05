@@ -129,7 +129,7 @@ awk '
     if (job_needs["frontend_test_shards"] != "changes" || job_needs["frontend-ci"] != "[changes, frontend_test_shards]") {
       fail("Frontend shards must run independently and Frontend CI must aggregate the shards.")
     }
-    if (job_needs["backend_test_shards"] != "changes" || job_needs["backend-ci"] != "[changes, backend_test_shards]") {
+    if (job_needs["backend_test_shards"] != "changes" || job_needs["backend-ci"] != "[changes, backend_test_shards, backend_lint]") {
       fail("Backend shards must run independently of Frontend CI and Backend CI must aggregate the shards.")
     }
     if (job_runner["frontend_test_shards"] != "[self-hosted, e2e]" || job_runner["frontend-ci"] != "[self-hosted, e2e]") {
@@ -203,18 +203,19 @@ done
 
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   shard_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'max-parallel: 2' 'shard: [0, 1]' 'matrix.shard' 'select -shard "$BACKEND_TEST_SHARD" -shards 2' '-run "$testRegex"' './internal/app'; do
+  for required in 'max-parallel: 3' 'shard: [0, 1, 2]' 'matrix.shard' 'select -shard "$BACKEND_TEST_SHARD" -shards 3' '-run "$testRegex"' './internal/app' 'set -o pipefail' 'go test -json' 'backend-test-events-${{ matrix.shard }}'; do
     if ! grep -Fq -- "$required" <<< "$shard_contract"; then
-      echo "Backend workflow $workflow must run two isolated Go integration shards ($required)." >&2
+      echo "Backend workflow $workflow must run three isolated Go integration shards ($required)." >&2
       exit 1
     fi
   done
   aggregate_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  if ! grep -Fq 'needs: [changes, backend_test_shards]' <<< "$aggregate_contract"; then
-    echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the two shards." >&2
+  if ! grep -Fq 'needs: [changes, backend_test_shards, backend_lint]' <<< "$aggregate_contract"; then
+    echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the three shards." >&2
     exit 1
   fi
   if ! grep -Fq 'BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}' <<< "$aggregate_contract" || \
+     ! grep -Fq 'BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}' <<< "$aggregate_contract" || \
      ! grep -Fq 'did not succeed:' <<< "$aggregate_contract"; then
     echo "Backend workflow $workflow must fail its aggregate when a test shard fails or is skipped." >&2
     exit 1
@@ -222,9 +223,9 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
 done
 
 master_coverage_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'backend-coverage-shard' 'Merge backend coverage profiles' 'go run ./cmd/test-shard merge' 'name: backend-coverage'; do
+for required in 'backend-coverage-shard' 'Merge backend coverage profiles' 'go run ./cmd/test-shard merge' 'coverage-app-2.out' 'name: backend-coverage'; do
   if ! grep -Fq "$required" <<< "$master_coverage_contract"; then
-    echo "Backend CI must merge and publish coverage from both shards ($required)." >&2
+    echo "Backend CI must merge and publish coverage from all shards ($required)." >&2
     exit 1
   fi
 done
@@ -393,7 +394,7 @@ if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f' 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
+for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
     echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
     exit 1
@@ -478,7 +479,7 @@ grep -Eq 'golangci-lint-action@v9|golangci-lint-action@[[:xdigit:]]{40}[[:space:
   echo "Backend CI must use golangci-lint action v9." >&2
   exit 1
 }
-backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+backend_workflow_contract=$(sed -n '/^  backend_lint:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Backend CI must run the pinned golangci-lint binary with lint caching enabled ($required)." >&2
@@ -486,7 +487,7 @@ for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLA
   fi
 done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  workflow_backend_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  workflow_backend_contract=$(sed -n '/^  backend_lint:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
     if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
       echo "Backend CI in $workflow must download and cache a named Windows golangci-lint archive before invoking the action ($required)." >&2
