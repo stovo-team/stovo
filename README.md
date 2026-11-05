@@ -2,7 +2,7 @@
   <img src="frontend/public/Logo.svg" alt="Stovo" width="88" />
 
   <h1>Stovo</h1>
-  <p><strong>A team workspace for conversations, collaboration, and calls.</strong></p>
+  <p><strong>Self-hosted corporate messenger</strong></p>
   <p>Bring everyday team communication together in a workspace your organization can host and manage.</p>
   <p><a href="https://stovo.ru">Website</a> · <a href="docs/README.md">Documentation</a> · <a href="docs/self-hosting/docker-compose.md">Self-hosting</a> · <a href="CONTRIBUTING.md">Contributing</a></p>
 </div>
@@ -14,6 +14,8 @@
   <img alt="React and TypeScript" src="https://img.shields.io/badge/web-React%20%2B%20TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
   <a href="LICENSE"><img alt="Apache 2.0 License" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square"></a>
 </p>
+
+> Your company's private workspace. On your terms.
 
 ## One workspace for team communication
 

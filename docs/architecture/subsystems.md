@@ -7,6 +7,22 @@ type: architecture
 
 This is a navigation guide to the main feature boundaries in the current source tree, not a promise that each directory is an independently deployable service. The backend is built and deployed as one Go application. The frontend is a single React app.
 
+## Production Compose service flow
+
+```mermaid
+flowchart LR
+    Team["Team member<br/>Browser or mobile app"] -->|HTTPS| Caddy["Caddy<br/>TLS and routing"]
+    Caddy -->|Web app| Frontend["React + TypeScript<br/>frontend"]
+    Caddy -->|HTTP and Socket.IO| Backend["Go modular monolith<br/>backend-blue"]
+    Backend --> Postgres[("PostgreSQL<br/>application data")]
+    Backend --> Cache[("Redis<br/>cache and presence")]
+    Backend --> Jobs[("Redis Streams<br/>redis-jobs")]
+    Backend --> Objects[("S3-compatible object storage<br/>MinIO in Compose")]
+    Team -. "voice and video" .-> LiveKit["LiveKit<br/>media server"]
+    Team -. "network relay when needed" .-> Coturn["Coturn<br/>STUN/TURN"]
+    Backend -. "optional transcription" .-> Groq["Groq API"]
+```
+
 ## Backend
 
 ### Application composition and transport

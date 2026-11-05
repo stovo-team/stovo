@@ -105,26 +105,22 @@ test('README opens with the approved corporate positioning and tagline', () => {
   assert.match(opening, /^>\s*Your company's private workspace\. On your terms\./m, 'tagline should appear as the short lead line');
 });
 
-test('README has the required product, deployment, development, status, and docs sections', () => {
+test('product README and linked guides cover the required topics', () => {
   const readme = read('README.md');
   const headings = markdownHeadings(readme);
-  for (const heading of [
-    'Product at a glance',
-    'What teams can do',
-    'Designed for your infrastructure',
-    'Architecture',
-    'Get started',
-    'Choose your deployment',
-    'Development',
-    'Project status',
-    'Documentation',
-  ]) assert.ok(headings.has(slugHeading(heading)), `missing README section: ${heading}`);
-
-  const statusStart = readme.search(/^## Project status\s*$/m);
-  const statusEnd = readme.slice(statusStart + 1).search(/^## /m);
-  const status = statusStart >= 0 ? readme.slice(statusStart, statusEnd >= 0 ? statusStart + 1 + statusEnd : undefined) : '';
-  assert.match(status, /Apache License 2\.0/i, 'status must identify the selected license');
+  for (const heading of ['One workspace for team communication', 'Explore Stovo', 'About this project']) {
+    assert.ok(headings.has(slugHeading(heading)), `missing README section: ${heading}`);
+  }
+  assert.match(readme, /Apache License 2\.0/i);
   assert.match(read('LICENSE'), /Copyright 2026 Stakhov Ivan/);
+  for (const [file, sections] of [
+    ['docs/architecture/subsystems.md', ['Production Compose service flow', 'Backend', 'Frontend']],
+    ['docs/self-hosting/docker-compose.md', ['Requirements and network', 'Configure and start', 'Persistent data and backups']],
+    ['CONTRIBUTING.md', ['Development checks', 'Fast frontend preview with synthetic data']],
+  ]) {
+    const guideHeadings = markdownHeadings(read(file));
+    for (const section of sections) assert.ok(guideHeadings.has(slugHeading(section)), `missing ${file} section: ${section}`);
+  }
 });
 
 test('production and stage Compose require deployment credentials', () => {
@@ -141,10 +137,10 @@ test('production and stage Compose require deployment credentials', () => {
   assert.doesNotMatch(stage, /stage_password|stage_secret|stage_encryption_key|stovo_stage_pass|stage_turn_pass/i);
 });
 
-test('README architecture includes a connected Mermaid service flow with verified services', () => {
-  const readme = read('README.md');
+test('architecture guide includes a connected Mermaid service flow with verified services', () => {
+  const readme = read('docs/architecture/subsystems.md');
   const mermaidBlocks = [...readme.matchAll(/```mermaid\s*\n([\s\S]*?)```/gi)].map((match) => match[1]);
-  assert.ok(mermaidBlocks.length > 0, 'README must include a fenced Mermaid diagram');
+  assert.ok(mermaidBlocks.length > 0, 'architecture guide must include a fenced Mermaid diagram');
   const architecture = mermaidBlocks.find((block) => /^\s*(?:flowchart|graph)\s+/im.test(block));
   assert.ok(architecture, 'Mermaid architecture must declare a flowchart or graph');
   for (const [name, pattern] of [
@@ -184,22 +180,16 @@ test('README architecture includes a connected Mermaid service flow with verifie
   }
 });
 
-test('README public call setup documents client-reachable LIVEKIT_URL and rejects localhost defaults', () => {
-  const readme = read('README.md');
-  const start = readme.search(/^## Get started\s*$/m);
-  assert.ok(start >= 0, 'Get started section is required');
-  const remainder = readme.slice(start);
-  const nextSection = remainder.slice(1).search(/^## /m);
-  const setup = remainder.slice(0, nextSection >= 0 ? nextSection + 1 : undefined);
-  const livekitAt = setup.indexOf('LIVEKIT_URL');
-  assert.ok(livekitAt >= 0, 'public call setup must name LIVEKIT_URL');
-  const context = setup.slice(Math.max(0, livekitAt - 220), livekitAt + 360);
-  assert.match(context, /LIVEKIT_URL[\s\S]{0,120}wss:\/\/[\s\S]{0,80}endpoint reachable by those clients/i, 'LIVEKIT_URL must use a wss endpoint reachable by remote clients');
-  assert.match(context, /ws:\/\/localhost:7880[\s\S]{0,120}only works for a local client and will fail for users connecting from another device/i, 'README must explicitly say the localhost sample fails for remote clients');
+test('Compose guide documents client-reachable LiveKit URLs and localhost limitations', () => {
+  const guide = read('docs/self-hosting/docker-compose.md');
+  assert.match(guide, /Calls depend on reachable client-facing LiveKit/);
+  assert.match(guide, /LIVEKIT_URL[\s\S]{0,160}wss:\/\//i);
+  assert.match(guide, /ws:\/\/localhost:7880[\s\S]{0,120}only works for a local client and will fail for users connecting from another device/i);
+  assert.match(guide, /Use `wss:\/\/` when a TLS endpoint or TLS-terminating proxy is configured/i);
 });
 
-test('README follows the production Compose topology and encryption key format', () => {
-  const readme = read('README.md');
+test('Compose guide follows the production topology and encryption key format', () => {
+  const readme = read('docs/self-hosting/docker-compose.md');
   const compose = read('deploy/compose/production-bluegreen.yml');
   const env = read('.env.example');
   assert.match(readme, /backend-blue/);
