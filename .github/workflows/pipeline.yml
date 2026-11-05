@@ -1581,11 +1581,21 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          builder_name="ghcr-builder-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          builder_created=false
+          cleanup_builder() {
+            if [ "$builder_created" = true ]; then
+              docker buildx rm --force "$builder_name"
+            fi
+          }
+          trap cleanup_builder EXIT
+
           echo "Setting up QEMU binfmt emulation for multi-arch builds..."
           docker run --privileged --rm tonistiigi/binfmt --install all
 
           echo "Initializing Buildx builder instance..."
-          docker buildx create --use --name ghcr-builder 2>/dev/null || docker buildx use ghcr-builder
+          docker buildx create --use --name "$builder_name"
+          builder_created=true
 
           echo "Authenticating to GitHub Container Registry..."
           echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin

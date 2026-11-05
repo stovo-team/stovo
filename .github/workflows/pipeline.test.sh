@@ -248,6 +248,15 @@ if [ "$(grep -Fc 'bash deploy/scripts/ensure-docker-buildx.sh' .github/workflows
   echo "Both production deployment jobs must ensure Docker Buildx before building images." >&2
   exit 1
 fi
+buildx_deploy_contract=$(sed -n '/- name: Build and publish multi-arch container images/,/^      - name:/p' .github/workflows/pipeline.yml | sed '$d')
+if ! grep -Fq 'builder_name="ghcr-builder-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"' <<< "$buildx_deploy_contract" || \
+  ! grep -Fq 'trap cleanup_builder EXIT' <<< "$buildx_deploy_contract" || \
+  ! grep -Fq 'docker buildx rm --force "$builder_name"' <<< "$buildx_deploy_contract" || \
+  grep -Fq 'docker buildx prune' <<< "$buildx_deploy_contract" || \
+  grep -Fq 'docker container prune' <<< "$buildx_deploy_contract"; then
+  echo "Production Buildx must use and remove a run-scoped builder rather than pruning shared Docker resources." >&2
+  exit 1
+fi
 bash deploy/scripts/ensure-docker-buildx.test.sh
 
 awk '
