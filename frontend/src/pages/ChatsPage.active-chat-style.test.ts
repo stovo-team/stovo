@@ -12,10 +12,10 @@ describe("active chat list item styling", () => {
     ).at(-1)?.[1] ?? "";
 
     expect(activeRule).toContain(
-      "background: color-mix(in oklab, var(--accent-soft) 28%, transparent);"
+      "background: color-mix(in oklab, var(--stovo-primary) 18%, var(--island-surface));"
     );
     expect(activeRule).toContain("border-radius: var(--radius-panel);");
-    expect(activeRule).not.toContain("border-left");
+    expect(activeRule).toMatch(/border-left:\s*0;/);
   });
 
   it("does not clear selectedChat synchronously in closeActiveChat to avoid flashing empty state", () => {

@@ -33,6 +33,14 @@
     "app-shell.css": {
       "maxLines": 2079,
       "reason": "Accept the existing app-shell stylesheet size on current master while its rules are split into smaller partials."
+    },
+    "chat-details.css": {
+      "maxLines": 1630,
+      "reason": "Allow the new-chat dialog safe-area spacing and compact contact-row layout changes."
+    },
+    "storage-and-admin.css": {
+      "maxLines": 2107,
+      "reason": "Allow all-storage avatar state styling for the source list and its minimized layout."
     }
   }
 }

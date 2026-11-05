@@ -11,10 +11,21 @@ concurrency:
 
 jobs:
   verify-and-recover:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows]
     environment: production
 
     steps:
+      - name: Prefer Git for Windows Bash over the WSL shim
+        shell: powershell
+        run: |
+          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
+          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
+          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
+          if (-not (Test-Path $gitBash)) {
+            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Verify HTTPS and restart an unresponsive Caddy
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:

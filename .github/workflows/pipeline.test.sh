@@ -265,6 +265,56 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
+for workflow in .github/workflows/pipeline.yml "$trusted_pr_workflow"; do
+  if [[ "$workflow" == .github/workflows/pipeline.yml ]]; then
+    change_contract=$(sed -n '/^  changes:/,/^  frontend_test_shards:/p' "$workflow")
+  else
+    change_contract=$(sed -n '/^  changes:/,/^  pipeline-contract:/p' "$workflow")
+  fi
+
+  if ! grep -Fq 'size_baseline: ${{ steps.filter.outputs.size_baseline }}' <<< "$change_contract"; then
+    echo "Workflow $workflow must expose size-baseline changes separately from product code." >&2
+    exit 1
+  fi
+
+  frontend_filter=$(awk '
+    /^            frontend:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+  backend_filter=$(awk '
+    /^            backend:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+  size_baseline_filter=$(awk '
+    /^            size_baseline:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+
+  if grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$frontend_filter" ||
+     grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$backend_filter" ||
+     ! grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$size_baseline_filter"; then
+    echo "Workflow $workflow must run the SOLID check for size-baseline updates without scheduling frontend/backend test shards." >&2
+    exit 1
+  fi
+
+  for product_filter in "$frontend_filter" "$backend_filter"; do
+    if grep -Fq '.github/workflows/pipeline.yml' <<< "$product_filter" ||
+       grep -Fq '.github/workflows/trusted-pr-tests.yml' <<< "$product_filter"; then
+      echo "Workflow-only changes in $workflow must not schedule product test shards." >&2
+      exit 1
+    fi
+  done
+
+  solid_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if ! grep -Fq "needs.changes.outputs.size_baseline == 'true'" <<< "$solid_contract"; then
+    echo "Workflow $workflow must run SOLID boundaries when the size baseline changes." >&2
+    exit 1
+  fi
+done
+
 if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
   echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
   exit 1
@@ -464,7 +514,27 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Ge
   fi
 done
 
+caddy_watchdog_contract=$(cat .github/workflows/caddy-watchdog.yml)
+for required in 'runs-on: [self-hosted, Windows]' 'name: Prefer Git for Windows Bash over the WSL shim' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH'; do
+  if ! grep -Fq "$required" <<< "$caddy_watchdog_contract"; then
+    echo "The Caddy watchdog must select Git for Windows Bash before running its SSH action ($required)." >&2
+    exit 1
+  fi
+done
+if ! awk '/name: Prefer Git for Windows Bash over the WSL shim/ { setup = NR } /uses: appleboy\/ssh-action@/ { ssh = NR } END { exit !(setup > 0 && ssh > setup) }' <<< "$caddy_watchdog_contract"; then
+  echo "The Caddy watchdog must prepare Git Bash before the SSH action." >&2
+  exit 1
+fi
+
 backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  cleanup=$(sed -n '/^      - name: Stop backend test containers/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup" ||
+     ! grep -Fq 'docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
+    echo "Backend cleanup in $workflow must remove only its own test containers." >&2
+    exit 1
+  fi
+done
 for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
