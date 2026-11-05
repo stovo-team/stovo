@@ -146,10 +146,10 @@
   box-sizing: border-box;
   color: var(--text-primary);
   display: grid;
-  gap: 24px;
+  gap: 18px;
   margin: 0 auto;
-  max-width: 840px;
-  padding: 32px;
+  max-width: 760px;
+  padding: 24px;
   width: 100%;
   background: var(--surface-card);
   border: 1px solid var(--border-default);
@@ -209,7 +209,7 @@
 
 .intelligence-consent-form {
   display: grid;
-  gap: 24px;
+  gap: 18px;
   margin: 0;
 }
 
@@ -232,7 +232,11 @@
 }
 
 .intelligence-consent-chat-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.intelligence-consent-grants {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 }
 
 .intelligence-consent-chat-list legend,
@@ -241,17 +245,18 @@
 }
 
 .intelligence-consent-choice {
-  align-items: flex-start;
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-surface);
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 14px 16px;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  min-height: 44px;
+  padding: 8px 10px;
+  transition: background-color 120ms ease;
 }
 
 .intelligence-consent-choice:hover {
@@ -259,21 +264,55 @@
 }
 
 .intelligence-consent-choice:has(input:checked) {
-  background: var(--background-secondary);
-  border-color: var(--accent-primary);
+  background: color-mix(in oklab, var(--accent-primary) 12%, var(--background-secondary));
 }
 
 .intelligence-consent-choice input {
-  accent-color: var(--accent-primary);
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1.5px solid var(--color-palette-66341b70b395, var(--border-default));
+  box-shadow: none;
   flex: 0 0 18px;
   height: 18px;
-  margin: 2px 0 0;
+  margin: 0;
+  position: relative;
   width: 18px;
 }
 
+.intelligence-consent-choice input[type="radio"] {
+  border-radius: var(--radius-circle);
+}
+
+.intelligence-consent-choice input[type="radio"]:checked {
+  background: radial-gradient(circle at center, var(--accent-primary) 0 45%, transparent 48%);
+  border-color: var(--accent-primary);
+}
+
+.intelligence-consent-choice input[type="checkbox"] {
+  border-radius: var(--radius-control);
+}
+
+.intelligence-consent-choice input[type="checkbox"]:checked {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.intelligence-consent-choice input[type="checkbox"]:checked::after {
+  border: solid var(--color-palette-f2074b6cef37, white);
+  border-width: 0 2px 2px 0;
+  content: "";
+  height: 9px;
+  left: 5px;
+  position: absolute;
+  top: 1px;
+  transform: rotate(45deg);
+  width: 4px;
+}
+
 .intelligence-consent-choice input:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .intelligence-consent-choice-copy {
@@ -314,7 +353,7 @@
 
   .intelligence-consent-panel {
     gap: 16px;
-    padding: 24px 20px;
+    padding: 20px 16px;
   }
 
   .intelligence-consent-chat-list,
@@ -331,7 +370,6 @@
   }
 
   .intelligence-consent-choice {
-    min-height: 44px;
-    padding: 10px 12px;
+    padding: 8px;
   }
 }
