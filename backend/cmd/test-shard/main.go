@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -37,6 +38,8 @@ func selectTests(args []string) error {
 	flags := flag.NewFlagSet("select", flag.ContinueOnError)
 	shardIndex := flags.Int("shard", -1, "zero-based shard index")
 	shardCount := flags.Int("shards", 0, "total shard count")
+	timingsPath := flags.String("timings", "", "JSON file with test durations in seconds")
+	shardZeroLoad := flags.Float64("shard-zero-load", 0, "estimated additional seconds on shard zero")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -44,7 +47,25 @@ func selectTests(args []string) error {
 		return fmt.Errorf("select accepts test names on stdin, not positional arguments")
 	}
 
-	pattern, err := selectPattern(os.Stdin, *shardIndex, *shardCount)
+	var durations map[string]float64
+	if *timingsPath != "" {
+		data, err := os.ReadFile(*timingsPath)
+		if err != nil {
+			return fmt.Errorf("read timings: %w", err)
+		}
+		if err := json.Unmarshal(data, &durations); err != nil {
+			return fmt.Errorf("parse timings: %w", err)
+		}
+		if durations == nil {
+			return fmt.Errorf("timings must be a JSON object")
+		}
+	}
+	loads := make([]float64, 0)
+	if *shardCount > 0 {
+		loads = make([]float64, *shardCount)
+		loads[0] = *shardZeroLoad
+	}
+	pattern, err := selectPatternWithTimings(os.Stdin, *shardIndex, *shardCount, durations, loads)
 	if err != nil {
 		return err
 	}
@@ -80,6 +101,10 @@ func mergeCoverage(args []string) error {
 }
 
 func selectPattern(input io.Reader, shardIndex, shardCount int) (string, error) {
+	return selectPatternWithTimings(input, shardIndex, shardCount, nil, nil)
+}
+
+func selectPatternWithTimings(input io.Reader, shardIndex, shardCount int, durations map[string]float64, loads []float64) (string, error) {
 	var names []string
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
@@ -92,7 +117,7 @@ func selectPattern(input io.Reader, shardIndex, shardCount int) (string, error) 
 	if err := scanner.Err(); err != nil {
 		return "", fmt.Errorf("read test names: %w", err)
 	}
-	selected, err := testshard.Select(names, shardIndex, shardCount)
+	selected, err := testshard.Select(names, shardIndex, shardCount, durations, loads)
 	if err != nil {
 		return "", err
 	}

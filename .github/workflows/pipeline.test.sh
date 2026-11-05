@@ -203,7 +203,7 @@ done
 
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   shard_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'max-parallel: 3' 'shard: [0, 1, 2]' 'matrix.shard' 'select -shard "$BACKEND_TEST_SHARD" -shards 3' '-run "$testRegex"' './internal/app' 'set -o pipefail' 'go test -json' 'backend-test-events-${{ matrix.shard }}'; do
+  for required in 'max-parallel: 3' 'shard: [0, 1, 2]' 'matrix.shard' 'select -shard "$BACKEND_TEST_SHARD" -shards 3 -timings cmd/test-shard/test-durations.json' '-shard-zero-load' '-run "$testRegex"' './internal/app' 'set -o pipefail' 'go test -json' 'backend-test-events-${{ matrix.shard }}'; do
     if ! grep -Fq -- "$required" <<< "$shard_contract"; then
       echo "Backend workflow $workflow must run three isolated Go integration shards ($required)." >&2
       exit 1
