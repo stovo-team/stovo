@@ -527,6 +527,14 @@ if ! awk '/name: Prefer Git for Windows Bash over the WSL shim/ { setup = NR } /
 fi
 
 backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  cleanup=$(sed -n '/^      - name: Stop backend test containers/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup" ||
+     ! grep -Fq 'docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
+    echo "Backend cleanup in $workflow must remove only its own test containers." >&2
+    exit 1
+  fi
+done
 for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
   if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
     echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2

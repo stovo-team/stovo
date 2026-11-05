@@ -503,8 +503,6 @@ jobs:
           if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
             $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
             docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
-            docker container prune -f 2>$null | Out-Null
-            docker buildx prune -f --filter "until=24h" 2>$null | Out-Null
           }
 
   backend-ci:
@@ -1621,7 +1619,3 @@ jobs:
               --tag "ghcr.io/stovo-team/stovo-frontend:$COMMIT_SHA" \
               --push ./frontend
           fi
-
-          echo "Pruning temporary BuildKit builder cache..."
-          docker buildx prune -f --filter "until=24h" 2>/dev/null || true
-          docker container prune -f 2>/dev/null || true
