@@ -292,7 +292,7 @@ jobs:
           $postgresContainer = "stovo-test-postgres-$suffix"
           $redisContainer = "stovo-test-redis-$suffix"
 
-          docker rm -f $postgresContainer $redisContainer 2>$null | Out-Null
+          docker rm -f -v $postgresContainer $redisContainer 2>$null | Out-Null
           docker run --detach --name $postgresContainer --publish 127.0.0.1::5432 `
             --env POSTGRES_USER=family_user `
             --env POSTGRES_PASSWORD=family_password `
@@ -502,7 +502,7 @@ jobs:
         run: |
           if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
             $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
-            docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+            docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }
 
   backend-ci:

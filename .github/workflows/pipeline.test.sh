@@ -549,6 +549,15 @@ if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
   echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  cleanup_contract=$(sed -n '/- name: Stop backend test containers/,/^[[:space:]]*backend-ci:/p' "$workflow")
+  if ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup_contract" || \
+    grep -Fq 'docker container prune' <<< "$cleanup_contract" || \
+    grep -Fq 'docker buildx prune' <<< "$cleanup_contract"; then
+    echo "Backend shard cleanup must remove only its own containers and anonymous volumes ($workflow)." >&2
+    exit 1
+  fi
+done
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
 docs_runner=$(grep 'runs-on:' <<< "$docs_workflow_contract")
