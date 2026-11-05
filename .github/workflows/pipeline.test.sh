@@ -265,6 +265,56 @@ awk '
 ' .github/workflows/pipeline.yml
 
 trusted_pr_workflow=".github/workflows/trusted-pr-tests.yml"
+for workflow in .github/workflows/pipeline.yml "$trusted_pr_workflow"; do
+  if [[ "$workflow" == .github/workflows/pipeline.yml ]]; then
+    change_contract=$(sed -n '/^  changes:/,/^  frontend_test_shards:/p' "$workflow")
+  else
+    change_contract=$(sed -n '/^  changes:/,/^  pipeline-contract:/p' "$workflow")
+  fi
+
+  if ! grep -Fq 'size_baseline: ${{ steps.filter.outputs.size_baseline }}' <<< "$change_contract"; then
+    echo "Workflow $workflow must expose size-baseline changes separately from product code." >&2
+    exit 1
+  fi
+
+  frontend_filter=$(awk '
+    /^            frontend:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+  backend_filter=$(awk '
+    /^            backend:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+  size_baseline_filter=$(awk '
+    /^            size_baseline:$/ { capture = 1; next }
+    /^            [[:alnum:]_-]+:$/ && capture { exit }
+    capture { print }
+  ' <<< "$change_contract")
+
+  if grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$frontend_filter" ||
+     grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$backend_filter" ||
+     ! grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$size_baseline_filter"; then
+    echo "Workflow $workflow must run the SOLID check for size-baseline updates without scheduling frontend/backend test shards." >&2
+    exit 1
+  fi
+
+  for product_filter in "$frontend_filter" "$backend_filter"; do
+    if grep -Fq '.github/workflows/pipeline.yml' <<< "$product_filter" ||
+       grep -Fq '.github/workflows/trusted-pr-tests.yml' <<< "$product_filter"; then
+      echo "Workflow-only changes in $workflow must not schedule product test shards." >&2
+      exit 1
+    fi
+  done
+
+  solid_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if ! grep -Fq "needs.changes.outputs.size_baseline == 'true'" <<< "$solid_contract"; then
+    echo "Workflow $workflow must run SOLID boundaries when the size baseline changes." >&2
+    exit 1
+  fi
+done
+
 if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
   echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
   exit 1

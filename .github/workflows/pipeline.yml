@@ -48,6 +48,7 @@ jobs:
     outputs:
       frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
+      size_baseline: ${{ steps.filter.outputs.size_baseline }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -75,7 +76,6 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
-              - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
               - 'scripts/check-frontend-css-size.cjs'
               - 'scripts/check-frontend-css-size.test.cjs'
@@ -87,9 +87,10 @@ jobs:
               - 'deploy/compose/production-multiserver.yml'
               - 'backend/Dockerfile.orchestrator'
               - 'deploy/**'
-              - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
               - 'deploy/scripts/deploy-environment.sh'
+            size_baseline:
+              - 'docs/engineering/size-baseline.tsv'
 
   frontend_test_shards:
     name: Frontend CI test shards
@@ -162,7 +163,8 @@ jobs:
     if: >-
       !inputs.backend_deploy_only &&
       (needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.backend == 'true')
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.size_baseline == 'true')
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 10
     steps:

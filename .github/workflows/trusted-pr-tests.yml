@@ -23,6 +23,7 @@ jobs:
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
+      size_baseline: ${{ steps.filter.outputs.size_baseline }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
@@ -34,17 +35,13 @@ jobs:
               - 'scripts/check-solid-boundaries.sh'
               - 'scripts/check-frontend-css-size.cjs'
               - 'scripts/check-frontend-css-size.test.cjs'
-              - 'docs/engineering/size-baseline.tsv'
-              - '.github/workflows/trusted-pr-tests.yml'
-              - '.github/workflows/pipeline.yml'
             backend:
               - 'backend/**'
               - 'deploy/migrations/master/**'
               - 'deploy/**'
               - 'scripts/check-solid-boundaries.sh'
+            size_baseline:
               - 'docs/engineering/size-baseline.tsv'
-              - '.github/workflows/trusted-pr-tests.yml'
-              - '.github/workflows/pipeline.yml'
 
   pipeline-contract:
     name: Pipeline Contract
@@ -98,7 +95,8 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       (needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.backend == 'true')
+      needs.changes.outputs.backend == 'true' ||
+      needs.changes.outputs.size_baseline == 'true')
     runs-on: ${{ contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: read
