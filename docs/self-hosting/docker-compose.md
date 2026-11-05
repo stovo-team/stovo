@@ -71,7 +71,7 @@ The external overlay removes the bundled database and MinIO; `redis-jobs` remain
 
 ### Calls and public access
 
-Calls depend on reachable client-facing LiveKit and/or TURN endpoints. The port ranges above must be open through both the host firewall and any cloud firewall. Set `LIVEKIT_URL` to the public `ws://` or `wss://` endpoint clients should dial; the default value is an internal Docker hostname. Use `wss://` when a TLS endpoint or TLS-terminating proxy is configured; port 7880 in Compose is not itself configured with TLS. `deploy/livekit.yaml` contains development credentials and is a local reference only; production Compose renders LiveKit's config from `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`.
+Calls depend on reachable client-facing LiveKit and/or TURN endpoints. The `.env.example` value `ws://localhost:7880` only works for a local client and will fail for users connecting from another device. The port ranges above must be open through both the host firewall and any cloud firewall. Set `LIVEKIT_URL` to the public `ws://` or `wss://` endpoint clients should dial; the default value is an internal Docker hostname. Use `wss://` when a TLS endpoint or TLS-terminating proxy is configured; port 7880 in Compose is not itself configured with TLS. `deploy/livekit.yaml` contains development credentials and is a local reference only; production Compose renders LiveKit's config from `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`.
 
 Do not expose the MinIO API, PostgreSQL, Redis, ntfy, or backend ports directly to the internet. Use the Caddy front door or a deliberately configured trusted proxy. If deploying behind another proxy, set the trusted proxy CIDRs in the Compose environment and verify forwarded client IP handling.
 
