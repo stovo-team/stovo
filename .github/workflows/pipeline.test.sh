@@ -539,8 +539,8 @@ backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   cleanup=$(sed -n '/^      - name: Stop backend test containers/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   if grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup" ||
-     ! grep -Fq 'docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
-    echo "Backend cleanup in $workflow must remove only its own test containers." >&2
+     ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
+    echo "Backend cleanup in $workflow must remove only its own test containers and anonymous volumes." >&2
     exit 1
   fi
 done
