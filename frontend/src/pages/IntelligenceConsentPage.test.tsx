@@ -180,7 +180,12 @@ describe("IntelligenceConsentPage", () => {
 
   it("creates the browser session for only the selected chat and selected grants", async () => {
     setOfferResponse(offer);
-    const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => undefined);
+    let submittedChat: FormDataEntryValue | null = null;
+    const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function (this: HTMLFormElement) {
+      expect(this.querySelector<HTMLFieldSetElement>(".intelligence-consent-chat-list")!.disabled).toBe(true);
+      expect(new FormData(this).getAll("chat_id")).toEqual(["chat-b"]);
+      submittedChat = new FormData(this).get("chat_id");
+    });
 
     const container = await renderConsent();
     const chat = container.querySelector<HTMLInputElement>('input[name="chat_id"][value="chat-b"]')!;
@@ -204,6 +209,7 @@ describe("IntelligenceConsentPage", () => {
       }),
     }));
     expect(submit).toHaveBeenCalledOnce();
+    expect(submittedChat).toBe("chat-b");
     const form = container.querySelector<HTMLFormElement>("form")!;
     expect(form.method.toLowerCase()).toBe("post");
     expect(form.action).toContain("/api/v2/intelligence/authorize");

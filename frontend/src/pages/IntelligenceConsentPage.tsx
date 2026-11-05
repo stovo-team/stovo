@@ -211,6 +211,7 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
             <span>{strings.intelligence.grants[grant]}</span>
           </label>)}
         </fieldset>
+        {isSubmitting && <input type="hidden" name="chat_id" value={chatID} />}
         {parsed.parameters.response_type && <input type="hidden" name="response_type" value={parsed.parameters.response_type} />}
         <input type="hidden" name="client_id" value={parsed.parameters.client_id} />
         <input type="hidden" name="redirect_uri" value={parsed.parameters.redirect_uri} />
