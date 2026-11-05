@@ -1600,9 +1600,45 @@ jobs:
           echo "Authenticating to GitHub Container Registry..."
           echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
+          buildx_push_with_ghcr_dns_retry() {
+            local attempt=1
+            local max_attempts=3
+            local delay=15
+            local log_file
+            log_file="$(mktemp)"
+
+            while true; do
+              set +e
+              "$@" 2>&1 | tee "$log_file"
+              local status=${PIPESTATUS[0]}
+              set -e
+
+              if [ "$status" -eq 0 ]; then
+                rm -f "$log_file"
+                return 0
+              fi
+
+              if ! grep -Eqi 'lookup ghcr\.io.*(no such host|temporary failure)|dial tcp.*lookup ghcr\.io' "$log_file"; then
+                rm -f "$log_file"
+                return "$status"
+              fi
+
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "::error::GHCR DNS resolution failed after $max_attempts attempts. Check Docker Desktop DNS/network connectivity and rerun the workflow."
+                rm -f "$log_file"
+                return "$status"
+              fi
+
+              echo "GHCR DNS lookup failed; retrying image push in ${delay}s (attempt $((attempt + 1))/$max_attempts)."
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
           if [ "$BUILD_BACKEND" = "true" ]; then
             echo "Building and pushing stovo-orchestrator..."
-            docker buildx build \
+            buildx_push_with_ghcr_dns_retry docker buildx build \
               --platform linux/amd64,linux/arm64 \
               --file backend/Dockerfile.orchestrator \
               --label "org.opencontainers.image.revision=$COMMIT_SHA" \
@@ -1611,7 +1647,7 @@ jobs:
               --push ./backend
 
             echo "Building and pushing stovo-backend..."
-            docker buildx build \
+            buildx_push_with_ghcr_dns_retry docker buildx build \
               --platform linux/amd64,linux/arm64 \
               --file backend/Dockerfile \
               --label "org.opencontainers.image.revision=$COMMIT_SHA" \
@@ -1622,7 +1658,7 @@ jobs:
 
           if [ "$BUILD_FRONTEND" = "true" ]; then
             echo "Building and pushing stovo-frontend..."
-            docker buildx build \
+            buildx_push_with_ghcr_dns_retry docker buildx build \
               --platform linux/amd64,linux/arm64 \
               --file frontend/Dockerfile \
               --tag ghcr.io/stovo-team/stovo-frontend:latest \
