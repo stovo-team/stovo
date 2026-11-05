@@ -85,3 +85,28 @@ These commands validate configuration without starting services. Do not commit l
 Be ready to explain tradeoffs and adjust the change in response to review. Keep commits and follow-up changes focused on the pull request. Do not weaken or remove tests to make a change pass; discuss any necessary change in expected behavior with reviewers first.
 
 There is no requirement to use a particular commit-message format. Changes are reviewed for correctness, security, maintainability, documentation, and test coverage appropriate to their impact.
+
+## Fast frontend preview with synthetic data
+
+To inspect the real chats page without starting the backend or Docker services, install the frontend dependencies once and start the mock mode:
+
+```sh
+cd frontend
+npm ci # only needed once, or after package-lock.json changes
+npm run dev:mock
+```
+
+Open [http://127.0.0.1:5174/app/chats](http://127.0.0.1:5174/app/chats). This serves the actual app, routes, and styles with a synthetic Stovo Demo account and sample direct, group, and channel chats.
+
+To simulate multiple people, open separate tabs on the same mock origin and select an identity with **mockUser**:
+
+| Demo user | URL |
+| --- | --- |
+| Stovo Demo | [Open Stovo Demo](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-stovo-demo) |
+| Alex Rivera | [Open Alex Rivera](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-alex-rivera) |
+| Maya Chen | [Open Maya Chen](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-maya-chen) |
+| Sam Patel | [Open Sam Patel](http://127.0.0.1:5174/app/chats/chat-planning-team?mockUser=user-sam-patel) |
+
+Calls ring, accept, decline, and update participant tiles across tabs through the real call interface. Participant video is shown with fixture avatars; microphone, camera, and speaker settings are simulated locally. Mock calls do not request media permissions, play call audio, open Socket.IO, or connect to LiveKit/WebRTC.
+
+Files uploaded from chat attachments or the Files page use the app's upload flow and are stored in browser IndexedDB. The file list and bytes are shared by all demo users on this origin and survive reloads. Sent messages return to fixture data after reload; uploaded files remain in Files. Clear site data for 127.0.0.1:5174 to remove local files. Features that need external providers or server processing, such as recording and transcription, remain unavailable in this preview.

@@ -33,7 +33,7 @@ type: index
 
 ## Project references
 
-- [Repository README](../README.md): project overview and quick start.
+- [Repository README](../README.md): product overview and documentation links.
 - [Environment template](../.env.example): Compose configuration reference. Use it as a starting point; do not deploy its placeholder credentials.
 - [Database migrations](../backend/migrations/): versioned Atlas migrations applied by the Compose `backend-migrate` service.
 - [Atlas baseline procedure](../backend/migrations/BASELINE.md): inspect and baseline an existing schema during a documented migration cutover.
