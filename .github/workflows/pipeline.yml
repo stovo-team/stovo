@@ -355,7 +355,7 @@ jobs:
           BACKEND_TEST_SHARD: ${{ matrix.shard }}
         run: |
           set -o pipefail
-          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3)"
+          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3 -timings cmd/test-shard/test-durations.json -shard-zero-load 180)"
           go test -json -count=1 -covermode=atomic -coverprofile="coverage-app-$BACKEND_TEST_SHARD.out" -run "$testRegex" ./internal/app | tee "test-events-$BACKEND_TEST_SHARD.jsonl"
           if [ "$BACKEND_TEST_SHARD" = "0" ]; then
             mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
