@@ -1456,7 +1456,9 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 		ClientID    string `json:"client_id"`
 		RedirectURI string `json:"redirect_uri"`
 		Chats       []struct {
-			ID string `json:"id"`
+			ID    string `json:"id"`
+			Title string `json:"title"`
+			Type  string `json:"type"`
 		} `json:"chats"`
 		Grants map[string]bool `json:"grants"`
 	}
@@ -1470,6 +1472,19 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	}
 	if len(offer.Chats) != 2 {
 		t.Fatalf("consent offer listed %d accessible chats, want exactly the two synthetic member chats", len(offer.Chats))
+	}
+	var directChat *struct {
+		ID    string `json:"id"`
+		Title string `json:"title"`
+		Type  string `json:"type"`
+	}
+	for index := range offer.Chats {
+		if offer.Chats[index].Type == "direct" {
+			directChat = &offer.Chats[index]
+		}
+	}
+	if directChat == nil || directChat.Title != "Synthetic direct-message contact" {
+		t.Fatalf("direct-message consent choice = %#v, want the other member's display name", directChat)
 	}
 	for _, grant := range []string{"read", "process", "external_transfer", "export"} {
 		if granted, ok := offer.Grants[grant]; !ok || granted {
@@ -2066,6 +2081,7 @@ func newIntelligenceSourceV2ConsentFixture(t *testing.T) intelligenceSourceV2Con
 	ctx := context.Background()
 	familyID := "source-v2-family-" + uuid.NewString()
 	userID := "source-v2-user-" + uuid.NewString()
+	otherUserID := "source-v2-user-" + uuid.NewString()
 	chatID := "source-v2-chat-" + uuid.NewString()
 	secondChatID := "source-v2-chat-" + uuid.NewString()
 	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
@@ -2075,10 +2091,12 @@ func newIntelligenceSourceV2ConsentFixture(t *testing.T) intelligenceSourceV2Con
 	}{
 		{`INSERT INTO public.families(id,name,created_at,updated_at) VALUES($1,'Synthetic source v2 family',$2,$2)`, []any{familyID, createdAt}},
 		{`INSERT INTO public.users(id,family_id,username,password_hash,display_name,role,created_at) VALUES($1,$2,$1,'synthetic','Synthetic source v2 principal','member',$3)`, []any{userID, familyID, createdAt}},
+		{`INSERT INTO public.users(id,family_id,username,password_hash,display_name,role,created_at) VALUES($1,$2,$1,'synthetic','Synthetic direct-message contact','member',$3)`, []any{otherUserID, familyID, createdAt}},
 		{`INSERT INTO public.chats(id,family_id,type,title,media_visibility,created_at,updated_at) VALUES($1,$2,'group','Synthetic source v2 chat','members',$3,$3)`, []any{chatID, familyID, createdAt}},
-		{`INSERT INTO public.chats(id,family_id,type,title,media_visibility,created_at,updated_at) VALUES($1,$2,'group','Second synthetic source v2 chat','members',$3,$3)`, []any{secondChatID, familyID, createdAt}},
+		{`INSERT INTO public.chats(id,family_id,type,title,media_visibility,created_at,updated_at) VALUES($1,$2,'direct',NULL,'members',$3,$3)`, []any{secondChatID, familyID, createdAt}},
 		{`INSERT INTO public.chat_members(chat_id,user_id,created_at) VALUES($1,$2,$3)`, []any{chatID, userID, createdAt}},
 		{`INSERT INTO public.chat_members(chat_id,user_id,created_at) VALUES($1,$2,$3)`, []any{secondChatID, userID, createdAt}},
+		{`INSERT INTO public.chat_members(chat_id,user_id,created_at) VALUES($1,$2,$3)`, []any{secondChatID, otherUserID, createdAt}},
 		{`INSERT INTO public.intelligence_installations(id,tenant_id,family_id,enabled) VALUES($1,$2,$3,true)`, []any{"source-v2-install-" + uuid.NewString(), "synthetic-tenant-" + uuid.NewString(), familyID}},
 	}
 	for _, statement := range statements {

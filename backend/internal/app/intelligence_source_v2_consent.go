@@ -58,7 +58,16 @@ func (s *Server) intelligenceSourceV2ConsentOffer(ctx context.Context, request *
 		return httptransport.IntelligenceSourceV2ConsentOffer{}, err
 	}
 	rows, err := s.sqlDB.QueryContext(ctx, `
-		SELECT ch.id,COALESCE(ch.title,''),ch.type
+		SELECT ch.id,
+			CASE WHEN ch.type='direct' THEN COALESCE(
+				(SELECT COALESCE(NULLIF(BTRIM(other_user.display_name),''),other_user.username)
+				 FROM public.chat_members other_member
+				 JOIN public.users other_user ON other_user.id=other_member.user_id
+				 WHERE other_member.chat_id=ch.id AND other_member.user_id<>$1
+				 ORDER BY other_member.created_at,other_member.user_id LIMIT 1),
+				COALESCE(ch.title,''))
+			ELSE COALESCE(ch.title,'') END,
+			ch.type
 		FROM public.chats ch
 		JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=$1
 		JOIN public.users u ON u.id=cm.user_id AND u.is_active=1 AND u.family_id=ch.family_id

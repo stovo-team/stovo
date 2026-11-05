@@ -248,6 +248,15 @@ if [ "$(grep -Fc 'bash deploy/scripts/ensure-docker-buildx.sh' .github/workflows
   echo "Both production deployment jobs must ensure Docker Buildx before building images." >&2
   exit 1
 fi
+buildx_deploy_contract=$(sed -n '/- name: Build and publish multi-arch container images/,/^      - name:/p' .github/workflows/pipeline.yml | sed '$d')
+if ! grep -Fq 'builder_name="ghcr-builder-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"' <<< "$buildx_deploy_contract" || \
+  ! grep -Fq 'trap cleanup_builder EXIT' <<< "$buildx_deploy_contract" || \
+  ! grep -Fq 'docker buildx rm --force "$builder_name"' <<< "$buildx_deploy_contract" || \
+  grep -Fq 'docker buildx prune' <<< "$buildx_deploy_contract" || \
+  grep -Fq 'docker container prune' <<< "$buildx_deploy_contract"; then
+  echo "Production Buildx must use and remove a run-scoped builder rather than pruning shared Docker resources." >&2
+  exit 1
+fi
 bash deploy/scripts/ensure-docker-buildx.test.sh
 
 awk '
@@ -530,8 +539,8 @@ backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   cleanup=$(sed -n '/^      - name: Stop backend test containers/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   if grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup" ||
-     ! grep -Fq 'docker rm -f "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
-    echo "Backend cleanup in $workflow must remove only its own test containers." >&2
+     ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
+    echo "Backend cleanup in $workflow must remove only its own test containers and anonymous volumes." >&2
     exit 1
   fi
 done
@@ -549,6 +558,15 @@ if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
   echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
+for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
+  cleanup_contract=$(sed -n '/- name: Stop backend test containers/,/^[[:space:]]*backend-ci:/p' "$workflow")
+  if ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup_contract" || \
+    grep -Fq 'docker container prune' <<< "$cleanup_contract" || \
+    grep -Fq 'docker buildx prune' <<< "$cleanup_contract"; then
+    echo "Backend shard cleanup must remove only its own containers and anonymous volumes ($workflow)." >&2
+    exit 1
+  fi
+done
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
 docs_runner=$(grep 'runs-on:' <<< "$docs_workflow_contract")
