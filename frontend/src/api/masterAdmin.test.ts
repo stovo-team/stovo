@@ -118,9 +118,8 @@ describe("masterAdmin API", () => {
       "test-token",
       "",
       "New Cluster",
-      "admin",
-      "password123",
-      { chats: true, storage: true, plans: true, settings: true }
+      { chats: true, storage: true, plans: true, settings: true },
+      { direct: true, group: false, channel: true, voice: true }
     );
 
     expect(result).toEqual(mockCreated);
@@ -131,9 +130,8 @@ describe("masterAdmin API", () => {
         body: JSON.stringify({
           slug: "",
           name: "New Cluster",
-          admin_user: "admin",
-          admin_password: "password123",
           nav_tabs: { chats: true, storage: true, plans: true, settings: true },
+          chat_types: { direct: true, group: false, channel: true, voice: true },
         }),
       })
     );

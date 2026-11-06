@@ -46,7 +46,10 @@ func (s *Server) processSetup(ctx context.Context, payload transporthttp.SetupRe
 		return nil, http.StatusInternalServerError, "Could not verify setup status"
 	}
 	validInvite := s.validateAdminInviteToken(payload.InviteToken)
-	if setupStatus.ActiveUserCount > 0 && !validInvite {
+	if !canCompleteSetup(setupStatus.ActiveUserCount, setupInviteRequired(), validInvite) {
+		if setupStatus.ActiveUserCount == 0 {
+			return nil, http.StatusForbidden, "A valid server invitation is required to complete setup"
+		}
 		return nil, http.StatusConflict, "Setup already completed"
 	}
 	passwordHash, err := hashPassword(payload.Password)
@@ -92,6 +95,17 @@ func (s *Server) processSetup(ctx context.Context, payload transporthttp.SetupRe
 	return transporthttp.AuthSuccess[userPublic]{AccessToken: accessToken, TokenType: "Bearer", ExpiresInSeconds: expiresInSeconds, User: user, RefreshToken: token}, status, ""
 }
 
+func canCompleteSetup(activeUserCount int, requireInvite, validInvite bool) bool {
+	if activeUserCount > 0 {
+		return validInvite
+	}
+	return !requireInvite || validInvite
+}
+
+func setupInviteRequired() bool {
+	return strings.EqualFold(os.Getenv("REQUIRE_SETUP_INVITE"), "true")
+}
+
 // validateAdminInviteToken returns true if the given JWT is a valid admin_invite
 // token signed with the master system secret.
 func (s *Server) validateAdminInviteToken(token string) bool {
@@ -109,7 +123,13 @@ func (s *Server) validateAdminInviteToken(token string) bool {
 		return false
 	}
 	claims, ok := parsed.Claims.(jwt.MapClaims)
-	return ok && claims["type"] == "admin_invite"
+	if !ok || claims["type"] != "admin_invite" {
+		return false
+	}
+	if s.cfg.ServerID != "" && claims["server"] != s.cfg.ServerID {
+		return false
+	}
+	return true
 }
 
 func (s *Server) updateProfileForUser(ctx context.Context, user userPublic, payload transporthttp.ProfileUpdateRequest) (any, error) {

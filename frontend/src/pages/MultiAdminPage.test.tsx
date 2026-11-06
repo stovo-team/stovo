@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  masterLogin: vi.fn(), fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(), createInviteLink: vi.fn(),
+  masterLogin: vi.fn(), createServer: vi.fn(), fetchServers: vi.fn(), fetchTenantAiSettings: vi.fn(), updateServerSettings: vi.fn(), updateTenantAiSettings: vi.fn(), createInviteLink: vi.fn(),
 }));
 
 vi.mock("../api/masterAdmin", () => ({
@@ -11,7 +11,7 @@ vi.mock("../api/masterAdmin", () => ({
   fetchTenantAiSettings: mocks.fetchTenantAiSettings,
   updateServerSettings: mocks.updateServerSettings,
   updateTenantAiSettings: mocks.updateTenantAiSettings,
-  createInviteLink: mocks.createInviteLink, createServer: vi.fn(), deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: mocks.masterLogin,
+  createInviteLink: mocks.createInviteLink, createServer: mocks.createServer, deleteServer: vi.fn(), getGhostToken: vi.fn(), masterLogin: mocks.masterLogin,
 }));
 vi.mock("../i18n/LanguageContext", async () => {
   const { getAppStrings } = await import("../config/strings");
@@ -28,6 +28,7 @@ describe("supervisor space management", () => {
 
   beforeEach(() => {
     localStorage.setItem("master_admin_token", "test-token");
+    mocks.createServer.mockResolvedValue({ id: 3, slug: "new-space", name: "New Space", invite_url: "https://example.com/s/new-space/setup?token=owner-invite" });
     mocks.fetchServers.mockResolvedValue([{ id: 2, slug: "alpha", name: "Alpha", created_at: "2026-01-01T00:00:00Z", status: "running", chat_types: { direct: true, group: true, channel: true, voice: true } }]);
     mocks.fetchTenantAiSettings.mockResolvedValue({ translationEnabled: true, callRecordingEnabled: true, aiNotesEnabled: true, voiceTranscriptionEnabled: true });
     mocks.updateServerSettings.mockImplementation(async (_token, slug, updates) => ({ id: 2, slug, name: updates.name, ...updates }));
@@ -93,6 +94,25 @@ describe("supervisor space management", () => {
     const menu = document.body.querySelector('[role="menu"]');
     expect(menu).toBeTruthy();
     expect(container.contains(menu)).toBe(false);
+  });
+
+  it("creates a server without admin credentials and configures tabs and chat types before sharing the owner invite", async () => {
+    await act(async () => { root.render(<MultiAdminPage />); });
+    await act(async () => { container.querySelector("header .primaryPillButton")?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    const fields = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+    expect(fields.length).toBe(8);
+    expect(container.textContent).not.toContain("Admin Password");
+    expect(container.textContent).not.toContain("Имя администратора");
+    const name = container.querySelector<HTMLInputElement>('input[type="text"]');
+    if (name) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "New Space");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await act(async () => {
+      container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(mocks.createServer).toHaveBeenCalledWith("test-token", "", "New Space", expect.objectContaining({ chats: true }), expect.objectContaining({ direct: true }));
+    expect(container.textContent).toContain("первую учетную запись владельца");
   });
 
   it("keeps chat types editable, exposes tabs, and saves AI and chat restrictions", async () => {

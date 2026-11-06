@@ -37,8 +37,6 @@ export interface CreateServerResponse {
   id: number;
   slug: string;
   name: string;
-  admin_user?: string;
-  admin_password?: string;
   cluster_url?: string;
   invite_url: string;
   nav_tabs?: NavTabsConfig;
@@ -115,9 +113,8 @@ export async function createServer(
   token: string,
   slug: string,
   name: string,
-  adminUser?: string,
-  adminPassword?: string,
-  navTabs?: Partial<NavTabsConfig>
+  navTabs?: Partial<NavTabsConfig>,
+  chatTypes?: ChatTypesConfig
 ): Promise<CreateServerResponse> {
   const masterUrl = getMasterApiUrl();
   const res = await fetch(`${masterUrl}/api/v1/master/servers`, {
@@ -129,9 +126,8 @@ export async function createServer(
     body: JSON.stringify({
       slug,
       name,
-      admin_user: adminUser,
-      admin_password: adminPassword,
       nav_tabs: navTabs,
+      chat_types: chatTypes,
     }),
   });
   if (!res.ok) {
