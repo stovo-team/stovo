@@ -105,7 +105,7 @@ describe("supervisor space management", () => {
     expect(container.textContent).not.toContain("Имя администратора");
     const name = container.querySelector<HTMLInputElement>('input[type="text"]');
     if (name) {
-      name.value = "New Space";
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "New Space");
       name.dispatchEvent(new Event("input", { bubbles: true }));
     }
     await act(async () => {
