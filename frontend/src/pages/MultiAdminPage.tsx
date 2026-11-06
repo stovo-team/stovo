@@ -11,6 +11,7 @@ import {
   masterLogin,
   updateServerSettings,
   updateTenantAiSettings,
+  NavTabsConfig,
   ChatTypesConfig,
   TenantAiSettings,
   ServerRecord,
@@ -40,13 +41,11 @@ export default function MultiAdminPage() {
   // Create Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
-  const [adminUser, setAdminUser] = useState("admin");
-  const [adminPassword, setAdminPassword] = useState("admin12345");
+  const [newNavTabs, setNewNavTabs] = useState<NavTabsConfig>({ chats: true, storage: true, plans: true, settings: true });
+  const [newChatTypes, setNewChatTypes] = useState<ChatTypesConfig>({ direct: true, group: true, channel: true, voice: true });
   const [createResult, setCreateResult] = useState<{
     inviteUrl: string;
-    clusterUrl: string;
-    adminUser: string;
-    adminPassword: string;
+    name: string;
   } | null>(null);
 
   // Settings Modal State
@@ -139,20 +138,11 @@ export default function MultiAdminPage() {
     e.preventDefault();
     if (!token || !newName) return;
     try {
-      const res = await createServer(
-        token,
-        "",
-        newName.trim(),
-        adminUser.trim(),
-        adminPassword.trim(),
-      );
-      const originClusterUrl = `${window.location.origin}/s/${res.slug}/login`;
+      const res = await createServer(token, "", newName.trim(), newNavTabs, newChatTypes);
       const originInviteUrl = `${window.location.origin}/s/${res.slug}/setup?token=${new URL(res.invite_url).searchParams.get("token") || ""}`;
       setCreateResult({
         inviteUrl: originInviteUrl,
-        clusterUrl: originClusterUrl,
-        adminUser: res.admin_user || adminUser,
-        adminPassword: res.admin_password || adminPassword,
+        name: res.name,
       });
       setNewName("");
       loadServers();
@@ -484,26 +474,14 @@ export default function MultiAdminPage() {
                   {copy.provisioned}
                 </div>
                 <p style={{ fontSize: "var(--font-size-caption)", color: "var(--color-palette-177804c22590)", marginBottom: 12 }}>
-                  {copy.adminCreated}
+                  {copy.ownerInviteReady}
                 </p>
-                <div style={{ backgroundColor: "var(--color-palette-95b1a9665923)", padding: 14, borderRadius: "var(--radius-surface)", marginBottom: 14, fontSize: "var(--font-size-caption)" }}>
-                  <div><strong>{copy.username}:</strong> {createResult.adminUser}</div>
-                  <div><strong>{copy.password}:</strong> {createResult.adminPassword}</div>
-                </div>
                 <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
-                  <a
-                    href={createResult.clusterUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="popup-button popup-button--primary supervisor-open-login-link"
-                  >
-                    {copy.openLogin}
-                  </a>
                   <PopupButton
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      setSpaceInvite({ name: newName || copy.activeSpaces, url: createResult.inviteUrl });
+                      setSpaceInvite({ name: createResult.name, url: createResult.inviteUrl });
                     }}
                   >
                     {copy.copyInviteLink}
@@ -531,20 +509,11 @@ export default function MultiAdminPage() {
                     autoFocus
                     required
                   />
-                <PopupField
-                    label={copy.adminNickname}
-                    type="text"
-                    value={adminUser}
-                    onChange={(e) => setAdminUser(e.target.value)}
-                    required
-                  />
-                <PopupField
-                    label={copy.adminPassword}
-                    type="password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    required
-                  />
+                <section aria-label={copy.featureSetup}>
+                  <p className="supervisor-settings-help">{copy.featureSetup}</p>
+                  {([["chats", strings.nav.chats], ["storage", strings.nav.storage], ["plans", strings.nav.plans], ["settings", strings.nav.settings]] as const).map(([key, label]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong></span><input type="checkbox" checked={newNavTabs[key]} onChange={(event) => setNewNavTabs((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                  {([["direct", strings.admin.rbac.directMessages], ["group", strings.admin.rbac.groupChats], ["channel", strings.admin.rbac.textChannels], ["voice", strings.admin.rbac.voiceChats]] as const).map(([key, label]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong><small>{copy.chatsHelp}</small></span><input type="checkbox" checked={newChatTypes[key]} onChange={(event) => setNewChatTypes((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                </section>
 
                 <div style={styles.modalActions}>
                   <PopupButton

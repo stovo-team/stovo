@@ -179,6 +179,19 @@ func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
 	}
 }
 
+func TestBackendContainerEnvCarriesSetupInviteRequirement(t *testing.T) {
+	env := backendContainerEnv("family", func(key, fallback string) string {
+		if key == "REQUIRE_SETUP_INVITE" {
+			return "true"
+		}
+		return fallback
+	})
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	if !strings.Contains(joined, "\nREQUIRE_SETUP_INVITE=true\n") {
+		t.Fatalf("new tenant must require its owner invitation, got: %q", joined)
+	}
+}
+
 func TestBackendContainerEnvIncludesSupervisorChatTypes(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		if key == "CHAT_TYPES" {
@@ -370,4 +383,3 @@ func TestRolloutStatusEndpointReporting(t *testing.T) {
 		t.Errorf("beta error = %q, want %q", status.Tenants["beta"].Error, "port conflict")
 	}
 }
-

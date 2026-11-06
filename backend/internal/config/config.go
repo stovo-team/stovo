@@ -11,9 +11,9 @@ import (
 )
 
 type Config struct {
-	AppName    string
-	AppVersion string
-	AppEnv     string
+	AppName                    string
+	AppVersion                 string
+	AppEnv                     string
 	Host, ServerID, ServerName string
 	Port                       int
 	AppURL                     string
