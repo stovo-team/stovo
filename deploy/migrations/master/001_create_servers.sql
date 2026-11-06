@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS servers (
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(32) NOT NULL DEFAULT 'created',
-    nav_tabs JSONB DEFAULT '{"chats":true,"storage":true,"plans":true,"settings":true}'::jsonb
+    nav_tabs JSONB DEFAULT '{"chats":true,"storage":true,"plans":true,"settings":true}'::jsonb,
+    require_setup_invite BOOLEAN NOT NULL DEFAULT FALSE
 );

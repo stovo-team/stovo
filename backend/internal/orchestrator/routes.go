@@ -2,7 +2,6 @@
 package orchestrator
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -132,15 +131,13 @@ func (o *Orchestrator) masterAuth(next http.Handler) http.Handler {
 	})
 }
 
-// handleCreateServer provisions a new child server and auto-provisions its admin user.
+// handleCreateServer provisions a new child server and returns its first-owner invitation.
 func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	type createReq struct {
-		Slug          string           `json:"slug"`
-		Name          string           `json:"name"`
-		AdminUser     string           `json:"admin_user"`
-		AdminPassword string           `json:"admin_password"`
-		NavTabs       *NavTabsConfig   `json:"nav_tabs,omitempty"`
-		ChatTypes     *ChatTypesConfig `json:"chat_types,omitempty"`
+		Slug      string           `json:"slug"`
+		Name      string           `json:"name"`
+		NavTabs   *NavTabsConfig   `json:"nav_tabs,omitempty"`
+		ChatTypes *ChatTypesConfig `json:"chat_types,omitempty"`
 	}
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
@@ -149,13 +146,6 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	}
 	// Always auto-generate a random 8-character hash slug
 	req.Slug = strings.ReplaceAll(uuid.NewString(), "-", "")[:8]
-
-	if req.AdminUser == "" {
-		req.AdminUser = "admin"
-	}
-	if req.AdminPassword == "" {
-		req.AdminPassword = "admin" + uuid.NewString()[:8]
-	}
 
 	navTabs := defaultNavTabs()
 	if req.NavTabs != nil {
@@ -170,7 +160,7 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 
 	// Insert server record
 	var id int
-	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status, nav_tabs, chat_types) VALUES ($1, $2, $3, $4, $5) RETURNING id`, req.Slug, req.Name, "created", string(navTabsJSON), string(chatTypesJSON)).Scan(&id)
+	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status, nav_tabs, chat_types, require_setup_invite) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id`, req.Slug, req.Name, "created", string(navTabsJSON), string(chatTypesJSON)).Scan(&id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -213,29 +203,6 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Auto-create owner account on child backend container with retries
-	go func(slug, name, adminUser, adminPass string) {
-		childSetupURL := fmt.Sprintf("http://stovo-backend-%s:8000/api/auth/setup", slug)
-		setupPayload, _ := json.Marshal(map[string]string{
-			"familyName": name,
-			"nickname":   adminUser,
-			"password":   adminPass,
-		})
-		for i := 0; i < 30; i++ {
-			time.Sleep(1 * time.Second)
-			resp, err := http.Post(childSetupURL, "application/json", bytes.NewBuffer(setupPayload))
-			if err == nil {
-				if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-					_ = resp.Body.Close()
-					log.Printf("[orchestrator] Successfully auto-provisioned admin account '%s' for server '%s'", adminUser, slug)
-					return
-				}
-				_ = resp.Body.Close()
-			}
-		}
-		log.Printf("[orchestrator] ERROR: Failed to auto-provision admin account for server '%s' after 30 attempts", slug)
-	}(req.Slug, req.Name, req.AdminUser, req.AdminPassword)
-
 	// Generate single‑use admin invite token
 	inviteToken := uuid.NewString()
 	secret := getMasterSecret()
@@ -260,15 +227,13 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	inviteURL := fmt.Sprintf("%s://%s/s/%s/setup?token=%s", scheme, host, req.Slug, signedInvite)
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"id":             id,
-		"slug":           req.Slug,
-		"name":           req.Name,
-		"admin_user":     req.AdminUser,
-		"admin_password": req.AdminPassword,
-		"cluster_url":    fmt.Sprintf("%s://%s/s/%s/login", scheme, host, req.Slug),
-		"invite_url":     inviteURL,
-		"nav_tabs":       navTabs,
-		"chat_types":     chatTypes,
+		"id":          id,
+		"slug":        req.Slug,
+		"name":        req.Name,
+		"cluster_url": fmt.Sprintf("%s://%s/s/%s/login", scheme, host, req.Slug),
+		"invite_url":  inviteURL,
+		"nav_tabs":    navTabs,
+		"chat_types":  chatTypes,
 	})
 }
 
@@ -483,9 +448,18 @@ func (o *Orchestrator) getServerColumn(slug, col, fallback string) string {
 	return val
 }
 
-func (o *Orchestrator) getNavTabsForServer(slug string) string { return o.getServerColumn(slug, "nav_tabs", `{"chats":true,"storage":true,"plans":true,"settings":true}`) }
-func (o *Orchestrator) getChatTypesForServer(slug string) string { return o.getServerColumn(slug, "chat_types", `{"direct":true,"group":true,"channel":true,"voice":true}`) }
-func (o *Orchestrator) getNameForServer(slug string) string { return o.getServerColumn(slug, "name", "") }
+func (o *Orchestrator) getNavTabsForServer(slug string) string {
+	return o.getServerColumn(slug, "nav_tabs", `{"chats":true,"storage":true,"plans":true,"settings":true}`)
+}
+func (o *Orchestrator) getChatTypesForServer(slug string) string {
+	return o.getServerColumn(slug, "chat_types", `{"direct":true,"group":true,"channel":true,"voice":true}`)
+}
+func (o *Orchestrator) getSetupInviteRequiredForServer(slug string) string {
+	return o.getServerColumn(slug, "require_setup_invite", "false")
+}
+func (o *Orchestrator) getNameForServer(slug string) string {
+	return o.getServerColumn(slug, "name", "")
+}
 
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
@@ -512,6 +486,8 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 			return o.getChatTypesForServer(slug)
 		case "SERVER_NAME":
 			return o.getNameForServer(slug)
+		case "REQUIRE_SETUP_INVITE":
+			return o.getSetupInviteRequiredForServer(slug)
 		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
@@ -631,6 +607,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 
 	return appendIntelligenceEnvironment([]string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
+		fmt.Sprintf("REQUIRE_SETUP_INVITE=%s", get("REQUIRE_SETUP_INVITE", "false")),
 		fmt.Sprintf("APP_URL=%s", serverURL),
 		fmt.Sprintf("API_URL=%s", serverURL),
 		fmt.Sprintf("DATABASE_URL=%s", databaseURL),
@@ -705,6 +682,8 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 			return o.getChatTypesForServer(slug)
 		case "SERVER_NAME":
 			return o.getNameForServer(slug)
+		case "REQUIRE_SETUP_INVITE":
+			return o.getSetupInviteRequiredForServer(slug)
 		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value

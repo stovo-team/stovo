@@ -11,10 +11,11 @@ import (
 )
 
 type Config struct {
-	AppName    string
-	AppVersion string
-	AppEnv     string
+	AppName                    string
+	AppVersion                 string
+	AppEnv                     string
 	Host, ServerID, ServerName string
+	RequireSetupInvite         bool
 	Port                       int
 	AppURL                     string
 	// CORSAllowedOrigins contains additional exact browser origins, for
@@ -178,6 +179,7 @@ func Load() (Config, error) {
 		Port:                         port,
 		ServerID:                     strings.TrimSpace(os.Getenv("SERVER_ID")),
 		ServerName:                   strings.TrimSpace(os.Getenv("SERVER_NAME")),
+		RequireSetupInvite:           envBool("REQUIRE_SETUP_INVITE", false),
 		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
 		CORSAllowedOrigins:           splitCSV(getenv("CORS_ALLOWED_ORIGINS", "https://localhost,capacitor://localhost")),
 		TrustedProxyCIDRs:            splitCSV(getenv("TRUSTED_PROXY_CIDRS", "172.30.0.2/32")),
