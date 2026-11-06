@@ -50,6 +50,8 @@ docker compose --project-directory . -f deploy/compose/production-bluegreen.yml 
 
 Visit `https://<APP_DOMAIN>` and finish the one-time owner setup. Registration after first setup is invite-based. `backend-migrate` applies versioned Atlas migrations. In the bundled production Compose file, the backend is configured to wait for that one-shot service and required dependencies.
 
+For multi-server deployments, create tenant servers from the Stovo Spaces console and share the generated owner invitation with the person who will establish the first owner account. New tenants do not receive a seeded administrator account, and their first setup requires the signed invitation. Existing tenant records keep their prior setup policy.
+
 ### Redis services
 
 Production Compose starts `redis-jobs` for durable worker streams with append-only persistence and a `noeviction` policy. The separate `redis` cache/presence service is assigned to Compose's `disabled` profile and is omitted by plain `docker compose --project-directory . -f deploy/compose/production-bluegreen.yml up`. The backend's `REDIS_URL` falls back to the `redis` service name unless configured otherwise, so either enable the bundled cache service as shown above or configure `REDIS_URL` to a reachable external Redis instance. The `/api/health/redis` endpoint checks this cache/presence connection. Do not confuse `redis` with `redis-jobs`, and do not point the durable jobs URL at an eviction-prone cache.
