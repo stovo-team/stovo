@@ -36,7 +36,7 @@ Go from a conversation to a voice or video call, share your screen, and invite g
 
 <sub>Group call interface shown with synthetic demo participants.</sub>
 
-**[Explore Stovo on stovo.ru →](https://stovo.ru)**
+**[Explore Stovo on stovo.cc →](https://stovo.cc/)**
 
 ## Explore Stovo
 
