@@ -50,6 +50,8 @@ When a future rollout is approved, provision only operator-controlled configurat
 
 OIDC ID tokens, one-use consent codes, and source bearer credentials are separate credentials. Store only the source credential verifier in Messenger; deliver the source credential once to the registered confidential client. Never pass Messenger credentials to Codex or use an ID token as a source credential.
 
+The confidential `/api/v2/intelligence/token` exchange response also includes the selected `chat_id`. Messenger reads it from the single-use consent record in the same transaction that creates the source connection; it is never accepted from the callback or token request. Intelligence persists this scope with the credential when the link completes, before backfill starts. Credential rotation returns the already-pinned chat scope.
+
 ## Signing-key rotation
 
 Use an overlap rotation so already-issued ID tokens remain verifiable:

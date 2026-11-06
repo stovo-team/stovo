@@ -15,9 +15,10 @@ var ErrInvalidRequest = errors.New("invalid intelligence source request")
 var ErrUnavailable = errors.New("intelligence source unavailable")
 
 type RotatedCredential struct {
-	InstallationID string
+	InstallationID  string
 	PrincipalUserID string
-	Grants map[string]bool
+	ChatID          string
+	Grants          map[string]bool
 }
 
 func (s *Store) RotateCredential(ctx context.Context, connectionID string, oldDigest, newDigest []byte, expiresAt, now time.Time) (RotatedCredential, error) {
@@ -26,7 +27,9 @@ func (s *Store) RotateCredential(ctx context.Context, connectionID string, oldDi
 	defer func() { _ = tx.Rollback() }()
 	var rotated RotatedCredential
 	err = tx.QueryRowContext(ctx, `
-		SELECT i.id,c.principal_user_id FROM public.intelligence_source_v2_connections c
+		SELECT i.id,c.principal_user_id,
+		       (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)
+		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.enabled
 		JOIN public.users u ON u.id=c.principal_user_id AND u.is_active=1 AND u.family_id=i.family_id
 		WHERE c.id=$1 AND c.credential_hash=$2 AND c.enabled AND c.revoked_at IS NULL
@@ -35,7 +38,7 @@ func (s *Store) RotateCredential(ctx context.Context, connectionID string, oldDi
 		  AND EXISTS (SELECT 1 FROM public.intelligence_source_v2_connection_chats scope
 		    JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
 		    JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id WHERE scope.connection_id=c.id)
-		FOR UPDATE OF c`, connectionID, oldDigest, now).Scan(&rotated.InstallationID, &rotated.PrincipalUserID)
+		FOR UPDATE OF c`, connectionID, oldDigest, now).Scan(&rotated.InstallationID, &rotated.PrincipalUserID, &rotated.ChatID)
 	if err != nil { return RotatedCredential{}, err }
 	update, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connections SET credential_hash=$1,credential_expires_at=$2 WHERE id=$3 AND credential_hash=$4 AND enabled AND revoked_at IS NULL AND credential_expires_at>$5`, newDigest, expiresAt, connectionID, oldDigest, now)
 	if err != nil { return RotatedCredential{}, err }
