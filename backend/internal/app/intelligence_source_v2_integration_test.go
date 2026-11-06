@@ -1588,6 +1588,7 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	}
 	var issued struct {
 		ConnectionID     string          `json:"connection_id"`
+		ChatID           string          `json:"chat_id"`
 		SourceCredential string          `json:"source_credential"`
 		TokenType        string          `json:"token_type"`
 		ExpiresIn        int64           `json:"expires_in"`
@@ -1600,7 +1601,7 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	if strings.Contains(string(exchangeBody), code) {
 		t.Fatal("consent code appeared in the source credential response")
 	}
-	if issued.ConnectionID == "" || issued.SourceCredential == "" || issued.TokenType != "Bearer" || issued.ExpiresIn != int64((30*24*time.Hour).Seconds()) {
+	if issued.ConnectionID == "" || issued.ChatID != fixture.chatID || issued.SourceCredential == "" || issued.TokenType != "Bearer" || issued.ExpiresIn != int64((30*24*time.Hour).Seconds()) {
 		t.Fatalf("invalid source credential response: %+v", issued)
 	}
 	if strings.Count(issued.SourceCredential, ".") != 0 {
@@ -1719,9 +1720,13 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 			successfulRotations++
 			var rotated struct {
 				SourceCredential string `json:"source_credential"`
+				ChatID           string `json:"chat_id"`
 			}
 			if err := json.Unmarshal(body, &rotated); err != nil {
 				t.Fatalf("decode rotated source credential: %v", err)
+			}
+			if rotated.ChatID != fixture.chatID {
+				t.Fatalf("rotated credential chat scope = %q, want %q", rotated.ChatID, fixture.chatID)
 			}
 			rotatedCredential = rotated.SourceCredential
 		} else if response.StatusCode != http.StatusBadRequest {

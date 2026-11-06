@@ -45,7 +45,7 @@ func (s *Server) rotateIntelligenceSourceV2Credential(ctx context.Context, reque
 		return httptransport.IntelligenceSourceV2CredentialResponse{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	return httptransport.IntelligenceSourceV2CredentialResponse{
-		ConnectionID: connectionID, SourceCredential: rawCredential, TokenType: "Bearer",
+		ConnectionID: connectionID, ChatID: rotated.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
 		ExpiresIn: int64(intelligenceSourceV2CredentialTTL.Seconds()), Grants: rotated.Grants,
 	}, nil
 }

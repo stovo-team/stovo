@@ -86,7 +86,7 @@ func (h *IntelligenceSourceV2ConsentHandler) token(w stdhttp.ResponseWriter, r *
 		writeSourceV2ConsentOperationError(w, err)
 		return
 	}
-	if credential.ConnectionID == "" || credential.SourceCredential == "" || credential.TokenType != "Bearer" || credential.ExpiresIn <= 0 || len(credential.Grants) != 4 {
+	if credential.ConnectionID == "" || credential.ChatID == "" || credential.SourceCredential == "" || credential.TokenType != "Bearer" || credential.ExpiresIn <= 0 || len(credential.Grants) != 4 {
 		writeSourceV2ConsentError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return
 	}

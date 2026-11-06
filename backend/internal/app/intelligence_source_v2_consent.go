@@ -122,7 +122,9 @@ func (s *Server) authorizeIntelligenceSourceV2Consent(ctx context.Context, reque
 	digest := sha256.Sum256([]byte(code))
 	now := s.intelligenceOIDCNow()
 	grants := input.Grants
-	if grants == nil { grants = map[string]bool{} }
+	if grants == nil {
+		grants = map[string]bool{}
+	}
 	err = s.intelligenceSourceV2Persistence().AuthorizeConsent(ctx, adapterintelligencesourcev2.ConsentAuthorization{
 		CodeHash: digest[:], ClientID: parameters.ClientID, RedirectURI: parameters.RedirectURI,
 		UserID: principal.UserID, FamilyID: principal.FamilyID, ChatID: input.ChatID,
@@ -164,7 +166,7 @@ func (s *Server) exchangeIntelligenceSourceV2Consent(ctx context.Context, reques
 	issued, err := s.intelligenceSourceV2Persistence().ExchangeConsentCode(ctx, adapterintelligencesourcev2.CredentialExchange{
 		CodeHash: codeDigest[:], CredentialHash: credentialDigest[:], ClientID: clientID, RedirectURI: redirectURI,
 		VerifyPKCE: func(challenge string) bool { return intelligenceOIDCPKCEVerifierMatches(verifier, challenge) },
-		Now: now, CredentialExpiresAt: now.Add(intelligenceSourceV2CredentialTTL),
+		Now:        now, CredentialExpiresAt: now.Add(intelligenceSourceV2CredentialTTL),
 	})
 	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) || errors.Is(err, adapterintelligencesourcev2.ErrInvalidPKCE) {
 		return httptransport.IntelligenceSourceV2CredentialResponse{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
@@ -176,7 +178,7 @@ func (s *Server) exchangeIntelligenceSourceV2Consent(ctx context.Context, reques
 		return httptransport.IntelligenceSourceV2CredentialResponse{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	return httptransport.IntelligenceSourceV2CredentialResponse{
-		ConnectionID: issued.ConnectionID, SourceCredential: rawCredential, TokenType: "Bearer",
+		ConnectionID: issued.ConnectionID, ChatID: issued.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
 		ExpiresIn: int64(intelligenceSourceV2CredentialTTL.Seconds()), Grants: issued.Grants,
 	}, nil
 }

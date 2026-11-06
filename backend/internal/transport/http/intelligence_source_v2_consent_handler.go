@@ -94,6 +94,7 @@ type IntelligenceSourceV2ConnectionSummary struct {
 
 type IntelligenceSourceV2CredentialResponse struct {
 	ConnectionID     string          `json:"connection_id"`
+	ChatID           string          `json:"chat_id"`
 	SourceCredential string          `json:"source_credential"`
 	TokenType        string          `json:"token_type"`
 	ExpiresIn        int64           `json:"expires_in"`

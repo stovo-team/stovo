@@ -25,7 +25,8 @@ type CredentialExchange struct {
 
 type IssuedCredential struct {
 	ConnectionID string
-	Grants map[string]bool
+	ChatID       string
+	Grants       map[string]bool
 }
 
 func (s *Store) AuthorizeConsent(ctx context.Context, input ConsentAuthorization) error {
@@ -80,7 +81,7 @@ func (s *Store) ExchangeConsentCode(ctx context.Context, input CredentialExchang
 		WHERE u.id=$1 AND u.is_active=1 FOR SHARE OF u,f,cm,ch,i`, userID, familyID, chatID, installationID).Scan(&active)
 	if errors.Is(err, sql.ErrNoRows) { return IssuedCredential{}, ErrForbidden }
 	if err != nil { return IssuedCredential{}, err }
-	result := IssuedCredential{ConnectionID: uuid.NewString(), Grants: map[string]bool{
+	result := IssuedCredential{ConnectionID: uuid.NewString(), ChatID: chatID, Grants: map[string]bool{
 		"read": readGranted, "process": processGranted, "external_transfer": externalTransferGranted, "export": exportGranted,
 	}}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_connections(id,installation_id,principal_user_id,credential_hash,enabled,credential_expires_at,created_at) VALUES($1,$2,$3,$4,true,$5,$6)`, result.ConnectionID, installationID, userID, input.CredentialHash, input.CredentialExpiresAt, input.Now); err != nil { return IssuedCredential{}, err }
