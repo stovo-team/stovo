@@ -53,13 +53,7 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server, *http.Client) {
 	t.Helper()
 	root := t.TempDir()
 	databaseURL := strings.TrimSpace(os.Getenv("TEST_DATABASE_URL"))
-	if databaseURL == "" {
-		databaseURL = strings.TrimSpace(os.Getenv("DATABASE_URL"))
-	}
 	redisURL := strings.TrimSpace(os.Getenv("TEST_REDIS_URL"))
-	if redisURL == "" {
-		redisURL = strings.TrimSpace(os.Getenv("REDIS_URL"))
-	}
 	if databaseURL == "" || redisURL == "" {
 		t.Skip("runtime integration tests require TEST_DATABASE_URL and TEST_REDIS_URL")
 	}
