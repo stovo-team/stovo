@@ -46,7 +46,7 @@ func (s *Server) processSetup(ctx context.Context, payload transporthttp.SetupRe
 		return nil, http.StatusInternalServerError, "Could not verify setup status"
 	}
 	validInvite := s.validateAdminInviteToken(payload.InviteToken)
-	if !canCompleteSetup(setupStatus.ActiveUserCount, s.cfg.RequireSetupInvite, validInvite) {
+	if !canCompleteSetup(setupStatus.ActiveUserCount, setupInviteRequired(), validInvite) {
 		if setupStatus.ActiveUserCount == 0 {
 			return nil, http.StatusForbidden, "A valid server invitation is required to complete setup"
 		}
@@ -100,6 +100,10 @@ func canCompleteSetup(activeUserCount int, requireInvite, validInvite bool) bool
 		return validInvite
 	}
 	return !requireInvite || validInvite
+}
+
+func setupInviteRequired() bool {
+	return strings.EqualFold(os.Getenv("REQUIRE_SETUP_INVITE"), "true")
 }
 
 // validateAdminInviteToken returns true if the given JWT is a valid admin_invite

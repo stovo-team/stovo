@@ -56,3 +56,14 @@ func TestSetupRequiresInvitationOnlyForNewlyProvisionedTenants(t *testing.T) {
 		})
 	}
 }
+
+func TestSetupInvitationPolicyReadsTenantEnvironment(t *testing.T) {
+	t.Setenv("REQUIRE_SETUP_INVITE", "true")
+	if !setupInviteRequired() {
+		t.Fatal("tenant configured to require an invitation must reject public setup")
+	}
+	t.Setenv("REQUIRE_SETUP_INVITE", "false")
+	if setupInviteRequired() {
+		t.Fatal("existing tenants must retain public initial setup by default")
+	}
+}
