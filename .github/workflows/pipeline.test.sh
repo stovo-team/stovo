@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash .github/workflows/trusted-pr-permissions.test.sh
+
 grep -Fq 'frontend/** text eol=lf' .gitattributes || {
   echo "Frontend sources must keep LF line endings on every runner OS." >&2
   exit 1
@@ -412,21 +414,19 @@ trusted_pr_job_runner() {
 
 require_trusted_pr_runner() {
   job="$1"
-  self_hosted_labels="$2"
-  hosted_label="$3"
+  expected_runner="$2"
   runner=$(trusted_pr_job_runner "$job")
-  expected_runner="\${{ contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.pull_request.author_association) && fromJSON('$self_hosted_labels') || fromJSON('[\"$hosted_label\"]') }}"
 
   if [[ "$runner" != "$expected_runner" ]]; then
-    echo "Trusted PR $job must use the $self_hosted_labels self-hosted runner for collaborators and $hosted_label for community PRs." >&2
+    echo "Trusted PR $job must use only the $expected_runner self-hosted runner." >&2
     exit 1
   fi
 }
 
-require_trusted_pr_runner changes '["self-hosted","Windows","tests"]' ubuntu-latest
-require_trusted_pr_runner pipeline-contract '["self-hosted","Windows","tests"]' ubuntu-latest
-require_trusted_pr_runner frontend_test_shards '["self-hosted","e2e"]' ubuntu-latest
-require_trusted_pr_runner frontend-ci '["self-hosted","e2e"]' ubuntu-latest
+require_trusted_pr_runner changes '[self-hosted, Windows, tests]'
+require_trusted_pr_runner pipeline-contract '[self-hosted, Windows, tests]'
+require_trusted_pr_runner frontend_test_shards '[self-hosted, e2e]'
+require_trusted_pr_runner frontend-ci '[self-hosted, e2e]'
 backend_runner=$(trusted_pr_job_runner backend-ci)
 if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
   echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
@@ -447,22 +447,22 @@ if grep -Fq '    services:' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
   exit 1
 fi
-require_trusted_pr_runner solid-boundaries '["self-hosted","tests","Windows"]' ubuntu-latest
+require_trusted_pr_runner solid-boundaries '[self-hosted, tests, Windows]'
+
+if grep -Eq 'ubuntu-(latest|[0-9]+\\.[0-9]+)' "$trusted_pr_workflow"; then
+  echo "Trusted PR workflow must not use GitHub-hosted runners." >&2
+  exit 1
+fi
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
   exit 1
 }
 
-grep -Fq "github.event.pull_request.author_association" "$trusted_pr_workflow" || {
-  echo "PR workflow must route based on the pull request author's repository association." >&2
-  exit 1
-}
-
 frontend_ci_contract=$(sed -n '/^  frontend_test_shards:/,/^  backend_test_shards:/p' "$trusted_pr_workflow")
 for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' '(cd frontend && npm ci)' 'run: npm test' 'run: npm run build'; do
   if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
-    echo "Trusted PR frontend checks must run on Linux and Windows e2e runners with a working Bash shell ($required)." >&2
+    echo "Trusted PR frontend checks must run on the self-hosted Windows e2e runner with a working Bash shell ($required)." >&2
     exit 1
   fi
 done
@@ -610,12 +610,10 @@ done
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
 docs_runner=$(grep 'runs-on:' <<< "$docs_workflow_contract")
-for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' '["self-hosted","Windows","tests"]' 'ubuntu-latest'; do
-  if ! grep -Fq "$required" <<< "$docs_runner"; then
-    echo "Docs validation must use the Windows tests runner for collaborator PRs and GitHub-hosted Ubuntu for community PRs ($required)." >&2
-    exit 1
-  fi
-done
+if [[ "$docs_runner" != '    runs-on: [self-hosted, Windows, tests]' ]]; then
+  echo "Docs validation must use only the self-hosted Windows tests runner." >&2
+  exit 1
+fi
 
 # Every platform bootstrap must be guarded so community PRs can run on hosted Linux.
 for step in 'Detect available shell' 'Install Helm on Windows runner' 'Install kubeconform on Windows runner' 'Ensure Docker Compose CLI plugin is available'; do
@@ -632,12 +630,16 @@ for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd6
 done
 
 codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
-for required in 'github.event.pull_request.author_association' 'OWNER' 'MEMBER' 'COLLABORATOR' 'self-hosted' 'Windows' 'tests' 'ubuntu-latest' 'max-parallel: 1'; do
+for required in 'self-hosted' 'Windows' 'tests' 'max-parallel: 1'; do
   if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
-    echo "CodeQL must run serially on the Windows tests runner for collaborators; community PRs stay on hosted Ubuntu ($required)." >&2
+    echo "CodeQL must run serially on the Windows tests runner ($required)." >&2
     exit 1
   fi
 done
+if ! grep -Fq 'runs-on: [self-hosted, Windows, tests]' <<< "$codeql_workflow_contract" || grep -Fq 'ubuntu-' <<< "$codeql_workflow_contract"; then
+  echo "CodeQL must use only the self-hosted Windows tests runner." >&2
+  exit 1
+fi
 
 if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
    ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then

@@ -29,7 +29,7 @@ on:
 
 jobs:
   docs-and-deployment:
-    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) && '["ubuntu-latest"]' || '["self-hosted","Windows","tests"]') }}
+    runs-on: [self-hosted, Windows, tests]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Detect available shell
