@@ -56,7 +56,8 @@ func (s *Store) AuthorizeResources(ctx context.Context, identity httptransport.I
 		} else if err != nil {
 			return nil, err
 		}
-		validUntil := decidedAt.Add(5 * time.Minute)
+		// Intelligence requires source decisions to be valid for at most 30 seconds.
+		validUntil := decidedAt.Add(30 * time.Second)
 		if credentialExpiresAt.Valid {
 			if !credentialExpiresAt.Time.After(decidedAt) {
 				return nil, ErrCredentialExpired
