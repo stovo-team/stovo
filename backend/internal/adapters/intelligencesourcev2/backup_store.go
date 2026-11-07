@@ -4,10 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var ErrBackupHorizonConflict = errors.New("backup horizon differs from existing record")
+var ErrRestoreEpochBootstrapUnavailable = errors.New("restore epoch bootstrap is unavailable")
 
 type Store struct{ db *sql.DB }
 
@@ -72,6 +76,35 @@ func (s *Store) InitializeRestoreEpoch(ctx context.Context, expectedEpoch string
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM public.intelligence_source_v2_connections) OR EXISTS(SELECT 1 FROM public.intelligence_source_v2_events) OR EXISTS(SELECT 1 FROM public.intelligence_source_v2_tombstone_ledger)`).Scan(&hasHistory); err != nil { return err }
 	if hasHistory { return sql.ErrNoRows }
 	if _, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch=$1,updated_at=$2 WHERE gate_id='global' AND restore_epoch='uninitialized'`, expectedEpoch, now); err != nil { return err }
+	return tx.Commit()
+}
+
+// BootstrapRestoreEpochForNeverRestoredDatabase binds deployment state after
+// an operator confirms that this database has never been restored. Unlike
+// automatic initialization, this explicit path permits existing source rows.
+func (s *Store) BootstrapRestoreEpochForNeverRestoredDatabase(ctx context.Context, expectedEpoch string, now time.Time) error {
+	if s == nil || s.db == nil || strings.TrimSpace(expectedEpoch) == "" ||
+		expectedEpoch != strings.TrimSpace(expectedEpoch) || expectedEpoch == "uninitialized" ||
+		len(expectedEpoch) > 256 || now.IsZero() {
+		return ErrRestoreEpochBootstrapUnavailable
+	}
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil { return err }
+	defer func() { _ = tx.Rollback() }()
+	var blocked bool
+	var currentEpoch string
+	var activeRestoreID sql.NullString
+	var backupCreatedAt sql.NullTime
+	if err := tx.QueryRowContext(ctx, `SELECT blocked,restore_epoch,active_restore_id,backup_created_at FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global' FOR UPDATE`).Scan(&blocked, &currentEpoch, &activeRestoreID, &backupCreatedAt); err != nil { return err }
+	if blocked || currentEpoch != "uninitialized" || activeRestoreID.Valid || backupCreatedAt.Valid {
+		return ErrRestoreEpochBootstrapUnavailable
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch=$1,updated_at=$2 WHERE gate_id='global' AND blocked=false AND restore_epoch='uninitialized' AND active_restore_id IS NULL AND backup_created_at IS NULL`, expectedEpoch, now.UTC())
+	if err != nil { return err }
+	updated, err := result.RowsAffected()
+	if err != nil { return err }
+	if updated != 1 { return ErrRestoreEpochBootstrapUnavailable }
+	if _, err := tx.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_audit(id,operation,result,created_at) VALUES($1,'restore_epoch_bootstrap','operator_attested_never_restored',$2)`, uuid.NewString(), now.UTC()); err != nil { return err }
 	return tx.Commit()
 }
 

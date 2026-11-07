@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	adapterintelligencesourcev2 "stovo-messenger/backend/internal/adapters/intelligencesourcev2"
@@ -55,6 +56,19 @@ func (o *IntelligenceSourceV2Operations) MarkIntelligenceSourceV2BackupInventory
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	if !updated {
+		return httptransport.ErrIntelligenceSourceUnavailable
+	}
+	return nil
+}
+
+// BootstrapIntelligenceSourceV2RestoreEpoch is an explicit operator action
+// for a database confirmed never to have been restored. Automatic startup
+// initialization remains limited to empty source databases.
+func (o *IntelligenceSourceV2Operations) BootstrapIntelligenceSourceV2RestoreEpoch(ctx context.Context, expectedEpoch string) error {
+	if o.store == nil || strings.TrimSpace(expectedEpoch) == "" {
+		return httptransport.ErrIntelligenceSourceInvalidRequest
+	}
+	if err := o.store.BootstrapRestoreEpochForNeverRestoredDatabase(ctx, expectedEpoch, o.now().UTC()); err != nil {
 		return httptransport.ErrIntelligenceSourceUnavailable
 	}
 	return nil
