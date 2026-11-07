@@ -127,7 +127,14 @@ compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
 
 Mark the inventory verified only after the database and object backup succeeded and you checked the complete list of currently restorable backups. If a dump fails after registration, leave the conservative horizon in place; it can delay tombstone pruning but cannot shorten retention. The existing retention worker prunes expired backup records after a current complete inventory is verified.
 
-The CLI does not expose `restore begin` or `restore complete`. The restore gate and tombstone ledger are stored in the same Messenger database as source content. A full database rollback can restore both to an older state, so same-database tombstone rows and watermarks cannot prove that every post-backup invalidation was replayed. The application restore coordinator intentionally keeps source routes unavailable until an independent proof path is integrated.
+For a database that has **never** been restored, an operator can bind an existing but still-uninitialized gate to the deployment epoch. This is separate from automatic startup initialization, which only binds an empty source database. Run the bootstrap only after independently confirming that this database has never been restored from any backup; the command writes an audit record and refuses a blocked, initialized, or restore-in-progress gate:
+
+```sh
+compose run --rm --no-deps --entrypoint intelligence-source-ops backend-blue \
+  bootstrap --confirm-never-restored true
+```
+
+This confirmation is an operator attestation, not a restore procedure. If this database has ever been restored, or its restore history is uncertain, do not run it. The CLI does not expose `restore begin` or `restore complete`. The restore gate and tombstone ledger are stored in the same Messenger database as source content. A full database rollback can restore both to an older state, so same-database tombstone rows and watermarks cannot prove that every post-backup invalidation was replayed. The application restore coordinator intentionally keeps source routes unavailable until an independent proof path is integrated.
 
 For a database restore, keep both `INTELLIGENCE_SOURCE_ENABLED` and `INTELLIGENCE_OIDC_ENABLED` false and stop source traffic. Stop the serving backend color, set a fresh unpredictable `INTELLIGENCE_SOURCE_V2_RESTORE_EPOCH` outside the database backup, then restore PostgreSQL and matching object data. Do not restore the old epoch from the backup. Keep both process gates off after restore; the epoch mismatch keeps v2 source routes unavailable.
 

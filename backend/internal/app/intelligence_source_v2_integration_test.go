@@ -1126,6 +1126,47 @@ func TestIntelligenceSourceV2FreshEmptyDatabaseBindsDeploymentRestoreEpoch(t *te
 	}
 }
 
+func TestIntelligenceSourceV2OperatorBootstrapBindsNeverRestoredDatabaseWithExistingConnection(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch='uninitialized',blocked=false,active_restore_id=NULL,backup_created_at=NULL WHERE gate_id='global'`); err != nil {
+		t.Fatalf("prepare historical-but-never-restored database: %v", err)
+	}
+	operations := NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(fixture.server.sqlDB))
+	if err := operations.BootstrapIntelligenceSourceV2RestoreEpoch(context.Background(), fixture.server.cfg.IntelligenceSourceV2RestoreEpoch); err != nil {
+		t.Fatalf("operator-attested bootstrap failed: %v", err)
+	}
+	if err := fixture.server.requireIntelligenceSourceV2RestoreReady(context.Background()); err != nil {
+		t.Fatalf("source gate remained closed after bootstrap: %v", err)
+	}
+	var auditCount int
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT count(*) FROM public.intelligence_source_v2_audit WHERE operation='restore_epoch_bootstrap' AND result='operator_attested_never_restored'`).Scan(&auditCount); err != nil {
+		t.Fatalf("read bootstrap audit record: %v", err)
+	}
+	if auditCount != 1 {
+		t.Fatalf("bootstrap audit rows=%d, want exactly one", auditCount)
+	}
+}
+
+func TestIntelligenceSourceV2OperatorBootstrapRefusesBlockedGate(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_restore_gate SET restore_epoch='uninitialized',blocked=true WHERE gate_id='global'`); err != nil {
+		t.Fatalf("prepare blocked gate: %v", err)
+	}
+	operations := NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(fixture.server.sqlDB))
+	if err := operations.BootstrapIntelligenceSourceV2RestoreEpoch(context.Background(), fixture.server.cfg.IntelligenceSourceV2RestoreEpoch); err == nil {
+		t.Fatal("operator bootstrap opened a blocked restore gate")
+	}
+	var blocked bool
+	var epoch string
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT blocked,restore_epoch FROM public.intelligence_source_v2_restore_gate WHERE gate_id='global'`).Scan(&blocked, &epoch); err != nil {
+		t.Fatalf("read blocked gate: %v", err)
+	}
+	if !blocked || epoch != "uninitialized" {
+		t.Fatalf("blocked gate changed after rejected bootstrap: blocked=%v epoch=%q", blocked, epoch)
+	}
+}
+
 func TestIntelligenceSourceV2PrincipalDeactivationRetiresConsent(t *testing.T) {
 	fixture := newIntelligenceSourceV2ConsentFixture(t)
 	ctx := context.Background()

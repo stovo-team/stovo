@@ -18,6 +18,7 @@ import (
 type coordinator interface {
 	RegisterIntelligenceSourceV2BackupHorizon(context.Context, string, time.Time, time.Time) error
 	MarkIntelligenceSourceV2BackupInventoryVerified(context.Context, time.Time) error
+	BootstrapIntelligenceSourceV2RestoreEpoch(context.Context, string) error
 }
 
 type operationResult struct {
@@ -52,16 +53,29 @@ func runMain() int {
 		return runEnrollment(operationCtx, os.Args[2:], os.Stdout, os.Stderr, db, cfg.IntelligenceOIDCIssuer)
 	}
 	operations := app.NewIntelligenceSourceV2Operations(adapterintelligencesourcev2.NewPostgresStore(db))
-	return run(operationCtx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, operations)
+	return run(operationCtx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, operations, cfg.IntelligenceSourceV2RestoreEpoch)
 }
 
-func run(ctx context.Context, args []string, _ io.Reader, stdout, stderr io.Writer, operations coordinator) int {
-	if operations == nil || len(args) < 2 {
+func run(ctx context.Context, args []string, _ io.Reader, stdout, stderr io.Writer, operations coordinator, restoreEpoch string) int {
+	if operations == nil || len(args) == 0 {
 		return writeFailure(stderr, "invalid command", 2)
 	}
 
 	switch {
-	case args[0] == "backup" && args[1] == "register":
+	case args[0] == "bootstrap":
+		values, ok := parseExactFlags(args[1:], "confirm-never-restored")
+		if !ok || values["confirm-never-restored"] != "true" {
+			return writeFailure(stderr, "explicit never-restored confirmation required", 2)
+		}
+		if strings.TrimSpace(restoreEpoch) == "" {
+			return writeFailure(stderr, "deployment restore epoch unavailable", 2)
+		}
+		if err := operations.BootstrapIntelligenceSourceV2RestoreEpoch(ctx, restoreEpoch); err != nil {
+			return writeFailure(stderr, "bootstrap failed; restore gate unchanged", 1)
+		}
+		return writeJSON(stdout, stderr, operationResult{OK: true})
+
+	case len(args) >= 2 && args[0] == "backup" && args[1] == "register":
 		values, ok := parseExactFlags(args[2:], "backup-id", "created-at", "restorable-until")
 		if !ok {
 			return writeFailure(stderr, "invalid arguments", 2)
@@ -79,7 +93,7 @@ func run(ctx context.Context, args []string, _ io.Reader, stdout, stderr io.Writ
 		}
 		return writeJSON(stdout, stderr, operationResult{OK: true})
 
-	case args[0] == "inventory" && args[1] == "verify":
+	case len(args) >= 2 && args[0] == "inventory" && args[1] == "verify":
 		values, ok := parseExactFlags(args[2:], "verified-at")
 		if !ok {
 			return writeFailure(stderr, "invalid arguments", 2)

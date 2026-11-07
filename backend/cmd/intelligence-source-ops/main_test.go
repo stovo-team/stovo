@@ -16,9 +16,10 @@ type backupRegistration struct {
 }
 
 type fakeCoordinator struct {
-	registrations []backupRegistration
-	verifiedAt    []time.Time
-	err           error
+	registrations   []backupRegistration
+	verifiedAt      []time.Time
+	bootstrapEpochs []string
+	err             error
 }
 
 func (f *fakeCoordinator) RegisterIntelligenceSourceV2BackupHorizon(_ context.Context, id string, createdAt, until time.Time) error {
@@ -31,10 +32,47 @@ func (f *fakeCoordinator) MarkIntelligenceSourceV2BackupInventoryVerified(_ cont
 	return f.err
 }
 
+func (f *fakeCoordinator) BootstrapIntelligenceSourceV2RestoreEpoch(_ context.Context, epoch string) error {
+	f.bootstrapEpochs = append(f.bootstrapEpochs, epoch)
+	return f.err
+}
+
+func TestRunBootstrapRequiresNeverRestoredAttestation(t *testing.T) {
+	t.Run("explicit attestation dispatches current deployment epoch", func(t *testing.T) {
+		coordinator := &fakeCoordinator{}
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), []string{"bootstrap", "--confirm-never-restored", "true"}, strings.NewReader(""), &stdout, &stderr, coordinator, "deploy-epoch-7")
+		if code != 0 || len(coordinator.bootstrapEpochs) != 1 || coordinator.bootstrapEpochs[0] != "deploy-epoch-7" {
+			t.Fatalf("bootstrap code=%d epochs=%v stderr=%q", code, coordinator.bootstrapEpochs, stderr.String())
+		}
+		if got := strings.TrimSpace(stdout.String()); got != `{"ok":true}` {
+			t.Fatalf("stdout = %q, want success JSON", got)
+		}
+	})
+
+	t.Run("missing attestation is rejected", func(t *testing.T) {
+		coordinator := &fakeCoordinator{}
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), []string{"bootstrap"}, strings.NewReader(""), &stdout, &stderr, coordinator, "deploy-epoch-7")
+		if code == 0 || len(coordinator.bootstrapEpochs) != 0 || stdout.Len() != 0 {
+			t.Fatalf("bootstrap without attestation accepted: code=%d epochs=%v stdout=%q", code, coordinator.bootstrapEpochs, stdout.String())
+		}
+	})
+
+	t.Run("missing deployment epoch is rejected", func(t *testing.T) {
+		coordinator := &fakeCoordinator{}
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), []string{"bootstrap", "--confirm-never-restored", "true"}, strings.NewReader(""), &stdout, &stderr, coordinator, "")
+		if code == 0 || len(coordinator.bootstrapEpochs) != 0 || stdout.Len() != 0 {
+			t.Fatalf("bootstrap without deployment epoch accepted: code=%d epochs=%v stdout=%q", code, coordinator.bootstrapEpochs, stdout.String())
+		}
+	})
+}
+
 func TestRunBackupRegisterParsesUTCAndDispatches(t *testing.T) {
 	coordinator := &fakeCoordinator{}
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"backup", "register", "--backup-id", "backup-42", "--created-at", "2026-10-14T08:00:00Z", "--restorable-until", "2026-11-13T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator)
+	code := run(context.Background(), []string{"backup", "register", "--backup-id", "backup-42", "--created-at", "2026-10-14T08:00:00Z", "--restorable-until", "2026-11-13T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator, "")
 	if code != 0 {
 		t.Fatalf("run returned %d, stderr=%q", code, stderr.String())
 	}
@@ -53,7 +91,7 @@ func TestRunBackupRegisterParsesUTCAndDispatches(t *testing.T) {
 func TestRunInventoryVerifyParsesUTCAndDispatches(t *testing.T) {
 	coordinator := &fakeCoordinator{}
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator)
+	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator, "")
 	if code != 0 || len(coordinator.verifiedAt) != 1 || !coordinator.verifiedAt[0].Equal(time.Date(2026, 10, 14, 8, 0, 0, 0, time.UTC)) {
 		t.Fatalf("run code=%d verified_at=%v stderr=%q", code, coordinator.verifiedAt, stderr.String())
 	}
@@ -65,7 +103,7 @@ func TestRunInventoryVerifyParsesUTCAndDispatches(t *testing.T) {
 func TestRunInventoryVerifyRejectsInvalidTimestamp(t *testing.T) {
 	coordinator := &fakeCoordinator{}
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00+00:00"}, strings.NewReader(""), &stdout, &stderr, coordinator)
+	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00+00:00"}, strings.NewReader(""), &stdout, &stderr, coordinator, "")
 	if code == 0 || len(coordinator.verifiedAt) != 0 || stdout.Len() != 0 {
 		t.Fatalf("invalid timestamp accepted: code=%d verified_at=%v stdout=%q stderr=%q", code, coordinator.verifiedAt, stdout.String(), stderr.String())
 	}
@@ -79,7 +117,7 @@ func TestRunRestoreOperationsRequireIndependentProof(t *testing.T) {
 	}
 	for _, args := range cases {
 		var stdout, stderr bytes.Buffer
-		code := run(context.Background(), args, strings.NewReader(`{"connection-1":7}`), &stdout, &stderr, coordinator)
+		code := run(context.Background(), args, strings.NewReader(`{"connection-1":7}`), &stdout, &stderr, coordinator, "")
 		if code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "independent proof") {
 			t.Fatalf("restore command was not rejected safely: args=%v code=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
 		}
@@ -103,7 +141,7 @@ func TestRunRejectsMalformedArguments(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			coordinator := &fakeCoordinator{}
 			var stdout, stderr bytes.Buffer
-			if code := run(context.Background(), tc.args, strings.NewReader(""), &stdout, &stderr, coordinator); code == 0 {
+			if code := run(context.Background(), tc.args, strings.NewReader(""), &stdout, &stderr, coordinator, ""); code == 0 {
 				t.Fatalf("malformed input accepted: stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
 			if stdout.Len() != 0 {
@@ -117,7 +155,7 @@ func TestRunCoordinatorErrorsDoNotLeakSensitiveData(t *testing.T) {
 	const sensitiveMarker = "db-password-and-private-payload-marker"
 	coordinator := &fakeCoordinator{err: errors.New("database unavailable: " + sensitiveMarker)}
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator)
+	code := run(context.Background(), []string{"inventory", "verify", "--verified-at", "2026-10-14T08:00:00Z"}, strings.NewReader(""), &stdout, &stderr, coordinator, "")
 	if code == 0 {
 		t.Fatalf("coordinator error returned success: stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
