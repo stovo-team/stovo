@@ -91,7 +91,7 @@ func TestIntelligenceSourceV2AuthorizationUsesCurrentScopedOperationGrants(t *te
 	}
 	for operation, want := range map[string]bool{"read": true, "process": true, "external_transfer": false, "export": true} {
 		decision := sourceV2AuthorizationDecision(t, fixture, credential, messageID, operation)
-		if decision.Allowed != want || decision.ConnectionID != connectionID || decision.PrincipalID != fixture.userID || decision.Scope.Kind != "chat" || decision.Scope.ResourceID != fixture.chatID || decision.ValidUntil.Sub(decision.DecidedAt) > 5*time.Minute {
+		if decision.Allowed != want || decision.ConnectionID != connectionID || decision.PrincipalID != fixture.userID || decision.Scope.Kind != "chat" || decision.Scope.ResourceID != fixture.chatID || decision.ValidUntil.Sub(decision.DecidedAt) > 30*time.Second {
 			t.Errorf("%s decision = %#v, want allowed=%v and credential-mapped scope", operation, decision, want)
 		}
 	}
