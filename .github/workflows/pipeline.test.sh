@@ -628,8 +628,8 @@ done
 
 docs_workflow_contract=$(sed -n '/^  docs-and-deployment:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/docs-validation.yml)
 docs_runner=$(grep 'runs-on:' <<< "$docs_workflow_contract")
-if [[ "$docs_runner" != '    runs-on: [self-hosted, Windows, tests]' ]]; then
-  echo "Docs validation must use only the self-hosted Windows tests runner." >&2
+if [[ "$docs_runner" != '    runs-on: ubuntu-24.04' ]]; then
+  echo "Docs pull_request validation must use a static GitHub-hosted runner because forks can edit this workflow." >&2
   exit 1
 fi
 
@@ -648,14 +648,14 @@ for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd6
 done
 
 codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
-for required in 'self-hosted' 'Windows' 'tests' 'max-parallel: 1'; do
+for required in 'runs-on: ubuntu-24.04' 'max-parallel: 1'; do
   if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
     echo "CodeQL must run serially on the Windows tests runner ($required)." >&2
     exit 1
   fi
 done
-if ! grep -Fq 'runs-on: [self-hosted, Windows, tests]' <<< "$codeql_workflow_contract" || grep -Fq 'ubuntu-' <<< "$codeql_workflow_contract"; then
-  echo "CodeQL must use only the self-hosted Windows tests runner." >&2
+if grep -Fq 'author_association' <<< "$codeql_workflow_contract"; then
+  echo "CodeQL fork routing must use repository identity, not author association." >&2
   exit 1
 fi
 
