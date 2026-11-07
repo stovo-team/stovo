@@ -210,6 +210,14 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
       exit 1
     fi
   done
+  expected_shard_zero_load=20
+  if [[ "$workflow" == .github/workflows/pipeline.yml ]]; then
+    expected_shard_zero_load=90
+  fi
+  if ! grep -Fq -- "-shard-zero-load $expected_shard_zero_load" <<< "$shard_contract"; then
+    echo "Backend workflow $workflow must use the measured shard 0 overhead ($expected_shard_zero_load seconds)." >&2
+    exit 1
+  fi
   aggregate_contract=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   if ! grep -Fq 'needs: [changes, backend_test_shards, backend_lint]' <<< "$aggregate_contract"; then
     echo "Backend workflow $workflow must retain Backend CI as an aggregate check for the three shards." >&2
