@@ -219,7 +219,7 @@ jobs:
           if [ "$PREP_RESULT" = success ] && [ "$ARTIFACT_READY" = true ] &&
              [ "$PREP_OS" = "$RUNNER_OS" ] && [ "$PREP_ARCH" = "$RUNNER_ARCH" ] &&
              [ "$PREP_NODE" = "$(node --version)" ] && [ "$PREP_NPM" = "$(npm --version)" ]; then
-            if gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name frontend-dependencies --dir "$artifact_dir" &&
+            if timeout "${FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT:-8m}" gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name frontend-dependencies --dir "$artifact_dir" &&
                tar -xf "$artifact_dir/frontend-dependencies.tar" -C frontend; then
               restored=true
             fi

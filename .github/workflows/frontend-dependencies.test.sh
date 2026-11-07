@@ -22,13 +22,22 @@ SCRIPT
 cat > "$tmp/bin/gh" <<'SCRIPT'
 #!/usr/bin/env bash
 [ "${GH_FAIL:-false}" != true ] || exit 1
+[ "${GH_HANG:-false}" != true ] || sleep "${GH_HANG_SECONDS:-10}"
 while [ "$#" -gt 0 ]; do
   if [ "$1" = --dir ]; then shift; mkdir -p "$1"; cp "$FIXTURE_ARCHIVE" "$1/frontend-dependencies.tar"; exit 0; fi
   shift
 done
 exit 1
 SCRIPT
-chmod +x "$tmp/bin/node" "$tmp/bin/npm" "$tmp/bin/gh"
+cat > "$tmp/bin/timeout" <<'SCRIPT'
+#!/usr/bin/env bash
+expected=${FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT:-8m}
+[ "${1:-}" = "$expected" ] || exit 1
+shift
+[ "${GH_HANG:-false}" != true ] || exit 124
+exec "$@"
+SCRIPT
+chmod +x "$tmp/bin/node" "$tmp/bin/npm" "$tmp/bin/gh" "$tmp/bin/timeout"
 for workflow in pipeline.yml trusted-pr-tests.yml; do
   awk '
     /^      - name: Restore shared frontend dependencies or install locally$/ { step=1; next }
@@ -52,6 +61,13 @@ for workflow in pipeline.yml trusted-pr-tests.yml; do
   rm -f "$NPM_CALLS"
   GH_FAIL=true bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
+  rm -f "$NPM_CALLS"
+  if GH_HANG=true GH_HANG_SECONDS=0.1 FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT=0.1s bash "$tmp/restore.sh"; then
+    test -f "$NPM_CALLS"
+  else
+    echo "Timed-out dependency artifact download did not fall back to npm ci." >&2
+    exit 1
+  fi
   rm -f "$NPM_CALLS"
   ARTIFACT_READY=false bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
