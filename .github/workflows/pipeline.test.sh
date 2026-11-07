@@ -418,43 +418,49 @@ trusted_pr_job_runner() {
 
 require_trusted_pr_runner() {
   job="$1"
-  expected_runner="$2"
+  expected_labels="$2"
   runner=$(trusted_pr_job_runner "$job")
 
-  if [[ "$runner" != "$expected_runner" ]]; then
-    echo "Trusted PR $job must use only the $expected_runner self-hosted runner." >&2
+  if [[ "$runner" != *'github.event.pull_request.head.repo.full_name == github.repository'* ||
+        "$runner" != *'ubuntu-24.04'* ||
+        "$runner" == *'author_association'* ]]; then
+    echo "Trusted PR $job must route fork code to GitHub-hosted Ubuntu based on repository identity." >&2
     exit 1
   fi
+  for label in $expected_labels; do
+    if [[ "$runner" != *"$label"* ]]; then
+      echo "Trusted PR $job must retain the $label self-hosted runner label for same-repository PRs." >&2
+      exit 1
+    fi
+  done
 }
 
-require_trusted_pr_runner changes '[self-hosted, Windows, tests]'
-require_trusted_pr_runner pipeline-contract '[self-hosted, Windows, tests]'
-require_trusted_pr_runner frontend_test_shards '[self-hosted, e2e]'
-require_trusted_pr_runner frontend-ci '[self-hosted, e2e]'
-backend_runner=$(trusted_pr_job_runner backend-ci)
-if [[ "$backend_runner" != "[self-hosted, tests, Windows]" ]]; then
-  echo "Trusted PR backend CI must use the Windows tests runner and start its own Docker Desktop test services." >&2
+require_trusted_pr_runner changes 'self-hosted Windows tests'
+require_trusted_pr_runner pipeline-contract 'self-hosted Windows tests'
+require_trusted_pr_runner solid-boundaries 'self-hosted tests Windows'
+require_trusted_pr_runner frontend_dependencies 'self-hosted e2e'
+require_trusted_pr_runner frontend_test_shards 'self-hosted e2e'
+require_trusted_pr_runner frontend-ci 'self-hosted e2e'
+require_trusted_pr_runner backend_test_shards 'self-hosted tests Windows'
+require_trusted_pr_runner backend_lint 'self-hosted tests Windows'
+require_trusted_pr_runner backend-ci 'self-hosted tests Windows'
+if grep -Fq 'author_association' "$trusted_pr_workflow"; then
+  echo "Trusted PR runner selection must not trust the author's association; fork code stays on hosted runners." >&2
   exit 1
 fi
 backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
+for required in 'name: Start Docker Desktop for backend test services' "if: runner.os == 'Windows'" 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
   if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
-    echo "Trusted PR backend CI must initialize and clean up its Docker Desktop services itself ($required)." >&2
+    echo "Trusted PR backend CI must initialize and clean up Docker services on the Windows runner when needed ($required)." >&2
     exit 1
   fi
 done
 if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_ci_contract"; then
-  echo "Trusted PR backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
+  echo "Trusted PR backend CI must tolerate Docker CLI stderr while probing Windows engine startup." >&2
   exit 1
 fi
 if grep -Fq '    services:' <<< "$backend_ci_contract"; then
   echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
-  exit 1
-fi
-require_trusted_pr_runner solid-boundaries '[self-hosted, tests, Windows]'
-
-if grep -Eq 'ubuntu-(latest|[0-9]+\\.[0-9]+)' "$trusted_pr_workflow"; then
-  echo "Trusted PR workflow must not use GitHub-hosted runners." >&2
   exit 1
 fi
 
@@ -466,7 +472,7 @@ grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" |
 frontend_ci_contract=$(sed -n '/^  frontend_test_shards:/,/^  backend_test_shards:/p' "$trusted_pr_workflow")
 for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' '(cd frontend && npm ci)' 'run: npm test' 'run: npm run build'; do
   if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
-    echo "Trusted PR frontend checks must run on the self-hosted Windows e2e runner with a working Bash shell ($required)." >&2
+    echo "Trusted PR frontend checks must support both hosted Linux and the self-hosted Windows e2e runner ($required)." >&2
     exit 1
   fi
 done
@@ -540,6 +546,14 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
   if grep -Fq 'install-mode: binary' <<< "$workflow_backend_contract"; then
     echo "Backend CI in $workflow must not use the action's extensionless Windows ZIP extraction path." >&2
     exit 1
+  fi
+  if [[ "$workflow" == .github/workflows/trusted-pr-tests.yml ]]; then
+    for required in "Install golangci-lint binary on Linux" "if: runner.os == 'Linux'" 'linux-amd64.tar.gz' 'GITHUB_PATH' 'Configure Linux golangci-lint cache'; do
+      if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
+        echo "Fork PR backend lint must install the pinned Linux golangci-lint binary ($required)." >&2
+        exit 1
+      fi
+    done
   fi
 done
 grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {

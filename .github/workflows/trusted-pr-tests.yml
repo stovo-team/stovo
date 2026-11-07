@@ -19,7 +19,7 @@ jobs:
 
   changes:
     needs: pr-size
-    runs-on: [self-hosted, Windows, tests]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-24.04"]') }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
@@ -47,7 +47,7 @@ jobs:
     name: Pipeline Contract
     needs: pr-size
     if: github.event.pull_request.draft == false
-    runs-on: [self-hosted, Windows, tests]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 10
     steps:
       - name: Configure Git long paths
@@ -87,7 +87,7 @@ jobs:
       (needs.changes.outputs.frontend == 'true' ||
       needs.changes.outputs.backend == 'true' ||
       needs.changes.outputs.size_baseline == 'true')
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 10
     steps:
       - name: Configure Git long paths
@@ -117,7 +117,7 @@ jobs:
     name: Prepare frontend dependencies
     needs: changes
     if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.frontend == 'true' }}
-    runs-on: [self-hosted, e2e]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 20
     cache-mode: read
     outputs:
@@ -195,7 +195,7 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, e2e]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-24.04"]') }}
     permissions:
       contents: read
     strategy:
@@ -295,7 +295,7 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, e2e]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-24.04"]') }}
     steps:
       - name: Require successful frontend test shards
         env:
@@ -315,7 +315,7 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -350,6 +350,7 @@ jobs:
 
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
       - name: Start Docker Desktop for backend test services
+        if: runner.os == 'Windows'
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
@@ -494,7 +495,7 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+          if (Get-Command docker -ErrorAction SilentlyContinue) {
             $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
             docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }
@@ -503,7 +504,7 @@ jobs:
     name: Backend Go lint
     needs: changes
     if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true' }}
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -520,6 +521,7 @@ jobs:
           path: ${{ runner.temp }}/golangci-lint/v2.14.0
           key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
       - name: Install golangci-lint binary
+        if: runner.os == 'Windows'
         shell: powershell
         run: |
           $version = '2.14.0'
@@ -547,12 +549,41 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "golangci-lint $version could not start."
           }
+      - name: Install golangci-lint binary on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='2.14.0'
+          tool_directory="$RUNNER_TEMP/golangci-lint/v$version"
+          binary_path="$tool_directory/golangci-lint"
+          if [[ ! -x "$binary_path" ]]; then
+            mkdir -p "$tool_directory"
+            archive_path="$RUNNER_TEMP/golangci-lint-$version-linux-amd64.tar.gz"
+            extract_path="$RUNNER_TEMP/golangci-lint-$version-linux-amd64"
+            curl --fail --silent --show-error --location \
+              "https://github.com/golangci/golangci-lint/releases/download/v$version/golangci-lint-$version-linux-amd64.tar.gz" \
+              --output "$archive_path"
+            tar -xzf "$archive_path" -C "$RUNNER_TEMP"
+            install -m 0755 "$extract_path/golangci-lint" "$binary_path"
+            rm -rf "$archive_path" "$extract_path"
+          fi
+          echo "$tool_directory" >> "$GITHUB_PATH"
+          "$binary_path" version
       - name: Configure runner-local golangci-lint cache
+        if: runner.os == 'Windows'
         shell: powershell
         run: |
           $cachePath = Join-Path $env:USERPROFILE '.cache\golangci-lint'
           New-Item -ItemType Directory -Path $cachePath -Force | Out-Null
           Add-Content -Path $env:GITHUB_ENV -Value "GOLANGCI_LINT_CACHE=$cachePath"
+      - name: Configure Linux golangci-lint cache
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cache_path="$HOME/.cache/golangci-lint"
+          mkdir -p "$cache_path"
+          echo "GOLANGCI_LINT_CACHE=$cache_path" >> "$GITHUB_ENV"
       - name: Go lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
@@ -570,16 +601,17 @@ jobs:
       !cancelled() &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     steps:
       - name: Require successful backend test shards
         env:
           BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
           BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}
-        shell: powershell
+        shell: bash
         run: |
-          if ($env:BACKEND_SHARD_RESULT -ne 'success' -or $env:BACKEND_LINT_RESULT -ne 'success') {
-            throw "Backend test shards or lint did not succeed: $env:BACKEND_SHARD_RESULT / $env:BACKEND_LINT_RESULT"
-          }
+          if [[ "$BACKEND_SHARD_RESULT" != success || "$BACKEND_LINT_RESULT" != success ]]; then
+            echo "Backend test shards or lint did not succeed: $BACKEND_SHARD_RESULT / $BACKEND_LINT_RESULT" >&2
+            exit 1
+          fi
       - name: Aggregate successful backend shards
         run: echo "All backend test shards and lint passed."
