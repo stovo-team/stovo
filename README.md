@@ -2,48 +2,78 @@
   <img src="frontend/public/Logo.svg" alt="Stovo" width="96" />
   <h1>Stovo</h1>
   <p><strong>Self-hosted corporate messenger</strong></p>
-  <p>Conversations, calls, and shared work — together, on your infrastructure.</p>
-  <p><a href="https://stovo.ru">Explore Stovo</a> &nbsp;·&nbsp; <a href="docs/self-hosting/docker-compose.md">Self-host Stovo</a> &nbsp;·&nbsp; <a href="docs/README.md">Documentation</a></p>
+  <p>Conversations, calls, files and plans — one workspace, on your terms.</p>
   <p>
-    <img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-ff7043?style=flat-square" />
-    <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache_2.0-333333?style=flat-square" /></a>
+    <a href="https://stovo.cc"><img alt="Visit stovo.cc" src="https://img.shields.io/badge/stovo.cc-FF6B20?style=flat-square" /></a>
+    <a href="docs/self-hosting/docker-compose.md"><img alt="Self-host Stovo" src="https://img.shields.io/badge/Self--hosted-343B4A?style=flat-square" /></a>
+    <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/Apache_2.0-343B4A?style=flat-square" /></a>
   </p>
+  <p><a href="https://stovo.cc">Website</a> &nbsp;·&nbsp; <a href="docs/README.md">Documentation</a> &nbsp;·&nbsp; <a href="#build-from-source">Build from source</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contributing</a></p>
 </div>
 
 > Your company's private workspace. On your terms.
 
 ## One workspace for team communication
 
-One private workspace for team chat, calls, files, and shared work. Stovo brings the conversations and information your organization relies on together, with the option to run it on infrastructure you manage.
+Bring the people, conversations and information your organization relies on together. Stovo combines messaging, calls, files and shared work in a workspace you can run on infrastructure you manage.
 
-![Stovo demo workspace with group and direct chats](docs/evidence/quick-access-layout-after-dark-ru-1440x900.png)
+The previews below are recorded from the interactive [Stovo landing page](https://stovo.cc). They use **fictional data and illustrative interface mockups**; their example messages, integrations and status labels are not statements about deployed features or performance.
 
-<sub>Stovo workspace shown with synthetic demo conversations.</sub>
+### Keep the conversation moving
 
-### Conversations that keep context
+Bring the right people together in direct and group chats. Search messages, reply in context, react, share attachments, and schedule messages or reminders for later.
 
-Bring the right people into a conversation, then keep the details easy to find. Direct and group chats bring together search, replies, reactions, attachments, scheduled messages, and reminders.
+![Animated landing-page preview of team conversations](docs/assets/readme/conversations.gif)
 
-### From discussion to action
+### Keep every file in reach
 
-Turn a conversation into a plan. Share files, gather decisions with polls, track work with checklists, and build shared Canvas documents together. Files shared in conversations can be found again in Storage.
+Files shared in conversations can be found again in Storage alongside direct uploads. Use checklists, polls and shared Canvas documents to keep work close to the conversation.
 
-### Meet when a message isn't enough
+![Animated landing-page preview of file collections and filters](docs/assets/readme/files.gif)
 
-Go from a conversation to a voice or video call, share your screen, and invite guests with a meeting link. Call history keeps past meetings visible; live captions and optional transcription are available when configured.
+### Turn updates into a plan
 
-![Stovo demo group call and meeting controls](docs/evidence/group-call-controls-desktop.png)
+Coordinate with shared plans and attendees, then move into voice or video calls when a message isn't enough. Calls support screen sharing and guest meeting links when configured.
 
-<sub>Group call interface shown with synthetic demo participants.</sub>
+![Animated landing-page preview of team plans](docs/assets/readme/plans.gif)
 
-**[Explore Stovo on stovo.ru →](https://stovo.ru)**
+### Revisit the conversation
+
+Call history helps teams revisit past calls. Transcription and related features depend on instance configuration and an external provider. The following landing-page mockup illustrates a possible notes experience; it is not a feature-by-feature representation of the current interface.
+
+![Animated landing-page mockup of call notes and action items](docs/assets/readme/call-notes.gif)
+
+<div align="center"><a href="https://stovo.cc"><strong>Explore the interactive previews at stovo.cc →</strong></a></div>
 
 ## Explore Stovo
 
-**Ready to get started?** Choose a [Docker Compose](docs/self-hosting/docker-compose.md) or [Kubernetes and Helm](docs/self-hosting/kubernetes.md) deployment. For configuration, operations, and architecture, visit the [documentation](docs/README.md).
+Choose a [Docker Compose deployment](docs/self-hosting/docker-compose.md) for a single host or [Kubernetes and Helm](docs/self-hosting/kubernetes.md) for an existing cluster. Both guides cover prerequisites, configuration, persistence and operations.
 
-[Website](https://stovo.ru) · [Architecture](docs/architecture/subsystems.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
+| Looking for | Start here |
+| --- | --- |
+| Deployment, configuration and operations | [Documentation index](docs/README.md) · [Docker Compose](docs/self-hosting/docker-compose.md) · [Kubernetes](docs/self-hosting/kubernetes.md) |
+| Code structure and services | [Architecture map](docs/architecture/subsystems.md) |
+| Development and tests | [Contributing](CONTRIBUTING.md) · [End-to-end tests](e2e/README.md) |
+| Reporting a problem or suggesting an idea | [GitHub issues](https://github.com/stovo-team/stovo/issues) · [Issue templates](.github/ISSUE_TEMPLATE/) |
+| Reporting a vulnerability | [Security policy](SECURITY.md) |
+
+## Build from source
+
+The application consists of a Go backend and a React/TypeScript web client. The repository's build images use Go 1.25.5 and Node.js 22. From the repository root, build each component with:
+
+```sh
+# Backend
+cd backend
+go build -o stovo-server ./cmd/server
+
+# Web client
+cd ../frontend
+npm ci
+npm run build
+```
+
+These commands build the components; use the [Compose guide](docs/self-hosting/docker-compose.md) for a configured running instance and [CONTRIBUTING.md](CONTRIBUTING.md) for development, tests and pull requests. Compose builds the application images from the checked-out source.
 
 ## About this project
 
-Stovo is under active development and licensed under the [Apache License 2.0](LICENSE). Features and deployment details can change between revisions. Self-hosting gives operators control over their deployment; it does not by itself mean messages are end-to-end encrypted. Review the [security policy](SECURITY.md) and the documentation for the version you run.
+Stovo is under active development and licensed under the [Apache License 2.0](LICENSE). Features and deployment details can change between revisions. Self-hosting gives operators control over their deployment; it does not by itself mean messages are end-to-end encrypted. Review the [security policy](SECURITY.md) and documentation for the version you run.
