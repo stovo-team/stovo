@@ -243,12 +243,16 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
       exit 1
     fi
   done
-  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '2'" 'PREP_OS' 'PREP_ARCH' 'PREP_NODE' 'PREP_NPM' 'gh run download' 'tar -xf' '(cd frontend && npm ci)' 'run: npm test -- --shard='; do
+  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '2'" 'PREP_OS' 'PREP_ARCH' 'PREP_NODE' 'PREP_NPM' 'uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4' 'name: frontend-dependencies' 'timeout-minutes: 5' 'tar -xf' '(cd frontend && npm ci)' 'run: npm test -- --shard='; do
     if ! grep -Fq -- "$required" <<< "$shards"; then
       echo "Frontend shards in $workflow must restore compatible dependencies or install them and run with two workers ($required)." >&2
       exit 1
     fi
   done
+  if grep -Fq 'gh run download' <<< "$shards"; then
+    echo "Frontend shards in $workflow must use the official current-run artifact download action." >&2
+    exit 1
+  fi
 done
 master_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/pipeline.yml)
 master_key=$(grep -F 'key: frontend-deps-v1-' <<< "$master_preparation")

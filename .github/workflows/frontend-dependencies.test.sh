@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Exercise the actual restore step with a tiny archive and mocked GitHub/npm.
+# Exercise the actual restore step with a tiny artifact archive and mocked npm.
 root=$(pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/bin" "$tmp/fixture/node_modules/example" "$tmp/work/frontend" "$tmp/runner"
+mkdir -p "$tmp/bin" "$tmp/fixture/node_modules/example" "$tmp/work/frontend" "$tmp/runner/frontend-dependencies-123"
 printf 'installed\n' > "$tmp/fixture/node_modules/example/index.js"
 tar -cf "$tmp/dependencies.tar" -C "$tmp/fixture" node_modules
 cat > "$tmp/bin/node" <<'SCRIPT'
@@ -19,25 +19,7 @@ if [ "${1:-}" = --version ]; then printf '10.0.0\n'; exit 0; fi
 [ -z "${GH_TOKEN:-}" ] || { echo 'GH_TOKEN leaked to npm' >&2; exit 1; }
 printf 'npm ci\n' >> "$NPM_CALLS"
 SCRIPT
-cat > "$tmp/bin/gh" <<'SCRIPT'
-#!/usr/bin/env bash
-[ "${GH_FAIL:-false}" != true ] || exit 1
-[ "${GH_HANG:-false}" != true ] || sleep "${GH_HANG_SECONDS:-10}"
-while [ "$#" -gt 0 ]; do
-  if [ "$1" = --dir ]; then shift; mkdir -p "$1"; cp "$FIXTURE_ARCHIVE" "$1/frontend-dependencies.tar"; exit 0; fi
-  shift
-done
-exit 1
-SCRIPT
-cat > "$tmp/bin/timeout" <<'SCRIPT'
-#!/usr/bin/env bash
-expected=${FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT:-8m}
-[ "${1:-}" = "$expected" ] || exit 1
-shift
-[ "${GH_HANG:-false}" != true ] || exit 124
-exec "$@"
-SCRIPT
-chmod +x "$tmp/bin/node" "$tmp/bin/npm" "$tmp/bin/gh" "$tmp/bin/timeout"
+chmod +x "$tmp/bin/node" "$tmp/bin/npm"
 for workflow in pipeline.yml trusted-pr-tests.yml; do
   awk '
     /^      - name: Restore shared frontend dependencies or install locally$/ { step=1; next }
@@ -50,6 +32,7 @@ for workflow in pipeline.yml trusted-pr-tests.yml; do
   export RUNNER_TEMP="$tmp/runner" GITHUB_RUN_ID=123 GITHUB_REPOSITORY=example/repo
   export RUNNER_OS=Linux RUNNER_ARCH=X64 PREP_OS=Linux PREP_ARCH=X64 PREP_NODE=v22.1.0 PREP_NPM=10.0.0
   export PREP_RESULT=success ARTIFACT_READY=true GH_TOKEN=example
+  cp "$FIXTURE_ARCHIVE" "$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID/frontend-dependencies.tar"
   cd "$tmp/work"
   rm -rf frontend/node_modules "$NPM_CALLS"
   bash "$tmp/restore.sh"
@@ -59,16 +42,11 @@ for workflow in pipeline.yml trusted-pr-tests.yml; do
   PREP_NODE=v22.2.0 bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
   rm -f "$NPM_CALLS"
-  GH_FAIL=true bash "$tmp/restore.sh"
+  rm -f "$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID/frontend-dependencies.tar"
+  bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
   rm -f "$NPM_CALLS"
-  if GH_HANG=true GH_HANG_SECONDS=0.1 FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT=0.1s bash "$tmp/restore.sh"; then
-    test -f "$NPM_CALLS"
-  else
-    echo "Timed-out dependency artifact download did not fall back to npm ci." >&2
-    exit 1
-  fi
-  rm -f "$NPM_CALLS"
+  cp "$FIXTURE_ARCHIVE" "$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID/frontend-dependencies.tar"
   ARTIFACT_READY=false bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
   rm -f "$NPM_CALLS"
@@ -78,8 +56,8 @@ for workflow in pipeline.yml trusted-pr-tests.yml; do
   PREP_OS=Windows bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
   rm -f "$NPM_CALLS"
-  printf 'invalid archive' > "$tmp/bad.tar"
-  FIXTURE_ARCHIVE="$tmp/bad.tar" bash "$tmp/restore.sh"
+  printf 'invalid archive' > "$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID/frontend-dependencies.tar"
+  bash "$tmp/restore.sh"
   test -f "$NPM_CALLS"
   cd "$root"
 done
