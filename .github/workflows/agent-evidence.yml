@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-# Fork and draft PRs use hosted workers. Ready same-repository PRs use the
-# online Windows validation runners for both capture and comparison.
+# Jobs that check out PR code route fork pull requests to GitHub-hosted Linux.
 permissions:
   contents: read
 
@@ -17,7 +16,7 @@ jobs:
   # TEMPORARY: keep the stable gate check while pausing unreliable agent CI.
   changes:
     if: ${{ false }}
-    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
       visual: ${{ steps.select.outputs.visual }}
@@ -42,7 +41,7 @@ jobs:
 
   validators:
     if: ${{ false }}
-    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -60,7 +59,7 @@ jobs:
   visual:
     if: ${{ false && needs.changes.outputs.visual == 'true' }}
     needs: changes
-    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -141,7 +140,7 @@ jobs:
     name: Agent workflow gate
     if: ${{ always() }}
     needs: [changes, validators, visual]
-    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft && fromJSON('["self-hosted","e2e","Windows"]') || 'ubuntu-24.04' }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Report temporary pause
         run: echo 'Agent workflow evidence is temporarily disabled.' >> "$GITHUB_STEP_SUMMARY"

@@ -171,7 +171,6 @@ jobs:
     runs-on: [self-hosted, e2e]
     permissions:
       contents: read
-      actions: read
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -201,10 +200,17 @@ jobs:
           $computer = Get-CimInstance Win32_ComputerSystem
           $os = Get-CimInstance Win32_OperatingSystem
           Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
+      - name: Download shared frontend dependencies
+        if: needs.frontend_dependencies.outputs.artifact-ready == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: frontend-dependencies
+          path: ${{ runner.temp }}/frontend-dependencies-${{ github.run_id }}
       - name: Restore shared frontend dependencies or install locally
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           PREP_RESULT: ${{ needs.frontend_dependencies.result }}
           ARTIFACT_READY: ${{ needs.frontend_dependencies.outputs.artifact-ready }}
           PREP_OS: ${{ needs.frontend_dependencies.outputs.os }}
@@ -215,11 +221,10 @@ jobs:
           set -euo pipefail
           restored=false
           artifact_dir="$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID"
-          rm -rf "$artifact_dir"
           if [ "$PREP_RESULT" = success ] && [ "$ARTIFACT_READY" = true ] &&
              [ "$PREP_OS" = "$RUNNER_OS" ] && [ "$PREP_ARCH" = "$RUNNER_ARCH" ] &&
              [ "$PREP_NODE" = "$(node --version)" ] && [ "$PREP_NPM" = "$(npm --version)" ]; then
-            if timeout "${FRONTEND_DEPENDENCY_DOWNLOAD_TIMEOUT:-8m}" gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name frontend-dependencies --dir "$artifact_dir" &&
+            if [ -f "$artifact_dir/frontend-dependencies.tar" ] &&
                tar -xf "$artifact_dir/frontend-dependencies.tar" -C frontend; then
               restored=true
             fi

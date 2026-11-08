@@ -56,7 +56,8 @@
     "sass": "^1.105.1",
     "undici": "^7.29.1",
     "katex": "0.18.2",
-    "lodash-es": "4.17.23",
+    "lodash-es": "4.18.1",
+    "@xmldom/xmldom": "0.8.15",
     "nanoid@^3": "3.3.18",
     "nanoid@^4": "5.1.16"
   }
