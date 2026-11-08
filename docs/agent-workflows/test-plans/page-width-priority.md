@@ -1,3 +1,8 @@
+---
+title: "Page width priority test plan"
+type: test-plan
+---
+
 # Page width priority test plan
 
 Status: approved for implementation with the spec in [page-width-priority.md](../specs/page-width-priority.md).

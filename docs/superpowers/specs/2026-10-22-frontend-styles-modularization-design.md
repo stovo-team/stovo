@@ -1,3 +1,8 @@
+---
+title: "Frontend Stylesheet Modularization"
+type: specification
+---
+
 # Frontend Stylesheet Modularization
 
 **Status:** Approved for implementation  

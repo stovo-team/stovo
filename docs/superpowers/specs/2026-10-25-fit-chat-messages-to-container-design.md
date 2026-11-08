@@ -1,3 +1,8 @@
+---
+title: "Fit chat messages to the available chat width"
+type: specification
+---
+
 # Fit chat messages to the available chat width
 
 ## Intent

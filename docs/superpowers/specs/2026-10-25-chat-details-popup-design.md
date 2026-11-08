@@ -1,3 +1,8 @@
+---
+title: "Chat details popup design"
+type: specification
+---
+
 # Chat details popup design
 
 ## Intent
