@@ -607,11 +607,12 @@ jobs:
         env:
           BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
           BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}
-        shell: bash
+        shell: powershell
         run: |
-          if [[ "$BACKEND_SHARD_RESULT" != success || "$BACKEND_LINT_RESULT" != success ]]; then
-            echo "Backend test shards or lint did not succeed: $BACKEND_SHARD_RESULT / $BACKEND_LINT_RESULT" >&2
+          if ($env:BACKEND_SHARD_RESULT -ne 'success' -or $env:BACKEND_LINT_RESULT -ne 'success') {
+            [Console]::Error.WriteLine("Backend test shards or lint did not succeed: $env:BACKEND_SHARD_RESULT / $env:BACKEND_LINT_RESULT")
             exit 1
           fi
       - name: Aggregate successful backend shards
+        shell: powershell
         run: echo "All backend test shards and lint passed."
