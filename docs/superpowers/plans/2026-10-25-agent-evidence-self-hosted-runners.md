@@ -1,3 +1,8 @@
+---
+title: "Agent Evidence Self-Hosted Runner Plan"
+type: engineering-plan
+---
+
 # Agent Evidence Self-Hosted Runner Plan
 
 **Goal:** Reduce reliance on GitHub-hosted runners for agent-workflow checks by using the available Windows self-hosted runner where its platform does not affect the result.

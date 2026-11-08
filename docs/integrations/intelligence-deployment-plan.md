@@ -1,3 +1,8 @@
+---
+title: "Intelligence deployment routing"
+type: engineering-plan
+---
+
 # Intelligence deployment routing
 
 ## Feature plan

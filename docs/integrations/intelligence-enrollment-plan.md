@@ -1,3 +1,8 @@
+---
+title: "Intelligence pilot enrollment"
+type: engineering-plan
+---
+
 # Intelligence pilot enrollment
 
 ## Feature plan
