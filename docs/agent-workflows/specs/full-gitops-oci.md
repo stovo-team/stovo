@@ -1,3 +1,8 @@
+---
+title: "Stovo multiserver GitOps transition"
+type: specification
+---
+
 # Stovo multiserver GitOps transition
 
 Status: draft for combined human review. Base: stovo-team/stovo-messenger master at b2a3176a. No deployment or changes to production are authorized by this document.

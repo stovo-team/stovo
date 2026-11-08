@@ -1,3 +1,8 @@
+---
+title: "Page Width Priority Implementation Plan"
+type: engineering-plan
+---
+
 # Page Width Priority Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.

@@ -1,3 +1,8 @@
+---
+title: "Page width priority"
+type: specification
+---
+
 # Page width priority
 
 Status: approved for implementation. The human approved the scope and test plan in this chat on 2026-10-26, replying “Approve and proceed” to the displayed review.

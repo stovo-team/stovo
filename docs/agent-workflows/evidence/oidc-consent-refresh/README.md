@@ -1,3 +1,8 @@
+---
+title: "Intelligence consent visual evidence"
+type: evidence
+---
+
 # Intelligence consent visual evidence
 
 Captured from the mock-mode application with Chromium 151.0.7922.34 on Linux. The request uses synthetic client and callback values. The Continue action was not activated in screenshots, so no authorization service was contacted. The full visual test covers 1440 × 900 and 390 × 844 in light/dark themes and English/Russian locales.

@@ -1,3 +1,8 @@
+---
+title: "Chat Details Popup Implementation Plan"
+type: engineering-plan
+---
+
 # Chat Details Popup Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

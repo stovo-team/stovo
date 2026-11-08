@@ -1,3 +1,8 @@
+---
+title: "Profile, chat, and folder avatars"
+type: specification
+---
+
 # Profile, chat, and folder avatars
 
 Status: approved with user-requested visual and scope amendments on 2026-10-26

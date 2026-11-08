@@ -26,6 +26,8 @@ Before submitting a pull request:
 
 ## Development checks
 
+For a first build and the mock frontend, start with [Developer getting started](docs/engineering/getting-started.md).
+
 Run commands from the indicated directory. The Go test suite may use integration tests when TEST_DATABASE_URL and TEST_REDIS_URL are set; without them, those integration tests skip.
 
 ### Backend
