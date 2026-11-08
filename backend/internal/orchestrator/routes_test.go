@@ -32,7 +32,7 @@ func TestProductionMultiserverOrchestratorReceivesPublicAppURL(t *testing.T) {
 	if !ok {
 		t.Fatal("production multi-server Compose config has no orchestrator service")
 	}
-	if got, want := orchestrator.Environment["APP_URL"], "${APP_URL:-http://localhost:8000}"; got != want {
+	if got, want := orchestrator.Environment["APP_URL"], "${APP_URL:-https://${APP_DOMAIN}}"; got != want {
 		t.Fatalf("orchestrator APP_URL mapping = %q, want %q", got, want)
 	}
 }

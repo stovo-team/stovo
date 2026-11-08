@@ -63,7 +63,7 @@ describe("masterAdmin API", () => {
     );
   });
 
-  it("updates server settings with nav_tabs", async () => {
+  it("updates server settings including public preview consent", async () => {
     const mockUpdated = {
       id: 1,
       slug: "abc12345",
@@ -81,6 +81,7 @@ describe("masterAdmin API", () => {
     const result = await updateServerSettings("test-token", "abc12345", {
       name: "Updated Name",
       nav_tabs: { chats: true, storage: true, plans: false, settings: true },
+      public_preview: true,
     });
 
     expect(result).toEqual(mockUpdated);
@@ -95,6 +96,7 @@ describe("masterAdmin API", () => {
         body: JSON.stringify({
           name: "Updated Name",
           nav_tabs: { chats: true, storage: true, plans: false, settings: true },
+          public_preview: true,
         }),
       })
     );

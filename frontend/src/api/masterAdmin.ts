@@ -27,6 +27,7 @@ export interface ServerRecord {
   status: string;
   nav_tabs?: NavTabsConfig;
   chat_types?: ChatTypesConfig;
+  public_preview?: boolean;
 }
 
 export interface TenantCallQualitySettings {
@@ -91,7 +92,7 @@ export async function fetchServerSettings(token: string, slug: string): Promise<
 export async function updateServerSettings(
   token: string,
   slug: string,
-  updates: { name?: string; nav_tabs?: Partial<NavTabsConfig>; chat_types?: ChatTypesConfig }
+  updates: { name?: string; nav_tabs?: Partial<NavTabsConfig>; chat_types?: ChatTypesConfig; public_preview?: boolean }
 ): Promise<ServerRecord> {
   const masterUrl = getMasterApiUrl();
   const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/settings`, {
