@@ -5,6 +5,22 @@
 		reverse_proxy orchestrator:8001
 	}
 
+	# Public crawler metadata for tenant landing URLs is rendered by the master
+	# registry so it can resolve only the public workspace name.
+	@spacePreviewImage path_regexp spacePreviewImage ^/s/([a-zA-Z0-9_-]{1,64})/og\.png$
+	handle @spacePreviewImage {
+		rewrite * /preview/{re.spacePreviewImage.1}/og.png
+		reverse_proxy orchestrator:8001
+	}
+	@spacePreview {
+		path_regexp spacePreview ^/s/([a-zA-Z0-9_-]{1,64})/?$
+		header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|googlebot)
+	}
+	handle @spacePreview {
+		rewrite * /preview/{re.spacePreview.1}
+		reverse_proxy orchestrator:8001
+	}
+
 	# Root source and OIDC endpoints belong to the explicitly selected backend.
 	@intelligence path /.well-known/openid-configuration /oauth2/* /api/v2/intelligence/*
 	handle @intelligence {

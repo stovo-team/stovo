@@ -608,6 +608,13 @@ for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: De
     exit 1
   fi
 done
+trusted_backend_aggregate=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/trusted-pr-tests.yml)
+for required in 'name: Require successful backend test shards' 'shell: powershell' '$env:BACKEND_SHARD_RESULT' '$env:BACKEND_LINT_RESULT' 'name: Aggregate successful backend shards'; do
+  if ! grep -Fq "$required" <<< "$trusted_backend_aggregate"; then
+    echo "Trusted PR Backend CI must aggregate Windows runner results with PowerShell ($required)." >&2
+    exit 1
+  fi
+done
 if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_workflow_contract"; then
   echo "Master backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
   exit 1

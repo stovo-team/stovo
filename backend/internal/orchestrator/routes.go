@@ -53,13 +53,14 @@ func defaultChatTypes() ChatTypesConfig {
 }
 
 type ServerRecord struct {
-	ID        int             `json:"id"`
-	Slug      string          `json:"slug"`
-	Name      string          `json:"name"`
-	CreatedAt time.Time       `json:"created_at"`
-	Status    string          `json:"status"`
-	NavTabs   NavTabsConfig   `json:"nav_tabs"`
-	ChatTypes ChatTypesConfig `json:"chat_types"`
+	ID            int             `json:"id"`
+	Slug          string          `json:"slug"`
+	Name          string          `json:"name"`
+	CreatedAt     time.Time       `json:"created_at"`
+	Status        string          `json:"status"`
+	NavTabs       NavTabsConfig   `json:"nav_tabs"`
+	ChatTypes     ChatTypesConfig `json:"chat_types"`
+	PublicPreview bool            `json:"public_preview"`
 }
 
 func getMasterSecret() []byte {
@@ -239,7 +240,7 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 
 // handleListServers returns all server records.
 func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request) {
-	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers ORDER BY id`)
+	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, ''), public_preview FROM servers ORDER BY id`)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -251,7 +252,7 @@ func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request)
 		var navTabsStr, chatTypesStr string
 		rec.NavTabs = defaultNavTabs()
 		rec.ChatTypes = defaultChatTypes()
-		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr); err != nil {
+		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr, &rec.PublicPreview); err != nil {
 			continue
 		}
 		if navTabsStr != "" {
@@ -272,8 +273,8 @@ func (o *Orchestrator) handleGetServerSettings(w http.ResponseWriter, r *http.Re
 	var navTabsStr, chatTypesStr string
 	rec.NavTabs = defaultNavTabs()
 	rec.ChatTypes = defaultChatTypes()
-	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).
-		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr)
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, ''), public_preview FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr, &rec.PublicPreview)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
 		return
@@ -291,9 +292,10 @@ func (o *Orchestrator) handleGetServerSettings(w http.ResponseWriter, r *http.Re
 func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id")
 	type updateSettingsReq struct {
-		Name      *string          `json:"name,omitempty"`
-		NavTabs   *NavTabsConfig   `json:"nav_tabs,omitempty"`
-		ChatTypes *ChatTypesConfig `json:"chat_types,omitempty"`
+		Name          *string          `json:"name,omitempty"`
+		NavTabs       *NavTabsConfig   `json:"nav_tabs,omitempty"`
+		ChatTypes     *ChatTypesConfig `json:"chat_types,omitempty"`
+		PublicPreview *bool            `json:"public_preview,omitempty"`
 	}
 	var req updateSettingsReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -305,8 +307,8 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 	var navTabsStr, chatTypesStr string
 	rec.NavTabs = defaultNavTabs()
 	rec.ChatTypes = defaultChatTypes()
-	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).
-		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr)
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, ''), public_preview FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr, &rec.PublicPreview)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
 		return
@@ -327,10 +329,13 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 	if req.ChatTypes != nil {
 		rec.ChatTypes = *req.ChatTypes
 	}
+	if req.PublicPreview != nil {
+		rec.PublicPreview = *req.PublicPreview
+	}
 
 	navTabsJSON, _ := json.Marshal(rec.NavTabs)
 	chatTypesJSON, _ := json.Marshal(rec.ChatTypes)
-	_, err = o.masterDB.Exec(`UPDATE servers SET name=$1, nav_tabs=$2, chat_types=$3 WHERE slug=$4`, rec.Name, string(navTabsJSON), string(chatTypesJSON), slug)
+	_, err = o.masterDB.Exec(`UPDATE servers SET name=$1, nav_tabs=$2, chat_types=$3, public_preview=$4 WHERE slug=$5`, rec.Name, string(navTabsJSON), string(chatTypesJSON), rec.PublicPreview, slug)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return

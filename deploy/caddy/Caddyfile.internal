@@ -7,6 +7,20 @@
 		reverse_proxy orchestrator:8001
 	}
 
+	@spacePreviewImage path_regexp spacePreviewImage ^/s/([a-zA-Z0-9_-]{1,64})/og\.png$
+	handle @spacePreviewImage {
+		rewrite * /preview/{re.spacePreviewImage.1}/og.png
+		reverse_proxy orchestrator:8001
+	}
+	@spacePreview {
+		path_regexp spacePreview ^/s/([a-zA-Z0-9_-]{1,64})/?$
+		header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|googlebot)
+	}
+	handle @spacePreview {
+		rewrite * /preview/{re.spacePreview.1}
+		reverse_proxy orchestrator:8001
+	}
+
 	@clusterApi path_regexp clusterApi ^/s/([a-zA-Z0-9_-]+)/api/(.*)$
 	handle @clusterApi {
 		rewrite * /api/{re.clusterApi.2}
