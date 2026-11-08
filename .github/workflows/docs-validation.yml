@@ -90,11 +90,15 @@ jobs:
         run: |
           set -euo pipefail
           version=v0.6.7
+          asset_id=182839734
+          sha256=95f14e87aa28c09d5941f11bd024c1d02fdc0303ccaa23f61cef67bc92619d73
           archive="$RUNNER_TEMP/kubeconform-$version-linux-amd64.tar.gz"
           install_dir="$RUNNER_TEMP/kubeconform-bin"
           curl --fail --location --retry 3 \
-            "https://github.com/yannh/kubeconform/releases/download/$version/kubeconform-linux-amd64.tar.gz" \
+            --header 'Accept: application/octet-stream' \
+            "https://api.github.com/repos/yannh/kubeconform/releases/assets/$asset_id" \
             --output "$archive"
+          printf '%s  %s\n' "$sha256" "$archive" | sha256sum --check
           mkdir -p "$install_dir"
           tar -xzf "$archive" -C "$install_dir" kubeconform
           echo "$install_dir" >> "$GITHUB_PATH"
