@@ -21,6 +21,16 @@ printf 'npm ci\n' >> "$NPM_CALLS"
 SCRIPT
 chmod +x "$tmp/bin/node" "$tmp/bin/npm"
 for workflow in pipeline.yml trusted-pr-tests.yml; do
+  if ! awk '
+    /^      - name: Download shared frontend dependencies$/ { step=1; next }
+    step && /^      - name:/ { exit }
+    step && /timeout-minutes: 5/ { bounded=1 }
+    step && /continue-on-error: true/ { fallback=1 }
+    END { exit !(bounded && fallback) }
+  ' "$root/.github/workflows/$workflow"; then
+    echo "Frontend dependency artifact downloads must be bounded and fall back to npm ci ($workflow)." >&2
+    exit 1
+  fi
   awk '
     /^      - name: Restore shared frontend dependencies or install locally$/ { step=1; next }
     step && /^        run: \|$/ { script=1; next }
