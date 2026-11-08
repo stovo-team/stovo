@@ -119,7 +119,6 @@ jobs:
     if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.frontend == 'true' }}
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 20
-    cache-mode: read
     outputs:
       os: ${{ steps.versions.outputs.os }}
       arch: ${{ steps.versions.outputs.arch }}
@@ -167,7 +166,7 @@ jobs:
       - name: Restore installed frontend dependencies
         id: dependencies-cache
         continue-on-error: true
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: frontend-dependencies.tar
           key: frontend-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.npm }}-${{ hashFiles('frontend/package.json', 'frontend/package-lock.json', 'frontend/.npmrc', '.npmrc') }}

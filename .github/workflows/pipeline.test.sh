@@ -262,7 +262,7 @@ if [[ -z "$master_key" || "$master_key" != "$pr_key" ]] || ! grep -Fq "if: githu
   exit 1
 fi
 pr_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml)
-if ! grep -Fq 'cache-mode: read' <<< "$pr_preparation" || ! grep -Fq "if: steps.dependencies-cache.outputs.cache-hit != 'true'" <<< "$pr_preparation"; then
+if ! grep -Fq 'uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830' <<< "$pr_preparation" || grep -Eq '^    cache-mode:' <<< "$pr_preparation" || ! grep -Fq "if: steps.dependencies-cache.outputs.cache-hit != 'true'" <<< "$pr_preparation"; then
   echo "PR dependency preparation must use read-only cache access and install on a cache miss." >&2
   exit 1
 fi
