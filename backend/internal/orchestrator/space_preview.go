@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -37,7 +38,9 @@ func (o *Orchestrator) handleSpacePreview(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Write([]byte(renderSpacePreviewHTML(baseURL, slug, name, ok)))
+	if _, err := io.WriteString(w, renderSpacePreviewHTML(baseURL, slug, name, ok)); err != nil {
+		return
+	}
 }
 
 func renderSpacePreviewHTML(baseURL, slug, name string, isPublic bool) string {
