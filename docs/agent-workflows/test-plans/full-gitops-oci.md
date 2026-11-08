@@ -1,3 +1,8 @@
+---
+title: "Stovo multiserver GitOps test plan"
+type: test-plan
+---
+
 # Stovo multiserver GitOps test plan
 
 Status: draft for combined human review; these are planned checks, not executed results. Applies to `docs/agent-workflows/specs/full-gitops-oci.md`.

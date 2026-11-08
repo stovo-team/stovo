@@ -1,3 +1,8 @@
+---
+title: "Full GitOps Transition Implementation Plan"
+type: engineering-plan
+---
+
 # Full GitOps Transition Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

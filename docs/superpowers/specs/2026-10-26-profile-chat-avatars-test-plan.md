@@ -1,3 +1,8 @@
+---
+title: "Profile, Chat, and Folder Avatars Test Plan"
+type: test-plan
+---
+
 # Profile, Chat, and Folder Avatars Test Plan
 
 This acceptance matrix is the test-plan section of the feature spec at `docs/superpowers/specs/2026-10-26-profile-chat-avatars-design.md`, including the user's 2026-10-26 amendments to avatar customization scope and visual treatment.
