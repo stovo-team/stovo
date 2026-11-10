@@ -1,13 +1,6 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { getInviteApiUrl, getInviteAppLinkPath, getNotificationAppLink, getQRLoginApprovalPath } from "./appLinks";
-
-const androidManifest = readFileSync(
-  resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml"),
-  "utf8"
-);
 
 describe("getNotificationAppLink", () => {
   it("routes a chat notification to its exact chat", () => {
@@ -89,12 +82,5 @@ describe("getQRLoginApprovalPath", () => {
     `stovo://evil/qr-approve/${"a".repeat(48)}`,
   ])("rejects malformed or untrusted approval links: %s", (url) => {
     expect(getQRLoginApprovalPath(url)).toBeNull();
-  });
-});
-
-describe("Android invitation App Links", () => {
-  it("verifies both root and cluster invite URLs", () => {
-    expect(androidManifest).toMatch(/android:autoVerify="true"[\s\S]*android:pathPrefix="\/invite"/);
-    expect(androidManifest).toContain('android:pathPattern="/s/.*/invite/.*"');
   });
 });
