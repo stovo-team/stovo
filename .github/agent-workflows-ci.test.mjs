@@ -33,7 +33,7 @@ test('change discovery uses the true PR merge base without a full checkout',()=>
 test('visual evidence retries transient Chromium download failures on both platforms',()=>{const w=workflow();assert.match(w,/for attempt in 1 2 3/);assert.match(w,/install_command=\(npx playwright install chromium\)/);assert.match(w,/install_command=\(npx playwright install --with-deps chromium\)/);assert.match(w,/if "\$\{install_command\[@\]\}"; then/);assert.match(w,/if \[ "\$attempt" -eq 3 \]; then exit 1; fi/);});
 test('documentation and CodeQL route fork PR code to hosted Ubuntu',()=>{
  for(const name of ['docs-validation.yml','codeql.yml']){const w=workflowFile(name);assert.match(w,/runs-on: ubuntu-24\.04/);assert.doesNotMatch(w,/runs-on:[^\n]*self-hosted|author_association/);}
- const docs=workflowFile('docs-validation.yml');assert.match(docs,/helm-\$version-windows-amd64\.zip/);const codeql=workflowFile('codeql.yml');assert.match(codeql,/setup-go@/);assert.match(codeql,/gradlew\.bat/);
+ const docs=workflowFile('docs-validation.yml');assert.match(docs,/helm-\$version-windows-amd64\.zip/);const codeql=workflowFile('codeql.yml');assert.match(codeql,/setup-go@/);assert.match(codeql,/javascript-typescript/); assert.doesNotMatch(codeql,/java-kotlin|gradlew/);
 });
 test('frontend fixes require screenshot evidence in agent instructions',()=>{const instructions=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8');assert.match(instructions,/frontend fix[\s\S]*screenshot/i);});
 test('cross-platform size baseline covers the Windows mock API line count',()=>{const baseline=readFileSync(new URL('../docs/engineering/size-baseline.tsv',import.meta.url),'utf8');assert.match(baseline,/^frontend\/src\/dev\/mockApi\.ts\t442$/m);});
