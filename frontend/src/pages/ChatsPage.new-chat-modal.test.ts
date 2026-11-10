@@ -34,6 +34,16 @@ describe("new message dialog on web", () => {
     expect(mobileRule).toMatch(/width:\s*100%;/);
   });
 
+  it("keeps mobile new-chat content below the safe area inside the full-screen dialog", () => {
+    const mobileRule = styles.match(/@media \(max-width: 767px\) \{[\s\S]*?\.popup-dialog\.new-chat-screen \{([^}]*)\}/)?.[1] ?? "";
+    expect(mobileRule).toMatch(/box-sizing:\s*border-box;/);
+    expect(mobileRule).toMatch(/padding-top:\s*max\(12px, env\(safe-area-inset-top, 0px\)\);/);
+    expect(mobileRule).toMatch(/height:\s*100vh;/);
+    expect(styles).toMatch(/@supports \(height: 100dvh\)\s*\{\s*\.popup-dialog\.new-chat-screen\s*\{\s*height:\s*100dvh;/);
+    expect(styles).toMatch(/\.new-chat-screen-header\s*\{[^}]*padding:\s*12px var\(--mobile-edge-inset-x, 12px\) 12px;/s);
+    expect(styles).toMatch(/\.new-chat-screen \.popup-close\s*\{[^}]*top:\s*calc\(max\(12px, env\(safe-area-inset-top, 0px\)\) \+ 14px\);/s);
+  });
+
   it("bounds the dialog to narrow phone and tablet viewports", () => {
     const compactRule = styles.match(/@media \(min-width: 768px\) and \(max-width: 1024px\) \{\s*\.popup-dialog\.new-chat-screen \{([^}]*)\}/)?.[1] ?? "";
     expect(compactRule).toMatch(/box-sizing:\s*border-box;/);

@@ -311,17 +311,27 @@
   }
 
   .popup-dialog.new-chat-screen {
+    box-sizing: border-box;
     padding: 0;
     border-radius: 0;
     height: 100vh;
     max-width: none; min-width: 0;
     width: 100%;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
   }
 
   @supports (height: 100dvh) {
     .popup-dialog.new-chat-screen {
       height: 100dvh;
     }
+  }
+
+  .new-chat-screen-header {
+    padding: 12px var(--mobile-edge-inset-x, 12px) 12px;
+  }
+
+  .new-chat-screen .popup-close {
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 14px);
   }
 }
 

@@ -245,6 +245,14 @@
   right: 12px;
 }
 
+@media (max-width: 767px) {
+  :root[data-platform="web"] .messenger-shell.chat-list-view .compose-fab {
+    border-radius: var(--radius-circle);
+    height: 48px;
+    width: 48px;
+  }
+}
+
 @media (min-width: 481px) and (max-width: 768px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-layout {
     grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);

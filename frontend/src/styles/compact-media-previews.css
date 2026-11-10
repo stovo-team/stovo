@@ -124,6 +124,11 @@
     max-width: none;
     min-width: 0;
     padding: 0;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
     width: 100vw;
+  }
+
+  .new-chat-screen-header {
+    padding-top: 12px;
   }
 }
