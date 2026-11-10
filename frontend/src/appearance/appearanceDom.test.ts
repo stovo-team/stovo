@@ -31,4 +31,15 @@ describe("applyAppearanceToDocument", () => {
     expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).toBe("");
     expect(document.documentElement.style.getPropertyValue("--accent-primary-light")).toBe("#654321");
   });
+
+  it("clears a previously applied gradient when the saved value is removed", () => {
+    window.localStorage.setItem("familyMessenger.brandGradient", "linear-gradient(135deg, #123456, #abcdef)");
+    applyAppearanceToDocument(DEFAULT_APPEARANCE, "light", "system-ui");
+    expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).not.toBe("");
+
+    window.localStorage.removeItem("familyMessenger.brandGradient");
+    applyAppearanceToDocument(DEFAULT_APPEARANCE, "light", "system-ui");
+
+    expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).toBe("");
+  });
 });

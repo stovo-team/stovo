@@ -33,10 +33,13 @@ function applySavedBrandGradient(root: HTMLElement) {
     const value = window.localStorage.getItem(BRAND_GRADIENT_STORAGE_KEY);
     const match = value?.match(BRAND_GRADIENT_PATTERN);
     const angle = match ? Number(match[1]) : -1;
-    if (!match || angle < 0 || angle > 360) return;
+    if (!match || angle < 0 || angle > 360) {
+      root.style.removeProperty("--color-brand-gradient");
+      return;
+    }
     root.style.setProperty("--color-brand-gradient", `linear-gradient(${angle}deg, ${match[2]}, ${match[3]})`);
   } catch {
-    // Ignore unavailable or malformed saved preferences.
+    root.style.removeProperty("--color-brand-gradient");
   }
 }
 
