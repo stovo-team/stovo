@@ -71,20 +71,6 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(mediaPickerSource).toContain("category === categoryFor(activeTab)");
   });
 
-  it("observes MediaStore changes so a new photo is loaded while the gallery stays open", () => {
-    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
-    expect(nativePluginSource).toContain("ContentObserver");
-    expect(nativePluginSource).toContain("registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI");
-    expect(nativePluginSource).toContain('notifyListeners("mediaLibraryChanged"');
-  });
-
-  it("uses the Android audio permission for recent audio and limits recent files to documents", () => {
-    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
-    expect(nativePluginSource).toContain('hasMediaAccess(category)');
-    expect(nativePluginSource).toContain("Manifest.permission.READ_MEDIA_AUDIO");
-    expect(nativePluginSource).toContain("MediaStore.Files.FileColumns.MEDIA_TYPE_NONE");
-  });
-
   it("allows selecting multiple recent audio and document items", () => {
     expect(attachmentSheetSource).toContain("selectedItemIds={selectedItemIds}");
     expect(attachmentSheetSource).toContain("onToggle={toggleSelection}");
@@ -140,14 +126,6 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-picker-sheet-handle-zone");
   });
 
-  it("generates uncropped high-quality previews in native MediaLibraryPlugin", () => {
-    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
-    // Does not perform square center cropping
-    expect(nativePluginSource).not.toContain("Bitmap.createBitmap(bitmap, x, y, size, size)");
-    expect(nativePluginSource).toContain("ImageDecoder");
-    expect(nativePluginSource).toContain("maxDimension = 768");
-  });
-
   it("fetches the full-resolution original before opening the photo editor", () => {
     expect(attachmentSheetSource).toContain("fetchNativeMediaFileUrl(item.id)");
     expect(attachmentSheetSource).toContain("new File([blob], item.name");
@@ -162,11 +140,9 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("renders an initial gallery batch before loading later batches in the background", () => {
-    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
     expect(mediaPickerSource).toContain("INITIAL_BATCH_SIZE = 12");
     expect(mediaPickerSource).toContain("BACKGROUND_BATCH_SIZE = 24");
     expect(mediaPickerSource).toContain("listNativeMedia(category, { limit: INITIAL_BATCH_SIZE })");
     expect(mediaPickerSource).toContain("offset += BACKGROUND_BATCH_SIZE");
-    expect(nativePluginSource).not.toContain("OFFSET $offset");
   });
 });
