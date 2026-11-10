@@ -1177,6 +1177,22 @@
   }
 
   .app-frame > .app-nav a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-frame > .app-nav a:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+
+  @media (hover: none) {
+    .app-frame > .app-nav a:not(.active):is(:hover, :active) {
+      background: transparent;
+      border-radius: var(--radius-control);
+    }
+  }
+
+  .app-frame > .app-nav a {
     max-height: none;
     max-width: none;
   }

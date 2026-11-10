@@ -79,6 +79,48 @@
   }
 }
 
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active {
+  background: transparent;
+  color: var(--color-palette-f2074b6cef37) !important;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active::before {
+  background: var(--color-brand-gradient);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
+  content: "";
+  height: 44px;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  z-index: 0;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active svg,
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active > span:not(.nav-badge) {
+  color: var(--color-palette-f2074b6cef37) !important;
+  font-weight: var(--font-weight-bold);
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+@media (hover: none) {
+  :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a:not(.active):is(:hover, :active) {
+    background: transparent;
+    border-radius: var(--radius-control);
+  }
+}
+
 /* Browser-only narrow layout. Capacitor keeps its native spacing and chrome. */
 @media (max-width: 1024px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
