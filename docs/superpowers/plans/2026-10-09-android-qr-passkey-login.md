@@ -222,7 +222,7 @@ Expected: FAIL because the login and settings code currently disables passkeys o
 
 - [ ] **Step 3: Enable WebAuthn in supported Android System WebViews**
 
-Add the AndroidX WebKit and Credential Manager dependencies required by the official WebView integration. After `BridgeActivity` initialization, check `WebViewFeature.WEB_AUTHENTICATION` and set `WEB_AUTHENTICATION_SUPPORT_FOR_APP` only when supported. Keep unsupported devices operational without passkeys.
+Add the AndroidX WebKit and Credential Manager dependencies required by the official WebView integration. After `BridgeActivity` initialization, check `WebViewFeature.WEB_AUTHENTICATION` and set `WebAuthnSupport.WEB_AUTHENTICATION_SUPPORT_FOR_APP` only when supported. Keep unsupported devices operational without passkeys.
 
 - [ ] **Step 4: Enable guarded passkey UI in Android login and Profile Settings**
 
