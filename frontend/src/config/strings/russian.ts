@@ -372,7 +372,7 @@ export const strings = {
     secureBrowserRequired: "Для ключей доступа требуется защищённое соединение и поддерживаемый браузер",
     qrPreparing: "Подготовка QR-кода…",
     qrApproveAlt: "QR-код для подтверждения входа в браузер через Stovo",
-    qrApprovalLoading: "Загрузка…", qrApprovalTitle: "Вход на компьютере", qrApprovalPrompt: "Разрешить вход в Stovo на другом устройстве под аккаунтом", qrApprovalExpired: "Запрос истёк или уже обработан. Создайте новый QR-код на компьютере.", qrApprovalDone: "Запрос обработан. Можно вернуться к компьютеру.", approveSignIn: "Разрешить вход", rejectSignIn: "Отклонить",
+    qrApprovalLoading: "Загрузка…", qrApprovalTitle: "Вход на компьютере", qrApprovalVerifyAccount: "Убедитесь, что это аккаунт, с которым вы хотите войти на компьютере.", qrApprovalLogin: "Войти", qrApprovalExpired: "Запрос истёк или уже обработан. Создайте новый QR-код на компьютере.", qrApprovalDone: "Запрос обработан. Можно вернуться к компьютеру.", rejectSignIn: "Отклонить",
     qrScanWithStovo: "Отсканируйте этот код в Stovo",
     qrWaiting: "Ожидание подтверждения · Истекает срок действия",
     confirmScannedServer: "Подтвердите сервер из QR-кода",
