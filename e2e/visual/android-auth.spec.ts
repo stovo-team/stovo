@@ -60,11 +60,12 @@ test("Android QR opens a separate confirmation with one-row actions", async ({ p
   await capture(page, testInfo, "android-qr-confirmation", "Scanned QR confirmation; Android; 390x844", "dark", "ru");
 });
 
-test("Android setup offers Passkey and QR with domain and IP guidance", async ({ page }, testInfo) => {
+test("Android setup keeps Connect and QR before the login stage", async ({ page }, testInfo) => {
   await openAndroidPage(page, "/server-setup", "light", "en");
-  await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Passkey");
+  await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
+  await expect(page.locator('[data-auth-method="passkey"]')).toHaveCount(0);
   await expect(page.locator('[data-auth-method="scan-qr"]')).toBeVisible();
   await expect(page.getByText("for domain names or IP addresses.")).toBeVisible();
   await expect(page.getByText("For local network:")).toHaveCount(0);
-  await capture(page, testInfo, "android-server-setup", "Setup page with Passkey and QR; Android; 390x844", "light", "en");
+  await capture(page, testInfo, "android-server-setup", "Setup page with Connect and QR; Android; 390x844", "light", "en");
 });

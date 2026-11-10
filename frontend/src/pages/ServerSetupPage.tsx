@@ -1,10 +1,9 @@
 import { Capacitor } from "@capacitor/core";
-import { KeyRound, QrCode } from "lucide-react";
-import { startAuthentication } from "@simplewebauthn/browser";
+import { QrCode } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { beginPasskeyAuthentication, finishPasskeyAuthentication, redeemAndroidQRLogin } from "../api/auth";
+import { redeemAndroidQRLogin } from "../api/auth";
 import { ApiError, setApiUrlOverride } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AndroidQrConfirmation from "../components/AndroidQrConfirmation";
@@ -39,7 +38,6 @@ export default function ServerSetupPage() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [androidQR, setAndroidQR] = useState<AndroidLoginQR | null>(null);
   const isAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
-  const supportsPasskeys = Boolean(window.isSecureContext && typeof window.PublicKeyCredential !== "undefined");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -78,29 +76,6 @@ export default function ServerSetupPage() {
       setError(copy.cannotReach(normalized, String(err)));
     } finally {
       setIsTesting(false);
-    }
-  }
-
-  async function handlePasskeyLogin() {
-    const normalized = normalizeUrl(url);
-    if (!normalized) {
-      setError(copy.invalidUrl);
-      return;
-    }
-    setError(null);
-    setIsAuthenticating(true);
-    setApiUrlOverride(normalized);
-    try {
-      const options = await beginPasskeyAuthentication();
-      const response = await startAuthentication({ optionsJSON: options.publicKey as never });
-      acceptAuthResponse(await finishPasskeyAuthentication(options.ceremonyId, response));
-      navigate("/app/chats", { replace: true });
-    } catch (err) {
-      if (!((err instanceof Error || err instanceof DOMException) && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setError(err instanceof ApiError ? String(err.message) : strings.auth.signInFailed);
-      }
-    } finally {
-      setIsAuthenticating(false);
     }
   }
 
@@ -168,13 +143,6 @@ export default function ServerSetupPage() {
           </button>
         </form>}
         {isAndroid && !androidQR && <div className="auth-method-options android-auth-methods">
-          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={!supportsPasskeys || isTesting || isAuthenticating} onClick={handlePasskeyLogin}>
-            <KeyRound aria-hidden="true" size={18} />
-            <span>{strings.auth.signInWithPasskeyShort}</span>
-          </button>
-          {!supportsPasskeys && <p className="muted-copy">
-            {!window.isSecureContext ? strings.auth.secureContextRequired : strings.auth.supportedAndroidWebView}
-          </p>}
           <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isTesting || isAuthenticating} onClick={handleScanAndroidQR}>
             <QrCode aria-hidden="true" size={18} />
             <span>{strings.auth.scanDesktopQrShort}</span>
