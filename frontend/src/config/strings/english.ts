@@ -354,6 +354,7 @@ export const strings = {
     confirmSignIn: "Confirm sign-in",
     cancel: "Cancel",
     scanDesktopQr: "Scan desktop QR", scanDesktopQrShort: "Scan QR",
+    androidQrFindOnComputer: "On your computer, open Stovo → Settings → Profile and choose “Create Android sign-in QR”. Then scan it here.",
     or: "or",
     signIn: "Sign In",
     signedIn: "Signed in",

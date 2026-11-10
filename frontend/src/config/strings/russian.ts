@@ -381,6 +381,7 @@ export const strings = {
     confirmSignIn: "Подтвердить вход",
     cancel: "Отмена",
     scanDesktopQr: "Сканировать QR-код на компьютере", scanDesktopQrShort: "Сканировать QR",
+    androidQrFindOnComputer: "На компьютере откройте Stovo → Настройки → Профиль и выберите «Создать QR-код для входа на Android». Затем отсканируйте его здесь.",
     or: "или",
   },
 
