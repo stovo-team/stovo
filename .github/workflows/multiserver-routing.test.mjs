@@ -63,7 +63,7 @@ test('root routing selects a single tenant and requires an explicit choice for m
 });
 
 test('backend deploy configures root routing before Caddy starts and checks the API after tenant rollout', () => {
-  const workflow = read('.github/workflows/pipeline.yml').split('  deploy-backend-web:')[1].split('  deploy-android:')[0];
+  const workflow = read('.github/workflows/pipeline.yml').split('  deploy-backend-web:')[1].split('  publish-ghcr-images:')[0];
   const configure = workflow.indexOf('bash deploy/resolve-root-upstream.sh');
   const gateway = workflow.indexOf('up -d --build orchestrator caddy coturn');
   const replace = workflow.indexOf('docker rm -f "$existing_container_id"');
@@ -85,7 +85,7 @@ test('manual backend-only deployment skips CI and frontend while normal deployme
   assert.match(workflow, /workflow_dispatch:\r?\n    inputs:\r?\n      backend_deploy_only:/);
   assert.match(workflow, /frontend: \$\{\{ !inputs.backend_deploy_only &&/);
   assert.match(workflow, /if: \$\{\{ !cancelled\(\) && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only \}\}/);
-  const backend = workflow.split('  deploy-backend-web:')[1].split('  deploy-android:')[0];
+  const backend = workflow.split('  deploy-backend-web:')[1].split('  publish-ghcr-images:')[0];
   assert.match(backend, /needs: \[changes, backend-ci, solid-boundaries, publish-ghcr-images\]/);
   assert.match(backend, /needs.changes.result == 'success'/);
   assert.match(backend, /needs.publish-ghcr-images.result == 'success'/);
