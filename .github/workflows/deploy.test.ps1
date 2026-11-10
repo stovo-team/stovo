@@ -98,11 +98,6 @@ if ($tenantMigration -lt 0 -or $tenantReplacement -lt 0 -or $tenantMigration -gt
     throw "Tenant migrations must complete before a backend replacement begins."
 }
 
-# Pipeline CI gating assertions
-if ($workflow -notmatch 'deploy-android:[\s\S]*?needs:\s*\[changes,\s*frontend-ci\]') {
-    throw "Android deploy must be gated on frontend CI."
-}
-
 if ($workflow -notmatch 'deploy-frontend-web:[\s\S]*?needs:\s*\[changes,\s*frontend-ci\]') {
     throw "Frontend web deploy must be gated on frontend CI."
 }

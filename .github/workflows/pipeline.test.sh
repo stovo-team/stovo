@@ -3,6 +3,11 @@ set -euo pipefail
 
 bash .github/workflows/trusted-pr-permissions.test.sh
 
+if grep -Eq '^  deploy-android:' .github/workflows/pipeline.yml; then
+  echo "Android APK builds must run only from the standalone Android repository." >&2
+  exit 1
+fi
+
 grep -Fq 'frontend/** text eol=lf' .gitattributes || {
   echo "Frontend sources must keep LF line endings on every runner OS." >&2
   exit 1
@@ -66,9 +71,6 @@ awk '
   in_job_permissions && job == "backend-ci" && $0 == "      actions: read" {
     backend_actions_read = 1
   }
-  in_job_permissions && job == "deploy-android" && $0 == "      contents: write" {
-    android_contents_write = 1
-  }
 
   /^    if:/ {
     condition = $0
@@ -103,13 +105,9 @@ awk '
   job == "changes" && /^      - name: Verify pipeline workflow contract$/ { pipeline_contract_step = 1 }
   job == "changes" && pipeline_contract_step && /^        shell: bash$/ { pipeline_contract_shell = 1 }
   job == "backend-ci" && /^[[:space:]]+cache:[[:space:]]+false$/ { go_cache_disabled = 1 }
+  (job == "frontend-ci" || job == "frontend_test_shards") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
   job == "changes" && /^[[:space:]]+fetch-depth:[[:space:]]+0[[:space:]]*$/ { changes_fetches_full_history = 1 }
   job == "changes" && /^[[:space:]]+filter:[[:space:]]+blob:none[[:space:]]*$/ { changes_skips_historical_blobs = 1 }
-  (job == "frontend-ci" || job == "frontend_test_shards" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
-  (job == "frontend-ci" || job == "frontend_test_shards") && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
-  job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
-  job == "deploy-android" && /^      - name: Build frontend for Android release$/ { android_builds_frontend = 1 }
-  job == "deploy-android" && /git fetch --tags/ { android_fetches_tags = 1 }
   /dorny\/paths-filter@v4/ || /dorny\/paths-filter@[[:xdigit:]]{40}[[:space:]]+# v4/ { paths_filter_v4 = 1 }
   job == "changes" && /^[[:space:]]+- / && (/pipeline\.yml/ || /pipeline\.test\.sh/) { ci_workflow_triggers_product_jobs = 1 }
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
@@ -163,18 +161,8 @@ awk '
     if (!pipeline_contract_step || !pipeline_contract_shell) {
       fail("The pipeline workflow contract must run with the bash shell on every runner OS.")
     }
-    if (job_runner["deploy-android"] != "[self-hosted, e2e, Windows]") {
-      fail("Android release must target the Windows frontend runner labeled e2e.")
-    }
     if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
-    if (npm_remote_cache_enabled) fail("Frontend and Android jobs must use the runner-local npm cache, not restore the oversized remote archive.")
-    if (frontend_artifact_uploaded || frontend_artifact_downloaded || !android_builds_frontend) {
-      fail("Android release must build frontend assets locally instead of transferring a workflow artifact.")
-    }
-    if (android_fetches_tags) {
-      fail("Android release must use tags already fetched by checkout instead of fetching them again.")
-    }
-
+    if (npm_remote_cache_enabled) fail("Frontend CI must use the runner-local npm cache.")
     expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\'' && needs.solid-boundaries.result == '\''success'\''"
     expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && needs.publish-ghcr-images.result == '\''success'\'' && (needs.solid-boundaries.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
@@ -183,26 +171,9 @@ awk '
     if (job_condition["deploy-backend-web"] != expected_backend) {
       fail("Backend deploy must require a master push, backend path filter, and successful GHCR image publish.")
     }
-    if (job_condition["deploy-android"] != expected_frontend) {
-      fail("Android release must require a master push and the frontend path filter.")
-    }
-    if (!android_contents_write) fail("Android release must retain permission to push its release tag.")
-
     if (failed) exit 1
   }
 ' .github/workflows/pipeline.yml
-
-notes_retry_contract=$(sed -n '/      - name: Generate release notes/,/      - name: Publish Android release to Telegram/p' .github/workflows/pipeline.yml)
-if grep -Fq 'jq ' <<< "$notes_retry_contract"; then
-  echo "Android release notes must not depend on jq, which is unavailable on the Windows release runner." >&2
-  exit 1
-fi
-for required in 'MAX_ATTEMPTS=3' '-le "$MAX_ATTEMPTS"' 'BASE_DELAY=$((1 << (attempt - 1)))' 'RANDOM' 'sleep "$DELAY"' 'curl -fsSL https://api.openai.com/v1/chat/completions'; do
-  if ! grep -Fq -- "$required" <<< "$notes_retry_contract"; then
-    echo "Android release notes must retry the OpenAI request up to three times with exponential jittered delays ($required)." >&2
-    exit 1
-  fi
-done
 
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   shard_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
@@ -281,11 +252,6 @@ if ! grep -Fq 'name: Download backend coverage shard artifacts' <<< "$master_cov
   echo "Backend coverage artifacts must be fetched through the GitHub REST API without an unapproved action." >&2
   exit 1
 fi
-if ! grep -Fq 'SUMMARY=$(printf '\''Что нового:\n%s'\'' "$COMMITS")' <<< "$notes_retry_contract"; then
-  echo "Android release notes must retain the commit-list fallback after retries are exhausted." >&2
-  exit 1
-fi
-
 grep -Fq 'RUN --mount=type=cache,target=/root/.npm \' frontend/Dockerfile || {
   echo "The frontend npm dependency install must retain its BuildKit cache mount." >&2
   exit 1
@@ -676,20 +642,6 @@ if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
   echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
   exit 1
 fi
-for deployment in deploy-frontend-web deploy-backend-web deploy-android; do
-  deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
-  if ! grep -Fq 'solid-boundaries' <<< "$deployment_contract"; then
-    echo "$deployment must depend on the master SOLID boundary phase." >&2
-    exit 1
-  fi
-  for required in 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)'; do
-    if ! grep -Fq "$required" <<< "$deployment_contract"; then
-      echo "$deployment must put Git for Windows Bash ahead of the WSL shim before running deployment steps ($required)." >&2
-      exit 1
-    fi
-  done
-done
-
 for deployment in deploy-frontend-web deploy-backend-web; do
   deployment_contract=$(sed -n "/^  ${deployment}:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p" .github/workflows/pipeline.yml)
   if ! grep -Fq 'runs-on: [self-hosted, tests, Windows]' <<< "$deployment_contract"; then
@@ -715,25 +667,6 @@ for deployment in deploy-frontend-web deploy-backend-web; do
     exit 1
   fi
 done
-android_deploy_contract=$(sed -n '/^  deploy-android:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, e2e, Windows]' 'defaults:' 'shell: bash'; do
-  if ! grep -Fq "$required" <<< "$android_deploy_contract"; then
-    echo "Android release must run with Git Bash on a Windows e2e runner ($required)." >&2
-    exit 1
-  fi
-done
-android_pwsh_setup_contract=$(sed -n '/      - name: Ensure PowerShell Core is available for Android SDK setup/,/      - name: Setup Android SDK/p' .github/workflows/pipeline.yml)
-for required in 'PowerShell-$version-win-x64.zip' 'Get-FileHash' '02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860' 'pwsh.exe' 'GITHUB_PATH'; do
-  if ! grep -Fq "$required" <<< "$android_pwsh_setup_contract"; then
-    echo "Android release must make a verified PowerShell Core executable available before setup-android ($required)." >&2
-    exit 1
-  fi
-done
-if [[ "$android_pwsh_setup_contract" != *"GITHUB_PATH"* || "$android_pwsh_setup_contract" != *"Setup Android SDK"* ]]; then
-  echo "Android release must add PowerShell Core to PATH before setup-android." >&2
-  exit 1
-fi
-
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
   for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
