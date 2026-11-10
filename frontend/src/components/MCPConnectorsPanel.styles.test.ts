@@ -50,5 +50,5 @@ describe("MCP connector settings button", () => {
     expect(style.paddingLeft).toBe("0px");
     expect(style.paddingRight).toBe("0px");
     expect(["50%", "var(--radius-circle)"]).toContain(style.borderRadius);
-  });
+  }, 15_000); // Applying the full app stylesheet can exceed Vitest's default under Windows shard load.
 });

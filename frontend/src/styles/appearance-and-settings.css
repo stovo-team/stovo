@@ -792,35 +792,26 @@
 }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile.appearance-wallpaper-thumb--dots {
   background:
-    radial-gradient(circle at 1px 1px, var(--color-palette-3f1c0a72c393) 1px, transparent 0),
-    var(--color-palette-58d4c9e831b2);
-  background-size: 10px 10px;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-primary) 35%, transparent) 1px, transparent 1.5px),
+    radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent-primary) 24%, transparent), transparent 90%),
+    var(--background-secondary);
+  background-size: 10px 10px, auto, auto;
 }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile.appearance-wallpaper-thumb--paper {
   background:
-    linear-gradient(90deg, var(--color-palette-005818a1af0c) 1px, transparent 1px),
-    linear-gradient(180deg, var(--color-palette-93d224c54cc7) 1px, transparent 1px),
-    var(--color-palette-b82bdf7c90e4);
-  background-size: 9px 9px;
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 15%, transparent) 0 1px, transparent 1px 10px),
+    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--accent-primary) 20%, transparent), transparent 82%),
+    var(--background-secondary);
+  background-size: 20px 20px, auto, auto;
 }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile.appearance-wallpaper-thumb--aurora {
   background:
-    radial-gradient(
-      ellipse 90% 70% at 20% 30%,
-      var(--color-palette-670e494f8dfd) 0%,
-      var(--color-palette-b8ece6ce67e0) 36%,
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 75% 60% at 80% 20%,
-      var(--color-palette-d5fd8a151418) 0%,
-      var(--color-palette-84044114a058) 40%,
-      transparent 70%
-    ),
-    var(--color-palette-0e684e516035);
+    radial-gradient(ellipse 90% 90% at 10% 0%, color-mix(in srgb, var(--accent-primary) 62%, transparent), transparent 76%),
+    radial-gradient(ellipse 80% 90% at 100% 100%, color-mix(in srgb, var(--accent-primary) 34%, transparent), transparent 75%),
+    linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
 }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile.appearance-wallpaper-thumb--plain {
-  background: var(--color-palette-7b2817bf9b80);
+  background: linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
 }
 .settings-page.settings-appearance-view .appearance-wallpaper-tile.appearance-wallpaper-thumb--custom {
   align-items: center;

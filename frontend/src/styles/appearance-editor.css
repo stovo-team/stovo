@@ -321,38 +321,29 @@
 
 .appearance-wallpaper-thumb--dots {
   background:
-    radial-gradient(circle at 1px 1px, var(--color-palette-dd12c1d758a3) 1px, transparent 0),
-    var(--color-palette-95b1a9665923);
-  background-size: 12px 12px;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-primary) 35%, transparent) 1px, transparent 1.5px),
+    radial-gradient(ellipse at 10% 0%, color-mix(in srgb, var(--accent-primary) 24%, transparent), transparent 90%),
+    var(--background-secondary);
+  background-size: 10px 10px, auto, auto;
 }
 
 .appearance-wallpaper-thumb--paper {
   background:
-    linear-gradient(90deg, var(--color-palette-4a18f1b622d4) 1px, transparent 1px),
-    linear-gradient(180deg, var(--color-palette-084e319cfa96) 1px, transparent 1px),
-    var(--color-palette-95b1a9665923);
-  background-size: 10px 10px;
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 15%, transparent) 0 1px, transparent 1px 10px),
+    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--accent-primary) 20%, transparent), transparent 82%),
+    var(--background-secondary);
+  background-size: 20px 20px, auto, auto;
 }
 
 .appearance-wallpaper-thumb--aurora {
   background:
-    radial-gradient(
-      ellipse 90% 70% at 20% 30%,
-      var(--color-palette-43bc9d0f627d) 0%,
-      var(--color-palette-6ec89f6c7b63) 36%,
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 75% 60% at 80% 20%,
-      var(--color-palette-609c0e62a493) 0%,
-      var(--color-palette-9ad96298b13a) 40%,
-      transparent 70%
-    ),
-    var(--color-palette-0e684e516035);
+    radial-gradient(ellipse 90% 90% at 10% 0%, color-mix(in srgb, var(--accent-primary) 62%, transparent), transparent 76%),
+    radial-gradient(ellipse 80% 90% at 100% 100%, color-mix(in srgb, var(--accent-primary) 34%, transparent), transparent 75%),
+    linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
 }
 
 .appearance-wallpaper-thumb--plain {
-  background: var(--color-palette-7b2817bf9b80);
+  background: linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
 }
 
 .appearance-wallpaper-thumb--custom {
