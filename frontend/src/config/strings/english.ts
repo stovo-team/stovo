@@ -345,7 +345,7 @@ export const strings = {
     secureBrowserRequired: "Passkeys require a secure connection and a supported browser",
     qrPreparing: "Preparing your QR code…",
     qrApproveAlt: "QR code to approve this browser sign-in with Stovo",
-    qrApprovalLoading: "Loading…", qrApprovalTitle: "Sign in on computer", qrApprovalPrompt: "Allow sign-in to Stovo on another device as", qrApprovalExpired: "This request expired or was already handled. Create a new QR code on your computer.", qrApprovalDone: "Request handled. You can return to your computer.", approveSignIn: "Allow sign-in", rejectSignIn: "Deny",
+    qrApprovalLoading: "Loading…", qrApprovalTitle: "Sign in on computer", qrApprovalVerifyAccount: "Check that this is the account you want to use to sign in on your computer.", qrApprovalLogin: "Login", qrApprovalExpired: "This request expired or was already handled. Create a new QR code on your computer.", qrApprovalDone: "Request handled. You can return to your computer.", rejectSignIn: "Deny",
     qrScanWithStovo: "Scan this code with Stovo",
     qrWaiting: "Waiting for approval · Expires",
     confirmScannedServer: "Confirm scanned server",
