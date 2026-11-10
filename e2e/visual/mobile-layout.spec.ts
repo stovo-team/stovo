@@ -135,6 +135,11 @@ test.describe('desktop chat list has no filter tags', () => {
 test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>{
  const s:Scenario={id:'V-13',viewport:{width:390,height:844},theme:'dark',locale:'ru'};
  await prepareVisualScenario(page,s,'/app/chats');
+ const compose=page.locator('.compose-fab');
+ const composeBounds=await compose.boundingBox();
+ expect(composeBounds).not.toBeNull();
+ expect(composeBounds!.width).toBe(48);
+ expect(composeBounds!.height).toBe(48);
  await page.locator('.compose-fab').click();
  const dialog=page.locator('.popup-dialog.new-chat-screen');
  await expect(dialog).toBeVisible();
@@ -147,7 +152,24 @@ test('V-13 new chat opens as a full-screen page on a phone',async({page},info)=>
  expect(parseFloat(await dialog.evaluate((node) => getComputedStyle(node).borderTopLeftRadius))).toBeGreaterThanOrEqual(16);
  expect(await dialog.evaluate((node) => getComputedStyle(node).borderWidth)).toBe('0px');
  expect(await dialog.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+ const close=await dialog.locator('.popup-close').boundingBox();
+ const title=await dialog.locator('.new-chat-screen-header h2').boundingBox();
+ expect(close).not.toBeNull();expect(title).not.toBeNull();
+ expect(close!.y).toBeGreaterThanOrEqual(24);
+ expect(Math.abs((close!.y+close!.height/2)-(title!.y+title!.height/2))).toBeLessThanOrEqual(2);
  await screenshot(page,info,s);
+});
+
+test('V-23 create-new-chat button has a 48px mobile touch target', async ({ page }, info) => {
+  const s: Scenario = { id: 'V-23', viewport: { width: 390, height: 844 }, theme: 'dark', locale: 'en' };
+  await prepareVisualScenario(page, s, '/app/chats');
+  const compose = page.locator('.compose-fab');
+  await expect(compose).toBeVisible();
+  const bounds = await compose.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBe(48);
+  expect(bounds!.height).toBe(48);
+  await screenshot(page, info, s);
 });
 
 test('V-14 file tiles form two 120px columns on a narrow phone',async({page},info)=>{

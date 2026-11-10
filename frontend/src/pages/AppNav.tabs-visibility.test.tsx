@@ -54,6 +54,17 @@ describe("AppNav tab visibility configuration", () => {
     expect(markup).toContain('href="/app/settings"');
   });
 
+  it("marks the current section as the active page", () => {
+    const markup = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/app/files"]}>
+        <AppNav navTabsOverride={{ chats: true, storage: true, plans: true, settings: true }} />
+      </MemoryRouter>
+    );
+
+    expect(markup).toMatch(/<a\b(?=[^>]*aria-current="page")(?=[^>]*class="active")(?=[^>]*href="\/app\/files")[^>]*>/);
+    expect(markup).not.toMatch(/<a\b(?=[^>]*aria-current="page")(?=[^>]*href="\/app\/chats")[^>]*>/);
+  });
+
   it("hides storage and plans when disabled", () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>

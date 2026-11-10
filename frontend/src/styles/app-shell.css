@@ -13,38 +13,40 @@ input[type="radio"] {
 
 :root[data-wallpaper="dots"] {
   --messages-panel-background:
-    radial-gradient(circle at 1px 1px, var(--color-palette-68b289357363) 1px, transparent 0),
-    linear-gradient(180deg, var(--color-palette-2792e651f573), var(--color-palette-cf4fcb6ce01f));
-  --wallpaper-background-size: var(--wallpaper-dot-size) var(--wallpaper-dot-size), auto;
-  --wallpaper-background-repeat: repeat, no-repeat;
-  --wallpaper-background-position: 0 0, center;
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-primary) 16%, transparent) 1px, transparent 1.5px),
+    radial-gradient(ellipse 68% 55% at 7% 0%, color-mix(in srgb, var(--accent-primary) 12%, transparent), transparent 100%),
+    linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
+  --wallpaper-background-size: 24px 24px, auto, auto;
+  --wallpaper-background-repeat: repeat, no-repeat, no-repeat;
+  --wallpaper-background-position: 0 0, center, center;
 }
 
 :root[data-wallpaper="paper"] {
   --messages-panel-background:
-    linear-gradient(90deg, var(--color-palette-af60fa0f3241) 1px, transparent 1px),
-    linear-gradient(180deg, var(--color-palette-c7d424e71ccb) 1px, transparent 1px),
-    var(--background-secondary);
-  --wallpaper-background-size: 24px 24px, 24px 24px, auto;
-  --wallpaper-background-repeat: repeat, repeat, no-repeat;
-  --wallpaper-background-position: 0 0, 0 0, center;
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 5%, transparent) 0 1px, transparent 1px 22px),
+    radial-gradient(ellipse 72% 55% at 100% 100%, color-mix(in srgb, var(--accent-primary) 9%, transparent), transparent 100%),
+    linear-gradient(155deg, var(--background-secondary), var(--chat-layout-background));
+  --wallpaper-background-size: 32px 32px, auto, auto;
+  --wallpaper-background-repeat: repeat, no-repeat, no-repeat;
+  --wallpaper-background-position: 0 0, center, center;
 }
 
 :root[data-wallpaper="aurora"] {
   --messages-panel-background:
     radial-gradient(
       ellipse 90% 70% at 18% 14%,
-      color-mix(in oklab, var(--accent-primary) 22%, transparent) 0%,
-      color-mix(in oklab, var(--accent-primary) 10%, transparent) 32%,
-      transparent 72%
+      color-mix(in srgb, var(--accent-primary) 19%, transparent) 0%,
+      color-mix(in srgb, var(--accent-primary) 8%, transparent) 38%,
+      transparent 76%
     ),
     radial-gradient(
       ellipse 75% 60% at 84% 10%,
-      var(--color-palette-7e7729dc444a) 0%,
-      var(--color-palette-5c893327f2a3) 36%,
+      color-mix(in srgb, var(--accent-primary) 10%, transparent) 0%,
+      color-mix(in srgb, var(--accent-primary) 4%, transparent) 40%,
       transparent 70%
     ),
-    linear-gradient(180deg, var(--background-secondary), var(--chat-layout-background));
+    radial-gradient(ellipse 55% 42% at 82% 88%, color-mix(in srgb, var(--accent-primary) 7%, transparent), transparent 100%),
+    linear-gradient(145deg, var(--background-secondary), var(--chat-layout-background));
   --wallpaper-background-size: auto;
   --wallpaper-background-repeat: no-repeat;
   --wallpaper-background-position: center;
@@ -71,26 +73,33 @@ input[type="radio"] {
 
 :root[data-theme-mode="dark"][data-wallpaper="dots"],
 :root[data-theme-mode="amoled"][data-wallpaper="dots"] {
-  --messages-panel-background: radial-gradient(circle at 1px 1px, var(--color-palette-084e319cfa96) 1px, transparent 0),
-    radial-gradient(ellipse 90% 55% at 50% -10%, color-mix(in oklab, var(--accent-primary) 12%, transparent) 0%, transparent 70%),
-    radial-gradient(ellipse 65% 45% at 90% 100%, color-mix(in oklab, var(--color-palette-cb2995bdeeb5) 8%, transparent) 0%, transparent 60%),
+  --messages-panel-background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-primary) 18%, transparent) 1px, transparent 1.5px),
+    radial-gradient(ellipse 76% 54% at 5% 0%, color-mix(in srgb, var(--accent-primary) 16%, transparent), transparent 100%),
+    radial-gradient(ellipse 58% 44% at 100% 100%, color-mix(in srgb, var(--accent-primary) 7%, transparent), transparent 100%),
     var(--canvas-amoled);
+  --wallpaper-background-size: 24px 24px, auto, auto, auto;
+  --wallpaper-background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  --wallpaper-background-position: 0 0, center, center, center;
 }
 
 :root[data-theme-mode="dark"][data-wallpaper="paper"],
 :root[data-theme-mode="amoled"][data-wallpaper="paper"] {
-  --messages-panel-background: linear-gradient(90deg, var(--color-palette-c7d424e71ccb) 1px, transparent 1px),
-    linear-gradient(180deg, var(--color-palette-29f214e2f04b) 1px, transparent 1px),
-    radial-gradient(ellipse 70% 50% at 20% 0%, color-mix(in oklab, var(--accent-primary) 10%, transparent) 0%, transparent 60%),
+  --messages-panel-background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 7%, transparent) 0 1px, transparent 1px 22px),
+    radial-gradient(ellipse 72% 54% at 100% 100%, color-mix(in srgb, var(--accent-primary) 12%, transparent), transparent 100%),
     var(--canvas-amoled);
+  --wallpaper-background-size: 32px 32px, auto, auto;
+  --wallpaper-background-repeat: repeat, no-repeat, no-repeat;
+  --wallpaper-background-position: 0 0, center, center;
 }
 
 :root[data-theme-mode="dark"][data-wallpaper="aurora"],
 :root[data-theme-mode="amoled"][data-wallpaper="aurora"] {
   --messages-panel-background:
-    radial-gradient(ellipse 90% 70% at 18% 14%, color-mix(in oklab, var(--accent-primary) 32%, transparent) 0%, color-mix(in oklab, var(--accent-primary) 14%, transparent) 34%, transparent 74%),
-    radial-gradient(ellipse 75% 60% at 84% 10%, var(--color-palette-0d39cde93c6d) 0%, var(--color-palette-839465209c5f) 38%, transparent 72%),
-    radial-gradient(ellipse 60% 45% at 50% 90%, color-mix(in oklab, var(--color-palette-cb2995bdeeb5) 15%, transparent) 0%, transparent 65%),
+    radial-gradient(ellipse 92% 64% at 12% 10%, color-mix(in srgb, var(--accent-primary) 29%, transparent), transparent 75%),
+    radial-gradient(ellipse 72% 58% at 92% 15%, color-mix(in srgb, var(--accent-primary) 17%, transparent), transparent 72%),
+    radial-gradient(ellipse 64% 44% at 55% 100%, color-mix(in srgb, var(--accent-primary) 11%, transparent), transparent 72%),
     var(--canvas-amoled);
 }
 
@@ -1413,7 +1422,7 @@ h2 {
 }
 
 .android-auth-methods > .secondary-button {
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-small);
   gap: 8px;
   justify-self: stretch;

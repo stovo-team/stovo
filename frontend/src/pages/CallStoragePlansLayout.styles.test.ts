@@ -12,6 +12,13 @@ function rule(selector: string) {
 }
 
 describe("Storage collapse and Plans resize layout styles", () => {
+  it("uses the shared brand gradient for Storage and Plans create actions with visible keyboard focus", () => {
+    expect(styles).toMatch(/\.storage-page \.storage-collection-new, \.storage-page \.storage-files-upload\s*\{[^}]*background:\s*var\(--color-brand-gradient,\s*var\(--accent-primary\)\) !important/);
+    expect(styles).toMatch(/\.storage-page \.storage-collection-new:focus-visible, \.storage-page \.storage-files-upload:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--focus-ring, var\(--accent-primary\)\) !important/);
+    expect(rule(".plans-create-fab")).toContain("background: var(--color-brand-gradient, var(--accent-primary));");
+    expect(rule(".plans-create-fab:focus-visible")).toContain("outline: 2px solid var(--focus-ring);");
+  });
+
   it("allows Storage's source picker to collapse while keeping the content column flexible", () => {
     expect(styles).toMatch(/\.storage-page \.storage-layout:not\(\.storage-layout--source-collapsed\)\s*\{[^}]*grid-template-columns:\s*var\(--storage-source-width, 300px\) 12px minmax\(0,\s*1fr\);/);
     expect(styles).toMatch(/\.storage-page \.storage-layout\.storage-layout--source-collapsed\s*\{[^}]*grid-template-columns:\s*36px 12px minmax\(0,\s*1fr\);/);

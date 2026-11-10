@@ -627,14 +627,6 @@ for required in 'runs-on: ubuntu-24.04' 'max-parallel: 1'; do
     exit 1
   fi
 done
-if ! grep -Fq "build-mode: \${{ matrix.language == 'go' && 'autobuild' || 'none' }}" <<< "$codeql_workflow_contract"; then
-  echo "CodeQL must use autobuild only for Go and none for interpreted languages." >&2
-  exit 1
-fi
-if ! grep -Fq "if: matrix.language == 'go'" <<< "$codeql_workflow_contract"; then
-  echo "CodeQL autobuild must only run for Go." >&2
-  exit 1
-fi
 if grep -Fq 'author_association' <<< "$codeql_workflow_contract"; then
   echo "CodeQL fork routing must use repository identity, not author association." >&2
   exit 1

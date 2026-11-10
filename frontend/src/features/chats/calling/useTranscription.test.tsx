@@ -133,6 +133,11 @@ describe("useTranscription", () => {
     vi.stubGlobal("MediaStream", FakeMediaStream);
     vi.stubGlobal("MediaRecorder", recorderConstructor);
     vi.stubGlobal("AudioContext", FakeAudioContext);
+    const vadSamples: Array<() => void> = [];
+    vi.spyOn(window, "setInterval").mockImplementation(((callback: TimerHandler) => {
+      if (typeof callback === "function") vadSamples.push(callback as () => void);
+      return 1;
+    }) as typeof window.setInterval);
 
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/transcription/start")) {
@@ -155,10 +160,11 @@ describe("useTranscription", () => {
       (container.querySelectorAll("button")[0] as HTMLButtonElement).click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    // React starts the recorder in the effect after the start request resolves.
-    // Give VAD several samples so this test exercises a valid voice chunk.
+    // Drive voiced VAD samples directly instead of relying on wall-clock timer
+    // scheduling, which can be delayed on loaded CI runners.
+    expect(vadSamples).toHaveLength(1);
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      for (let sample = 0; sample < 5; sample += 1) vadSamples[0]();
     });
     await act(async () => {
       (container.querySelectorAll("button")[1] as HTMLButtonElement).click();
