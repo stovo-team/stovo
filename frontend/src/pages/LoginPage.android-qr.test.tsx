@@ -61,6 +61,8 @@ describe("Android QR login", () => {
         await render();
         expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
         expect(container.querySelector('[data-auth-method="scan-qr"]')?.textContent?.trim()).toBe("Scan QR");
+        expect(container.textContent).toContain("On your computer, open Stovo → Settings → Profile");
+        expect(container.textContent).toContain("Create Android sign-in QR");
     });
     it("adopts only after redemption and before accepting auth", async () => {
         await render();
