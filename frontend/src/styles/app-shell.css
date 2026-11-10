@@ -1413,7 +1413,7 @@ h2 {
 }
 
 .android-auth-methods > .secondary-button {
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-small);
   gap: 8px;
   justify-self: stretch;

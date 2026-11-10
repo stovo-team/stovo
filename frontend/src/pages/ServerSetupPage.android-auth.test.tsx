@@ -5,9 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   platform: "android",
   acceptAuthResponse: vi.fn(),
-  beginPasskeyAuthentication: vi.fn(),
-  finishPasskeyAuthentication: vi.fn(),
-  startAuthentication: vi.fn(),
   scan: vi.fn(),
   redeemAndroidQRLogin: vi.fn(),
 }));
@@ -18,15 +15,12 @@ vi.mock("@capacitor/core", async (importOriginal) => ({
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ acceptAuthResponse: mocks.acceptAuthResponse }) }));
 vi.mock("../api/auth", async (importOriginal) => ({
   ...await importOriginal<typeof import("../api/auth")>(),
-  beginPasskeyAuthentication: mocks.beginPasskeyAuthentication,
-  finishPasskeyAuthentication: mocks.finishPasskeyAuthentication,
   redeemAndroidQRLogin: mocks.redeemAndroidQRLogin,
 }));
 vi.mock("../native/androidQrScanner", async (importOriginal) => ({
   ...await importOriginal<typeof import("../native/androidQrScanner")>(),
   scanAndroidLoginQR: mocks.scan,
 }));
-vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 import { getApiUrl } from "../api/client";
 import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE } from "../native/androidQrScanner";
 import ServerSetupPage from "./ServerSetupPage";
@@ -44,6 +38,9 @@ const authResponse = {
 function CurrentPath() {
   return <output data-testid="current-path">{useLocation().pathname}</output>;
 }
+function LoginServerUrl() {
+  return <output data-testid="login-server-url">{getApiUrl()}</output>;
+}
 describe("Android space setup authentication", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -51,9 +48,6 @@ describe("Android space setup authentication", () => {
     localStorage.clear();
     mocks.platform = "android";
     mocks.acceptAuthResponse.mockReset();
-    mocks.beginPasskeyAuthentication.mockReset().mockResolvedValue({ ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } });
-    mocks.finishPasskeyAuthentication.mockReset().mockResolvedValue(authResponse);
-    mocks.startAuthentication.mockReset().mockResolvedValue({ id: "credential-1", response: {} });
     mocks.scan.mockReset().mockResolvedValue(qrPayload);
     mocks.redeemAndroidQRLogin.mockReset().mockResolvedValue(authResponse);
     Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
@@ -71,7 +65,7 @@ describe("Android space setup authentication", () => {
     delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
   async function render() {
-    await act(async () => root.render(<MemoryRouter initialEntries={["/server-setup"]}><Routes><Route path="/server-setup" element={<ServerSetupPage />} /><Route path="/app/chats" element={<p>Chats</p>} /></Routes><CurrentPath /></MemoryRouter>));
+    await act(async () => root.render(<MemoryRouter initialEntries={["/server-setup"]}><Routes><Route path="/server-setup" element={<ServerSetupPage />} /><Route path="/login" element={<LoginServerUrl />} /><Route path="/app/chats" element={<p>Chats</p>} /></Routes><CurrentPath /></MemoryRouter>));
   }
   async function setUrl(value: string) {
     const input = container.querySelector<HTMLInputElement>('input[autocomplete="url"]');
@@ -87,51 +81,33 @@ describe("Android space setup authentication", () => {
     expect(button, `Missing action: ${selector}`).toBeTruthy();
     await act(async () => button!.click());
   }
-  it("starts Passkey on the normalized entered server and navigates after sign-in", async () => {
-    mocks.beginPasskeyAuthentication.mockImplementation(async () => {
-      expect(getApiUrl()).toBe("https://tenant.example.com");
-      return { ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } };
-    });
+  it("keeps passkey sign-in for the connected login stage and leaves connect plus QR on server setup", async () => {
+    await render();
+
+    expect(container.querySelector('button[type="submit"]')?.textContent).toBe("Connect");
+    expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
+    expect(container.querySelector('[data-auth-method="scan-qr"]')).not.toBeNull();
+
+    await click('[data-auth-method="scan-qr"]');
+    expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
+    expect(container.querySelector('[role="region"][aria-label="Confirm scanned server"]')).not.toBeNull();
+  });
+  it("connects to the entered URL before entering the login stage", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ familyName: "Tenant" }), { status: 200, headers: { "Content-Type": "application/json" } })));
     await render();
     await setUrl(" https://tenant.example.com/ ");
-    await click('[data-auth-method="passkey"]');
-    expect(mocks.beginPasskeyAuthentication).toHaveBeenCalledOnce(); expect(mocks.startAuthentication).toHaveBeenCalledOnce();
-    expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledWith("ceremony-1", { id: "credential-1", response: {} });
-    expect(mocks.acceptAuthResponse).toHaveBeenCalledWith(authResponse);
-    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/app/chats");
+    await click('button[type="submit"]');
+
+    expect(getApiUrl()).toBe("https://tenant.example.com");
+    expect(container.querySelector('[data-testid="current-path"]')?.textContent).toBe("/login");
+    expect(container.querySelector('[data-testid="login-server-url"]')?.textContent).toBe("https://tenant.example.com");
   });
-  it.each(["", "not a URL"]) ("does not start Passkey for invalid URL %s", async (url) => {
-    await render();
-    await setUrl(url);
-    await click('[data-auth-method="passkey"]');
-    expect(mocks.beginPasskeyAuthentication).not.toHaveBeenCalled(); expect(container.querySelector('[role="alert"]')?.textContent).toContain("Enter a valid URL");
-  });
-  it.each([
-    ["unsupported WebAuthn", "PublicKeyCredential", undefined, "supported Android WebView"],
-    ["insecure context", "isSecureContext", false, "Passkeys require a secure connection (HTTPS)."],
-  ])("keeps setup usable with %s", async (_reason, property, value, message) => {
-    Object.defineProperty(window, property, { configurable: true, value });
-    await render();
-    expect(container.querySelector('[data-auth-method="passkey"]')?.disabled).toBe(true); expect(container.querySelector('[data-auth-method="scan-qr"]')).not.toBeNull();
-    expect(container.querySelector('button[type="submit"]')?.textContent).toBe("Connect"); expect(container.textContent).toContain(message);
-    expect(container.textContent).not.toContain(message.includes("HTTPS") ? "supported Android WebView" : "Passkeys require a secure connection (HTTPS).");
-  });
-  it("keeps the setup screen usable when Passkey is cancelled", async () => {
-    mocks.startAuthentication.mockRejectedValueOnce(new DOMException("cancelled", "NotAllowedError"));
+  it("disables QR and URL editing while Connect is checking the server", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     await render();
     await setUrl("https://tenant.example.com");
-    await click('[data-auth-method="passkey"]');
-    expect(mocks.acceptAuthResponse).not.toHaveBeenCalled(); expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
-    expect(container.querySelector('[data-auth-method="scan-qr"]')).not.toBeNull();
-  });
-  it.each(["passkey", "connect"]) ("disables auth actions and URL editing while %s is running", async (action) => {
-    if (action === "passkey") mocks.beginPasskeyAuthentication.mockReturnValue(new Promise(() => {}));
-    else vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
-    await render();
-    await setUrl("https://tenant.example.com");
-    await click(action === "passkey" ? '[data-auth-method="passkey"]' : 'button[type="submit"]');
-    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]')?.disabled).toBe(true); expect(container.querySelector<HTMLButtonElement>('[data-auth-method="scan-qr"]')?.disabled).toBe(true);
+    await click('button[type="submit"]');
+    expect(container.querySelector<HTMLButtonElement>('[data-auth-method="scan-qr"]')?.disabled).toBe(true);
     expect(container.querySelector<HTMLInputElement>('input[autocomplete="url"]')?.disabled).toBe(true);
     expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
   });

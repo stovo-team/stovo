@@ -35,6 +35,7 @@ vi.mock("qrcode", () => ({ default: { toDataURL: mocks.qrToDataURL } }));
 vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 
 import LoginPage from "./LoginPage";
+import { getApiUrl, setApiUrlOverride } from "../api/client";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -43,6 +44,7 @@ describe("LoginPage authentication methods", () => {
   let root: Root;
 
   beforeEach(() => {
+    localStorage.clear();
     mocks.platform = "web";
     mocks.currentUser = null;
     mocks.login.mockReset();
@@ -179,6 +181,21 @@ describe("LoginPage authentication methods", () => {
     expect(mocks.beginPasskeyAuthentication).toHaveBeenCalledOnce();
     expect(mocks.startAuthentication).toHaveBeenCalledOnce();
     expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledWith("ceremony-1", { id: "credential-1", response: {} });
+    expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "access" });
+  });
+
+  it("starts passkey authentication against the server selected before login", async () => {
+    setApiUrlOverride("https://tenant.example.com");
+    mocks.beginPasskeyAuthentication.mockImplementation(async () => {
+      expect(getApiUrl()).toBe("https://tenant.example.com");
+      return { ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } };
+    });
+    await renderPage();
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-auth-method="passkey"]')?.click());
+
+    expect(mocks.beginPasskeyAuthentication).toHaveBeenCalledOnce();
+    expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledOnce();
     expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "access" });
   });
 
