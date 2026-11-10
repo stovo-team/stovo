@@ -367,6 +367,7 @@ export default function LoginPage() {
             <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
               <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.scanDesktopQrShort}</span>
             </button>
+            <p className="muted-copy">{strings.auth.androidQrFindOnComputer}</p>
           </div>
         )}
         {!androidQR && <OwnerSetupPrompt setupRequired={setupRequired} />}

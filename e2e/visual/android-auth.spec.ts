@@ -49,6 +49,7 @@ test("Android login actions are compact and localized", async ({ page }, testInf
   await openAndroidPage(page, "/login", "dark", "ru");
   await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Ключ доступа");
   await expect(page.locator('[data-auth-method="scan-qr"]')).toHaveText("Сканировать QR");
+  await expect(page.getByText("На компьютере откройте Stovo → Настройки → Профиль", { exact: false })).toBeVisible();
   await capture(page, testInfo, "android-login", "Login page; Android; 390x844", "dark", "ru");
 });
 
