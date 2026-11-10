@@ -1,6 +1,6 @@
 /**
  * Public product release information.
- * Keep this aligned with Android's versionName in android/app/build.gradle.
+ * Android package versioning is maintained in the standalone Android repository.
  */
 export const appRelease = {
   version: "1.4.0",
