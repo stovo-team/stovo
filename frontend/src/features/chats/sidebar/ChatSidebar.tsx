@@ -149,7 +149,7 @@ export function ChatSidebar({
                     className="server-switcher-connect"
                     onClick={() => {
                       setIsServerMenuOpen(false);
-                      navigate("/auth/server");
+                      navigate("/server-setup");
                     }}
                   >
                     <Plus aria-hidden="true" size={16} />
