@@ -1,6 +1,9 @@
 import type { AppearanceSettings, ResolvedThemeMode } from "./AppearanceContext";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 
+const BRAND_GRADIENT_STORAGE_KEY = "familyMessenger.brandGradient";
+const BRAND_GRADIENT_PATTERN = /^linear-gradient\(\s*(\d{1,3})deg\s*,\s*(#[\da-f]{6})\s*,\s*(#[\da-f]{6})\s*\)$/i;
+
 export function applyAppearanceToDocument(
   appearance: AppearanceSettings,
   resolvedThemeMode: ResolvedThemeMode,
@@ -18,9 +21,23 @@ export function applyAppearanceToDocument(
   root.style.setProperty("--float-radius-bubble", `${appearance.bubbleRadius}px`);
   root.style.setProperty("--message-font-family", messageFontFamily);
   root.style.setProperty("--avatar-custom-bg", appearance.avatarColor);
+  applySavedBrandGradient(root);
   if (appearance.wallpaper !== "custom") root.style.removeProperty("--wallpaper-custom-image");
   if (appearance.accent === "custom") applyCustomAccent(root, appearance.customAccent);
   return () => resetAppearanceDocument(root);
+}
+
+function applySavedBrandGradient(root: HTMLElement) {
+  if (typeof window === "undefined") return;
+  try {
+    const value = window.localStorage.getItem(BRAND_GRADIENT_STORAGE_KEY);
+    const match = value?.match(BRAND_GRADIENT_PATTERN);
+    const angle = match ? Number(match[1]) : -1;
+    if (!match || angle < 0 || angle > 360) return;
+    root.style.setProperty("--color-brand-gradient", `linear-gradient(${angle}deg, ${match[2]}, ${match[3]})`);
+  } catch {
+    // Ignore unavailable or malformed saved preferences.
+  }
 }
 
 function applyCustomAccent(root: HTMLElement, accent: string) {
