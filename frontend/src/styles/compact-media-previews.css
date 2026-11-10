@@ -129,6 +129,10 @@
   }
 
   .new-chat-screen-header {
-    padding-top: 12px;
+    padding: 12px var(--mobile-edge-inset-x, 12px) 12px;
+  }
+
+  .new-chat-screen .popup-close {
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 14px);
   }
 }
