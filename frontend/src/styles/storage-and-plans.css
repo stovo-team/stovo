@@ -664,7 +664,7 @@
 
 .plans-create-fab {
   align-items: center;
-  background: var(--accent-primary);
+  background: var(--color-brand-gradient, var(--accent-primary));
   border: 0;
   box-sizing: border-box;
   border-radius: var(--radius-circle) !important;
@@ -683,9 +683,13 @@
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
 }
 .plans-create-fab:hover:not(:disabled) {
-  background: var(--accent-primary);
+  background: var(--color-brand-gradient, var(--accent-primary));
   transform: scale(1.08);
   box-shadow: none !important;
+}
+.plans-create-fab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
 }
 .plans-create-fab:active:not(:disabled) {
   transform: scale(0.94);
