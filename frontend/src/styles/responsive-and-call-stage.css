@@ -25,6 +25,31 @@
     box-shadow: 0 16px 48px var(--color-palette-f71fbab13810);
   }
 
+  .server-setup-eyebrow {
+    display: none;
+  }
+
+  .server-setup-heading {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .server-setup-heading .app-brand-logo {
+    flex: 0 0 44px;
+  }
+
+  .server-setup-heading h1 {
+    margin: 0;
+    text-align: left;
+  }
+
+  .server-setup-form label {
+    padding-top: 12px;
+  }
+
   .summary-band,
   .summary-band.compact,
   .appearance-control-grid,

@@ -114,14 +114,16 @@ export default function ServerSetupPage() {
 
   return (
     <main className="app-shell">
-      <section className="auth-panel">
-        <p className="eyebrow">{strings.brand.setup}</p>
-        <StovoLogo className="app-brand-logo" title="Stovo" />
-        <h1>{copy.title}</h1>
+      <section className="auth-panel server-setup-panel">
+        <p className="server-setup-eyebrow eyebrow">{strings.brand.setup}</p>
+        <div className="server-setup-heading">
+          <StovoLogo className="app-brand-logo" title="Stovo" />
+          <h1>{copy.title}</h1>
+        </div>
         {!androidQR && <p className="muted-copy">
           {copy.hint} <strong>{copy.hintHttps}</strong> {copy.hintSuffix}
         </p>}
-        {!androidQR && <form className="form-grid" onSubmit={handleSubmit}>
+        {!androidQR && <form className="form-grid server-setup-form" onSubmit={handleSubmit}>
           <label>
             {copy.serverUrl}
             <input
