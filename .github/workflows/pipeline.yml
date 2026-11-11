@@ -669,6 +669,7 @@ jobs:
         env:
           BACKEND_SHARD_RESULT: ${{ needs.backend_test_shards.result }}
           BACKEND_LINT_RESULT: ${{ needs.backend_lint.result }}
+        shell: bash
         run: |
           if [[ "$BACKEND_SHARD_RESULT" != "success" || "$BACKEND_LINT_RESULT" != "success" ]]; then
             echo "Backend test shards or lint did not succeed: $BACKEND_SHARD_RESULT / $BACKEND_LINT_RESULT" >&2
