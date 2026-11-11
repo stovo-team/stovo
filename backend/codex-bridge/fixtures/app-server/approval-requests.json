@@ -1,0 +1,6 @@
+[
+  {"jsonrpc":"2.0","id":"req-command-1","method":"item/commandExecution/requestApproval","params":{"threadId":"thread-1","turnId":"turn-1","approvalId":"approval-1","kind":"humanCommand","command":["git","status"]}},
+  {"jsonrpc":"2.0","id":"req-file-1","method":"item/fileChange/requestApproval","params":{"threadId":"thread-1","turnId":"turn-1","itemId":"patch-1","reason":"Write files"}},
+  {"jsonrpc":"2.0","id":"req-permissions-1","method":"item/permissions/requestApproval","params":{"threadId":"thread-1","turnId":"turn-1","reason":"Permission escalation"}},
+  {"jsonrpc":"2.0","id":"req-unknown-1","method":"process/spawn","params":{"command":["echo","unsafe"]}}
+]
