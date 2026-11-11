@@ -1,0 +1,11 @@
+# Install as /etc/codex/requirements.toml (Unix) or the platform's managed
+# requirements.toml location. Codex loads this as a managed policy.
+# Every shell wrapper used by the local Codex environment must be listed.
+[rules]
+prefix_rules = [
+  {
+    pattern = [{ any_of = ["sh", "bash", "zsh", "fish", "pwsh", "powershell", "cmd", "cmd.exe"] }],
+    decision = "prompt-user",
+    justification = "Stovo Codex Bridge requires a fresh approval for each shell command."
+  }
+]
