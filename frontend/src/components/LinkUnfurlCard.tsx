@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { fetchUnfurlData, type UnfurlData } from "../api/unfurl";
 import { useStrings } from "../i18n/LanguageContext";
 
-const unfurlCache = new Map<string, Promise<UnfurlData | null>>();
+const UNFURL_CACHE_TTL_MS = 5 * 60 * 1000;
+const unfurlCache = new Map<string, { promise: Promise<UnfurlData | null>; expiresAt: number }>();
 const MAX_CONCURRENT_UNFURL_REQUESTS = 3;
 const UNFURL_REQUEST_TIMEOUT_MS = 15_000;
 let activeUnfurlRequests = 0;
@@ -74,13 +75,16 @@ export function LinkUnfurlCard({
       return;
     }
 
-    let promise = unfurlCache.get(url);
-    if (!promise) {
-      promise = enqueueUnfurlRequest(url, accessToken);
-      unfurlCache.set(url, promise);
+    let entry = unfurlCache.get(url);
+    if (!entry || entry.expiresAt <= Date.now()) {
+      entry = {
+        promise: enqueueUnfurlRequest(url, accessToken),
+        expiresAt: Date.now() + UNFURL_CACHE_TTL_MS
+      };
+      unfurlCache.set(url, entry);
     }
 
-    promise.then((result) => {
+    entry.promise.then((result) => {
       if (!isMounted) return;
       if (result && (result.title || result.description || result.image)) {
         setData(result);
