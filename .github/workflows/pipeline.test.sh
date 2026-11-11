@@ -581,6 +581,11 @@ for required in 'name: Require successful backend test shards' 'shell: powershel
     exit 1
   fi
 done
+trusted_backend_guard=$(sed -n '/^      - name: Require successful backend test shards/,/^      - name: Aggregate successful backend shards/p' .github/workflows/trusted-pr-tests.yml)
+if ! grep -Fq '          }' <<< "$trusted_backend_guard" || grep -Eq '^[[:space:]]+fi[[:space:]]*$' <<< "$trusted_backend_guard"; then
+  echo "Trusted PR Backend CI PowerShell guard must close its block with a brace, not Bash's fi." >&2
+  exit 1
+fi
 if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_workflow_contract"; then
   echo "Master backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
   exit 1
