@@ -39,9 +39,9 @@ test('CodeQL uses a supported build mode for GitHub Actions analysis',()=>{
  const codeql=workflowFile('codeql.yml');
  assert.match(codeql,/language: actions\s+build_mode: none/);
  assert.match(codeql,/language: go\s+build_mode: autobuild/);
- assert.match(codeql,/language: javascript-typescript\s+build_mode: autobuild/);
+ assert.match(codeql,/language: javascript-typescript\s+build_mode: none/);
  assert.match(codeql,/build-mode: \$\{\{ matrix\.build_mode \}\}/);
- assert.match(codeql,/if: matrix\.language != 'actions'\s+uses: github\/codeql-action\/autobuild/);
+ assert.match(codeql,/if: matrix\.language == 'go'\s+uses: github\/codeql-action\/autobuild/);
 });
 test('frontend fixes require screenshot evidence in agent instructions',()=>{const instructions=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8');assert.match(instructions,/frontend fix[\s\S]*screenshot/i);});
 test('cross-platform size baseline covers the Windows mock API line count',()=>{const baseline=readFileSync(new URL('../docs/engineering/size-baseline.tsv',import.meta.url),'utf8');assert.match(baseline,/^frontend\/src\/dev\/mockApi\.ts\t442$/m);});
