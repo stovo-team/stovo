@@ -202,6 +202,10 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
     echo "Backend workflow $workflow must fail its aggregate when a test shard fails or is skipped." >&2
     exit 1
   fi
+  if [[ "$workflow" == .github/workflows/pipeline.yml ]] && ! grep -Fq 'shell: bash' <<< "$aggregate_contract"; then
+    echo "Master backend CI must run the aggregate check with Bash on its Windows runner." >&2
+    exit 1
+  fi
 done
 
 
