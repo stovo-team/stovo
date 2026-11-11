@@ -121,6 +121,38 @@ describe("LinkUnfurlCard component", () => {
     expect(Boolean(body!.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 
+  it("refetches cached preview metadata after its short freshness window", async () => {
+    vi.useFakeTimers();
+    const url = "https://app.stovo.cc/s/public-space/";
+    const fetch = vi.spyOn(unfurlApi, "fetchUnfurlData")
+      .mockResolvedValueOnce({ url, title: "Generic shell metadata", description: "Generic description" })
+      .mockResolvedValueOnce({
+        url,
+        title: "Public Space | Stovo",
+        description: "Join Public Space on Stovo.",
+        image: "https://app.stovo.cc/s/public-space/og.png"
+      });
+
+    let first!: HTMLDivElement;
+    await act(async () => {
+      first = renderCard(url, "token123");
+    });
+    expect(first.textContent).toContain("Generic shell metadata");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    });
+
+    let refreshed!: HTMLDivElement;
+    await act(async () => {
+      refreshed = renderCard(url, "token123");
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(refreshed.textContent).toContain("Public Space | Stovo");
+    expect((refreshed.querySelector("img.link-unfurl-image") as HTMLImageElement).src)
+      .toBe("https://app.stovo.cc/s/public-space/og.png");
+  });
+
   it("renders nothing when unfurl fetch fails", async () => {
     vi.spyOn(unfurlApi, "fetchUnfurlData").mockRejectedValue(new Error("Network error"));
 

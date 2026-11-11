@@ -14,7 +14,7 @@
 	}
 	@spacePreview {
 		path_regexp spacePreview ^/s/([a-zA-Z0-9_-]{1,64})/?$
-		header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|googlebot)
+		header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|linkedinbot|slackbot|discordbot|telegrambot|whatsapp|googlebot|stovobot)
 	}
 	handle @spacePreview {
 		rewrite * /preview/{re.spacePreview.1}
@@ -107,7 +107,7 @@
 		# These apply at the public gateway. The frontend nginx container is
 		# intentionally not the security boundary and must not be relied on for
 		# browser protections.
-		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-gwi6t1ZMpOCFEK1egzdBjvOeiIK9ltJa9nqBFjnp5QA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss:; media-src 'self' blob:; worker-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-gwi6t1ZMpOCFEK1egzdBjvOeiIK9ltJa9nqBFjnp5QA='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://stovo.app; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss:; media-src 'self' blob:; worker-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Frame-Options "DENY"
 		X-Content-Type-Options "nosniff"
