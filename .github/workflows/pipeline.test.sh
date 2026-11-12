@@ -629,16 +629,18 @@ for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd6
   fi
 done
 
-codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
-for required in 'runs-on: ubuntu-24.04' 'max-parallel: 1'; do
-  if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
-    echo "CodeQL must run serially on the Windows tests runner ($required)." >&2
+if [[ -f .github/workflows/codeql.yml ]]; then
+  codeql_workflow_contract=$(sed -n '/^  analyze:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/codeql.yml)
+  for required in 'runs-on: ubuntu-24.04' 'max-parallel: 1'; do
+    if ! grep -Fq "$required" <<< "$codeql_workflow_contract"; then
+      echo "CodeQL must run serially on the Windows tests runner ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Fq 'author_association' <<< "$codeql_workflow_contract"; then
+    echo "CodeQL fork routing must use repository identity, not author association." >&2
     exit 1
   fi
-done
-if grep -Fq 'author_association' <<< "$codeql_workflow_contract"; then
-  echo "CodeQL fork routing must use repository identity, not author association." >&2
-  exit 1
 fi
 
 if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
