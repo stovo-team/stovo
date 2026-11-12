@@ -43,7 +43,7 @@ func TestSourceV2BrowserSessionCookieAndOneUseFormPost(t *testing.T) {
 			},
 			ListConnections: func(_ context.Context, _ *http.Request, _ IntelligenceSourceV2ConsentPrincipal) ([]IntelligenceSourceV2ConnectionSummary, error) {
 				listCalls++
-				return []IntelligenceSourceV2ConnectionSummary{{ID: "connection-1", ChatID: "chat-1", ChatTitle: "Synthetic chat", CreatedAt: time.Unix(1, 0).UTC(), ExpiresAt: time.Unix(2, 0).UTC(), Grants: map[string]bool{"read": true, "process": false, "external_transfer": false, "export": true}}}, nil
+				return []IntelligenceSourceV2ConnectionSummary{{ID: "connection-1", ChatID: "chat-1", ChatTitle: "Synthetic chat", CreatedAt: time.Unix(1, 0).UTC(), ExpiresAt: time.Unix(2, 0).UTC(), Grants: map[string]bool{"read": true, "process": false, "external_transfer": false, "export": true, "codex": false, "reply": false}}}, nil
 			},
 		},
 	})
@@ -51,7 +51,7 @@ func TestSourceV2BrowserSessionCookieAndOneUseFormPost(t *testing.T) {
 	router.Mount("/api/v2/intelligence", handler)
 	handler = router
 
-	sessionBody := `{"flow":"source_v2","response_type":"code","client_id":"intelligence-client","redirect_uri":"https://intelligence.example/callback?tenant=one","state":"state-one","code_challenge":"` + browserTestChallenge + `","code_challenge_method":"S256","chat_id":"chat-1","grants":{"read":true,"process":false,"external_transfer":false,"export":true}}`
+	sessionBody := `{"flow":"source_v2","response_type":"code","client_id":"intelligence-client","redirect_uri":"https://intelligence.example/callback?tenant=one","state":"state-one","code_challenge":"` + browserTestChallenge + `","code_challenge_method":"S256","chat_id":"chat-1","grants":{"read":true,"process":false,"external_transfer":false,"export":true,"codex":false,"reply":false}}`
 	sessionRequest := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/authorize-session", strings.NewReader(sessionBody))
 	sessionRequest.Header.Set("Authorization", "Bearer synthetic-user-session")
 	sessionRequest.Header.Set("Content-Type", "application/json")
@@ -88,7 +88,7 @@ func TestSourceV2BrowserSessionCookieAndOneUseFormPost(t *testing.T) {
 	form := url.Values{
 		"response_type": {"code"}, "client_id": {"intelligence-client"}, "redirect_uri": {"https://intelligence.example/callback?tenant=one"},
 		"state": {"state-one"}, "code_challenge": {browserTestChallenge}, "code_challenge_method": {"S256"}, "chat_id": {"chat-1"},
-		"read": {"true"}, "process": {"false"}, "external_transfer": {"false"}, "export": {"true"},
+		"read": {"true"}, "process": {"false"}, "external_transfer": {"false"}, "export": {"true"}, "codex": {"true"}, "reply": {"false"},
 	}
 	formRequest := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/authorize", strings.NewReader(form.Encode()))
 	formRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -96,7 +96,7 @@ func TestSourceV2BrowserSessionCookieAndOneUseFormPost(t *testing.T) {
 	formRequest.AddCookie(cookie)
 	formResponse := httptest.NewRecorder()
 	handler.ServeHTTP(formResponse, formRequest)
-	if formResponse.Code != http.StatusFound || authorizedTicket != "synthetic-one-use-ticket" || authorized.ChatID != "chat-1" || !authorized.Grants["read"] || authorized.Grants["process"] {
+	if formResponse.Code != http.StatusFound || authorizedTicket != "synthetic-one-use-ticket" || authorized.ChatID != "chat-1" || !authorized.Grants["read"] || authorized.Grants["process"] || !authorized.Grants["codex"] || authorized.Grants["reply"] {
 		t.Fatalf("form authorization = status %d ticket %q request %#v body %q", formResponse.Code, authorizedTicket, authorized, formResponse.Body.String())
 	}
 	location, err := url.Parse(formResponse.Header().Get("Location"))
@@ -135,7 +135,7 @@ func TestSourceV2BrowserFormRejectsUntrustedOrigin(t *testing.T) {
 	form := url.Values{
 		"response_type": {"code"}, "client_id": {"intelligence-client"}, "redirect_uri": {"https://intelligence.example/callback"},
 		"state": {"state-one"}, "code_challenge": {browserTestChallenge}, "code_challenge_method": {"S256"}, "chat_id": {"chat-1"},
-		"read": {"false"}, "process": {"false"}, "external_transfer": {"false"}, "export": {"false"},
+		"read": {"false"}, "process": {"false"}, "external_transfer": {"false"}, "export": {"false"}, "codex": {"false"}, "reply": {"false"},
 	}
 	request := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/authorize", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")

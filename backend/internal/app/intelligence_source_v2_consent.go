@@ -16,7 +16,7 @@ const (
 	intelligenceSourceV2CredentialTTL  = 30 * 24 * time.Hour
 )
 
-var intelligenceSourceV2GrantTypes = []string{"read", "process", "external_transfer", "export"}
+var intelligenceSourceV2GrantTypes = []string{"read", "process", "external_transfer", "export", "codex", "reply"}
 
 func (s *Server) intelligenceSourceV2ConsentHandler() http.Handler {
 	return httptransport.NewIntelligenceSourceV2ConsentHandler(httptransport.IntelligenceSourceV2ConsentHandlerConfig{
@@ -80,7 +80,7 @@ func (s *Server) intelligenceSourceV2ConsentOffer(ctx context.Context, request *
 	offer := httptransport.IntelligenceSourceV2ConsentOffer{
 		ClientID: parameters.ClientID, RedirectURI: parameters.RedirectURI, State: parameters.State,
 		Chats:  make([]httptransport.IntelligenceSourceV2ConsentChat, 0),
-		Grants: map[string]bool{"read": false, "process": false, "external_transfer": false, "export": false},
+		Grants: map[string]bool{"read": false, "process": false, "external_transfer": false, "export": false, "codex": false, "reply": false},
 	}
 	for rows.Next() {
 		var chat httptransport.IntelligenceSourceV2ConsentChat

@@ -18,7 +18,7 @@ import {
 } from "../api/intelligence";
 import type { AppStrings } from "../config/strings";
 
-const grantKeys: IntelligenceGrant[] = ["read", "process", "external_transfer", "export"];
+const grantKeys: IntelligenceGrant[] = ["read", "process", "external_transfer", "export", "codex", "reply"];
 
 interface IntelligenceConsentPageProps {
   strings: AppStrings;
@@ -90,7 +90,7 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
   const [offer, setOffer] = useState<IntelligenceConsentOffer | null>(null);
   const chatIDPrefixes = useMemo(() => duplicateChatIDPrefixes(offer?.chats ?? []), [offer]);
   const [chatID, setChatID] = useState("");
-  const [grants, setGrants] = useState<IntelligenceGrants>({ read: false, process: false, external_transfer: false, export: false });
+  const [grants, setGrants] = useState<IntelligenceGrants>({ read: false, process: false, external_transfer: false, export: false, codex: false, reply: false });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);

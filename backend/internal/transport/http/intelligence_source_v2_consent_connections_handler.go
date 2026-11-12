@@ -8,7 +8,7 @@ import (
 )
 
 var intelligenceSourceV2GrantFormFields = map[string]struct{}{
-	"read": {}, "process": {}, "external_transfer": {}, "export": {},
+	"read": {}, "process": {}, "external_transfer": {}, "export": {}, "codex": {}, "reply": {},
 }
 
 func (h *IntelligenceSourceV2ConsentHandler) connections(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -86,7 +86,7 @@ func (h *IntelligenceSourceV2ConsentHandler) token(w stdhttp.ResponseWriter, r *
 		writeSourceV2ConsentOperationError(w, err)
 		return
 	}
-	if credential.ConnectionID == "" || credential.ChatID == "" || credential.SourceCredential == "" || credential.TokenType != "Bearer" || credential.ExpiresIn <= 0 || len(credential.Grants) != 4 {
+	if credential.ConnectionID == "" || credential.ChatID == "" || credential.SourceCredential == "" || credential.TokenType != "Bearer" || credential.ExpiresIn <= 0 || len(credential.Grants) != 6 {
 		writeSourceV2ConsentError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return
 	}

@@ -366,6 +366,6 @@ export function createMockIntelligenceConsentOffer(query: URLSearchParams) {
       { id: "archive-a-001", title: "Message Archive", type: "archive" },
       { id: "archive-b-002", title: "Message Archive", type: "archive" },
     ],
-    grants: { read: false, process: false, external_transfer: false, export: false },
+    grants: { read: false, process: false, external_transfer: false, export: false, codex: false, reply: false },
   };
 }
