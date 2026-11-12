@@ -73,6 +73,81 @@ func TestIntelligenceSourceV2AuthorizationReturnsVersionedBoundDecisions(t *test
 	}
 }
 
+func TestIntelligenceSourceV2EventFenceReturnsOnlyAnOpaqueCursor(t *testing.T) {
+	id := v2TestIdentity()
+	called := false
+	h := v2TestHandler(IntelligenceSourceV2Operations{EventFence: func(_ context.Context, got IntelligenceSourceIdentity) (IntelligenceSourceV2EventFence, error) {
+		called = true
+		if got.ConnectionID != id.ConnectionID || got.ChatID != id.ChatID {
+			t.Fatalf("fence identity=%#v", got)
+		}
+		return IntelligenceSourceV2EventFence{SchemaVersion: "v2", EventCursor: "opaque-signed-fence", FenceSequence: 42}, nil
+	}}, nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/source/events/fence", strings.NewReader(`{"schema_version":"v2"}`))
+	request.Header.Set("Authorization", "Bearer synthetic-v2-source-credential")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	h.ServeHTTP(response, request)
+	var got IntelligenceSourceV2EventFence
+	if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || !called || got.EventCursor != "opaque-signed-fence" || got.FenceSequence != 42 {
+		t.Fatalf("fence response=%d %q called=%v body=%s", response.Code, response.Header().Get("Cache-Control"), called, response.Body.String())
+	}
+}
+
+func TestIntelligenceSourceV2ReplyIsBoundAndServerStamped(t *testing.T) {
+	var gotIdentity IntelligenceSourceIdentity
+	var gotOperationID, gotText string
+	var gotRevision int64
+	var gotFinal bool
+	h := v2TestHandler(IntelligenceSourceV2Operations{Reply: func(_ context.Context, identity IntelligenceSourceIdentity, operationID string, revision int64, text string, final bool) (string, error) {
+		gotIdentity, gotOperationID, gotRevision, gotText, gotFinal = identity, operationID, revision, text, final
+		return "message-created-by-server", nil
+	}}, nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/source/replies", strings.NewReader(`{"schema_version":"v2","operation_id":"bridge-op-1","revision":1,"text":"hello from local Codex","final":true}`))
+	request.Header.Set("Authorization", "Bearer synthetic-v2-source-credential")
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	h.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("reply status=%d body=%s", response.Code, response.Body.String())
+	}
+	if gotIdentity.ConnectionID != "connection-v2" || gotIdentity.ChatID != "chat-v2" || gotIdentity.PrincipalUserID != "principal-v2" || gotOperationID != "bridge-op-1" || gotRevision != 1 || gotText != "hello from local Codex" || !gotFinal {
+		t.Fatalf("reply operation received identity=%#v operation=%q revision=%d text=%q final=%v", gotIdentity, gotOperationID, gotRevision, gotText, gotFinal)
+	}
+	var result IntelligenceSourceV2ReplyResult
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode reply response: %v", err)
+	}
+	if result.MessageID != "message-created-by-server" || result.OperationID != gotOperationID || result.Origin != IntelligenceSourceV2CodexBridgeOrigin {
+		t.Fatalf("reply result = %#v", result)
+	}
+}
+
+func TestIntelligenceSourceV2ReplyRejectsCallerSelectedIdentity(t *testing.T) {
+	called := false
+	h := v2TestHandler(IntelligenceSourceV2Operations{Reply: func(context.Context, IntelligenceSourceIdentity, string, int64, string, bool) (string, error) {
+		called = true
+		return "message", nil
+	}}, nil)
+	for _, body := range []string{
+		`{"schema_version":"v2","operation_id":"bridge-op-1","revision":1,"text":"hello","chat_id":"other-chat"}`,
+		`{"schema_version":"v2","operation_id":"bridge-op-1","revision":1,"text":"hello","sender_id":"other-user"}`,
+		`{"schema_version":"v2","operation_id":"bridge-op-1","revision":1,"text":"hello","origin":"trusted"}`,
+	} {
+		request := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/source/replies", strings.NewReader(body))
+		request.Header.Set("Authorization", "Bearer synthetic-v2-source-credential")
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		h.ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest || called {
+			t.Fatalf("forged reply body=%s status=%d operation_called=%v", body, response.Code, called)
+		}
+	}
+}
+
 func TestIntelligenceSourceV2RejectsUnversionedAndCallerIdentityFields(t *testing.T) {
 	called := false
 	h := v2TestHandler(IntelligenceSourceV2Operations{Authorize: func(context.Context, IntelligenceSourceIdentity, []string, string) ([]IntelligenceSourceV2AuthorizationDecision, error) {

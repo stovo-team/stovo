@@ -35,6 +35,7 @@ func (s *Server) intelligenceSourceV2Events(ctx context.Context, identity httptr
 			EventID: stored.EventID, ResourceID: stored.ResourceID, RevisionID: stored.RevisionID,
 			SourceSequence: stored.Sequence, ContainerID: stored.ContainerID,
 			ObservedAt: stored.ObservedAt, Kind: stored.Kind, Tombstone: stored.Tombstone,
+			Origin: stored.Origin, OperationID: stored.OperationID,
 		}
 		event.SchemaVersion = "v2"
 		event.TenantID = identity.TenantID

@@ -8,10 +8,10 @@ import (
 )
 
 type EventRecord struct {
-	EventID, ResourceID, RevisionID, ContainerID, Kind string
-	Sequence                                           int64
-	ObservedAt                                         time.Time
-	Tombstone                                          bool
+	EventID, ResourceID, RevisionID, ContainerID, Kind, Origin, OperationID string
+	Sequence                                                                int64
+	ObservedAt                                                              time.Time
+	Tombstone                                                               bool
 }
 
 func (s *Store) LoadEvents(ctx context.Context, identity httptransport.IntelligenceSourceIdentity, backfillID string, after int64, limit int) ([]EventRecord, bool, error) {
@@ -23,8 +23,10 @@ func (s *Store) LoadEvents(ctx context.Context, identity httptransport.Intellige
 		return nil, false, ErrNotFound
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT e.event_id,e.resource_id,e.revision_id,e.sequence,e.chat_id,e.observed_at,e.kind,e.tombstone
+		SELECT e.event_id,e.resource_id,e.revision_id,e.sequence,e.chat_id,e.observed_at,e.kind,e.tombstone,
+		       COALESCE(origin.origin,''),COALESCE(origin.operation_id,'')
 		FROM public.intelligence_source_v2_events e
+		LEFT JOIN public.intelligence_source_v2_reply_origins origin ON origin.message_id=e.resource_id AND origin.connection_id=e.connection_id
 		JOIN public.intelligence_source_v2_connections c ON c.id=e.connection_id AND c.id=$1 AND c.enabled AND c.revoked_at IS NULL
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.enabled AND i.tenant_id=$2 AND i.family_id=$3
 		WHERE e.connection_id=$1 AND e.chat_id=$4 AND e.sequence>$5
@@ -36,7 +38,7 @@ func (s *Store) LoadEvents(ctx context.Context, identity httptransport.Intellige
 	events := make([]EventRecord, 0, limit)
 	for rows.Next() {
 		var event EventRecord
-		if err := rows.Scan(&event.EventID, &event.ResourceID, &event.RevisionID, &event.Sequence, &event.ContainerID, &event.ObservedAt, &event.Kind, &event.Tombstone); err != nil {
+		if err := rows.Scan(&event.EventID, &event.ResourceID, &event.RevisionID, &event.Sequence, &event.ContainerID, &event.ObservedAt, &event.Kind, &event.Tombstone, &event.Origin, &event.OperationID); err != nil {
 			return nil, false, err
 		}
 		if len(events) == limit {
