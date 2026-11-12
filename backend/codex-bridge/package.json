@@ -8,7 +8,5 @@
     "start": "node src/main.mjs",
     "test": "node --test test/*.test.mjs"
   },
-  "dependencies": {
-    "socket.io-client": "^4.8.3"
-  }
+  "dependencies": {}
 }
