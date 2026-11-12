@@ -1,16 +1,19 @@
 {
-  "relay": {
-    "baseUrl": "https://insight.example.test",
-    "credentialFile": "./private/insight-relay.json"
+  "messenger": {
+    "apiBaseUrl": "https://messenger.example.test",
+    "socketUrl": "https://messenger.example.test",
+    "socketPath": "/socket.io"
   },
+  "botUserId": "replace-with-dedicated-bot-account-user-id",
   "trigger": "@Codex",
   "chats": [
     {
       "id": "replace-with-allowed-chat-id",
       "workspace": "/absolute/path/to/repository",
-      "approverIds": []
+      "approverIds": ["replace-with-authorized-approver-user-id"]
     }
   ],
+  "tokenFile": "./private/bot-tokens.json",
   "stateFile": "./private/state.json",
   "codexHome": "./private/codex-home",
   "approvalRequirementsPath": "/etc/codex/requirements.toml",
