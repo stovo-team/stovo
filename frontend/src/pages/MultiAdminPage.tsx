@@ -51,6 +51,7 @@ export default function MultiAdminPage() {
   // Settings Modal State
   const [editingServer, setEditingServer] = useState<ServerRecord | null>(null);
   const [editName, setEditName] = useState("");
+  const [publicPreview, setPublicPreview] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"general" | "ai" | "chats" | "premium">("general");
   const [chatTypes, setChatTypes] = useState<ChatTypesConfig>({ direct: true, group: true, channel: true, voice: true });
@@ -155,6 +156,7 @@ export default function MultiAdminPage() {
   const handleOpenSettings = async (s: ServerRecord) => {
     setEditingServer(s);
     setEditName(s.name);
+    setPublicPreview(s.public_preview ?? true);
     setSettingsTab("general");
     setChatTypes(s.chat_types ?? { direct: true, group: true, channel: true, voice: true });
     if (token) {
@@ -181,6 +183,7 @@ export default function MultiAdminPage() {
       const updated = await updateServerSettings(token, editingServer.slug, {
         name: editName.trim(),
         chat_types: chatTypes,
+        public_preview: publicPreview,
       });
       setServers((prev) =>
         prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
@@ -423,7 +426,13 @@ export default function MultiAdminPage() {
               </div>
 
               <div className="supervisor-settings-tab-panel" role="tabpanel">
-                {settingsTab === "general" && <PopupField label={copy.spaceName} type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />}
+                {settingsTab === "general" && <>
+                  <PopupField label={copy.spaceName} type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+                  <label className="supervisor-setting-row">
+                    <span><strong>{copy.publicPreview}</strong><small>{copy.publicPreviewHelp}</small></span>
+                    <input type="checkbox" aria-label={copy.publicPreview} checked={publicPreview} disabled={savingSettings} onChange={(event) => setPublicPreview(event.target.checked)} />
+                  </label>
+                </>}
                 {settingsTab === "ai" && <section aria-label={strings.admin.serverSettings.aiFunctions}>
                   <p className="supervisor-settings-help">{copy.aiHelp}</p>
                   {([
