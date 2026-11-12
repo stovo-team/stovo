@@ -14,7 +14,7 @@ interface IntelligenceConnectionsSettingsProps {
   authRequest: IntelligenceAuthRequest;
 }
 
-const grantKeys: IntelligenceGrant[] = ["read", "process", "external_transfer", "export"];
+const grantKeys: IntelligenceGrant[] = ["read", "process", "external_transfer", "export", "codex", "reply"];
 
 export function IntelligenceConnectionsSettings({ strings, authRequest }: IntelligenceConnectionsSettingsProps) {
   const [connections, setConnections] = useState<IntelligenceConnection[]>([]);

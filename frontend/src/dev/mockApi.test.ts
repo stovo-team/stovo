@@ -69,7 +69,7 @@ describe("local mock chat API", () => {
         { id: "archive-a-001", title: "Message Archive", type: "archive" },
         { id: "archive-b-002", title: "Message Archive", type: "archive" },
       ],
-      grants: { read: false, process: false, external_transfer: false, export: false },
+      grants: { read: false, process: false, external_transfer: false, export: false, codex: false, reply: false },
     });
   });
   it("lists a seeded canvas and returns its document", async () => {

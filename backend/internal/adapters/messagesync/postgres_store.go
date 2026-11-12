@@ -36,6 +36,15 @@ func (s *PostgresStore) CreateSyncedMessage(ctx context.Context, command feature
 	if err := insertMessage(ctx, tx, command); err != nil {
 		return featuremessages.CreateSyncedMessageResult{}, err
 	}
+	message := command.Message
+	if message.SourceConnectionID != "" || message.SourceOperationID != "" || message.SourceOrigin != "" {
+		if message.SourceConnectionID == "" || message.SourceOperationID == "" || message.SourceOrigin != "local_codex_bridge" || message.SourceRevision != 1 || len(message.SourceContentHash) != 32 {
+			return featuremessages.CreateSyncedMessageResult{}, errors.New("invalid server source origin")
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_reply_origins(connection_id,operation_id,message_id,origin,revision,content_hash,final,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, message.SourceConnectionID, message.SourceOperationID, message.ID, message.SourceOrigin, message.SourceRevision, message.SourceContentHash, message.SourceFinal, message.CreatedAt); err != nil {
+			return featuremessages.CreateSyncedMessageResult{}, err
+		}
+	}
 	eventID, err := writeEvent(ctx, tx, command.FamilyID, command.RecipientIDs, command.Message.ID, command.ResponsePayload)
 	if err != nil {
 		return featuremessages.CreateSyncedMessageResult{}, err
