@@ -149,7 +149,7 @@ describe("ChatSidebar compose action", () => {
     const connect = container.querySelector<HTMLButtonElement>(".server-switcher-connect");
     expect(connect?.textContent?.trim()).toBe("Connect Space");
     act(() => { connect?.click(); });
-    expect(mockNavigate).toHaveBeenCalledWith("/auth/server");
+    expect(mockNavigate).toHaveBeenCalledWith("/server-setup");
   });
 
   it("renders an accessible SVG plus and starts a new chat without a glyph fallback", () => {

@@ -161,7 +161,7 @@ func TestHandleUnfurlHandler(t *testing.T) {
 	jsonBytes, _ := json.Marshal(mockRes)
 
 	cacheHash := sha256.Sum256([]byte(parsedURL.String()))
-	cacheKey := "unfurl:v1:" + hex.EncodeToString(cacheHash[:])
+	cacheKey := "unfurl:v2:" + hex.EncodeToString(cacheHash[:])
 	_ = srv.cache.Set(context.Background(), cacheKey, string(jsonBytes), 86400)
 
 	req3 := httptest.NewRequest(http.MethodGet, "/api/unfurl?url="+url.QueryEscape(targetURL), nil)

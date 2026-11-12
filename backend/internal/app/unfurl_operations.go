@@ -259,7 +259,9 @@ func (s *Server) handleUnfurl(w http.ResponseWriter, r *http.Request, _ userPubl
 	}
 
 	cacheHash := sha256.Sum256([]byte(parsedURL.String()))
-	cacheKey := "unfurl:v1:" + hex.EncodeToString(cacheHash[:])
+	// Bump the cache namespace when proxy metadata routing changes so old SPA
+	// shell responses cannot hide newly deployed public space previews for a day.
+	cacheKey := "unfurl:v2:" + hex.EncodeToString(cacheHash[:])
 
 	ctx := r.Context()
 	if cachedVal, err := s.cache.Get(ctx, cacheKey); err == nil && cachedVal != nil {
