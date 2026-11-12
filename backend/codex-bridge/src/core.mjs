@@ -10,7 +10,6 @@ const supportedApprovals = new Map([
 
 export function validateConfig(input) {
   if (!input || typeof input !== 'object') throw new Error('config must be an object');
-  const botUserId = requiredString(input.botUserId, 'botUserId');
   const trigger = requiredString(input.trigger, 'trigger');
   if (!Array.isArray(input.chats) || input.chats.length === 0) throw new Error('config requires at least one chat');
   const chats = new Map();
@@ -21,13 +20,12 @@ export function validateConfig(input) {
     if (!isAbsolute(workspace) || resolve(workspace) !== workspace) throw new Error(`chat ${id} requires an absolute workspace path`);
     if (chats.has(id)) throw new Error(`duplicate chat id: ${id}`);
     if (workspaces.has(workspace)) throw new Error(`workspace must be unique per chat: ${workspace}`);
-    if (!Array.isArray(entry.approverIds) || entry.approverIds.length === 0) throw new Error(`chat ${id} requires at least one approver`);
-    const approverIds = [...new Set(entry.approverIds.map((value) => requiredString(value, `approver id for ${id}`)))];
-    if (approverIds.includes(botUserId)) throw new Error(`bot account cannot approve actions in chat ${id}`);
+    if (entry.approverIds !== undefined && !Array.isArray(entry.approverIds)) throw new Error(`additional approver IDs for ${id} must be an array`);
+    const approverIds = [...new Set((entry.approverIds ?? []).map((value) => requiredString(value, `approver id for ${id}`)))];
     chats.set(id, Object.freeze({ id, workspace, approverIds: Object.freeze(approverIds) }));
     workspaces.add(workspace);
   }
-  return Object.freeze({ botUserId, trigger, chats });
+  return Object.freeze({ trigger, chats });
 }
 
 function requiredString(value, label) {
@@ -38,8 +36,11 @@ function requiredString(value, label) {
 export function classifyMessage(message, config) {
   const senderId = String(message?.senderId ?? message?.userId ?? '');
   const chatId = String(message?.chatId ?? '');
-  if (!message?.id || !senderId || senderId === config.botUserId || message.isBot === true || message.sender?.isBot === true) return null;
+  if (message?.origin === 'local_codex_bridge') return null;
+  if (!message?.id || !senderId || message.isBot === true || message.sender?.isBot === true) return null;
   if (!config.chats.has(chatId)) return null;
+  const chat = config.chats.get(chatId);
+  if (!chat.approverIds.includes(senderId)) return null;
   const content = typeof message.content === 'string' ? message.content.trim() : '';
   if (!content) return null;
   const command = content.match(/^\/codex(?:\s+([\s\S]*))?$/i);
@@ -52,6 +53,18 @@ export function classifyMessage(message, config) {
   if (!mention) return null;
   const prompt = (mention[1] ?? '').trim();
   return { id: String(message.id), chatId, senderId, prompt: prompt || 'Please respond in this chat.' };
+}
+
+export function bindPairedApprovers(config, bindings) {
+  const chats = new Map();
+  for (const [chatId, chat] of config.chats) {
+    const linkedUserId = requiredString(bindings?.[chatId]?.linkedUserId, `linked Messenger approver for ${chatId}`);
+    chats.set(chatId, Object.freeze({
+      ...chat,
+      approverIds: Object.freeze([...new Set([linkedUserId, ...chat.approverIds])]),
+    }));
+  }
+  return Object.freeze({ ...config, chats });
 }
 
 function parseControl(value) {
@@ -72,10 +85,11 @@ export async function createJournal(filePath) {
     data = JSON.parse(await readFile(filePath, 'utf8'));
   } catch (error) {
     if (error.code !== 'ENOENT') throw new Error(`bridge state is unreadable: ${error.message}`);
-    data = { version: 1, threads: {}, cursors: {}, processed: [], queue: [], approvals: {}, replies: {} };
+    data = { version: 1, threads: {}, cursors: {}, remoteCursors: {}, processed: [], queue: [], approvals: {}, replies: {} };
   }
   data.cursors ??= {};
-  if (data.version !== 1 || !isPlainObject(data.threads) || !isPlainObject(data.cursors) || !Array.isArray(data.processed) || !Array.isArray(data.queue) || !isPlainObject(data.approvals) || !isPlainObject(data.replies)) {
+  data.remoteCursors ??= {};
+  if (data.version !== 1 || !isPlainObject(data.threads) || !isPlainObject(data.cursors) || !isPlainObject(data.remoteCursors) || !Array.isArray(data.processed) || !Array.isArray(data.queue) || !isPlainObject(data.approvals) || !isPlainObject(data.replies)) {
     throw new Error('bridge state has an unsupported or invalid format');
   }
   let tail = Promise.resolve();
@@ -97,6 +111,8 @@ export async function createJournal(filePath) {
     threadFor(chatId) { return data.threads[chatId] ?? null; },
     cursorFor(chatId) { return data.cursors[chatId] ?? null; },
     async setCursor(chatId, messageId) { return mutate((state) => { state.cursors[chatId] = messageId; }); },
+    remoteCursorFor(chatId) { return data.remoteCursors[chatId] ?? null; },
+    async setRemoteCursor(chatId, cursor) { return mutate((state) => { state.remoteCursors[chatId] = cursor; }); },
     isProcessed(messageId) { return data.processed.includes(messageId); },
     async enqueue(event) {
       return mutate((state) => {
