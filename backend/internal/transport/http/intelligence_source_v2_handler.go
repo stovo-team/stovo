@@ -18,6 +18,10 @@ const (
 	intelligenceSourceV2MaxDecisionAge = 5 * time.Minute
 )
 
+const IntelligenceSourceV2CodexBridgeOrigin = "local_codex_bridge"
+
+const IntelligenceSourceV2ReplyMaxBytes = 4000
+
 type IntelligenceSourceV2DecisionScope struct {
 	Kind       string `json:"kind"`
 	ResourceID string `json:"resource_id"`
@@ -58,6 +62,8 @@ type IntelligenceSourceV2Event struct {
 	Kind           string    `json:"kind"`
 	PolicyRefs     []string  `json:"policy_refs"`
 	Tombstone      bool      `json:"tombstone"`
+	Origin         string    `json:"origin,omitempty"`
+	OperationID    string    `json:"operation_id,omitempty"`
 }
 
 type IntelligenceSourceV2EventPage struct {
@@ -65,6 +71,18 @@ type IntelligenceSourceV2EventPage struct {
 	Events        []IntelligenceSourceV2Event `json:"events"`
 	NextCursor    string                      `json:"next_cursor"`
 	HasMore       bool                        `json:"has_more"`
+}
+
+type IntelligenceSourceV2EventFence struct {
+	SchemaVersion string `json:"schema_version"`
+	EventCursor   string `json:"event_cursor"`
+	FenceSequence int64  `json:"fence_sequence"`
+}
+
+type IntelligenceSourceV2ReplyResult struct {
+	MessageID   string `json:"message_id"`
+	OperationID string `json:"operation_id"`
+	Origin      string `json:"origin"`
 }
 
 type IntelligenceSourceV2ResourceSnapshot struct {
@@ -108,8 +126,10 @@ type IntelligenceSourceV2Operations struct {
 	StartBackfill     func(context.Context, IntelligenceSourceIdentity) (IntelligenceSourceV2BackfillStart, error)
 	BackfillSnapshots func(context.Context, IntelligenceSourceIdentity, string, string, int) (IntelligenceSourceV2SnapshotPage, error)
 	Events            func(context.Context, IntelligenceSourceIdentity, string, int) (IntelligenceSourceV2EventPage, error)
+	EventFence        func(context.Context, IntelligenceSourceIdentity) (IntelligenceSourceV2EventFence, error)
 	Snapshot          func(context.Context, IntelligenceSourceIdentity, string, string) (IntelligenceSourceV2ResourceSnapshot, error)
 	ResolveCitation   func(context.Context, IntelligenceSourceIdentity, string, string, IntelligenceTextLocator) (IntelligenceSourceV2CitationResolution, error)
+	Reply             func(context.Context, IntelligenceSourceIdentity, string, int64, string, bool) (string, error)
 }
 
 type IntelligenceSourceV2HandlerConfig struct {
@@ -142,8 +162,10 @@ func NewIntelligenceSourceV2Handler(config IntelligenceSourceV2HandlerConfig) st
 	router.Post("/backfills", handler.startBackfill)
 	router.Get("/backfills/{backfillID}/snapshots", handler.backfillSnapshots)
 	router.Get("/events", handler.events)
+	router.Post("/events/fence", handler.eventFence)
 	router.Get("/resources/{resourceID}/snapshot", handler.snapshot)
 	router.Post("/authorization:check", handler.authorize)
+	router.Post("/replies", handler.reply)
 	router.Post("/citations:resolve", handler.resolveCitation)
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		if strings.HasPrefix(r.URL.Path, intelligenceSourceV2BasePath) {
@@ -236,6 +258,28 @@ func (h *IntelligenceSourceV2Handler) events(w stdhttp.ResponseWriter, r *stdhtt
 	})
 }
 
+func (h *IntelligenceSourceV2Handler) eventFence(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "event_fence", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		var request struct {
+			SchemaVersion string `json:"schema_version"`
+		}
+		if err := h.decodeBody(w, r, &request); err != nil {
+			return nil, err
+		}
+		if request.SchemaVersion != "v2" || h.config.Operations.EventFence == nil {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		fence, err := h.config.Operations.EventFence(ctx, identity)
+		if err != nil {
+			return nil, err
+		}
+		if fence.SchemaVersion != "v2" || fence.EventCursor == "" || len(fence.EventCursor) > 4096 || fence.FenceSequence < 0 {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		return fence, nil
+	})
+}
+
 func (h *IntelligenceSourceV2Handler) snapshot(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 	h.serve(w, r, "snapshot", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
 		resourceID := chi.URLParam(r, "resourceID")
@@ -303,6 +347,35 @@ func (h *IntelligenceSourceV2Handler) authorize(w stdhttp.ResponseWriter, r *std
 			SchemaVersion string                                      `json:"schema_version"`
 			Decisions     []IntelligenceSourceV2AuthorizationDecision `json:"decisions"`
 		}{SchemaVersion: "v2", Decisions: decisions}, nil
+	})
+}
+
+func (h *IntelligenceSourceV2Handler) reply(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	h.serve(w, r, "replies", func(ctx context.Context, identity IntelligenceSourceIdentity) (any, error) {
+		var request struct {
+			SchemaVersion string `json:"schema_version"`
+			OperationID   string `json:"operation_id"`
+			Revision      int64  `json:"revision"`
+			Text          string `json:"text"`
+			Final         bool   `json:"final"`
+		}
+		if err := h.decodeBody(w, r, &request); err != nil {
+			return nil, err
+		}
+		if request.SchemaVersion != "v2" || !validSourceV2ConsentString(request.OperationID, 128) || request.Revision < 1 || strings.TrimSpace(request.Text) == "" || len(request.Text) > IntelligenceSourceV2ReplyMaxBytes {
+			return nil, ErrIntelligenceSourceInvalidRequest
+		}
+		if h.config.Operations.Reply == nil {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		messageID, err := h.config.Operations.Reply(ctx, identity, request.OperationID, request.Revision, request.Text, request.Final)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(messageID) == "" || len(messageID) > 256 {
+			return nil, ErrIntelligenceSourceUnavailable
+		}
+		return IntelligenceSourceV2ReplyResult{MessageID: messageID, OperationID: request.OperationID, Origin: IntelligenceSourceV2CodexBridgeOrigin}, nil
 	})
 }
 
