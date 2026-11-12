@@ -1,61 +1,56 @@
 # Local Stovo Codex Bridge
 
-This optional, locally run Node service connects a dedicated Stovo Messenger account to the local Codex app-server. It listens for `message:new` events in configured chats, responds to messages beginning with `@Codex` (configurable) or `/codex`, and posts the response as a separate Messenger account. It does not change the Messenger server.
+The bridge runs on your computer. Stovo Insight uses the Messenger connection you already linked to create a short-lived, chat-scoped pairing credential. The local bridge makes outbound HTTPS calls to Insight, runs the local Codex app-server, and sends response revisions through the same linked Messenger account. It does not sign in to Messenger directly and does not create a second Messenger identity.
 
-## Requirements and setup
+## Requirements
 
-- Node.js 22 or later and `npm`.
-- The Stovo Messenger API and Socket.IO service reachable from this machine.
-- A dedicated Messenger user account for the bridge. The bridge authenticates as that user, checks `/api/auth/me` against `botUserId`, and ignores messages authored by it. Messenger currently has no bot identity or structured mention field in the realtime event, so `@Codex` is a textual prefix; anyone who can post in an allowed chat can invoke it.
-- Codex CLI with the local `app-server` protocol. This bridge enables `experimentalApi` and `requiredHumanApproval`; approval request methods can change across Codex versions. Unknown requests are denied.
-- One existing local checkout per configured chat. The chat maps to exactly one absolute workspace path. Workspaces must be distinct and outside the private Codex home.
+- Node.js 22 or later.
+- Codex CLI with the local `app-server` stdio protocol.
+- An existing Insight-to-Messenger connection with the independent `read`, `process`, `codex`, and `reply` grants enabled. `codex` and `reply` are false by default; they do not grant `external_transfer` or `export`.
+- An Insight deployment with `messenger_local_codex_relay_enabled=true` and the tenant feature flag `messenger_local_codex_relay=true`. Both gates default off. Enable them only after the matching Messenger and Insight migrations/releases are installed.
+- A local checkout explicitly assigned to the configured chat.
 
-From this directory, install the dependency and create private config files:
+## Pair and run
 
-```sh
-npm install
-cp config.example.json config.json
-mkdir -m 700 private
-```
+1. In the already connected Stovo Insight MCP session, call `messenger_source_connections` and confirm the selected connection has `read`, `process`, `codex`, and `reply` enabled.
+2. Create a private config from the example and set the Insight HTTPS origin, chat ID, and absolute workspace. The already linked Messenger user becomes the default sole approver when pairing completes. Add other trusted Messenger user IDs to `approverIds` only when they should also invoke Codex and approve actions.
 
-Edit `config.json`: set Messenger REST and Socket.IO base URLs/path, the dedicated account's exact user ID, each allowed chat ID, its absolute workspace, and Messenger user IDs allowed to approve actions in that chat. Never put credentials in this file. Copy `requirements.example.toml` to `/etc/codex/requirements.toml` with root-owned, non-writable-by-bridge permissions. The current Unix launcher requires that exact system path so Codex reads the same managed policy. It fails closed if the file does not include `sh`, `bash`, and `zsh` `prompt-user` prefix rules. Include every shell wrapper that the installed Codex environment can use (the example also covers fish and Windows shell names). Restart Codex processes after changing managed requirements.
+   ```sh
+   cp config.example.json config.json
+   mkdir -m 700 private
+   ```
 
-Create `private/bot-tokens.json` with the dedicated account's existing Messenger session tokens:
+3. In that same authenticated Insight MCP session, call `pair_local_codex(connection_id, chat_id)`. The pairing is restricted to that existing connection and chat, requires all four current grants, starts from a live event fence, and expires after five minutes.
+4. Pair locally with the one-time code. It is exchanged once and the returned relay credential is saved only in the owner-private file `private/insight-relay.json`:
 
-```json
-{"accessToken":"…","refreshToken":"…"}
-```
+   ```sh
+   node src/main.mjs pair ./config.json
+   ```
 
-Set its mode to `0600` (`chmod 600 private/bot-tokens.json`). Tokens are stored only locally; the bridge refreshes through Messenger's existing `/api/auth/refresh` route and atomically replaces this file. The default `refreshOrigin` is `capacitor://localhost`, the native client origin accepted by the current server. Adjust it only to an origin the server explicitly allows. Keep `private/` out of backups and source control.
+   Paste the code when prompted. With one configured chat, the bridge selects it automatically; with several, it asks which configured chat to bind before exchanging the code. Insight checks that chat binding atomically while consuming the one-use code and returns the linked Messenger user ID as the default approver. Never put the code or relay credential in source control, shell scripts, or logs. Pair each configured chat separately; each chat has its own workspace and its own scoped relay credential.
+5. Install the managed Codex approval requirements from `requirements.example.toml` at `/etc/codex/requirements.toml` with root-owned, non-writable-by-bridge permissions. The bridge checks the Unix policy file at this exact path before it starts.
+6. Start the bridge:
 
-The bridge uses an isolated `codexHome` under `private/`, pins Codex to read-only sandboxing, disables configured MCP servers for its app-server process, and requests approval on demand. It does not inherit other environment variables except the minimum process environment needed to launch Codex. The state journal and credentials must be protected as local private data.
+   ```sh
+   npm start -- ./config.json
+   ```
 
-## Run and use
+   Send a message beginning with `@Codex` or `/codex` in the configured chat. `/codex stop` or `/codex interrupt` interrupts the active local turn. Press Ctrl-C to stop the bridge.
 
-```sh
-npm test
-npm start -- ./config.json
-```
-
-Mention the configured trigger at the start of a message (`@Codex explain this error`) or send `/codex explain this error`. In a configured chat, `/codex stop` or `/codex interrupt` interrupts the current Codex turn. The bridge resumes the saved Codex thread for that chat. A new user message is serialized behind the active turn in that chat; other chats have their own workspace and thread.
-
-Responses are streamed by creating one bot message and editing it as Codex emits text. Messenger's authenticated message API and operation IDs make retries idempotent. On reconnect, history is fetched to recover missed events. Events are deduplicated in the local journal. If the bridge stops during a Codex turn, it will not replay that uncertain turn; it marks it `needs-review` to avoid duplicate work. Pending approval codes are invalidated on restart.
+`stateFile` stores thread mappings, relay cursors, dedupe receipts, pending events and reply IDs. `codexHome` is isolated from every configured workspace. Protect both directories as private local state and back them up only to storage you trust. The relay credential can be revoked with the Insight tool `revoke_local_codex_companion(companion_id)`; revoking the Messenger connection also makes relay calls fail closed.
 
 ## Approvals
 
-Each app-server command or file-change request creates a one-time approval code and a summary in the originating chat. A listed approver must issue `/codex approve CODE` or `/codex deny CODE` in that same chat. `/codex cancel CODE` declines it. Approvals are bound to the configured Messenger sender ID and chat, consumed once, expire when the process restarts, and are not granted by the message that triggered the task. Approval applies only to the exact pending Codex request; broader permission-expansion requests and unknown request methods are denied. File changes are shown with their paths and are eligible only when all paths stay within that chat's configured workspace. Command previews are redacted before display and logs are bounded/redacted.
+Every file change, shell command, and publish/deploy command requires its own one-time approval. The bridge shows the exact pending Codex request and binds approval to its request ID, chat, and configured approver IDs. Reply with `/codex approve CODE`, `/codex deny CODE`, or `/codex cancel CODE` in the same chat. Unknown approval methods, broader permission grants, unapproved users, paths outside the assigned workspace, and incomplete file diffs are denied. Approval codes are cleared when the process restarts. A stale or revoked grant prevents further response chunks.
 
-Codex managed `prompt-user` requirements are essential: command executions must arrive as `humanCommand` approval checkpoints for this bridge to expose an approval. An ordinary execution request is rejected. Each approval is for one Codex request only; it does not pre-approve later commands. Commands that publish or deploy (for example `git push`, release/publish commands, or container pushes) receive the same per-command approval and are never run by the bridge on their own. Review the exact displayed command before approving it.
+The bridge starts Codex in read-only mode with MCP servers disabled. Managed Codex `prompt-user` shell rules are required for shell requests to arrive as reviewable approval checkpoints. Review the exact command before approval: the bridge cannot prove every effect of a command after it runs. Publish and deployment commands receive an explicit, separate approval and are never started automatically.
 
-## Security and limitations
+## Limits and rollout status
 
-- This is an opt-in local bridge, not a hosted bot. It sends real Messenger messages if configured with live credentials; this implementation was developed and tested only with local fixtures and fake transports. No live account or deployment was used.
-- `message:new` provides sender and chat IDs but no structured mention target. The textual trigger is therefore the supported explicit invocation. Configure only chats whose members you trust to invoke Codex, and bind each to a deliberately chosen checkout.
-- There is no Messenger server-side bot role today. A dedicated regular account supplies the separate sender identity and inherits that account's existing Messenger permissions. Do not share its credentials.
-- Approval behavior depends on Codex app-server's experimental `requiredHumanApproval` capability and locally installed managed requirements. The bridge fails closed when those requirements are absent and denies unrecognized approval methods. Verify on the exact Codex version and shell setup before relying on it. Codex/app-server upgrades may change protocol methods or managed policy behavior.
-- A shell command can itself perform broad or networked work after approval. The bridge requires exact human approval for each shell request but cannot prove a command's effects from its preview. Do not approve a command you do not understand.
-- Codex's `read-only` sandbox blocks normal workspace writes; approved file changes and approved commands are the only intended mutation path. The bridge cannot guarantee isolation from host-level configuration or vulnerabilities in Codex and its dependencies.
-- This service is single-process and stores its journal as a local JSON file. Do not run multiple bridge instances against the same config/state file.
-- The bridge uses current Messenger routes (`/api/auth/me`, chat message history/send, message edit, token refresh) and Socket.IO `message:new`. If the server changes those contracts or disallows the configured refresh origin, startup or reconnection will fail rather than widening access.
+- Source replay is read through Messenger's current Source v2 credential and exact revision APIs. Insight persists event dedupe, cursor progress, relay credentials as hashes, and response revisions. Messenger stamps `local_codex_bridge` origin server-side; client text and caller-supplied origin do not control loop suppression.
+- The linked Messenger user is the default approver; additional users must be listed in `approverIds`. The Messenger source event's authenticated sender ID is used; a textual message cannot spoof it.
+- The local journal prevents duplicate turns on replay. An interrupted uncertain turn is not re-run automatically; resend it after review.
+- The pairing workflow needs a completed Insight/Messenger release with the new routes and migrations. This code change does not enable either feature gate, perform a live canary, contact a real account, send a real Messenger message, or deploy anything.
+- Approval protocol details can change with Codex versions. Unknown methods are denied. Verify the installed Codex app-server against local fixtures before enabling the relay for a real chat.
 
-Never commit `config.json`, `private/`, session tokens, or local state. Stop with Ctrl-C; no deployment, publishing, or external message is part of installation.
+Run the offline bridge suite from this directory with `npm test`. Do not run the bridge against real credentials or chats as part of development verification.
