@@ -23,7 +23,7 @@ const offer = {
     { id: "chat-a", title: "Project Alpha" },
     { id: "chat-b", title: "Family archive" },
   ],
-  grants: { read: false, process: false, external_transfer: false, export: false },
+  grants: { read: false, process: false, external_transfer: false, export: false, codex: false, reply: false },
 };
 
 const consentQuery = "?flow=source_v2&response_type=code&client_id=intelligence-client&redirect_uri=https%3A%2F%2Fintelligence.example%2Fcallback%3Ftenant%3Done&state=opaque-state&code_challenge=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&code_challenge_method=S256";
@@ -205,7 +205,7 @@ describe("IntelligenceConsentPage", () => {
         redirect_uri: "https://intelligence.example/callback?tenant=one",
         state: "opaque-state",
         chat_id: "chat-b",
-        grants: { read: true, process: false, external_transfer: true, export: false },
+        grants: { read: true, process: false, external_transfer: true, export: false, codex: false, reply: false },
       }),
     }));
     expect(submit).toHaveBeenCalledOnce();

@@ -9,7 +9,7 @@ const connection = {
   id: "connection-1",
   chat_id: "chat-1",
   chat_title: "Project Alpha",
-  grants: { read: true, process: true, external_transfer: false, export: true },
+  grants: { read: true, process: true, external_transfer: false, export: true, codex: false, reply: false },
   created_at: "2026-10-10T10:00:00Z",
   expires_at: "2026-11-09T10:00:00Z",
   revoked_at: null,

@@ -179,7 +179,7 @@ func (h *IntelligenceSourceV2ConsentHandler) offer(w stdhttp.ResponseWriter, r *
 		writeSourceV2ConsentOperationError(w, err)
 		return
 	}
-	if offer.ClientID != parameters.ClientID || offer.RedirectURI != parameters.RedirectURI || len(offer.Chats) == 0 || len(offer.Grants) != 4 {
+	if offer.ClientID != parameters.ClientID || offer.RedirectURI != parameters.RedirectURI || len(offer.Chats) == 0 || len(offer.Grants) != 6 {
 		writeSourceV2ConsentError(w, stdhttp.StatusServiceUnavailable, "server_error")
 		return
 	}
@@ -277,7 +277,7 @@ func (h *IntelligenceSourceV2ConsentHandler) authorizeBrowser(w stdhttp.Response
 		return
 	}
 	r.Body = stdhttp.MaxBytesReader(w, r.Body, intelligenceSourceV2ConsentMaxBodyBytes)
-	if err := r.ParseForm(); err != nil || len(r.PostForm) != 11 {
+	if err := r.ParseForm(); err != nil || len(r.PostForm) != 13 {
 		writeSourceV2ConsentError(w, stdhttp.StatusBadRequest, "invalid_request")
 		return
 	}

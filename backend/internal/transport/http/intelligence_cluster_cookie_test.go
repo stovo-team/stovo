@@ -28,7 +28,7 @@ func TestSourceConsentCookieUsesConfiguredClusterPath(t *testing.T) {
 	})
 	router := chi.NewRouter()
 	router.Mount("/api/v2/intelligence", handler)
-	body := `{"flow":"source_v2","response_type":"code","client_id":"client","redirect_uri":"https://intelligence.example/callback","state":"state","code_challenge":"` + browserTestChallenge + `","code_challenge_method":"S256","chat_id":"chat","grants":{"read":true,"process":true,"external_transfer":false,"export":true}}`
+	body := `{"flow":"source_v2","response_type":"code","client_id":"client","redirect_uri":"https://intelligence.example/callback","state":"state","code_challenge":"` + browserTestChallenge + `","code_challenge_method":"S256","chat_id":"chat","grants":{"read":true,"process":true,"external_transfer":false,"export":true,"codex":false,"reply":false}}`
 	request := httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/authorize-session", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
@@ -37,7 +37,7 @@ func TestSourceConsentCookieUsesConfiguredClusterPath(t *testing.T) {
 	if response.Code != http.StatusOK || len(cookies) != 1 || cookies[0].Path != "/s/pilot/api/v2/intelligence/authorize" {
 		t.Fatalf("cluster cookie: status %d cookies %#v", response.Code, cookies)
 	}
-	form := url.Values{"response_type": {"code"}, "client_id": {"client"}, "redirect_uri": {"https://intelligence.example/callback"}, "state": {"state"}, "code_challenge": {browserTestChallenge}, "code_challenge_method": {"S256"}, "chat_id": {"chat"}, "read": {"true"}, "process": {"true"}, "external_transfer": {"false"}, "export": {"true"}}
+	form := url.Values{"response_type": {"code"}, "client_id": {"client"}, "redirect_uri": {"https://intelligence.example/callback"}, "state": {"state"}, "code_challenge": {browserTestChallenge}, "code_challenge_method": {"S256"}, "chat_id": {"chat"}, "read": {"true"}, "process": {"true"}, "external_transfer": {"false"}, "export": {"true"}, "codex": {"false"}, "reply": {"false"}}
 	request = httptest.NewRequest(http.MethodPost, "/api/v2/intelligence/authorize", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", "https://messenger.example")
