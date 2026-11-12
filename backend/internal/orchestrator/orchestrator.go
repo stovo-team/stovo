@@ -90,14 +90,15 @@ func (o *Orchestrator) initSchema() error {
 		nav_tabs JSONB,
 		chat_types JSONB NOT NULL DEFAULT '{"direct":true,"group":true,"channel":true,"voice":true}'::jsonb,
 		require_setup_invite BOOLEAN NOT NULL DEFAULT FALSE,
-		public_preview BOOLEAN NOT NULL DEFAULT FALSE,
+		public_preview BOOLEAN NOT NULL DEFAULT TRUE,
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 	);
 	CREATE INDEX IF NOT EXISTS idx_servers_slug ON servers(slug);
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS nav_tabs JSONB DEFAULT '{"chats":true,"storage":true,"plans":true,"settings":true}'::jsonb;
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS chat_types JSONB NOT NULL DEFAULT '{"direct":true,"group":true,"channel":true,"voice":true}'::jsonb;
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS require_setup_invite BOOLEAN NOT NULL DEFAULT FALSE;
-	ALTER TABLE servers ADD COLUMN IF NOT EXISTS public_preview BOOLEAN NOT NULL DEFAULT FALSE;
+	ALTER TABLE servers ADD COLUMN IF NOT EXISTS public_preview BOOLEAN NOT NULL DEFAULT TRUE;
+	ALTER TABLE servers ALTER COLUMN public_preview SET DEFAULT TRUE;
 	`
 	_, err := o.masterDB.Exec(schema)
 	return err
