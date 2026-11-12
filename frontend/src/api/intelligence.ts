@@ -1,7 +1,7 @@
 import type { ApiRequestOptions } from "./client";
 import { getApiUrl, getClusterPath } from "./client";
 
-export type IntelligenceGrant = "read" | "process" | "external_transfer" | "export";
+export type IntelligenceGrant = "read" | "process" | "external_transfer" | "export" | "codex" | "reply";
 export type IntelligenceGrants = Record<IntelligenceGrant, boolean>;
 export type IntelligenceBrowserFlow = "oidc" | "source_v2";
 
