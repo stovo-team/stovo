@@ -31,11 +31,16 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
     let kind;
     let session = codexForChat(chatId);
     if (request.method === 'item/commandExecution/requestApproval') {
-      const command = typeof params.command === 'string' ? params.command.trim() : '';
+      const command = typeof params.command === 'string'
+        ? params.command.trim()
+        : Array.isArray(params.command) && params.command.length > 0 && params.command.every((part) => typeof part === 'string') && params.command[0].trim()
+          ? params.command.join(' ')
+          : '';
       if (!command || params.kind !== 'humanCommand') throw new Error('managed human-command checkpoint is required');
       if (params.cwd && !await isInsideWorkspace(chat.workspace, params.cwd)) throw new Error('command working directory is outside the configured workspace');
       kind = publishPattern.test(command) ? 'publish' : 'command';
-      summary = `${kind === 'publish' ? 'PUBLISH ACTION' : 'SHELL COMMAND'}\n${redact(command)}\nWorking directory: ${params.cwd ? redact(params.cwd) : 'configured workspace'}`;
+      const displayCommand = Array.isArray(params.command) ? JSON.stringify(params.command) : command;
+      summary = `${kind === 'publish' ? 'PUBLISH ACTION' : 'SHELL COMMAND'}\n${redact(displayCommand)}\nWorking directory: ${params.cwd ? redact(params.cwd) : 'configured workspace'}`;
     } else if (request.method === 'item/fileChange/requestApproval') {
       kind = 'file-change';
       const chatSession = session;
