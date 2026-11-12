@@ -13,8 +13,8 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
   let started = false;
 
   async function send(chatId, text, operationKey) {
-    const value = text.trim().slice(0, 3900) || 'Codex returned no text.';
-    return messenger.send(chatId, value, operationId(operationKey));
+    const value = truncateUtf8(redact(text.trim()), 3900) || 'Codex returned no text.';
+    return messenger.send(chatId, value, operationId(operationKey), { final: true });
   }
 
   async function handleApproval(request) {
@@ -117,12 +117,12 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
       updateChain = updateChain.then(async () => {
         if (!partial) return;
         if (!reply) {
-          const created = await messenger.send(event.chatId, partial.slice(0, 3900), operationId(event.id));
+          const created = await messenger.send(event.chatId, truncateUtf8(redact(partial), 3900), operationId(event.id), { final: false });
           reply = { messageId: created?.id };
           if (!reply.messageId) throw new Error('Messenger did not return the streamed reply id');
           await journal.setReply(event.id, reply);
         } else {
-          await messenger.edit(event.chatId, reply.messageId, partial.slice(0, 3900));
+          await messenger.edit(event.chatId, reply.messageId, truncateUtf8(redact(partial), 3900), operationId(event.id), { final: false });
         }
       });
     };
@@ -139,7 +139,7 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
       await updateChain;
       if (result.status !== 'completed') throw new Error(`Codex turn ended with status ${result.status}`);
       const finalText = partial || result.text || 'Codex returned no text.';
-      if (reply?.messageId) await messenger.edit(event.chatId, reply.messageId, finalText.slice(0, 3900));
+      if (reply?.messageId) await messenger.edit(event.chatId, reply.messageId, truncateUtf8(redact(finalText), 3900), operationId(event.id), { final: true });
       else await send(event.chatId, finalText, event.id);
       await journal.markProcessed(event.id);
     } catch (error) {
@@ -159,18 +159,24 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
     try { return await next; } finally { if (chatLocks.get(chatId) === next) chatLocks.delete(chatId); }
   }
 
+  function dispatch(event) {
+    void serialized(event.chatId, () => processEvent(event)).catch((error) => {
+      logger('event-dispatch-failed', { chatId: event.chatId, messageId: event.id, error: safeError(error) });
+    });
+  }
+
   async function handleMessage(raw) {
     if (closed) return;
     const message = raw?.message ?? raw;
     const event = classifyMessage(message, config);
     if (event) {
-      await journal.enqueue(event);
+      if (!await journal.enqueue(event)) return;
       await journal.setCursor(event.chatId, event.id);
       if (event.control) return processEvent(event);
       return serialized(event.chatId, () => processEvent(event));
     }
     const chatId = String(message?.chatId ?? '');
-    if (config.chats.has(chatId) && message?.id && message?.senderId !== config.botUserId) await journal.setCursor(chatId, String(message.id));
+    if (config.chats.has(chatId) && message?.id && message?.origin !== 'local_codex_bridge') await journal.setCursor(chatId, String(message.id));
   }
 
   async function recoverChat(chatId) {
@@ -210,8 +216,8 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
       if (chat) await send(event.chatId, `A previous Codex turn was interrupted while the bridge stopped. It was not replayed to avoid duplicate work. Please resend the request if needed. Original request id: ${event.id}`, `interrupted:${event.id}`);
     }
     await journal.clearApprovals();
-    for (const event of journal.pending()) await serialized(event.chatId, () => processEvent(event));
-    await recover();
+    for (const event of journal.pending()) dispatch(event);
+    if (typeof messenger.history === 'function') await recover();
   }
 
   async function recover() {
@@ -222,6 +228,23 @@ export function createBridge({ config, journal, messenger, codexForChat, logger 
     handleMessage,
     start,
     recover,
+    async receiveRelayMessage(event) {
+      if (!event || typeof event.id !== 'string' || !event.id) throw new Error('Insight relay event has no stable event ID');
+      if (!config.chats.has(String(event.chatId ?? ''))) {
+        await journal.markProcessed(event.id);
+        return false;
+      }
+      const classified = classifyMessage(event, config);
+      if (!classified) {
+        await journal.markProcessed(event.id);
+        return false;
+      }
+      if (!await journal.enqueue(classified)) return false;
+      await journal.setCursor(classified.chatId, classified.id);
+      if (classified.control && activeTurns.has(classified.chatId)) await processEvent(classified);
+      else dispatch(classified);
+      return true;
+    },
     async close() {
       closed = true;
       for (const [chatId, { session }] of activeTurns) await session.interrupt(journal.threadFor(chatId)).catch(() => {});
@@ -235,6 +258,18 @@ function operationId(input) {
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = bytes.toString('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function truncateUtf8(value, maxBytes) {
+  let output = '';
+  let bytes = 0;
+  for (const character of value) {
+    const size = Buffer.byteLength(character, 'utf8');
+    if (bytes + size > maxBytes) break;
+    output += character;
+    bytes += size;
+  }
+  return output;
 }
 
 async function isInsideWorkspace(root, target) {
