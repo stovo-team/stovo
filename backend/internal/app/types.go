@@ -349,6 +349,12 @@ type sendMessageRequest struct {
 	MentionedUserIDs    []string `json:"mentionedUserIds"`
 	AttachmentsPending  bool     `json:"attachmentsPending"`
 	CollectionID        *string  `json:"collectionId"`
+	SourceConnectionID  string   `json:"-"`
+	SourceOperationID   string   `json:"-"`
+	SourceOrigin        string   `json:"-"`
+	SourceRevision      int64    `json:"-"`
+	SourceContentHash   []byte   `json:"-"`
+	SourceFinal         bool     `json:"-"`
 }
 
 type logsResponse struct {

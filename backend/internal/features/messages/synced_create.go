@@ -19,6 +19,10 @@ type SyncedMessage struct {
 	Content, Ciphertext, Nonce, EncryptionMetadata              *string
 	KeyVersion                                                  *int
 	ReplyToMessageID, ThreadRootMessageID                       *string
+	SourceConnectionID, SourceOperationID, SourceOrigin         string
+	SourceRevision                                              int64
+	SourceContentHash                                           []byte
+	SourceFinal                                                 bool
 	AttachmentIDs                                               []string
 	CreatedAt                                                   time.Time
 }
