@@ -163,8 +163,8 @@ awk '
     }
     if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
     if (npm_remote_cache_enabled) fail("Frontend CI must use the runner-local npm cache.")
-    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\'' && needs.solid-boundaries.result == '\''success'\''"
-    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && needs.publish-ghcr-images.result == '\''success'\'' && (needs.solid-boundaries.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
+    expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"
+    expected_backend = "${{ !cancelled() && github.ref == '\''refs/heads/master'\'' && needs.changes.result == '\''success'\'' && needs.changes.outputs.backend == '\''true'\'' && needs.publish-ghcr-images.result == '\''success'\'' && (needs.backend-ci.result == '\''success'\'' || (github.event_name == '\''workflow_dispatch'\'' && inputs.backend_deploy_only)) }}"
     if (job_condition["deploy-frontend-web"] != expected_frontend) {
       fail("Frontend deploy must require a master push and the frontend path filter.")
     }
@@ -297,8 +297,8 @@ for workflow in .github/workflows/pipeline.yml "$trusted_pr_workflow"; do
     change_contract=$(sed -n '/^  changes:/,/^  pipeline-contract:/p' "$workflow")
   fi
 
-  if ! grep -Fq 'size_baseline: ${{ steps.filter.outputs.size_baseline }}' <<< "$change_contract"; then
-    echo "Workflow $workflow must expose size-baseline changes separately from product code." >&2
+  if grep -Eq 'solid-boundaries|size_baseline|check-solid-boundaries|pr-size' "$workflow"; then
+    echo "Workflow $workflow must not retain PR-size or SOLID boundary gates." >&2
     exit 1
   fi
 
@@ -312,18 +312,6 @@ for workflow in .github/workflows/pipeline.yml "$trusted_pr_workflow"; do
     /^            [[:alnum:]_-]+:$/ && capture { exit }
     capture { print }
   ' <<< "$change_contract")
-  size_baseline_filter=$(awk '
-    /^            size_baseline:$/ { capture = 1; next }
-    /^            [[:alnum:]_-]+:$/ && capture { exit }
-    capture { print }
-  ' <<< "$change_contract")
-
-  if grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$frontend_filter" ||
-     grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$backend_filter" ||
-     ! grep -Fq 'docs/engineering/size-baseline.tsv' <<< "$size_baseline_filter"; then
-    echo "Workflow $workflow must run the SOLID check for size-baseline updates without scheduling frontend/backend test shards." >&2
-    exit 1
-  fi
 
   for product_filter in "$frontend_filter" "$backend_filter"; do
     if grep -Fq '.github/workflows/pipeline.yml' <<< "$product_filter" ||
@@ -332,31 +320,18 @@ for workflow in .github/workflows/pipeline.yml "$trusted_pr_workflow"; do
       exit 1
     fi
   done
-
-  solid_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  if ! grep -Fq "needs.changes.outputs.size_baseline == 'true'" <<< "$solid_contract"; then
-    echo "Workflow $workflow must run SOLID boundaries when the size baseline changes." >&2
-    exit 1
-  fi
 done
 
-if [[ ! -f scripts/check-solid-boundaries.sh ]]; then
-  echo "Trusted PR SOLID boundaries require scripts/check-solid-boundaries.sh." >&2
+if [[ -f .github/workflows/pr-size.yml ]]; then
+  echo "PR size policy workflow must be removed." >&2
   exit 1
 fi
-solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
-  if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Trusted PR SOLID boundaries must run with Bash ($required)." >&2
-    exit 1
-  fi
-done
-if grep -Fq 'check-solid-boundaries.ps1' "$trusted_pr_workflow"; then
-  echo "Trusted PR SOLID boundaries must use the cross-platform Bash checker." >&2
+if [[ -f scripts/check-solid-boundaries.sh || -f scripts/check-solid-boundaries.ps1 ]]; then
+  echo "SOLID boundary checker scripts must be removed from CI." >&2
   exit 1
 fi
-if [[ $(grep -Fc "'scripts/check-solid-boundaries.sh'" "$trusted_pr_workflow") -ne 2 ]]; then
-  echo "Frontend and backend path filters must trigger the Linux SOLID boundary job for checker changes." >&2
+if grep -Fq 'pr-budget.test.mjs' "$trusted_pr_workflow" || [[ -f .github/pr-budget.test.mjs ]]; then
+  echo "PR size budget regressions must be removed." >&2
   exit 1
 fi
 grep -Fq '  pull_request_target:' "$trusted_pr_workflow" || {
@@ -407,7 +382,6 @@ require_trusted_pr_runner() {
 
 require_trusted_pr_runner changes 'self-hosted Windows tests'
 require_trusted_pr_runner pipeline-contract 'self-hosted Windows tests'
-require_trusted_pr_runner solid-boundaries 'self-hosted tests Windows'
 require_trusted_pr_runner frontend_dependencies 'self-hosted e2e'
 require_trusted_pr_runner frontend_test_shards 'self-hosted e2e'
 require_trusted_pr_runner frontend-ci 'self-hosted e2e'
@@ -543,14 +517,6 @@ grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile |
   exit 1
 }
 
-solid_workflow_contract=$(sed -n '/^  solid-boundaries:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)' 'shell: bash' 'run: bash scripts/check-solid-boundaries.sh all'; do
-  if ! grep -Fq "$required" <<< "$solid_workflow_contract"; then
-    echo "Master SOLID boundaries must run on the self-hosted tests runner and bootstrap Git Bash on Windows ($required)." >&2
-    exit 1
-  fi
-done
-
 caddy_watchdog_contract=$(cat .github/workflows/caddy-watchdog.yml)
 for required in 'runs-on: [self-hosted, Windows]' 'name: Prefer Git for Windows Bash over the WSL shim' 'shell: powershell' 'Get-Command git.exe' 'bin\bash.exe' 'Add-Content -Path $env:GITHUB_PATH'; do
   if ! grep -Fq "$required" <<< "$caddy_watchdog_contract"; then
@@ -643,14 +609,9 @@ if [[ -f .github/workflows/codeql.yml ]]; then
   fi
 fi
 
-if ! grep -Fq "needs.changes.outputs.frontend == 'true'" <<< "$solid_workflow_contract" ||
-   ! grep -Fq "needs.changes.outputs.backend == 'true'" <<< "$solid_workflow_contract"; then
-  echo "Master SOLID boundaries must run when either frontend or backend files change." >&2
-  exit 1
-fi
-frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  solid-boundaries:/p' .github/workflows/pipeline.yml)
+frontend_workflow_contract=$(sed -n '/^  frontend-ci:/,/^  backend_test_shards:/p' .github/workflows/pipeline.yml)
 if grep -Fq 'check-solid-boundaries.sh' <<< "$frontend_workflow_contract"; then
-  echo "Frontend CI must not invoke the separate SOLID boundary phase." >&2
+  echo "Frontend CI must not invoke SOLID boundary checks." >&2
   exit 1
 fi
 for deployment in deploy-frontend-web deploy-backend-web; do
