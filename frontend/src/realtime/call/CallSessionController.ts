@@ -602,13 +602,10 @@ export default class CallSessionController {
       patch.voiceEnhancement !== undefined;
 
     if (needsReacquire && (this.peerReady || this.topology === "sfu")) {
-      // Blank local preview immediately so facing/mirror CSS can change during
-      // the black gap instead of visibly un-mirroring the old camera frame.
-      if (patch.cameraFacingMode !== undefined && this.localVideoEl) {
-        this.localVideoEl.srcObject = null;
-      }
       try {
-        await this.acquireLocalStream();
+        await this.acquireLocalStream({
+          retryCameraSwitchAfterRelease: patch.cameraFacingMode !== undefined || patch.videoDeviceId !== undefined,
+        });
       } catch (err) {
         this.settings = previous;
         this.applyMicMutedState();
@@ -867,7 +864,7 @@ export default class CallSessionController {
     }
   }
 
-  private async acquireLocalStream() {
+  private async acquireLocalStream(options: { retryCameraSwitchAfterRelease?: boolean } = {}) {
     if (this.sourceStream && !this.peerReady && this.topology === "mesh") {
       const needsVideo = this.callType === "video";
       if (!needsVideo || this.hasLiveVideoTrack(this.sourceStream)) {
@@ -888,30 +885,50 @@ export default class CallSessionController {
     }
 
     const isVideo = this.callType === "video";
+    const previousLocalStream = this.localStream;
+    const previousSourceStream = this.sourceStream;
+    const hadLiveVideo = this.hasLiveVideoTrack(previousSourceStream);
     let nextSource: MediaStream;
 
     if (isVideo) {
       try {
         nextSource = await this.acquireVideoStream();
       } catch (err) {
-        const isMediaErr =
+        if (
+          hadLiveVideo &&
+          options.retryCameraSwitchAfterRelease &&
           err instanceof DOMException &&
-          [
-            "NotFoundError",
-            "NotAllowedError",
-            "DevicesNotFoundError",
-            "OverconstrainedError",
-            "NotReadableError",
-          ].includes(err.name);
-        if (isMediaErr) {
-          nextSource = await navigator.mediaDevices.getUserMedia({
-            audio: this.buildAudioConstraints(),
-            video: false,
-          });
-          this.callType = "audio";
-          this.onVideoUnavailable?.();
+          err.name === "NotReadableError"
+        ) {
+          // Some Android camera stacks cannot open the opposite camera while
+          // the current one is live. Release video only, then make one retry;
+          // leave the current preview attached while the device restarts.
+          stopVideoTracks([previousSourceStream, previousLocalStream]);
+          nextSource = await this.acquireVideoStream();
         } else {
-          throw err;
+          // A failed camera switch or in-call media refresh must leave the active
+          // stream intact. Falling back to audio is only useful when the call
+          // does not already have a working camera.
+          if (hadLiveVideo) throw err;
+          const isMediaErr =
+            err instanceof DOMException &&
+            [
+              "NotFoundError",
+              "NotAllowedError",
+              "DevicesNotFoundError",
+              "OverconstrainedError",
+              "NotReadableError",
+            ].includes(err.name);
+          if (isMediaErr) {
+            nextSource = await navigator.mediaDevices.getUserMedia({
+              audio: this.buildAudioConstraints(),
+              video: false,
+            });
+            this.callType = "audio";
+            this.onVideoUnavailable?.();
+          } else {
+            throw err;
+          }
         }
       }
     } else {
@@ -929,8 +946,6 @@ export default class CallSessionController {
       nextSend = nextSource;
     }
 
-    this.stopStream(this.localStream);
-    if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
     this.localStream = nextSend;
     this.sourceStream = nextSource;
 
@@ -944,15 +959,33 @@ export default class CallSessionController {
     this.applyCameraEnabledState();
     this.registerLocalAudioSpeaking(nextSource);
 
-    if (this.topology === "sfu") {
-      await this.sfu.publishLocalStream(nextSend);
-      this.sfu.setMicMuted(this.settings.micMuted);
-      this.sfu.setCameraEnabled(this.settings.cameraEnabled);
-    } else {
-      this.mesh.setLocalStream(nextSend);
-      if (this.peerReady) {
-        await this.mesh.republishLocalTracks();
+    try {
+      if (this.topology === "sfu") {
+        await this.sfu.publishLocalStream(nextSend);
+        this.sfu.setMicMuted(this.settings.micMuted);
+        this.sfu.setCameraEnabled(this.settings.cameraEnabled);
+      } else {
+        this.mesh.setLocalStream(nextSend);
+        if (this.peerReady) {
+          await this.mesh.republishLocalTracks();
+        }
       }
+    } catch (err) {
+      this.localStream = previousLocalStream;
+      this.sourceStream = previousSourceStream;
+      if (previousSourceStream && this.localVideoEl && this.callType === "video") {
+        this.localVideoEl.srcObject = previousSourceStream;
+        void this.localVideoEl.play().catch(() => undefined);
+      }
+      if (this.topology === "mesh" && previousLocalStream) this.mesh.setLocalStream(previousLocalStream);
+      this.stopStream(nextSend);
+      if (nextSend !== nextSource) this.stopStream(nextSource);
+      throw err;
+    }
+
+    if (previousLocalStream && previousLocalStream !== nextSend) this.stopStream(previousLocalStream);
+    if (previousSourceStream && previousSourceStream !== previousLocalStream && previousSourceStream !== nextSource) {
+      this.stopStream(previousSourceStream);
     }
   }
 

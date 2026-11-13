@@ -319,6 +319,9 @@ export function useCallSession({
 
   const applyCallAudioPatch = useCallback(async (patch: Partial<CallSettings>) => {
     const controller = audioCallRef.current;
+    const previousValues = Object.fromEntries(
+      Object.keys(patch).map((key) => [key, callAudioSettings[key as keyof CallSettings]]),
+    ) as Partial<CallSettings>;
     setCallAudioWarning(null);
     setCallAudioSettings((current) => ({ ...current, ...patch }));
     if (!controller) {
@@ -327,11 +330,12 @@ export function useCallSession({
     try {
       await controller.applySettings(patch);
     } catch (err) {
+      setCallAudioSettings((current) => ({ ...current, ...previousValues }));
       setCallAudioWarning(
         err instanceof Error ? err.message : "Could not apply setting. Check permissions."
       );
     }
-  }, []);
+  }, [callAudioSettings]);
 
   useEffect(() => {
     if (!callNotice) return;
