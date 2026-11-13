@@ -19,6 +19,7 @@ describe("applyAppearanceToDocument", () => {
     applyAppearanceToDocument(appearance, "dark", "system-ui");
 
     expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).toBe(gradient);
+    expect(document.documentElement.dataset.brandGradient).toBe("custom");
     expect(document.documentElement.style.getPropertyValue("--accent-primary-dark")).toBe("#123456");
   });
 
@@ -29,6 +30,7 @@ describe("applyAppearanceToDocument", () => {
     applyAppearanceToDocument(appearance, "light", "system-ui");
 
     expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).toBe("");
+    expect(document.documentElement.dataset.brandGradient).toBeUndefined();
     expect(document.documentElement.style.getPropertyValue("--accent-primary-light")).toBe("#654321");
   });
 
@@ -41,5 +43,6 @@ describe("applyAppearanceToDocument", () => {
     applyAppearanceToDocument(DEFAULT_APPEARANCE, "light", "system-ui");
 
     expect(document.documentElement.style.getPropertyValue("--color-brand-gradient")).toBe("");
+    expect(document.documentElement.dataset.brandGradient).toBeUndefined();
   });
 });

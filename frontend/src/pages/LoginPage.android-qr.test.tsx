@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { strings as russianStrings } from "../config/strings/russian";
 const mocks = vi.hoisted(() => ({ platform: "android", scan: vi.fn(), accept: vi.fn(), login: vi.fn() }));
 vi.mock("@capacitor/core", async (importOriginal) => ({ ...await importOriginal<typeof import("@capacitor/core")>(), Capacitor: { isNativePlatform: () => true, getPlatform: () => mocks.platform } }));
 vi.mock("../native/androidQrScanner", async (importOriginal) => ({ ...await importOriginal<typeof import("../native/androidQrScanner")>(), scanAndroidLoginQR: mocks.scan }));
@@ -108,6 +109,22 @@ describe("Android QR login", () => {
         expectNoRedemption();
         expect(getApiUrl()).toBe(selected);
         expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
+    });
+    it("explains camera access failures and keeps password sign-in available", async () => {
+        mocks.scan.mockRejectedValueOnce(new Error("Camera permission denied"));
+        await render();
+        await scan();
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not access the camera");
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain("use your password");
+        expect(container.querySelector('[role="alert"]')?.textContent).not.toContain("server address");
+        expectPassword();
+        expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
+    });
+    it("keeps Russian camera guidance specific to login and setup", () => {
+        expect(russianStrings.auth.qrLoginCameraUnavailable).toContain("парол");
+        expect(russianStrings.auth.qrLoginCameraUnavailable).not.toContain("адрес сервера");
+        expect(russianStrings.auth.qrSetupCameraUnavailable).toContain("вручную");
+        expect(russianStrings.auth.qrSetupCameraUnavailable).not.toContain("парол");
     });
     it("hides scanner on iOS", async () => { mocks.platform = "ios"; await render(); expect(container.textContent).not.toContain("Scan desktop QR"); expectPassword(); });
 });

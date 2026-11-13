@@ -35,11 +35,14 @@ function applySavedBrandGradient(root: HTMLElement) {
     const angle = match ? Number(match[1]) : -1;
     if (!match || angle < 0 || angle > 360) {
       root.style.removeProperty("--color-brand-gradient");
+      delete root.dataset.brandGradient;
       return;
     }
     root.style.setProperty("--color-brand-gradient", `linear-gradient(${angle}deg, ${match[2]}, ${match[3]})`);
+    root.dataset.brandGradient = "custom";
   } catch {
     root.style.removeProperty("--color-brand-gradient");
+    delete root.dataset.brandGradient;
   }
 }
 
@@ -60,7 +63,7 @@ function applyCustomAccent(root: HTMLElement, accent: string) {
 
 function resetAppearanceDocument(root: HTMLElement) {
   for (const property of [
-    "themeMode", "accent", "density", "wallpaper", "bubbleShape", "messageFont"
+    "themeMode", "accent", "density", "wallpaper", "bubbleShape", "messageFont", "brandGradient"
   ]) delete root.dataset[property];
   for (const property of [
     "--message-scale", "--radius-bubble", "--float-radius-bubble", "--message-font-family",

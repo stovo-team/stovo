@@ -2,6 +2,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const mocks = vi.hoisted(() => ({
   accessToken: "access-token",
@@ -17,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   isLoading: false,
   respond: vi.fn(),
 }));
+
+const styles = readFileSync(resolve(process.cwd(), "src/styles/qr-login-approval.css"), "utf8");
 
 vi.mock("../api/auth", () => ({ respondToBrowserQRLogin: mocks.respond }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => mocks }));
@@ -60,6 +64,8 @@ describe("QRLoginApprovalPage", () => {
     expect(container.querySelector(".qr-approval-instruction")?.classList.contains("qr-approval-instruction")).toBe(true);
     expect(container.querySelector(".qr-approval-panel .auth-actions button")?.textContent).toBe("Login");
     expect(container.querySelectorAll(".qr-approval-panel .auth-actions button")).toHaveLength(2);
+    expect(Array.from(container.querySelectorAll<HTMLButtonElement>(".qr-approval-panel .auth-actions button"), button => button.textContent)).toEqual(["Login", "Cancel"]);
+    expect(styles).toMatch(/\.qr-approval-panel \.auth-actions button\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/);
   });
 
   it("approves the scanned sign-in only after Login is selected", async () => {
@@ -71,5 +77,16 @@ describe("QRLoginApprovalPage", () => {
 
     expect(mocks.respond).toHaveBeenCalledWith("request-1", "approve", "access-token");
     expect(container.textContent).toContain("Request handled. You can return to your computer.");
+  });
+
+  it("cancels the scanned sign-in without approving it", async () => {
+    await render();
+    const cancel = Array.from(container.querySelectorAll<HTMLButtonElement>(".qr-approval-panel .auth-actions button"))
+      .find(button => button.textContent === "Cancel");
+    expect(cancel).not.toBeUndefined();
+
+    await act(async () => cancel!.click());
+
+    expect(mocks.respond).toHaveBeenCalledWith("request-1", "reject", "access-token");
   });
 });
