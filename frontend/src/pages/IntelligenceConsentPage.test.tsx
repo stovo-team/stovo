@@ -147,7 +147,7 @@ describe("IntelligenceConsentPage", () => {
     expect(container.textContent).not.toContain("untrusted server detail");
   });
 
-  it("shows the exact client and callback, one-chat choices, and six grants denied by default", async () => {
+  it("shows the exact client and callback, one-chat choices, and all grants denied by default", async () => {
     setOfferResponse(offer);
 
     const container = await renderConsent();
@@ -155,8 +155,8 @@ describe("IntelligenceConsentPage", () => {
     expect(container.textContent).toContain("intelligence-client");
     expect(container.textContent).toContain("https://intelligence.example/callback?tenant=one");
     expect(container.querySelectorAll("[name=chat_id]")).toHaveLength(2);
-    const grants = Array.from(container.querySelectorAll<HTMLInputElement>("input[type=checkbox]"));
-    expect(grants).toHaveLength(6);
+    const grants = Array.from(container.querySelectorAll<HTMLInputElement>(".intelligence-consent-grants input[type=checkbox]"));
+    expect(grants).toHaveLength(Object.keys(offer.grants).length);
     expect(grants.every((checkbox) => !checkbox.checked)).toBe(true);
   });
 
