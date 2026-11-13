@@ -126,7 +126,7 @@ describe("active chat message spacing", () => {
     expect(rule(".messenger-shell.has-active-chat .messages-panel")).toContain(
       "padding-inline: var(--active-chat-message-content-inset-x);"
     );
-    expect(rule(".messenger-shell.has-active-chat")).toContain(
+    expect(lastRule(".messenger-shell.has-active-chat")).toContain(
       "--active-chat-message-content-inset-x: calc(var(--active-chat-message-inset-x) + 2px);"
     );
     expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
