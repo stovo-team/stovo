@@ -10,7 +10,7 @@ import AndroidQrConfirmation from "../components/AndroidQrConfirmation";
 import StovoLogo from "../components/StovoLogo";
 import { useStrings } from "../i18n/LanguageContext";
 import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
-import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, scanAndroidLoginQR } from "../native/androidQrScanner";
+import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, isAndroidQrCameraUnavailable, scanAndroidLoginQR } from "../native/androidQrScanner";
 
 function normalizeUrl(value: string): string | null {
   const trimmed = value.trim();
@@ -89,7 +89,9 @@ export default function ServerSetupPage() {
     } catch (err) {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
         ? strings.auth.qrScannerInstalling
-        : strings.auth.scanSetupQrFailed);
+        : isAndroidQrCameraUnavailable(err)
+          ? strings.auth.qrCameraUnavailable
+          : strings.auth.scanSetupQrFailed);
     } finally {
       setIsAuthenticating(false);
     }
@@ -143,9 +145,10 @@ export default function ServerSetupPage() {
           <button type="submit" disabled={isTesting || isAuthenticating}>
             {isTesting ? copy.testingConnection : copy.connect}
           </button>
+          {isAndroid && <p id="android-qr-find-guide" className="muted-copy android-qr-find-guide">{strings.auth.androidQrFindOnComputer}</p>}
         </form>}
         {isAndroid && !androidQR && <div className="auth-method-options android-auth-methods">
-          <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isTesting || isAuthenticating} onClick={handleScanAndroidQR}>
+          <button type="button" className="secondary-button" data-auth-method="scan-qr" aria-describedby="android-qr-find-guide" disabled={isTesting || isAuthenticating} onClick={handleScanAndroidQR}>
             <QrCode aria-hidden="true" size={18} />
             <span>{strings.auth.scanDesktopQrShort}</span>
           </button>

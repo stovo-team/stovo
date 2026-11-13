@@ -109,5 +109,13 @@ describe("Android QR login", () => {
         expect(getApiUrl()).toBe(selected);
         expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
     });
+    it("explains camera access failures and keeps password sign-in available", async () => {
+        mocks.scan.mockRejectedValueOnce(new Error("Camera permission denied"));
+        await render();
+        await scan();
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not access the camera");
+        expectPassword();
+        expect(container.querySelector('button[type="submit"]')?.hasAttribute("disabled")).toBe(false);
+    });
     it("hides scanner on iOS", async () => { mocks.platform = "ios"; await render(); expect(container.textContent).not.toContain("Scan desktop QR"); expectPassword(); });
 });
