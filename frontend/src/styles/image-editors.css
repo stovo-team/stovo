@@ -197,6 +197,11 @@
   border-radius: var(--radius-small);
 }
 
+.image-editor-crop-overlay::after { content: none; }
+
+.crop-grid-hint { display: none; }
+.native-editor-action { display: none; }
+
 .crop-corner {
   position: absolute;
   width: 10px;
@@ -447,6 +452,43 @@
   padding: 14px 20px;
   border-top: 1px solid var(--border-default, var(--color-palette-d635c939daff));
   background: var(--color-palette-0bcd1015425a);
+}
+
+.image-editor-rotate-btn,
+.image-editor-select-btn {
+  align-items: center;
+  appearance: none;
+  background: var(--surface-raised);
+  border: 0;
+  border-radius: var(--radius-circle);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  width: 44px;
+}
+
+.image-editor-select-btn {
+  background: var(--accent-primary);
+  color: var(--color-palette-f2074b6cef37);
+}
+
+.image-editor-select-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.image-editor-error {
+  color: var(--color-danger, var(--color-palette-79f8835a4739));
+  font-size: var(--font-size-caption);
+  margin: 0 auto 0 0;
+}
+
+.crop-grid-hint {
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
 }
 
 .image-editor-btn-cancel {

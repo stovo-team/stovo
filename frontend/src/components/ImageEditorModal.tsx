@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Check, Crop as CropIcon, Pencil, RotateCw, RotateCcw, Sliders, Undo2 } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
-import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
+import { buildPhotoFilter, fitPhotoDimensions, PHOTO_EDITOR_FEATURES, rotateNormalizedPoint, unrotateNormalizedPoint } from "./PhotoEditor";
 import { useStrings } from "../i18n/LanguageContext";
 import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
 
@@ -29,6 +30,7 @@ interface ImageEditorModalProps {
 const COLOR_PRESETS = DESIGN_COLOR_VALUES.imageEditor.presetColors;
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
   const copy = useStrings().imageEditor;
+  const isNativeEditor = Capacitor.isNativePlatform();
   const penSizes = [
     { label: copy.fine, width: 2 },
     { label: copy.medium, width: 4 },
@@ -45,6 +47,8 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   // Crop
   const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 100, height: 100 });
   const [selectedRatio, setSelectedRatio] = useState<string>("free");
+  const [rotation, setRotation] = useState(0);
+  const cropStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Drawing
   const [drawColor, setDrawColor] = useState<string>(DESIGN_COLOR_VALUES.imageEditor.defaultStroke);
@@ -56,6 +60,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
   // Image reference & state
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -76,7 +81,27 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     setCrop({ x: 0, y: 0, width: 100, height: 100 });
     setSelectedRatio("free");
     setStrokes([]);
+    setRotation(0);
   };
+
+  const imageSize = imgElement ? {
+    width: imgElement.naturalWidth || imgElement.width,
+    height: imgElement.naturalHeight || imgElement.height
+  } : null;
+  const previewSize = imageSize && isNativeEditor ? (() => {
+    const maxWidth = window.innerWidth * 0.88;
+    const maxHeight = window.innerHeight * 0.76;
+    const rotated = rotation % 180 === 90;
+    const availableWidth = rotated ? maxHeight : maxWidth;
+    const availableHeight = rotated ? maxWidth : maxHeight;
+    const scale = Math.min(
+      1,
+      1024 / Math.max(imageSize.width, imageSize.height, 1),
+      availableWidth / (rotated ? imageSize.height : imageSize.width),
+      availableHeight / (rotated ? imageSize.width : imageSize.height)
+    );
+    return { width: Math.max(1, Math.round(imageSize.width * scale)), height: Math.max(1, Math.round(imageSize.height * scale)) };
+  })() : imageSize ?? { width: 800, height: 600 };
 
   // Aspect ratio handlers
   const applyAspectRatio = (ratio: string) => {
@@ -96,12 +121,13 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     let newWidth = 100;
     let newHeight = 100;
 
-    if (imgAspect > targetAspect) {
+    const sourceTargetAspect = rotation % 180 === 90 ? 1 / targetAspect : targetAspect;
+    if (imgAspect > sourceTargetAspect) {
       // Image is wider than target ratio
-      newWidth = (targetAspect / imgAspect) * 100;
+      newWidth = (sourceTargetAspect / imgAspect) * 100;
     } else {
       // Image is taller than target ratio
-      newHeight = (imgAspect / targetAspect) * 100;
+      newHeight = (imgAspect / sourceTargetAspect) * 100;
     }
 
     const x = (100 - newWidth) / 2;
@@ -109,26 +135,68 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     setCrop({ x, y, width: newWidth, height: newHeight });
   };
 
+  const cropPointFromEvent = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = drawCanvasRef.current?.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return null;
+    const displayPoint = {
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
+    };
+    const point = unrotateNormalizedPoint(displayPoint, rotation);
+    return { x: point.x * 100, y: point.y * 100 };
+  };
+
+  const handleCropPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (activeTab !== "crop") return;
+    const point = cropPointFromEvent(event);
+    if (!point) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    cropStartRef.current = point;
+    setCrop({ x: point.x, y: point.y, width: 0, height: 0 });
+  };
+
+  const handleCropPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = cropStartRef.current;
+    const point = cropPointFromEvent(event);
+    if (activeTab !== "crop" || !start || !point) return;
+    event.preventDefault();
+    const left = Math.min(start.x, point.x);
+    const top = Math.min(start.y, point.y);
+    setCrop({
+      x: left,
+      y: top,
+      width: Math.max(1, Math.min(100 - left, Math.abs(point.x - start.x))),
+      height: Math.max(1, Math.min(100 - top, Math.abs(point.y - start.y)))
+    });
+  };
+
+  const handleCropPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    cropStartRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
   // Drawing mouse/touch handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (activeTab !== "draw" || !drawCanvasRef.current) return;
     e.preventDefault();
     const rect = drawCanvasRef.current.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    const displayPoint = { x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)), y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)) };
+    const { x, y } = unrotateNormalizedPoint(displayPoint, rotation);
 
     setIsDrawing(true);
     const newStroke = { color: drawColor, width: drawWidth, points: [{ x, y }] };
     currentStrokeRef.current = newStroke;
     setStrokes((prev) => [...prev, newStroke]);
+    try { drawCanvasRef.current.setPointerCapture(e.pointerId); } catch { /* pointer capture is optional */ }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing || activeTab !== "draw" || !drawCanvasRef.current || !currentStrokeRef.current) return;
     e.preventDefault();
     const rect = drawCanvasRef.current.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    const displayPoint = { x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)), y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)) };
+    const { x, y } = unrotateNormalizedPoint(displayPoint, rotation);
 
     currentStrokeRef.current.points.push({ x, y });
     // Trigger re-render of canvas
@@ -153,7 +221,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       if (stroke.points.length < 1) return;
       ctx.beginPath();
       ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = (stroke.width / 100) * canvas.width;
+      ctx.lineWidth = isNativeEditor ? stroke.width * (canvas.width / Math.max(1, canvas.clientWidth)) : (stroke.width / 100) * canvas.width;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
@@ -166,12 +234,13 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       }
       ctx.stroke();
     });
-  }, [strokes, imgElement]);
+  }, [isNativeEditor, strokes, imgElement]);
 
   // Save changes & process canvas export
   const handleSave = useCallback(async () => {
     if (!imgElement) return;
     setIsProcessing(true);
+    setSaveError(null);
 
     try {
       // Source image dimensions
@@ -179,29 +248,30 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       const origH = imgElement.naturalHeight || imgElement.height;
 
       // Calculate crop rect in pixels
-      const cropX = Math.round((crop.x / 100) * origW);
-      const cropY = Math.round((crop.y / 100) * origH);
-      const cropW = Math.max(1, Math.round((crop.width / 100) * origW));
-      const cropH = Math.max(1, Math.round((crop.height / 100) * origH));
+      const cropX = Math.max(0, Math.min(origW - 1, Math.round((crop.x / 100) * origW)));
+      const cropY = Math.max(0, Math.min(origH - 1, Math.round((crop.y / 100) * origH)));
+      const cropW = Math.max(1, Math.min(origW - cropX, Math.round((crop.width / 100) * origW)));
+      const cropH = Math.max(1, Math.min(origH - cropY, Math.round((crop.height / 100) * origH)));
+      const sourceSize = isNativeEditor ? fitPhotoDimensions(cropW, cropH) : { width: cropW, height: cropH };
+      const swapsDimensions = rotation % 180 === 90;
+      const outputWidth = swapsDimensions ? sourceSize.height : sourceSize.width;
+      const outputHeight = swapsDimensions ? sourceSize.width : sourceSize.height;
 
-      // Offscreen canvas for processing
-      const canvas = document.createElement("canvas");
-      canvas.width = cropW;
-      canvas.height = cropH;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
+      const sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = sourceSize.width;
+      sourceCanvas.height = sourceSize.height;
+      const sourceContext = sourceCanvas.getContext("2d");
+      if (!sourceContext) {
         throw new Error("Could not get 2d context");
       }
 
-      // Step 1: Draw base image (cropped area) with Brightness and Contrast
-      ctx.filter = buildPhotoFilter({ brightness, contrast, gamma });
-      ctx.drawImage(imgElement, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-      ctx.filter = "none";
+      sourceContext.filter = buildPhotoFilter({ brightness, contrast, gamma });
+      sourceContext.drawImage(imgElement, cropX, cropY, cropW, cropH, 0, 0, sourceSize.width, sourceSize.height);
+      sourceContext.filter = "none";
 
       // Step 2: Apply Gamma Correction if gamma !== 1.0
       if (Math.abs(gamma - 1.0) > 0.01) {
-        const imgData = ctx.getImageData(0, 0, cropW, cropH);
+        const imgData = sourceContext.getImageData(0, 0, sourceSize.width, sourceSize.height);
         const data = imgData.data;
         const gammaCorrection = 1 / gamma;
         for (let i = 0; i < data.length; i += 4) {
@@ -209,26 +279,40 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           data[i + 1] = Math.min(255, Math.max(0, Math.round(Math.pow(data[i + 1] / 255, gammaCorrection) * 255)));
           data[i + 2] = Math.min(255, Math.max(0, Math.round(Math.pow(data[i + 2] / 255, gammaCorrection) * 255)));
         }
-        ctx.putImageData(imgData, 0, 0);
+        sourceContext.putImageData(imgData, 0, 0);
       }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get 2d context");
+      if (rotation === 90) {
+        ctx.translate(outputWidth, 0);
+        ctx.rotate(Math.PI / 2);
+      } else if (rotation === 180) {
+        ctx.translate(outputWidth, outputHeight);
+        ctx.rotate(Math.PI);
+      } else if (rotation === 270) {
+        ctx.translate(0, outputHeight);
+        ctx.rotate(-Math.PI / 2);
+      }
+      ctx.drawImage(sourceCanvas, 0, 0);
 
       // Step 3: Draw annotation strokes mapped to cropped space
       strokes.forEach((stroke) => {
         if (stroke.points.length < 1) return;
         ctx.beginPath();
         ctx.strokeStyle = stroke.color;
-        // Stroke width relative to uncropped canvas width
-        ctx.lineWidth = (stroke.width / 100) * origW;
+        const previewWidth = Math.max(1, drawCanvasRef.current?.clientWidth ?? outputWidth);
+        ctx.lineWidth = isNativeEditor ? stroke.width * (outputWidth / previewWidth) : (stroke.width / 100) * origW;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
         const mapPoint = (pt: { x: number; y: number }) => {
-          const px = pt.x * origW;
-          const py = pt.y * origH;
-          return {
-            x: px - cropX,
-            y: py - cropY
-          };
+          const sourcePoint = { x: (pt.x * origW - cropX) / cropW, y: (pt.y * origH - cropY) / cropH };
+          const rotatedPoint = rotateNormalizedPoint(sourcePoint, rotation);
+          return { x: rotatedPoint.x * outputWidth, y: rotatedPoint.y * outputHeight };
         };
 
         const p0 = mapPoint(stroke.points[0]);
@@ -242,24 +326,28 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       });
 
       // Step 4: Export blob & create File
-      const mimeType = pending.file.type || "image/png";
+      const requestedMimeType = ["image/jpeg", "image/png", "image/webp"].includes(pending.file.type) ? pending.file.type : "image/jpeg";
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), mimeType, 0.92)
+        canvas.toBlob((b) => resolve(b), requestedMimeType, 0.84)
       );
 
       if (blob) {
-        const editedFile = new File([blob], pending.file.name, {
-          type: mimeType,
+        const outputMimeType = blob.type || requestedMimeType;
+        const extension = outputMimeType === "image/png" ? ".png" : outputMimeType === "image/webp" ? ".webp" : ".jpg";
+        const outputName = `${pending.file.name.replace(/\.[^.]+$/, "")}${extension}`;
+        const editedFile = new File([blob], outputName, {
+          type: outputMimeType,
           lastModified: Date.now()
         });
         onSave(editedFile);
-      }
+      } else setSaveError(copy.saveError);
     } catch (err) {
       console.error("Failed to edit image", err);
+      setSaveError(copy.saveError);
     } finally {
       setIsProcessing(false);
     }
-  }, [brightness, contrast, crop, gamma, imgElement, onSave, pending.file, strokes]);
+  }, [brightness, contrast, copy.saveError, crop, gamma, imgElement, isNativeEditor, onSave, pending.file, rotation, strokes]);
 
   return createPortal(
     <PopupBackdrop className="image-editor-backdrop">
@@ -273,12 +361,21 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <div className="image-editor-header-actions">
             <button
               type="button"
-              className="image-editor-btn-secondary"
+              className="image-editor-btn-secondary image-editor-reset-btn"
               onClick={handleReset}
               title={copy.resetAll}
             >
               <RotateCcw size={16} />
               <span>{copy.reset}</span>
+            </button>
+            <button
+              type="button"
+              className="image-editor-rotate-btn native-editor-action"
+              onClick={() => setRotation((current) => (current + 90) % 360)}
+              title={copy.rotatePhoto}
+              aria-label={copy.rotatePhoto}
+            >
+              <RotateCw size={18} />
             </button>
             <PopupCloseButton className="image-editor-close-btn" onClick={onClose} ariaLabel={copy.close} />
           </div>
@@ -287,7 +384,14 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
         {/* Stage / Preview */}
         <div className="image-editor-stage" ref={previewContainerRef}>
           {pending.previewUrl ? (
-            <div className="image-editor-preview-wrapper">
+            <div
+              className={`image-editor-preview-wrapper${isNativeEditor && activeTab === "crop" ? " is-cropping" : ""}`}
+              style={isNativeEditor ? { width: previewSize.width, height: previewSize.height, transform: `rotate(${rotation}deg)` } : undefined}
+              onPointerDown={isNativeEditor ? handleCropPointerDown : undefined}
+              onPointerMove={isNativeEditor ? handleCropPointerMove : undefined}
+              onPointerUp={isNativeEditor ? handleCropPointerUp : undefined}
+              onPointerCancel={isNativeEditor ? handleCropPointerUp : undefined}
+            >
               <img
                 src={pending.previewUrl}
                 alt={copy.preview}
@@ -300,8 +404,8 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               {/* Drawing canvas overlay */}
               <canvas
                 ref={drawCanvasRef}
-                width={imgElement?.naturalWidth || 800}
-                height={imgElement?.naturalHeight || 600}
+                width={previewSize.width}
+                height={previewSize.height}
                 className={`image-editor-draw-canvas${activeTab === "draw" ? " is-active" : ""}`}
                 style={{
                   clipPath: `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
@@ -427,62 +531,19 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                 ))}
               </div>
 
-              <div className="crop-sliders">
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.xOffset}</span>
-                    <strong>{Math.round(crop.x)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={100 - crop.width}
-                    value={crop.x}
-                    onChange={(e) => setCrop({ ...crop, x: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.yOffset}</span>
-                    <strong>{Math.round(crop.y)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={100 - crop.height}
-                    value={crop.y}
-                    onChange={(e) => setCrop({ ...crop, y: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.width}</span>
-                    <strong>{Math.round(crop.width)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="20"
-                    max={100 - crop.x}
-                    value={crop.width}
-                    onChange={(e) => setCrop({ ...crop, width: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.height}</span>
-                    <strong>{Math.round(crop.height)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="20"
-                    max={100 - crop.y}
-                    value={crop.height}
-                    onChange={(e) => setCrop({ ...crop, height: Number(e.target.value) })}
-                  />
-                </div>
+              <span className="crop-grid-hint">{copy.cropGridHint}</span>
+              <div className="crop-sliders desktop-editor-action">
+                {([
+                  [copy.xOffset, crop.x, 0, 100 - crop.width, (value: number) => setCrop({ ...crop, x: value })],
+                  [copy.yOffset, crop.y, 0, 100 - crop.height, (value: number) => setCrop({ ...crop, y: value })],
+                  [copy.width, crop.width, 20, 100 - crop.x, (value: number) => setCrop({ ...crop, width: value })],
+                  [copy.height, crop.height, 20, 100 - crop.y, (value: number) => setCrop({ ...crop, height: value })]
+                ] as const).map(([label, value, min, max, update]) => (
+                  <label className="image-editor-control-item" key={label}>
+                    <span className="control-label"><span>{label}</span><strong>{Math.round(value)}%</strong></span>
+                    <input type="range" min={min} max={max} value={value} onChange={(event) => update(Number(event.target.value))} />
+                  </label>
+                ))}
               </div>
             </div>
           )}
@@ -551,12 +612,16 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
         {/* Footer Actions */}
         <footer className="image-editor-footer">
-          <button type="button" className="image-editor-btn-cancel" onClick={onClose}>
+          {saveError && <p className="image-editor-error" role="alert">{saveError}</p>}
+          <button type="button" className="image-editor-select-btn native-editor-action" onClick={handleSave} disabled={isProcessing || !imgElement} aria-label={copy.selectPhoto} title={copy.selectPhoto}>
+            <Check size={20} strokeWidth={2.5} />
+          </button>
+          <button type="button" className="image-editor-btn-cancel desktop-editor-action" onClick={onClose}>
             {copy.cancel}
           </button>
           <button
             type="button"
-            className="image-editor-btn-save"
+            className="image-editor-btn-save desktop-editor-action"
             disabled={isProcessing}
             onClick={() => void handleSave()}
           >
