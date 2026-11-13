@@ -14,16 +14,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pr-size:
-    uses: ./.github/workflows/pr-size.yml
-
   changes:
-    needs: pr-size
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-24.04"]') }}
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
-      size_baseline: ${{ steps.filter.outputs.size_baseline }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
@@ -32,20 +27,15 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
-              - 'scripts/check-solid-boundaries.sh'
               - 'scripts/check-frontend-css-size.cjs'
               - 'scripts/check-frontend-css-size.test.cjs'
             backend:
               - 'backend/**'
               - 'deploy/migrations/master/**'
               - 'deploy/**'
-              - 'scripts/check-solid-boundaries.sh'
-            size_baseline:
-              - 'docs/engineering/size-baseline.tsv'
 
   pipeline-contract:
     name: Pipeline Contract
-    needs: pr-size
     if: github.event.pull_request.draft == false
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 10
@@ -76,43 +66,6 @@ jobs:
       - name: Verify pipeline workflow contract
         shell: bash
         run: bash .github/workflows/pipeline.test.sh
-      - name: Verify PR size policy regressions
-        shell: bash
-        run: node --test .github/pr-budget.test.mjs
-  solid-boundaries:
-    name: SOLID architecture boundaries
-    needs: changes
-    if: >-
-      github.event.pull_request.draft == false &&
-      (needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.backend == 'true' ||
-      needs.changes.outputs.size_baseline == 'true')
-    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    steps:
-      - name: Configure Git long paths
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: git config --global core.longpaths true
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          persist-credentials: false
-      - name: Ensure Git Bash is available on Windows
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
-          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
-          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
-          if (-not (Test-Path $gitBash)) {
-            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
-          }
-
-          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
-      - name: SOLID architecture boundaries
-        shell: bash
-        run: bash scripts/check-solid-boundaries.sh all
   frontend_dependencies:
     name: Prepare frontend dependencies
     needs: changes

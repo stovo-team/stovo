@@ -14,7 +14,7 @@ Use the issue forms for [bug reports](https://github.com/stovo-team/stovo-messen
 
 For a substantial change, open an issue first to discuss the user need and scope. Keep pull requests focused, explain the observable behavior they change, and link the related issue where applicable. Avoid mixing unrelated cleanup into a feature or fix.
 
-Pull requests should stay near or below 400 changed lines; CI enforces a hard cap of 445 additions + deletions across all files. If a change requires a large number of lines of code or spans multiple architectural layers (e.g., database migrations/schemas, backend services, frontend UI, E2E tests), partition it into a logical stack of pull requests. Each PR in the stack targets its predecessor branch and stays within the line limit. Use GitHub's native stacked PR feature ("Preview stack" / "Create stack") and cross-link PRs in the description.
+Keep pull requests focused. If a change spans multiple architectural layers (e.g., database migrations/schemas, backend services, frontend UI, E2E tests), partition it into a logical stack of pull requests. Use GitHub's native stacked PR feature ("Preview stack" / "Create stack") and cross-link PRs in the description.
 
 Before submitting a pull request:
 

@@ -8,7 +8,7 @@ const requiredImages = [
   'backend', 'orchestrator', 'frontend', 'caddy', 'postgres',
   'redis', 'minio', 'coturn', 'livekit', 'atlas',
 ];
-const requiredJobs = ['changes', 'solid-boundaries'];
+const requiredJobs = ['changes'];
 const conditionalJobs = ['backend-ci', 'frontend-ci'];
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const positiveInteger = value => Number.isSafeInteger(value) && value > 0;

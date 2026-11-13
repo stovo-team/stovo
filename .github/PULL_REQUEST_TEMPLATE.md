@@ -8,4 +8,4 @@ List actual commands/results, acceptance coverage, independent QA and limitation
 
 ## Risks and manual review
 
-Explain material risks and a short reproducible review scenario. Keep this PR one coherent delivery, at most 445 added plus deleted lines across all files, including generated snapshots/lockfiles. Publication authorization does not grant merge or deployment authorization.
+Explain material risks and a short reproducible review scenario. Keep this PR one coherent delivery. Publication authorization does not grant merge or deployment authorization.

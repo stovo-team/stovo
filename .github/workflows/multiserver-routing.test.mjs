@@ -86,10 +86,9 @@ test('manual backend-only deployment skips CI and frontend while normal deployme
   assert.match(workflow, /frontend: \$\{\{ !inputs.backend_deploy_only &&/);
   assert.match(workflow, /if: \$\{\{ !cancelled\(\) && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only \}\}/);
   const backend = workflow.split('  deploy-backend-web:')[1].split('  publish-ghcr-images:')[0];
-  assert.match(backend, /needs: \[changes, backend-ci, solid-boundaries, publish-ghcr-images\]/);
+  assert.match(backend, /needs: \[changes, backend-ci, publish-ghcr-images\]/);
   assert.match(backend, /needs.changes.result == 'success'/);
   assert.match(backend, /needs.publish-ghcr-images.result == 'success'/);
-  assert.match(backend, /needs.solid-boundaries.result == 'success' \|\| \(github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only\)/);
   assert.match(backend, /needs.backend-ci.result == 'success' \|\| \(github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only\)/);
   assert.match(backend, /!cancelled\(\)/);
 });

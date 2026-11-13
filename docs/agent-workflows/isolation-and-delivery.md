@@ -16,14 +16,14 @@ type: workflow
 
 - Each commit should represent one small, complete task. A pull request may contain several task-sized commits when they belong to the same logical section.
 - Commit every completed task on its dedicated branch. Once publishing is authorized, submit a pull request targeting `master` (or a documented predecessor branch for a dependent PR; retarget `master` after it merges) and report its link and status; never push directly to `master`. If publication is not authorized or a remote pull request cannot be created, keep the local branch and worktree and report the blocker.
-- Group a pull request around one coherent section of work. Target 300–400 changed lines per PR; the hard limit is 445 added plus deleted lines across all files, including tests, documentation, generated files and lockfiles. Split larger work into coherent PRs; do not hide changes in baselines or exclusions.
+- Group a pull request around one coherent section of work. Keep each PR focused. Split larger work into coherent PRs; do not hide changes in baselines or exclusions.
 - Use a clear, descriptive commit message. Pull request titles must use one of these exact prefixes: `Feature:`, `Fix:`, `CritFix:`, `Test:`, `Docs:`. Match the primary commit message, replacing its square-bracket category with the corresponding colon prefix (for example, `[Docs] clarify workflow` becomes `Docs: clarify workflow`).
 - Write pull request titles, descriptions, and comments in English. Do not assign or request reviewers by default. Add an appropriate label to every pull request. Link issues and projects only when they exist; do not invent associations.
 - Explain the logical change, why it is needed, and relevant verification in the description.
 
 ### Stacked pull requests (PR stacks)
 
-When a task, feature, or refactoring requires substantial code changes (targeting near or below 300–400 lines, and strictly capped at the 445-line limit across all files), or when changes naturally span multiple architectural boundaries, partition the work into a logical stack of pull requests.
+When a task, feature, or refactoring requires substantial code changes (targeting near or below 300–400 lines, and strictly capped at a large change), or when changes naturally span multiple architectural boundaries, partition the work into a logical stack of pull requests.
 
 #### Logical partitioning
 Decompose the changes into coherent, independently testable slices:
@@ -37,7 +37,7 @@ For refactoring tasks, partition into: preparatory abstractions/helpers -> calle
 #### Branching and stack creation
 - The first PR in the stack branches from `origin/master` and targets `master`.
 - Each subsequent PR branches from its immediate predecessor branch: `git checkout -b feature/<task>-part2 feature/<task>-part1`.
-- When opening the dependent PR, set its base to the predecessor branch (`--base feature/<task>-part1`). GitHub evaluates the line budget against that base branch, keeping each PR within the 445-line limit.
+- When opening the dependent PR, set its base to the predecessor branch (`--base feature/<task>-part1`). GitHub evaluates the line budget against that base branch, keeping each PR focused.
 - Leverage GitHub's native stacked PR features ("Preview stack" / "Create stack") to group and visualize the pull requests in the stack.
 - In each PR description, include bidirectional stack links (e.g. `Part of stack: #354 -> #356 -> #357`).
 

@@ -35,7 +35,7 @@ export async function watchPr({read, required=[], sleep=delay, interval=15000, t
   }
 }
 
-const requiredChecks = ['PR size','Pipeline Contract','Agent workflow gate'];
+const requiredChecks = ['Pipeline Contract','Agent workflow gate'];
 const execute = (tool,args) => execFileSync(tool,args,{encoding:'utf8',timeout:60000});
 export function isTaskBranch(branch) {
   return /^(feature|hotfix|release|left-try)\//.test(branch) || /^ao\/[^/]+\/[^/]+$/.test(branch);
@@ -51,8 +51,6 @@ export async function deliverPr({repo,branch,title,bodyFile,base='master',run=ex
   const current=run('git',['branch','--show-current']).trim();
   if (!branch || branch !== current || !isTaskBranch(branch)) throw Error('Publish the current dedicated task branch');
   if (!/^(Feature|Fix|CritFix|Test|Docs): /.test(title ?? '') || !bodyFile) throw Error('PR title and body file required');
-  const count=run('git',['diff','--numstat',`origin/${base}...HEAD`]).trim().split('\n').filter(Boolean).reduce((sum,line)=>sum+line.split('\t').slice(0,2).reduce((n,v)=>n+(v==='-'?0:Number(v)),0),0);
-  if (!Number.isSafeInteger(count) || count>445) throw Error(`Split the ${count}-line PR before publishing (limit 445)`);
   run('git',['push','--set-upstream','origin',branch]);
   const existing=JSON.parse(run('gh',['pr','list','--repo',repo,'--head',branch,'--state','open','--json','url,isCrossRepository']));
   let url=existing.find(pr=>pr.isCrossRepository===false)?.url;

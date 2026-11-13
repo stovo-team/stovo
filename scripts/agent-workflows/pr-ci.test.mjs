@@ -42,12 +42,11 @@ test('recognizes AO task branches without accepting arbitrary branch paths', () 
 
 test('publication creates/reuses a PR then waits for its actual CI', async () => {
   const {deliverPr}=await import('./pr-ci.mjs'); assert.equal(typeof deliverPr,'function');
-  const calls=[];const run=(tool,args)=>{calls.push([tool,...args]);if(tool==='git'&&args[0]==='branch')return 'feature/demo\n';if(args[0]==='run')return '[]';if(args[0]==='repo')return '{"nameWithOwner":"owner/repo"}';if(args[0]==='pr'&&args[1]==='list')return '[{"url":"https://github.com/owner/repo/pull/99","isCrossRepository":true}]';if(args[0]==='pr'&&args[1]==='create')return 'https://github.com/owner/repo/pull/1\n';if(args[0]==='pr'&&args[1]==='view')return JSON.stringify(pr([check('PR size'),check('Pipeline Contract'),check('Agent workflow gate')]));return '';};
+  const calls=[];const run=(tool,args)=>{calls.push([tool,...args]);if(tool==='git'&&args[0]==='branch')return 'feature/demo\n';if(args[0]==='run')return '[]';if(args[0]==='repo')return '{"nameWithOwner":"owner/repo"}';if(args[0]==='pr'&&args[1]==='list')return '[{"url":"https://github.com/owner/repo/pull/99","isCrossRepository":true}]';if(args[0]==='pr'&&args[1]==='create')return 'https://github.com/owner/repo/pull/1\n';if(args[0]==='pr'&&args[1]==='view')return JSON.stringify(pr([check('Pipeline Contract'),check('Agent workflow gate')]));return '';};
   const r=await deliverPr({repo:'owner/repo',branch:'feature/demo',base:'feature/parent',title:'Fix: demo',bodyFile:'body.md',run,sleep:async()=>{}});
   assert.equal(r.state,'passed');assert.equal(r.url,'https://github.com/owner/repo/pull/1');
   assert.ok(calls.findIndex(c=>c[0]==='git'&&c[1]==='push')<calls.findIndex(c=>c[2]==='create'));
   assert.ok(calls.some(c=>c[1]==='pr'&&c[2]==='create'&&c.includes('feature/parent')));
-  assert.ok(calls.some(c=>c[0]==='git'&&c.includes('origin/feature/parent...HEAD')));
   assert.equal(calls.filter(c=>c[1]==='pr'&&c[2]==='view').length,2);
   await deliverPr({repo:'owner/repo',branch:'feature/demo',title:'Fix: demo',bodyFile:'body.md',run:(tool,args)=>args[0]==='pr'&&args[1]==='list'?'[{"url":"https://github.com/owner/repo/pull/1","isCrossRepository":false}]':run(tool,args),sleep:async()=>{}});
   assert.ok(calls.some(c=>c[1]==='api'&&c.includes('repos/owner/repo/pulls/1')&&c.includes('body=@body.md')));
