@@ -605,6 +605,7 @@ export default class CallSessionController {
       try {
         await this.acquireLocalStream({
           retryCameraSwitchAfterRelease: patch.cameraFacingMode !== undefined || patch.videoDeviceId !== undefined,
+          restoreCameraSettings: previous,
         });
       } catch (err) {
         this.settings = previous;
@@ -864,7 +865,7 @@ export default class CallSessionController {
     }
   }
 
-  private async acquireLocalStream(options: { retryCameraSwitchAfterRelease?: boolean } = {}) {
+  private async acquireLocalStream(options: { retryCameraSwitchAfterRelease?: boolean; restoreCameraSettings?: CallSettings } = {}) {
     if (this.sourceStream && !this.peerReady && this.topology === "mesh") {
       const needsVideo = this.callType === "video";
       if (!needsVideo || this.hasLiveVideoTrack(this.sourceStream)) {
@@ -901,10 +902,47 @@ export default class CallSessionController {
           err.name === "NotReadableError"
         ) {
           // Some Android camera stacks cannot open the opposite camera while
-          // the current one is live. Release video only, then make one retry;
-          // leave the current preview attached while the device restarts.
+          // the current one is live. Release video only, then make one retry.
           stopVideoTracks([previousSourceStream, previousLocalStream]);
-          nextSource = await this.acquireVideoStream();
+          try {
+            nextSource = await this.acquireVideoStream();
+          } catch (retryErr) {
+            // If the opposite camera is also unavailable, try to restore the
+            // camera that was active before the switch. Keep the original
+            // switch error as the result so applySettings rolls its state back.
+            try {
+              const restoredStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: this.buildVideoConstraints(options.restoreCameraSettings ?? this.settings),
+              });
+              const restoredTrack = restoredStream.getVideoTracks().find((track) => track.readyState !== "ended");
+              if (!restoredTrack || !previousSourceStream) throw retryErr;
+
+              removeEndedVideoTracks([previousSourceStream, previousLocalStream]);
+              previousSourceStream.addTrack(restoredTrack);
+              if (previousLocalStream !== previousSourceStream) previousLocalStream?.addTrack(restoredTrack);
+              this.sourceStream = previousSourceStream;
+              this.localStream = previousLocalStream;
+
+              if (this.localVideoEl && this.callType === "video") {
+                this.localVideoEl.srcObject = previousSourceStream;
+                void this.localVideoEl.play().catch(() => undefined);
+              }
+              this.notifyLocalStreamReady();
+              this.applyCameraEnabledState();
+              if (this.topology === "sfu") {
+                if (previousLocalStream) await this.sfu.publishLocalStream(previousLocalStream);
+                this.sfu.setCameraEnabled(this.settings.cameraEnabled);
+              } else if (previousLocalStream) {
+                this.mesh.setLocalStream(previousLocalStream);
+                if (this.peerReady) await this.mesh.republishLocalTracks();
+              }
+            } catch {
+              // Reacquisition is device- and permission-dependent. The caller
+              // still receives the original camera-switch failure.
+            }
+            throw retryErr;
+          }
         } else {
           // A failed camera switch or in-call media refresh must leave the active
           // stream intact. Falling back to audio is only useful when the call
@@ -1077,12 +1115,12 @@ export default class CallSessionController {
     return c;
   }
 
-  private buildVideoConstraints(): MediaTrackConstraints {
+  private buildVideoConstraints(settings: CallSettings = this.settings): MediaTrackConstraints {
     const c: MediaTrackConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
-    if (this.settings.videoDeviceId) {
-      c.deviceId = { ideal: this.settings.videoDeviceId };
+    if (settings.videoDeviceId) {
+      c.deviceId = { ideal: settings.videoDeviceId };
     } else {
-      c.facingMode = this.settings.cameraFacingMode ?? "user";
+      c.facingMode = settings.cameraFacingMode ?? "user";
     }
     return c;
   }

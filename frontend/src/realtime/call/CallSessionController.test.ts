@@ -243,6 +243,51 @@ describe("CallSessionController camera lifecycle", () => {
     }
   });
 
+  it("reacquires the previous camera when the released-camera retry also fails", async () => {
+    let oldReadyState: MediaStreamTrackState = "live";
+    const oldTrack = { kind: "video", get readyState() { return oldReadyState; }, stop: vi.fn(() => { oldReadyState = "ended"; }) } as unknown as MediaStreamTrack;
+    let oldTracks: MediaStreamTrack[] = [oldTrack];
+    const oldStream = {
+      getTracks: () => oldTracks,
+      getVideoTracks: () => oldTracks.filter((track) => track.kind === "video"),
+      getAudioTracks: () => [],
+      addTrack: vi.fn((track: MediaStreamTrack) => { oldTracks.push(track); }),
+      removeTrack: vi.fn((track: MediaStreamTrack) => { oldTracks = oldTracks.filter((item) => item !== track); }),
+    } as unknown as MediaStream;
+    const restoredTrack = { id: "restored-camera", kind: "video", readyState: "live", stop: vi.fn() } as unknown as MediaStreamTrack;
+    const restoredStream = { getTracks: () => [restoredTrack], getVideoTracks: () => [restoredTrack], getAudioTracks: () => [] } as unknown as MediaStream;
+    const retryError = new DOMException("Opposite camera is busy", "NotReadableError");
+    const getUserMedia = vi.fn()
+      .mockRejectedValueOnce(new DOMException("Current camera is busy", "NotReadableError"))
+      .mockRejectedValueOnce(retryError)
+      .mockResolvedValueOnce(restoredStream);
+    const previousDescriptor = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
+    const localVideoEl = { srcObject: oldStream, play: vi.fn(async () => undefined) } as unknown as HTMLVideoElement;
+    const mesh = { setLocalStream: vi.fn(), republishLocalTracks: vi.fn(async () => undefined) };
+    const controller = new CallSessionController({} as never, "token", {
+      createMesh: () => mesh, createSFU: () => ({}),
+    } as unknown as MediaEngineFactory);
+    Object.assign(controller, { callType: "video", localStream: oldStream, sourceStream: oldStream, localVideoEl, peerReady: true });
+
+    try {
+      await expect(controller.applySettings({ cameraFacingMode: "environment" })).rejects.toBe(retryError);
+      expect(getUserMedia).toHaveBeenCalledTimes(3);
+      expect(getUserMedia).toHaveBeenNthCalledWith(3, {
+        audio: false,
+        video: expect.objectContaining({ facingMode: "user" }),
+      });
+      expect(oldTrack.stop).toHaveBeenCalledOnce();
+      expect(oldStream.getVideoTracks()).toEqual([restoredTrack]);
+      expect(localVideoEl.srcObject).toBe(oldStream);
+      expect(controller.getSettings().cameraFacingMode).toBe("user");
+      expect(mesh.republishLocalTracks).toHaveBeenCalledOnce();
+    } finally {
+      if (previousDescriptor) Object.defineProperty(navigator, "mediaDevices", previousDescriptor);
+      else Reflect.deleteProperty(navigator, "mediaDevices");
+    }
+  });
+
   it("removes ended camera tracks before reacquiring a 720p, 30fps camera", async () => {
     let readyState: MediaStreamTrackState = "live";
     const oldTrack = {
