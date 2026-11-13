@@ -105,6 +105,11 @@
   font-weight: var(--font-weight-bold);
 }
 
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active svg {
+  position: relative;
+  z-index: 1;
+}
+
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a {
   -webkit-tap-highlight-color: transparent;
 }
