@@ -99,7 +99,7 @@ export function GroupCallPreJoinModal({
         {cameraEnabled ? (
           <video
             ref={videoRef}
-            className="group-call-prejoin-video"
+            className="group-call-prejoin-video is-mirrored"
             muted
             playsInline
             autoPlay

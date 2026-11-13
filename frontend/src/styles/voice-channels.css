@@ -671,14 +671,13 @@
 .call-invite-modal-actions .action-button.subtle { background: transparent; border: 1px solid var(--color-palette-f6a93a8e2ede); color: var(--text-primary, var(--color-palette-f2074b6cef37)); }
 .call-settings-dialog-header {
   align-items: center;
-  border-bottom: 1px solid var(--border-default, var(--color-palette-b749cc259197));
   display: flex;
   justify-content: space-between;
   min-height: 58px;
   padding: 10px 18px;
 }
 .call-settings-dialog-layout { display: grid; flex: 1 1 auto; grid-template-columns: 168px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-height: 0; overflow: hidden; }
-.call-settings-tabs { border-right: 1px solid var(--border-default, var(--color-palette-b749cc259197)); display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; }
+.call-settings-tabs { display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; }
 .call-settings-tabs button { justify-content: flex-start; background: transparent; border: 0; border-radius: var(--radius-control); color: var(--text-secondary, var(--color-palette-cc68d0a3a0c5)); cursor: pointer; font: inherit; padding: 10px 12px; text-align: left; }
 .call-settings-tabs button[aria-selected="true"] { background: var(--color-palette-d635c939daff); color: var(--text-primary, var(--color-palette-f2074b6cef37)); }
 .call-settings-tabs button:focus-visible { outline: 2px solid var(--accent-primary, var(--color-palette-8940f2c623d0)); }
@@ -707,10 +706,63 @@
 @media (max-width: 640px) {
   .call-settings-dialog { border-radius: var(--radius-surface); height: min(560px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); width: calc(100vw - 24px); }
   .call-settings-dialog-layout { grid-template-columns: 104px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-  .call-settings-tabs { border-bottom: 0; border-right: 1px solid var(--border-default, var(--color-palette-b749cc259197)); flex-direction: column; padding: 10px 6px; }
+  .call-settings-tabs { border-bottom: 0; border-right: 0; flex-direction: column; padding: 10px 6px; }
   .call-settings-tabs button { flex: 0 0 auto; padding: 9px 6px; text-align: left; }
   .call-settings-panel-wrap { padding: 12px; }
 }
+
+.call-settings-dialog--android {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  padding: max(env(safe-area-inset-top, 0px), 12px) 16px max(env(safe-area-inset-bottom, 0px), 12px);
+  box-sizing: border-box;
+}
+.call-settings-dialog--android .call-settings-dialog-header { min-height: 52px; padding: 4px 2px 10px; }
+.call-settings-dialog--android .call-settings-dialog-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.call-settings-dialog--android .call-settings-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 0;
+  scrollbar-width: none;
+}
+.call-settings-dialog--android .call-settings-tabs button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-default, var(--color-palette-b749cc259197));
+  border-radius: var(--radius-pill);
+  text-align: center;
+  white-space: nowrap;
+}
+.call-settings-dialog--android .call-settings-tabs button[aria-selected="true"] {
+  border-color: var(--accent-primary, var(--color-palette-8940f2c623d0));
+  background: var(--accent-primary, var(--color-palette-8940f2c623d0));
+  color: var(--color-palette-f2074b6cef37);
+}
+.call-settings-dialog--android .call-settings-panel-wrap { flex: 1 1 auto; padding: 8px 0; }
+.call-popup--android.call-popup-group-call .call-grid:not(.call-grid--screen-share) .call-grid__tile:not(.call-grid__tile--screen),
+.call-popup--android.call-popup-group-call .call-grid:not(.call-grid--screen-share) > [data-participant-id] {
+  aspect-ratio: 1 / 1 !important;
+}
+.call-popup--android.call-popup-group-call .shared-call-stage-layout[data-camera-fit] .call-grid__tile:not(.call-grid__tile--screen) video {
+  object-fit: cover !important;
+}
+.call-popup--android.call-popup-minimized .minimized-call-button--end svg { width: 22px; height: 22px; }
+.call-popup--android .call-popup-minimize-btn svg { width: 20px; height: 20px; }
+.call-popup--android .call-popup-header-invite svg { width: 24px; height: 24px; }
 
 .shared-call-controls .call-ctrl-btn,
 .shared-call-controls .voice-dock-btn,

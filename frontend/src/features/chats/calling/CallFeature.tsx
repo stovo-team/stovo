@@ -20,6 +20,7 @@ import { MinimizedCallBar } from "./MinimizedCallBar";
 import { useCallTimer } from "./useCallTimer";
 import { CallFeatureProvider as CallFeatureContextProvider, useCallFeatureContext } from "./CallFeatureContext";
 import { enableCallCamera } from "./callCamera";
+import { Capacitor } from "@capacitor/core";
 
 export {
   CallSettingsContextMenu,
@@ -45,6 +46,7 @@ export { CallFeatureProvider } from "./CallFeatureContext";
  * before a call starts.
  */
 export function CallFeature() {
+  const isAndroidPlatform = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
   const [settingsInitialTab, setSettingsInitialTab] = useState<CallSettingsTab>("general");
   const { preferences: callUIPreferences, patchPreferences } = useCallUIPreferences();
   const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
@@ -215,6 +217,7 @@ export function CallFeature() {
             style={effectiveIsCallMinimized ? { display: "none" } : undefined}
             className={[
               "call-popup",
+              isAndroidPlatform ? "call-popup--android" : "",
               shouldUseFullscreenSurface ? "call-popup-fullscreen" : "",
               isGroupCall ? "call-popup-group-call" : "",
               isGroupCallSharing ? "call-popup-group-call--sharing" : "",
@@ -340,6 +343,7 @@ export function CallFeature() {
           onPreferencePatch={patchPreferences}
           onClose={() => { setIsCallAudioPopupOpen(false); setIsCallVideoPopupOpen(false); }}
           isMobile={isMobileViewport}
+          isAndroid={isAndroidPlatform}
         />
       )}
       {isSpeakerSheetOpen && (

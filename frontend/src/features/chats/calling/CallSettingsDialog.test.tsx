@@ -34,6 +34,20 @@ describe("CallSettingsDialog", () => {
     const dialog = css.match(/\.call-settings-dialog\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(dialog).toMatch(/position:\s*relative/);
   });
+  it("uses fullscreen top tag tabs only for Android and keeps desktop layout dividers removed", () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); roots.push(root);
+    act(() => root.render(<CallSettingsDialog initialTab="general" preferences={{ autoHideControls: false, cameraFit: "fit" }} settings={settings} capabilities={capabilities} devices={devices} warning={null} onPatch={() => undefined} onPreferencePatch={() => undefined} onClose={() => undefined} isMobile isAndroid />));
+    expect(host.querySelector(".call-settings-dialog--android")).not.toBeNull();
+    const css = readCssSource("src/styles.css");
+    const android = css.match(/\.call-settings-dialog--android\s*\{([^}]*)\}/)?.[1] ?? "";
+    const androidTabs = css.match(/\.call-settings-dialog--android \.call-settings-tabs\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(android).toMatch(/position:\s*fixed/);
+    expect(android).toMatch(/height:\s*100dvh/);
+    expect(androidTabs).toMatch(/flex-direction:\s*row/);
+    expect(css.match(/\.call-settings-dialog-header\s*\{([^}]*)\}/)?.[1] ?? "").not.toMatch(/border-bottom/);
+    expect(css.match(/\.call-settings-tabs\s*\{([^}]*)\}/)?.[1] ?? "").not.toMatch(/border-right/);
+  });
   it("starts on General and switches between General, Audio and Camera tabs", () => {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host); roots.push(root);

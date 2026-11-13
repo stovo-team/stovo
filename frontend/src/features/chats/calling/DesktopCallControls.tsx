@@ -214,7 +214,7 @@ export function DesktopCallControls({
           {callPhase !== "incoming" && !isCallMinimized && (isGroupCall || isParticipantFocused || session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
             <button
               type="button"
-              className="icon-button subtle"
+              className="icon-button subtle call-popup-minimize-btn"
               aria-label={isCallMinimized ? "Restore call window" : "Minimise call window"}
               onClick={() => setIsCallMinimized((v) => !v)}
             >
@@ -244,6 +244,15 @@ export function DesktopCallControls({
             remoteMedia={participantGridMedia}
             mockScreenShareOwner={mockScreenShareOwner}
             localUserLabel={currentUser?.displayName ?? "You"}
+            localProfile={currentUser ? {
+              id: currentUser.id,
+              displayName: currentUser.displayName,
+              profilePhoto: currentUser.profilePhoto ?? null,
+              avatarMode: currentUser.avatarMode,
+              avatarSymbolId: currentUser.avatarSymbolId,
+              avatarColorId: currentUser.avatarColorId,
+            } : null}
+            accessToken={accessToken ?? null}
             mirrorLocal={
               callAudioSettings.mirrorLocalVideo &&
               callAudioSettings.cameraFacingMode === "user"

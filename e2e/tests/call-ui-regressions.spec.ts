@@ -103,3 +103,46 @@ test("mobile group controls stay visible by default and sharing has participants
   }
   await page.screenshot({ path: "/tmp/call-mobile-fixed.png" });
 });
+
+test("Android mobile group camera tiles are square, undistorted and keep the end-call slash", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${fixture}?android&mobile&camera`);
+  const tile = page.locator(".mobile-active-video-stage .call-grid__tile--local");
+  await expect(tile).toBeVisible();
+  expect(await tile.evaluate((element) => getComputedStyle(element).aspectRatio)).toBe("1 / 1");
+  await expect(tile.locator("video")).toHaveCSS("object-fit", "cover");
+  await expect(tile.locator("video")).toHaveCSS("transform", "matrix(-1, 0, 0, 1, 0, 0)");
+  const end = page.getByRole("button", { name: "End call", exact: true });
+  await expect(end.locator("svg line")).toHaveAttribute("x2", "21");
+  await page.screenshot({ path: "/tmp/call-android-mobile-group.png" });
+});
+
+test("Android call settings fill a small screen and keep accessible top tabs", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${fixture}?android&camera`);
+  await page.locator(".call-popup-video-area").hover();
+  await page.getByRole("button", { name: "Audio settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Call settings" });
+  await expect(dialog).toHaveClass(/call-settings-dialog--android/);
+  const bounds = await dialog.boundingBox();
+  expect(bounds?.width).toBe(390);
+  expect(bounds?.height).toBe(844);
+  const tabs = dialog.getByRole("tablist");
+  await expect(tabs).toBeVisible();
+  const tabStrip = await tabs.evaluate((element) => getComputedStyle(element).flexDirection);
+  expect(tabStrip).toBe("row");
+  await dialog.getByRole("tab", { name: "Camera", exact: true }).click();
+  await expect(dialog.getByRole("tab", { name: "Camera", exact: true })).toHaveAttribute("aria-selected", "true");
+  await page.screenshot({ path: "/tmp/call-android-settings.png" });
+});
+
+test("web call settings keep the desktop layout without header or column dividers", async ({ page }) => {
+  await page.goto(`${fixture}?camera`);
+  await page.locator(".call-popup-video-area").hover();
+  await page.getByRole("button", { name: "Audio settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Call settings" });
+  await expect(dialog).not.toHaveClass(/call-settings-dialog--android/);
+  expect(await dialog.locator(".call-settings-dialog-header").evaluate((element) => getComputedStyle(element).borderBottomWidth)).toBe("0px");
+  expect(await dialog.locator(".call-settings-tabs").evaluate((element) => getComputedStyle(element).borderRightWidth)).toBe("0px");
+  await page.screenshot({ path: "/tmp/call-web-settings.png" });
+});
