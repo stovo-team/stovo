@@ -556,6 +556,17 @@
   min-height: 0;
 }
 
+.chat-folder-delete {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+:root[data-accent="custom"] .chat-folder-save,
+:root[data-accent="custom"] .chat-folder-save:hover:not(:disabled) {
+  background: var(--color-brand-gradient, var(--accent-primary));
+  border-color: transparent;
+}
+
 .chat-folder-body::-webkit-scrollbar-track,
 .chat-folder-layout::-webkit-scrollbar-track {
   margin-block: 12px;
@@ -655,8 +666,6 @@
   display: flex;
   gap: 8px;
 }
-
-.chat-folder-actions > .popup-button--danger { margin-right: auto; }
 
 @media (max-width: 768px) {
   .popup-backdrop.chat-folder-backdrop {
