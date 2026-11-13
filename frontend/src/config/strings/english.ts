@@ -750,6 +750,8 @@ export const strings = {
       process: "Process messages for retrieval",
       external_transfer: "Send snippets to an external processor",
       export: "Return evidence to Codex",
+      codex: "Allow explicit local Codex requests",
+      reply: "Reply in this chat as my linked Messenger account",
     },
   },
 

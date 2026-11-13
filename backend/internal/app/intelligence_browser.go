@@ -87,13 +87,15 @@ func (s *Server) authorizeIntelligenceOIDCBrowserSession(ctx context.Context, re
 	digest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
 	code, err := randomToken()
-	if err != nil { return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable }
+	if err != nil {
+		return httptransport.IntelligenceOIDCAuthorizationResult{}, httptransport.ErrIntelligenceOIDCUnavailable
+	}
 	codeDigest := sha256.Sum256([]byte(code))
 	stored, err := s.intelligenceSourceV2Persistence().AuthorizeOIDCBrowserSession(ctx, digest[:], codeDigest[:], now, now.Add(intelligenceOIDCAuthorizationCodeTTL), now, adapterintelligencesourcev2.OIDCBrowserSessionExpectation{
 		ClientID: input.ClientID, RedirectURI: input.RedirectURI, State: input.State, Nonce: input.Nonce,
 		CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
-		ResponseTypeCode: input.ResponseType == "code",
-		AllowedClientID: input.ClientID == s.cfg.IntelligenceOIDCClientID,
+		ResponseTypeCode:   input.ResponseType == "code",
+		AllowedClientID:    input.ClientID == s.cfg.IntelligenceOIDCClientID,
 		RedirectURIAllowed: containsExactString(s.cfg.IntelligenceOIDCRedirectURIs, input.RedirectURI),
 	}, func(userID string) bool {
 		_, subjectErr := s.intelligenceOIDCSubject(ctx, userID)
@@ -170,7 +172,9 @@ func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *htt
 		       COALESCE(bool_or(g.grant_type='read' AND g.granted),false),
 		       COALESCE(bool_or(g.grant_type='process' AND g.granted),false),
 		       COALESCE(bool_or(g.grant_type='external_transfer' AND g.granted),false),
-		       COALESCE(bool_or(g.grant_type='export' AND g.granted),false)
+		       COALESCE(bool_or(g.grant_type='export' AND g.granted),false),
+		       COALESCE(bool_or(g.grant_type='codex' AND g.granted),false),
+		       COALESCE(bool_or(g.grant_type='reply' AND g.granted),false)
 		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.family_id=$2
 		LEFT JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id
@@ -187,15 +191,15 @@ func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *htt
 	for rows.Next() {
 		var item httptransport.IntelligenceSourceV2ConnectionSummary
 		var revokedAt sql.NullTime
-		var read, process, externalTransfer, export bool
-		if err := rows.Scan(&item.ID, &item.ChatID, &item.ChatTitle, &item.CreatedAt, &item.ExpiresAt, &revokedAt, &read, &process, &externalTransfer, &export); err != nil {
+		var read, process, externalTransfer, export, codex, reply bool
+		if err := rows.Scan(&item.ID, &item.ChatID, &item.ChatTitle, &item.CreatedAt, &item.ExpiresAt, &revokedAt, &read, &process, &externalTransfer, &export, &codex, &reply); err != nil {
 			return nil, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 		}
 		if revokedAt.Valid {
 			value := revokedAt.Time
 			item.RevokedAt = &value
 		}
-		item.Grants = map[string]bool{"read": read, "process": process, "external_transfer": externalTransfer, "export": export}
+		item.Grants = map[string]bool{"read": read, "process": process, "external_transfer": externalTransfer, "export": export, "codex": codex, "reply": reply}
 		connections = append(connections, item)
 	}
 	if err := rows.Err(); err != nil {

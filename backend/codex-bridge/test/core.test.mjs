@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   classifyMessage,
+  bindPairedApprovers,
   createJournal,
   createPendingApproval,
   resolveApproval,
@@ -12,23 +13,23 @@ import {
 } from '../src/core.mjs';
 
 const config = {
-  botUserId: 'bot-1',
   trigger: '@Codex',
   chats: [{ id: 'chat-1', workspace: '/work/project', approverIds: ['owner-1'] }],
 };
 
 test('only explicit commands and mentions from allowed chats start turns', () => {
   const classify = (message) => classifyMessage(message, validateConfig(config));
-  assert.equal(classify({ id: 'm1', chatId: 'chat-1', senderId: 'user-1', content: '/codex inspect' }).prompt, 'inspect');
-  assert.equal(classify({ id: 'm2', chatId: 'chat-1', senderId: 'user-1', content: '@Codex explain this' }).prompt, 'explain this');
-  assert.equal(classify({ id: 'm3', chatId: 'other', senderId: 'user-1', content: '/codex hi' }), null);
-  assert.equal(classify({ id: 'm4', chatId: 'chat-1', senderId: 'user-1', content: 'hello' }), null);
+  assert.equal(classify({ id: 'm1', chatId: 'chat-1', senderId: 'owner-1', content: '/codex inspect' }).prompt, 'inspect');
+  assert.equal(classify({ id: 'm2', chatId: 'chat-1', senderId: 'owner-1', content: '@Codex explain this' }).prompt, 'explain this');
+  assert.equal(classify({ id: 'm3', chatId: 'other', senderId: 'owner-1', content: '/codex hi' }), null);
+  assert.equal(classify({ id: 'm4', chatId: 'chat-1', senderId: 'owner-1', content: 'hello' }), null);
+  assert.equal(classify({ id: 'm5', chatId: 'chat-1', senderId: 'member-1', content: '/codex inspect' }), null);
 });
 
 test('messages from the bridge account and bots cannot create loops', () => {
   const classify = (message) => classifyMessage(message, validateConfig(config));
-  assert.equal(classify({ id: 'm1', chatId: 'chat-1', senderId: 'bot-1', content: '/codex again' }), null);
-  assert.equal(classify({ id: 'm2', chatId: 'chat-1', senderId: 'user-1', isBot: true, content: '/codex again' }), null);
+  assert.equal(classify({ id: 'm1', chatId: 'chat-1', senderId: 'owner-1', isBot: true, content: '/codex again' }), null);
+  assert.equal(classify({ id: 'm2', chatId: 'chat-1', senderId: 'owner-1', origin: 'local_codex_bridge', content: '/codex again' }), null);
 });
 
 test('journal persists thread mapping, queued events, and dedupe state across restart', async () => {
@@ -36,10 +37,12 @@ test('journal persists thread mapping, queued events, and dedupe state across re
   const path = join(dir, 'state.json');
   const journal = await createJournal(path);
   await journal.mapThread('chat-1', 'thread-1');
+  await journal.setRemoteCursor('chat-1', 'source-cursor-1');
   await journal.enqueue({ id: 'message-1', chatId: 'chat-1', prompt: 'inspect' });
   await journal.markProcessed('message-0');
   const restarted = await createJournal(path);
   assert.equal(restarted.threadFor('chat-1'), 'thread-1');
+  assert.equal(restarted.remoteCursorFor('chat-1'), 'source-cursor-1');
   assert.equal(restarted.isProcessed('message-0'), true);
   assert.deepEqual(restarted.pending(), [{ id: 'message-1', chatId: 'chat-1', prompt: 'inspect', status: 'queued' }]);
   const persisted = JSON.parse(await readFile(path, 'utf8'));
@@ -78,8 +81,15 @@ test('unknown approval requests are rejected and cannot be approved by chat comm
   assert.equal(createPendingApproval({ rpcId: unknown.id, method: unknown.method, chatId: 'chat-1', approverIds: ['owner-1'] }), null);
 });
 
-test('bridge config requires absolute distinct workspaces, explicit chats, and an approver', () => {
+test('bridge config requires absolute distinct workspaces and defers the default approver to pairing', () => {
   assert.throws(() => validateConfig({ ...config, chats: [] }), /at least one chat/);
   assert.throws(() => validateConfig({ ...config, chats: [{ id: 'chat-1', workspace: '../project', approverIds: ['owner-1'] }] }), /absolute workspace/);
-  assert.throws(() => validateConfig({ ...config, chats: [{ id: 'chat-1', workspace: '/work/project', approverIds: [] }] }), /approver/);
+  assert.deepEqual(validateConfig({ ...config, chats: [{ id: 'chat-1', workspace: '/work/project' }] }).chats.get('chat-1').approverIds, []);
+});
+
+test('pairing binds the linked Messenger user as default approver and preserves explicit additions', () => {
+  const policy = validateConfig({ ...config, chats: [{ ...config.chats[0], approverIds: ['additional-user'] }] });
+  const bound = bindPairedApprovers(policy, { 'chat-1': { linkedUserId: 'owner-1' } });
+  assert.deepEqual(bound.chats.get('chat-1').approverIds, ['owner-1', 'additional-user']);
+  assert.throws(() => bindPairedApprovers(policy, {}), /linked Messenger approver/);
 });

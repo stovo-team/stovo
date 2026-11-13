@@ -29,8 +29,10 @@ func (s *Server) intelligenceSourceV2Handler() http.Handler {
 			StartBackfill:     s.intelligenceSourceV2StartBackfill,
 			BackfillSnapshots: s.intelligenceSourceV2BackfillSnapshots,
 			Events:            s.intelligenceSourceV2Events,
+			EventFence:        s.intelligenceSourceV2EventFence,
 			Snapshot:          s.intelligenceSourceV2Snapshot,
 			ResolveCitation:   s.intelligenceSourceV2ResolveCitation,
+			Reply:             s.intelligenceSourceV2Reply,
 		},
 		Audit: s.auditIntelligenceSourceV2,
 		Limit: func(ctx context.Context, connectionID string) error {
@@ -79,7 +81,7 @@ func (s *Server) auditIntelligenceSourceV2(ctx context.Context, record httptrans
 
 func validIntelligenceSourceV2Operation(operation string) bool {
 	switch operation {
-	case "read", "process", "external_transfer", "export":
+	case "read", "process", "external_transfer", "export", "codex", "reply":
 		return true
 	default:
 		return false

@@ -138,6 +138,8 @@ func (s *Server) createRESTMessageWithSyncDelayPolicy(ctx context.Context, user 
 			EncryptionProtocol: encryptionProtocol, Ciphertext: ciphertext, Nonce: nonce, KeyVersion: keyVersion,
 			EncryptionMetadata: metadata, ReplyToMessageID: payload.ReplyToMessageID,
 			ThreadRootMessageID: payload.ThreadRootMessageID, MessageKind: messageKind, AttachmentIDs: attachmentIDs,
+			SourceConnectionID: payload.SourceConnectionID, SourceOperationID: payload.SourceOperationID, SourceOrigin: payload.SourceOrigin,
+			SourceRevision: payload.SourceRevision, SourceContentHash: payload.SourceContentHash, SourceFinal: payload.SourceFinal,
 			CreatedAt: createdAt,
 		},
 	})

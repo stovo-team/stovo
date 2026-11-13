@@ -41,6 +41,13 @@ func validIntelligenceSourceV2Event(event IntelligenceSourceV2Event, identity In
 	if event.SchemaVersion != "v2" || event.EventID == "" || event.TenantID != identity.TenantID || event.ConnectionID != identity.ConnectionID || event.PrincipalID != identity.PrincipalUserID || event.ResourceID == "" || event.RevisionID == "" || event.OrderToken == "" || event.SourceSequence <= 0 || event.ContainerID != identity.ChatID || event.ObservedAt.IsZero() || !validSourceEventKind(event.Kind) {
 		return false
 	}
+	if event.Origin == "" {
+		if event.OperationID != "" {
+			return false
+		}
+	} else if event.Origin != IntelligenceSourceV2CodexBridgeOrigin || !validSourceV2ConsentString(event.OperationID, 128) {
+		return false
+	}
 	return event.Kind != "delete" || event.Tombstone
 }
 

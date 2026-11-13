@@ -1527,7 +1527,7 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	if directChat == nil || directChat.Title != "Synthetic direct-message contact" {
 		t.Fatalf("direct-message consent choice = %#v, want the other member's display name", directChat)
 	}
-	for _, grant := range []string{"read", "process", "external_transfer", "export"} {
+	for _, grant := range []string{"read", "process", "external_transfer", "export", "codex", "reply"} {
 		if granted, ok := offer.Grants[grant]; !ok || granted {
 			t.Fatalf("initial %s grant = %v (present=%v), want denied", grant, granted, ok)
 		}
@@ -1563,7 +1563,7 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 		"client_id": fixture.clientID, "redirect_uri": fixture.redirectURI,
 		"state": "synthetic-state-value", "code_challenge": fixture.challenge, "code_challenge_method": "S256",
 		"chat_id": fixture.chatID,
-		"grants":  map[string]bool{"read": true},
+		"grants":  map[string]bool{"read": true, "codex": true, "reply": false},
 	}
 	consentResponse := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/authorize", fixture.userToken, consent)
 	if consentResponse.StatusCode != http.StatusFound {
@@ -1648,7 +1648,7 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	if strings.Count(issued.SourceCredential, ".") != 0 {
 		t.Fatal("source credential must be opaque and distinct from an OIDC/JWT token")
 	}
-	if len(issued.Grants) != 4 || !issued.Grants["read"] || issued.Grants["process"] || issued.Grants["external_transfer"] || issued.Grants["export"] {
+	if len(issued.Grants) != 6 || !issued.Grants["read"] || issued.Grants["process"] || issued.Grants["external_transfer"] || issued.Grants["export"] || !issued.Grants["codex"] || issued.Grants["reply"] {
 		t.Fatalf("independent consent grants = %#v", issued.Grants)
 	}
 	credentialDigest := sha256.Sum256([]byte(issued.SourceCredential))
@@ -1667,16 +1667,17 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 		t.Fatalf("connection chat scope = %q, want only the explicitly selected chat %q", scopedChatID, fixture.chatID)
 	}
 	var persistedGrantCount int
-	var persistedRead, persistedProcess, persistedTransfer, persistedExport bool
+	var persistedRead, persistedProcess, persistedTransfer, persistedExport, persistedCodex, persistedReply bool
 	if err := fixture.server.sqlDB.QueryRowContext(ctx, `
 		SELECT count(*),bool_or(grant_type='read' AND granted),bool_or(grant_type='process' AND granted),
-		       bool_or(grant_type='external_transfer' AND granted),bool_or(grant_type='export' AND granted)
+		       bool_or(grant_type='external_transfer' AND granted),bool_or(grant_type='export' AND granted),
+		       bool_or(grant_type='codex' AND granted),bool_or(grant_type='reply' AND granted)
 		FROM public.intelligence_source_v2_connection_grants WHERE connection_id=$1`, issued.ConnectionID).Scan(
-		&persistedGrantCount, &persistedRead, &persistedProcess, &persistedTransfer, &persistedExport); err != nil {
+		&persistedGrantCount, &persistedRead, &persistedProcess, &persistedTransfer, &persistedExport, &persistedCodex, &persistedReply); err != nil {
 		t.Fatalf("inspect persisted independent grants: %v", err)
 	}
-	if persistedGrantCount != 4 || !persistedRead || persistedProcess || persistedTransfer || persistedExport {
-		t.Fatalf("persisted independent grants count/read/process/transfer/export = %d/%v/%v/%v/%v", persistedGrantCount, persistedRead, persistedProcess, persistedTransfer, persistedExport)
+	if persistedGrantCount != 6 || !persistedRead || persistedProcess || persistedTransfer || persistedExport || !persistedCodex || persistedReply {
+		t.Fatalf("persisted independent grants count/read/process/transfer/export/codex/reply = %d/%v/%v/%v/%v/%v/%v", persistedGrantCount, persistedRead, persistedProcess, persistedTransfer, persistedExport, persistedCodex, persistedReply)
 	}
 	var sourceCredentialGrantRows int
 	if err := fixture.server.sqlDB.QueryRowContext(ctx, `SELECT count(*) FROM public.intelligence_source_v2_consent_codes WHERE code_hash=$1`, []byte(issued.SourceCredential)).Scan(&sourceCredentialGrantRows); err != nil {
@@ -1826,6 +1827,96 @@ func TestIntelligenceSourceV2ConsentExchangeRotationAndRevocation(t *testing.T) 
 	_ = revokeConnectionResponse.Body.Close()
 	if _, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, rotatedCredential); err == nil {
 		t.Fatal("revoked source credential remained valid")
+	}
+}
+
+func TestIntelligenceSourceV2ReplyStreamsOneServerStampedChatMessage(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true, "process": true, "codex": true, "reply": true})
+	target := fixture.serverURL + "/api/v2/intelligence/source/replies"
+	send := func(revision int, text string, final bool) *http.Response {
+		return sourceV2Request(t, fixture.httpClient, http.MethodPost, target, credential, map[string]any{
+			"schema_version": "v2", "operation_id": "synthetic-codex-response", "revision": revision, "text": text, "final": final,
+		})
+	}
+	decodeMessageID := func(response *http.Response) string {
+		t.Helper()
+		defer func() { _ = response.Body.Close() }()
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			t.Fatalf("read reply response: %v", err)
+		}
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("reply status=%d body=%s", response.StatusCode, body)
+		}
+		var result struct {
+			MessageID   string `json:"message_id"`
+			OperationID string `json:"operation_id"`
+			Origin      string `json:"origin"`
+		}
+		if err := json.Unmarshal(body, &result); err != nil {
+			t.Fatalf("decode reply response: %v", err)
+		}
+		if result.MessageID == "" || result.OperationID != "synthetic-codex-response" || result.Origin != "local_codex_bridge" || strings.Contains(string(body), credential) {
+			t.Fatalf("reply response = %#v body=%s", result, body)
+		}
+		return result.MessageID
+	}
+	messageID := decodeMessageID(send(1, "stream part one", false))
+	if replayID := decodeMessageID(send(1, "stream part one", false)); replayID != messageID {
+		t.Fatalf("replayed reply message ID=%q, want %q", replayID, messageID)
+	}
+	if finalID := decodeMessageID(send(2, "complete Codex answer", true)); finalID != messageID {
+		t.Fatalf("stream update message ID=%q, want same message %q", finalID, messageID)
+	}
+	var senderID, chatID, content, origin, persistedOperation string
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT sender_id,chat_id,content FROM public.messages WHERE id=$1`, messageID).Scan(&senderID, &chatID, &content); err != nil {
+		t.Fatalf("read synthetic reply message: %v", err)
+	}
+	if senderID != fixture.userID || chatID != fixture.chatID || content != "complete Codex answer" {
+		t.Fatalf("stored reply sender/chat/content=%q/%q/%q", senderID, chatID, content)
+	}
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT origin,operation_id FROM public.intelligence_source_v2_reply_origins WHERE connection_id=$1 AND message_id=$2`, connectionID, messageID).Scan(&origin, &persistedOperation); err != nil {
+		t.Fatalf("read server-stamped reply origin: %v", err)
+	}
+	if origin != "local_codex_bridge" || persistedOperation != "synthetic-codex-response" {
+		t.Fatalf("stored origin/operation=%q/%q", origin, persistedOperation)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `UPDATE public.intelligence_source_v2_connection_grants SET granted=false,revoked_at=now() WHERE connection_id=$1 AND grant_type='reply'`, connectionID); err != nil {
+		t.Fatalf("revoke synthetic reply permission: %v", err)
+	}
+	revoked := send(3, "must not be delivered", true)
+	if revoked.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(revoked.Body)
+		_ = revoked.Body.Close()
+		t.Fatalf("reply after grant revoke status=%d body=%s", revoked.StatusCode, body)
+	}
+	_ = revoked.Body.Close()
+}
+
+func TestIntelligenceSourceV2EventFenceSkipsMessagesThatPrecedePairing(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	_, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true, "process": true, "codex": true, "reply": true})
+	beforeID, afterID := uuid.NewString(), uuid.NewString()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','@Codex old message',$4,$4)`, beforeID, fixture.chatID, fixture.userID, now); err != nil {
+		t.Fatalf("insert pre-pairing synthetic message: %v", err)
+	}
+	fenceResponse := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/source/events/fence", credential, map[string]any{"schema_version": "v2"})
+	defer func() { _ = fenceResponse.Body.Close() }()
+	var fence httptransport.IntelligenceSourceV2EventFence
+	if fenceResponse.StatusCode != http.StatusOK || json.NewDecoder(fenceResponse.Body).Decode(&fence) != nil || fence.EventCursor == "" || fence.FenceSequence < 1 {
+		t.Fatalf("event fence status=%d response=%#v", fenceResponse.StatusCode, fence)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(context.Background(), `INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at) VALUES($1,$2,$3,'text','@Codex new message',$4,$4)`, afterID, fixture.chatID, fixture.userID, time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)); err != nil {
+		t.Fatalf("insert post-fence synthetic message: %v", err)
+	}
+	eventURL := fixture.serverURL + "/api/v2/intelligence/source/events?cursor=" + url.QueryEscape(fence.EventCursor) + "&limit=20"
+	eventResponse := sourceV2Request(t, fixture.httpClient, http.MethodGet, eventURL, credential, nil)
+	defer func() { _ = eventResponse.Body.Close() }()
+	var page httptransport.IntelligenceSourceV2EventPage
+	if eventResponse.StatusCode != http.StatusOK || json.NewDecoder(eventResponse.Body).Decode(&page) != nil || len(page.Events) != 1 || page.Events[0].ResourceID != afterID {
+		t.Fatalf("events after pair fence status=%d events=%#v", eventResponse.StatusCode, page.Events)
 	}
 }
 
@@ -2197,7 +2288,7 @@ func createIntelligenceSourceV2TestConnection(t *testing.T, fixture intelligence
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_connection_chats(connection_id,chat_id) VALUES($1,$2)`, connectionID, chatID); err != nil {
 		t.Fatalf("insert synthetic source v2 chat scope: %v", err)
 	}
-	for _, grant := range []string{"read", "process", "external_transfer", "export"} {
+	for _, grant := range []string{"read", "process", "external_transfer", "export", "codex", "reply"} {
 		if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_connection_grants(connection_id,grant_type,granted,granted_at) VALUES($1,$2,$3,CASE WHEN $3 THEN now() ELSE NULL END)`, connectionID, grant, grants[grant]); err != nil {
 			t.Fatalf("insert synthetic %s grant: %v", grant, err)
 		}

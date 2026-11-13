@@ -1,0 +1,18 @@
+{
+  "relay": {
+    "baseUrl": "https://insight.example.test",
+    "credentialFile": "./private/insight-relay.json"
+  },
+  "trigger": "@Codex",
+  "chats": [
+    {
+      "id": "replace-with-allowed-chat-id",
+      "workspace": "/absolute/path/to/repository",
+      "approverIds": []
+    }
+  ],
+  "stateFile": "./private/state.json",
+  "codexHome": "./private/codex-home",
+  "approvalRequirementsPath": "/etc/codex/requirements.toml",
+  "codexCommand": "codex"
+}

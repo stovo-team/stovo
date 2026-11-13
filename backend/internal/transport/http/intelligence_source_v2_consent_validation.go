@@ -59,7 +59,7 @@ func validSourceV2ConsentChallenge(value string) bool {
 
 func validSourceV2ConsentGrant(grant string) bool {
 	switch grant {
-	case "read", "process", "external_transfer", "export":
+	case "read", "process", "external_transfer", "export", "codex", "reply":
 		return true
 	default:
 		return false
