@@ -135,6 +135,9 @@ describe("active chat message spacing", () => {
     expect(mobileChatRule(".messenger-shell.has-active-chat .messages-panel")).toContain(
       "var(--active-chat-message-content-inset-x) 10px;"
     );
+    expect(mobileChatRule(".messenger-shell.has-active-chat .messages-panel")).toContain(
+      "--message-list-inline-end: var(--active-chat-message-content-inset-x);"
+    );
   });
 
   it("reserves matching scrollbar gutters so message content is visually centered", () => {
