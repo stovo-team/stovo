@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Archive,
   ChevronDown,
@@ -21,6 +21,7 @@ import {
 import { canPostToChannel } from "../shared/chatPresentation";
 import type { Message } from "../shared/types";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { useDismissOnScroll } from "../shared/useDismissOnScroll";
 
 export type MessageContextMenuState = {
   message: Message;
@@ -50,7 +51,8 @@ export function MessageContextMenu({
   onForward,
   onArchive,
   onEdit,
-  onDelete
+  onDelete,
+  onClose
 }: {
   menu: MessageContextMenuState;
   currentUser: User | null;
@@ -69,9 +71,12 @@ export function MessageContextMenu({
   onArchive: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onClose: () => void;
 }) {
   const strings = useStrings();
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [reactionsExpanded, setReactionsExpanded] = useState(false);
+  useDismissOnScroll(menuRef, onClose);
   const currentReaction = currentUser
     ? menu.message.reactions.find((reaction) => reaction.userIds.includes(currentUser.id)) ?? null
     : null;
@@ -99,6 +104,7 @@ export function MessageContextMenu({
 
   return (
     <div
+      ref={menuRef}
       className={`action-menu message-context-menu${reactionsExpanded ? " message-context-menu--reactions-expanded" : ""}`}
       role="menu"
       style={{ left: menu.x, right: "auto", top: menu.y }}

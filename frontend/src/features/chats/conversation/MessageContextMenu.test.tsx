@@ -114,6 +114,7 @@ describe("MessageContextMenu commenting and replying", () => {
           onArchive={vi.fn()}
           onEdit={vi.fn()}
           onDelete={vi.fn()}
+          onClose={vi.fn()}
         />
       );
     });
@@ -172,6 +173,7 @@ describe("MessageContextMenu commenting and replying", () => {
           onArchive={vi.fn()}
           onEdit={vi.fn()}
           onDelete={vi.fn()}
+          onClose={vi.fn()}
         />
       );
     });
@@ -213,6 +215,7 @@ describe("MessageContextMenu commenting and replying", () => {
           onArchive={vi.fn()}
           onEdit={vi.fn()}
           onDelete={vi.fn()}
+          onClose={vi.fn()}
         />
       );
     });
@@ -237,6 +240,7 @@ describe("structured message copy action", () => {
       isInThreadMode={false} isPinned={false} seenBy={[]}
       onReact={vi.fn()} onReply={vi.fn()} onComment={vi.fn()} onCopy={vi.fn()} onTogglePin={vi.fn()}
       onForward={vi.fn()} onArchive={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()}
+      onClose={vi.fn()}
     />));
     expect(Array.from(container.querySelectorAll('[role="menuitem"]')).map((node) => node.textContent?.trim())).not.toContain("Copy");
   });

@@ -592,6 +592,7 @@ export function ConversationPanel({
                 setDeleteTarget(messageContextMenu.message);
                 setMessageContextMenu(null);
               }}
+              onClose={() => setMessageContextMenu(null)}
             />
           )}
           {isMessageSelectionMode ? (

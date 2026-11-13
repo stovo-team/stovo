@@ -13,6 +13,7 @@ import {
 import type { Chat } from "../../../api/chats";
 import { useStrings } from "../../../i18n/LanguageContext";
 import type { ChatFolder } from "./chatFolders";
+import { useDismissOnScroll } from "../shared/useDismissOnScroll";
 
 export type ChatContextMenuState = {
   chat: Chat;
@@ -52,6 +53,8 @@ export function ChatContextMenu({
   const strings = useStrings();
   const menuRef = useRef<HTMLDivElement | null>(null);
   const { chat, x, y } = menu;
+
+  useDismissOnScroll(menuRef, onClose);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
