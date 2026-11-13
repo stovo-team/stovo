@@ -556,16 +556,8 @@
   min-height: 0;
 }
 
-.chat-folder-delete {
-  align-self: flex-start;
-  margin-top: 4px;
-}
-
-:root[data-accent="custom"] .chat-folder-save,
-:root[data-accent="custom"] .chat-folder-save:hover:not(:disabled) {
-  background: var(--color-brand-gradient, var(--accent-primary));
-  border-color: transparent;
-}
+.chat-folder-delete { align-self: flex-start; margin-top: 4px; }
+:root[data-accent="custom"] .chat-folder-save, :root[data-accent="custom"] .chat-folder-save:hover:not(:disabled) { background: var(--color-brand-gradient, var(--accent-primary)); border-color: transparent; }
 
 .chat-folder-body::-webkit-scrollbar-track,
 .chat-folder-layout::-webkit-scrollbar-track {
