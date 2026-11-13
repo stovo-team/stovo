@@ -228,6 +228,7 @@
 
 .messenger-shell.has-active-chat {
   --active-chat-message-inset-x: 10px;
+  --active-chat-message-content-inset-x: calc(var(--active-chat-message-inset-x) + 2px);
   --chat-floating-header-height: 48px;
   --chat-messages-top-gap: 18px;
 }
@@ -236,7 +237,7 @@
   background: transparent;
   margin-bottom: 1px;
   margin-top: calc(-1 * var(--chat-floating-header-overlap));
-  padding-inline: var(--active-chat-message-inset-x);
+  padding-inline: var(--active-chat-message-content-inset-x);
   padding-top: calc(var(--chat-messages-top-gap) + var(--chat-floating-header-overlap));
   scroll-padding-top: 12px;
   scrollbar-gutter: stable both-edges;
@@ -246,7 +247,7 @@
   background: transparent;
   border: none;
   border-radius: var(--radius-panel);
-  box-shadow: none;
+  box-shadow: 0 2px 8px var(--color-palette-554de51a1e86);
   margin-inline: var(--active-chat-message-inset-x);
   margin-block: 0 8px;
   padding: 6px 8px;

@@ -113,18 +113,27 @@ describe("active chat message spacing", () => {
     );
   });
 
-  it("uses a transparent background without top shadow behind the composer", () => {
+  it("keeps the composer transparent and adds a subtle shadow beneath it", () => {
     expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
       "background: transparent;"
     );
+    expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
+      "box-shadow: 0 2px 8px var(--color-palette-554de51a1e86);"
+    );
   });
 
-  it("uses one narrower shared horizontal inset for the message list and composer", () => {
+  it("adds 2px of horizontal inset to chat messages without changing the composer inset", () => {
     expect(rule(".messenger-shell.has-active-chat .messages-panel")).toContain(
-      "padding-inline: var(--active-chat-message-inset-x);"
+      "padding-inline: var(--active-chat-message-content-inset-x);"
+    );
+    expect(rule(".messenger-shell.has-active-chat")).toContain(
+      "--active-chat-message-content-inset-x: calc(var(--active-chat-message-inset-x) + 2px);"
     );
     expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
       "margin-inline: var(--active-chat-message-inset-x);"
+    );
+    expect(mobileChatRule(".messenger-shell.has-active-chat .messages-panel")).toContain(
+      "var(--active-chat-message-content-inset-x) 10px;"
     );
   });
 

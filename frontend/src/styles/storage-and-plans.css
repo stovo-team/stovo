@@ -1498,7 +1498,7 @@
   .messenger-shell.has-active-chat .messages-panel {
     --message-list-inline-end: var(--active-chat-message-inset-x);
     margin-top: calc(-1 * var(--chat-floating-header-overlap));
-    padding: calc(max(4px, env(safe-area-inset-top)) + var(--chat-floating-header-overlap) + 10px) var(--active-chat-message-inset-x) 10px;
+    padding: calc(max(4px, env(safe-area-inset-top)) + var(--chat-floating-header-overlap) + 10px) var(--active-chat-message-content-inset-x) 10px;
     scroll-padding-top: 10px;
   }
 
