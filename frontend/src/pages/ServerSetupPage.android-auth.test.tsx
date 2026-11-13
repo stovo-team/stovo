@@ -165,6 +165,8 @@ describe("Android space setup authentication", () => {
     await render();
     await click('[data-auth-method="scan-qr"]');
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not access the camera");
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("enter the server address manually");
+    expect(container.querySelector('[role="alert"]')?.textContent).not.toContain("password");
     expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
     expect(container.querySelector('button[type="submit"]')?.disabled).toBe(false);
   });

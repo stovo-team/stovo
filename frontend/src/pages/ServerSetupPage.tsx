@@ -90,7 +90,7 @@ export default function ServerSetupPage() {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
         ? strings.auth.qrScannerInstalling
         : isAndroidQrCameraUnavailable(err)
-          ? strings.auth.qrCameraUnavailable
+          ? strings.auth.qrSetupCameraUnavailable
           : strings.auth.scanSetupQrFailed);
     } finally {
       setIsAuthenticating(false);

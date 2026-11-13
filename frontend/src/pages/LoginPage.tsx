@@ -235,7 +235,7 @@ export default function LoginPage() {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
         ? strings.auth.qrScannerInstalling
         : isAndroidQrCameraUnavailable(err)
-          ? strings.auth.qrCameraUnavailable
+          ? strings.auth.qrLoginCameraUnavailable
           : strings.auth.scanQrFailed);
     } finally { setIsSubmitting(false); }
   }
