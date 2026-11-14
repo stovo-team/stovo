@@ -15,6 +15,7 @@ import "../src/styles.css";
 const params = new URLSearchParams(location.search);
 const voice = params.get("kind") === "voice";
 const withDevices = params.has("devices");
+const participantCount = Math.max(1, Math.min(9, Number(params.get("participants") ?? 1)));
 if (params.has("android")) {
   Capacitor.isNativePlatform = () => true;
   Capacitor.getPlatform = () => "android";
@@ -23,7 +24,14 @@ if (params.has("controls-visible")) {
   localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: false, cameraFit: "fit" }));
 }
 const self = { id: "self", displayName: "Test User", profilePhoto: null } as User;
-const chat = { id: "group", title: "Test call", type: voice ? "voice" : "group", members: [self], activeCall: { participants: [{ userId: "self", state: "connected" }] } } as unknown as Chat;
+const otherParticipants = Array.from({ length: participantCount - 1 }, (_, index) => ({
+  id: `member-${index + 1}`,
+  displayName: `Participant ${index + 1}`,
+  profilePhoto: null,
+} as User));
+const members = [self, ...otherParticipants];
+const activeParticipants = members.map((member) => ({ userId: member.id, state: "connected" }));
+const chat = { id: "group", title: "Test call", type: voice ? "voice" : "group", members, activeCall: { participants: activeParticipants } } as unknown as Chat;
 function media(color: string) {
   const canvas = document.createElement("canvas"); canvas.width = 1280; canvas.height = 720;
   const context = canvas.getContext("2d")!; context.fillStyle = color; context.fillRect(0, 0, 1280, 720);
@@ -44,7 +52,7 @@ function Fixture() {
   const session = {
     callPhase: phase, callType: type, setCallType: setType, activeCallChatId: "group", activeGroupCalls: { group: chat.activeCall },
     callAudioSettings: settings, callAudioCapabilities: { canUseCamera: true, canShareScreen: true, canSelectInputDevice: withDevices, canSelectOutputDevice: withDevices }, callAudioDevices: withDevices ? [{ deviceId: "mock-microphone", kind: "audioinput", label: "Desk microphone" }] : [], callRemoteMedia: [],
-    callParticipantIds: ["self"], callInviteSelection: [], isCallInviteOpen: false,
+    callParticipantIds: activeParticipants.map((participant) => participant.userId), callInviteSelection: [], isCallInviteOpen: false,
     localVideoStream: settings.cameraEnabled ? cameraStream : null, localScreenStream: settings.screenSharing ? screenStream : null,
     remoteVideoStream: null, hasRemoteVideo: false, speakingUserIds: [], isLocalSpeaking: false, isPeerSpeaking: false,
     callTimer: "00:00", callRoomId: null, accessToken: null, callNotice: null,
@@ -58,7 +66,7 @@ function Fixture() {
   } as unknown as CallSessionApi;
   return <MemoryRouter initialEntries={["/app/chats/group"]}>
     <main style={{ height: "100vh", background: "#334155" }}>Chat behind call</main>
-    <CallFeatureProvider session={session} isMobileViewport={params.has("mobile")} currentUser={self} members={[self]} chats={[chat]}>
+    <CallFeatureProvider session={session} isMobileViewport={params.has("mobile")} currentUser={self} members={members} chats={[chat]}>
       <CallFeature />
       {voice && <div style={{ position: "fixed", inset: expanded ? "0" : "80px auto auto 80px", width: expanded ? "100vw" : "620px", height: expanded ? "100vh" : "560px", zIndex: 100 }}>
         <VoiceChannelStage chat={chat} session={session} members={[self]} currentUser={self} accessToken={null} canAddPeople onOpenAddPeople={noop} isExpanded={expanded} onToggleExpanded={() => setExpanded((value) => !value)} />

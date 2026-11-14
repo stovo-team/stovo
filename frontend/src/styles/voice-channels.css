@@ -761,8 +761,8 @@
   object-fit: cover !important;
 }
 .call-popup--android.call-popup-minimized .minimized-call-button--end svg { width: 22px; height: 22px; }
-.call-popup--android .call-popup-minimize-btn svg { width: 20px; height: 20px; }
-.call-popup--android .call-popup-header-invite svg { width: 24px; height: 24px; }
+.call-popup--android .call-popup-minimize-btn svg { width: 24px; height: 24px; }
+.call-popup--android .call-popup-header-invite svg { width: 28px; height: 28px; }
 
 .shared-call-controls .call-ctrl-btn,
 .shared-call-controls .voice-dock-btn,

@@ -32,6 +32,9 @@ describe("group call presentation surface", () => {
 
   it("keeps participant tiles at 16:9 and controls from shrinking", () => {
     expect(rule(".call-popup-group-participant")).toMatch(/aspect-ratio:\s*16 \/ 9/);
+    const participantGrid = rule(".call-popup.call-popup-group-call .call-popup-audio-stage .call-popup-group-participants");
+    expect(participantGrid).toMatch(/width:\s*min\(100%, 720px\) !important/);
+    expect(participantGrid).toMatch(/max-width:\s*720px !important/);
     expect(rule(".call-popup-group-call .call-ctrl-btn")).toMatch(/flex-shrink:\s*0/);
     expect(rule(".call-popup-group-call .call-popup-header-invite")).toMatch(/grid-column:\s*3/);
   });

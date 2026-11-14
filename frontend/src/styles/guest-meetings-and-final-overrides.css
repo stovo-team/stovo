@@ -2592,3 +2592,18 @@ button.minimized-call-button--end:active:not(:disabled) {
     box-shadow: none;
   }
 }
+
+@media (min-width: 1025px) {
+  .call-popup:not(.call-popup--android) .guest-call-controls .guest-device-control > .call-ctrl-btn:hover:not(:disabled):not(:active) {
+    opacity: 1;
+    background: var(--surface-raised, var(--color-palette-703ae7c81675)) !important;
+    transform: none;
+  }
+
+  .call-popup:not(.call-popup--android) .shared-call-controls .guest-device-menu-trigger:hover:not(:disabled) {
+    background: var(--surface-raised) !important;
+    color: var(--color-palette-dc68f2e156de) !important;
+    box-shadow: none !important;
+    transform: none;
+  }
+}
