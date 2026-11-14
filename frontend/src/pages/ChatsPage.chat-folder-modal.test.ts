@@ -30,4 +30,10 @@ describe("chat folder dialog styles", () => {
     expect(styles).toMatch(/\.chat-folder-body\s*\{[^}]*overflow-y:\s*auto/);
     expect(styles).toMatch(/\.popup-backdrop\.chat-folder-backdrop\s*\{[^}]*scrollbar-width:\s*none/);
   });
+
+  it("keeps destructive settings last in the scrollable content and uses the brand gradient for custom themes", () => {
+    expect(styles).toMatch(/\.chat-folder-delete\s*\{[^}]*align-self:\s*flex-start/);
+    expect(styles).toMatch(/:root\[data-accent="custom"\] \.chat-folder-save[\s\S]*?background:\s*var\(--color-brand-gradient,\s*var\(--accent-primary\)\)/);
+    expect(styles).toContain(".chat-folder-actions > span");
+  });
 });

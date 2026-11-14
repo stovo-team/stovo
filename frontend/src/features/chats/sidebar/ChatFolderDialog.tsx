@@ -5,6 +5,7 @@ import { PopupButton } from "../../../components/ui/PopupButton";
 import { PopupField } from "../../../components/ui/PopupField";
 import { AvatarChoicePicker } from "../../../components/AvatarChoicePicker";
 import { colorForAvatarId, defaultAvatarSymbol } from "../../../components/avatarIdentity";
+import { Trash2 } from "lucide-react";
 
 import { ChatFolder, defaultFolderRules, folderChatTypes } from "./chatFolders";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -71,10 +72,10 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete, title, all
           <fieldset className="chat-folder-rules"><legend>{strings.chats.folders.includeChatTypes}</legend><small>{strings.chats.folders.allowedTypesHelp}</small>{localizedFolderTypes.map((type) => <label key={type.value}><input type="checkbox" checked={draft.rules.chatTypes.includes(type.value)} onChange={() => setDraft((current) => ({ ...current, rules: { ...current.rules, chatTypes: current.rules.chatTypes.includes(type.value) ? current.rules.chatTypes.filter((item) => item !== type.value) : [...current.rules.chatTypes, type.value] } }))} />{type.label}</label>)}</fieldset>
           <PopupField label={strings.chats.folders.nameContains} value={draft.rules.titleIncludes} maxLength={80} onChange={(event) => setDraft({ ...draft, rules: { ...draft.rules, titleIncludes: event.target.value } })} placeholder={strings.chats.folders.nameContainsPlaceholder} />
           <fieldset className="chat-folder-rules"><legend>{strings.chats.folders.additionalProperties}</legend>{([ ["unreadOnly", strings.chats.folders.unreadOnly], ["favoritesOnly", strings.chats.folders.favoritesOnly], ["mutedOnly", strings.chats.folders.mutedOnly] ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={draft.rules[key]} onChange={() => setDraft({ ...draft, rules: { ...draft.rules, [key]: !draft.rules[key] } })} />{label}</label>)}</fieldset>
+          {folder && allowDelete && <PopupButton type="button" variant="danger" className="chat-folder-delete" startIcon={<Trash2 size={16} aria-hidden="true" />} onClick={() => onDelete(folder)}>{strings.chats.folders.deleteFolder}</PopupButton>}
         </div>
         <div className="chat-folder-actions">
-          {folder && allowDelete && <PopupButton type="button" variant="danger" onClick={() => onDelete(folder)}>{strings.chats.folders.deleteFolder}</PopupButton>}
-          <span><PopupButton type="submit" variant="primary" disabled={!draft.name.trim()}>{folder ? strings.chats.folders.saveFolder : strings.chats.folders.createFolder}</PopupButton><PopupButton type="button" variant="secondary" onClick={onClose}>{strings.chats.folders.cancel}</PopupButton></span>
+          <span><PopupButton type="submit" variant="primary" className="chat-folder-save" disabled={!draft.name.trim()}>{folder ? strings.chats.folders.saveFolder : strings.chats.folders.createFolder}</PopupButton><PopupButton type="button" variant="secondary" onClick={onClose}>{strings.chats.folders.cancel}</PopupButton></span>
         </div>
       </form>
     </PopupDialog>,

@@ -30,6 +30,8 @@ on:
 jobs:
   docs-and-deployment:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Detect available shell
@@ -86,6 +88,8 @@ jobs:
           & (Join-Path $kubeconformBin 'kubeconform.exe') -v
       - name: Install kubeconform on Linux runner
         if: runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -95,6 +99,7 @@ jobs:
           archive="$RUNNER_TEMP/kubeconform-$version-linux-amd64.tar.gz"
           install_dir="$RUNNER_TEMP/kubeconform-bin"
           curl --fail --location --retry 3 \
+            --header "Authorization: Bearer $GITHUB_TOKEN" \
             --header 'Accept: application/octet-stream' \
             "https://api.github.com/repos/yannh/kubeconform/releases/assets/$asset_id" \
             --output "$archive"
