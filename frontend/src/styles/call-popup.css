@@ -392,6 +392,10 @@
   transform: scaleX(-1);
 }
 
+.group-call-prejoin-video.is-mirrored {
+  transform: scaleX(-1);
+}
+
 /* ── Minimized chip controls ── */
 .call-status-chip-controls {
   display: flex;
