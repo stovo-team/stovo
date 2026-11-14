@@ -5,6 +5,7 @@ import { ApiError, getClusterPrefix } from "../api/client";
 import { banMemberIP, changeMemberRole, getMemberAdminDetails, getServerRoles, MemberAdminDetails, removeMember, ServerRole, unbanMemberIP } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import { PopupDialog } from "../components/ui/Popup";
+import { showToast } from "../components/ToastViewport";
 import { PopupButton } from "../components/ui/PopupButton";
 import { PopupSelect } from "../components/ui/PopupSelect";
 import { EntityAvatar } from "../components/EntityAvatar";
@@ -37,6 +38,7 @@ export default function AdminMembersPage() {
   const [visibleCount, setVisibleCount] = useState(MEMBERS_PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -247,7 +249,6 @@ export default function AdminMembersPage() {
 
         {!canViewAdmin && <p className="error-text">{strings.admin.plugins.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
-        {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && (
           <section className="admin-members-panel admin-panel">

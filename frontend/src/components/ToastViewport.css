@@ -1,0 +1,51 @@
+.toast-viewport {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  inset: max(12px, env(safe-area-inset-top)) 12px auto;
+  pointer-events: none;
+  position: fixed;
+  z-index: 10000;
+}
+
+.app-toast {
+  align-items: center;
+  background: var(--color-palette-0002249bf757);
+  border: 1px solid var(--color-palette-0610f652e4bd);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 28%);
+  color: var(--color-palette-f2074b6cef37);
+  display: flex;
+  gap: 10px;
+  max-width: min(520px, 100%);
+  min-height: 44px;
+  padding: 9px 11px;
+  pointer-events: auto;
+  width: max-content;
+}
+
+.app-toast--success > svg { color: var(--color-palette-115e018f6107); }
+.app-toast--error > svg { color: var(--color-palette-c36d4cdccdc9); }
+.app-toast--info > svg { color: var(--color-palette-b51de63d0eac); }
+.app-toast > span { overflow-wrap: anywhere; }
+.app-toast > button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  display: inline-flex;
+  flex: 0 0 32px;
+  height: 32px;
+  justify-content: center;
+  margin-inline-start: 2px;
+  min-height: 32px;
+  padding: 0;
+}
+.app-toast > button:focus-visible { outline: 2px solid var(--color-palette-f2074b6cef37); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-toast { animation: toast-enter 160ms ease-out both; }
+  @keyframes toast-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+}

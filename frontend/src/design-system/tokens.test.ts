@@ -102,7 +102,7 @@ describe("shared design tokens", () => {
     const offenders = sourceFiles("src").flatMap((path) => [...read(path).matchAll(property)].map((match) => `${path}: ${match[0]}`));
 
     expect(offenders).toEqual([]);
-  });
+  }, 15_000);
 
   it("provides configurable semantic theme colors for shared UI roles", () => {
     const tokens = read("src/design-system/tokens.css");

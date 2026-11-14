@@ -22,6 +22,7 @@ import { PopupButton } from "../components/ui/PopupButton";
 import { PopupField } from "../components/ui/PopupField";
 import InviteModal from "../components/InviteModal";
 import StovoLogo from "../components/StovoLogo";
+import { showToast } from "../components/ToastViewport";
 import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
@@ -59,14 +60,7 @@ export default function MultiAdminPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
-  // Notification / Toast info
-  const [toast, setToast] = useState<string | null>(null);
   const [spaceInvite, setSpaceInvite] = useState<{ name: string; url: string } | null>(null);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  };
 
   useEffect(() => {
     if (token) {
@@ -169,7 +163,7 @@ export default function MultiAdminPage() {
           voiceTranscriptionEnabled: settings.voiceTranscriptionEnabled ?? true,
         });
       } catch (err: any) {
-        showToast(err.message || "Failed to load AI settings");
+        showToast(err.message || "Failed to load AI settings", "error");
       }
     }
   };
@@ -282,8 +276,6 @@ export default function MultiAdminPage() {
 
   return (
     <div style={styles.page} className="supervisor-admin-page">
-      {toast && <div style={styles.toast}>{toast}</div>}
-
       <header style={styles.header} className="header">
         <div style={styles.headerTitleGroup}>
           <StovoLogo size={32} />
@@ -935,19 +927,5 @@ const styles: Record<string, React.CSSProperties> = {
     height: 20,
     accentColor: "var(--color-palette-b51de63d0eac)",
     cursor: "pointer",
-  },
-  toast: {
-    position: "fixed",
-    bottom: 32,
-    right: 32,
-    backgroundColor: "var(--color-palette-95b1a9665923)",
-    color: "var(--color-palette-f2074b6cef37)",
-    border: "1px solid var(--color-palette-670e494f8dfd)",
-    padding: "14px 24px",
-    borderRadius: "var(--radius-pill)",
-    boxShadow: "0 15px 30px var(--color-palette-2101efd095aa)",
-    zIndex: 1100,
-    fontWeight: "var(--font-weight-semibold)",
-    fontSize: "var(--font-size-small)",
   },
 };

@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { PresetNumberControl } from "../components/ui/PresetNumberControl";
+import { showToast } from "../components/ToastViewport";
 import "./AdminServerSettingsPage.css";
 import { GuestMeetingSelect } from "../features/chats/calling/GuestMeetingSelect";
 import { useStrings } from "../i18n/LanguageContext";
@@ -40,6 +41,7 @@ export default function AdminServerSettingsPage() {
     Object.fromEntries(Object.entries(qualityDefaults).map(([key, value]) => [key, String(value)])) as Record<QualityField, string>,
   );
   const [notificationProvider, setNotificationProvider] = useState<NotificationProvider>("firebase");
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
 
   const loadFamily = useCallback(async () => {
     if (!accessToken || !canManageServer) return;
@@ -142,7 +144,7 @@ export default function AdminServerSettingsPage() {
     <section className="page-surface admin-surface">
       <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} /><h1>{strings.admin.serverSettings.title}</h1></div>
       {!canManageServer && <p className="error-text">{strings.admin.serverSettings.ownerRequired}</p>}
-      {error && <p className="error-text">{error}</p>}{notice && <p className="success-text">{notice}</p>}
+      {error && <p className="error-text">{error}</p>}
       {canManageServer && <div className="settings-toggle-groups admin-panel">
         {canManageSpaceName && <section>
           <label className="appearance-setting-row">

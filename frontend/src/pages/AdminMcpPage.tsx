@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import MCPConnectorsPanel from "../components/MCPConnectorsPanel";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { showToast } from "../components/ToastViewport";
 import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminMcpPage() {
@@ -15,6 +16,7 @@ export default function AdminMcpPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_integrations") === true;
   const prefix = getClusterPrefix();
 
@@ -45,7 +47,6 @@ export default function AdminMcpPage() {
 
         {!canViewAdmin && <p className="error-text">{copy.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
-        {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && accessToken && (
           <section className="mcp-connectors-admin-section admin-panel">

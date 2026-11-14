@@ -3,10 +3,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { Family } from "../api/family";
 import { useChatWorkspaceState } from "../features/chats/sidebar/useChatWorkspaceState";
-const mocks = vi.hoisted(() => ({ authRequest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authRequest: vi.fn(), showToast: vi.fn() }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ accessToken: "token", authRequest: mocks.authRequest, currentUser: { id: "owner", role: "owner" } }) }));
 vi.mock("./AppNav", () => ({ default: () => null }));
 vi.mock("../components/BackButton", () => ({ BackButton: () => null }));
+vi.mock("../components/ToastViewport", () => ({ showToast: mocks.showToast }));
 vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => ({ admin: { appearance: { title: "Appearance", chatLayout: "Chat layout", saved: "Saved", minimizedLayout: "Minimized layout", minimizedLayoutDesc: "Compact chat rows", spaceOptions: "Space options" } } }) }));
 import AdminAppearancePage from "./AdminAppearancePage";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -29,6 +30,8 @@ it("applies the saved layout to the already mounted chat workspace", async () =>
   await act(async () => { container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(); });
   expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { minimizedChatLayout: true } });
   expect(container.querySelector("output")?.textContent).toBe("Compact chats");
+  expect(container.textContent).not.toContain("Saved");
+  expect(mocks.showToast).toHaveBeenCalledWith("Saved");
 });
 it("does not apply a failed save to cached chats", async () => {
   mocks.authRequest.mockImplementation((_path, options) => options?.method === "PATCH" ? Promise.reject(new Error("offline")) : Promise.resolve(initial));

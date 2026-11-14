@@ -45,6 +45,9 @@ export const strings = {
       return `${count} непрочитанных сообщений`;
     },
   },
+  accessibility: {
+    dismissNotification: "Закрыть уведомление",
+  },
 
   spaceSwitcher: {
     selectSpace: "Выбрать спейс",

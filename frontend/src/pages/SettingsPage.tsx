@@ -7,6 +7,7 @@ import {
   useRef,
   useState
 } from "react";
+import { showToast } from "../components/ToastViewport";
 import {
   Bell,
   BarChart3,
@@ -124,6 +125,7 @@ export default function SettingsPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
   const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(() => {
     const params = new URLSearchParams(location.search);
     if (params.has("family")) return "Family";

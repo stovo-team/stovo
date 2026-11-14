@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useStrings } from "../../i18n/LanguageContext";
+import { showToast } from "../../components/ToastViewport";
 import {
   DEFAULT_SHORTCUT_BINDINGS,
   SHORTCUT_DEFINITIONS,
@@ -53,7 +54,6 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
     browserFeature: string;
     combo: string;
   } | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const isMac = isMacPlatform();
@@ -66,8 +66,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
       setBrowserConflict(null);
       const detail = (e as CustomEvent<{ isResetAll?: boolean }>)?.detail;
       if (detail?.isResetAll) {
-        setNotice(strings.shortcuts.resetAll);
-        setTimeout(() => setNotice(null), 2500);
+        showToast(strings.shortcuts.resetAll);
       }
     };
     window.addEventListener("stovo:shortcuts-changed", handleChanged);
@@ -127,8 +126,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
       setRecordingActionId(null);
       setConflict(null);
       setBrowserConflict(null);
-      setNotice(`Shortcut updated: ${combo}`);
-      setTimeout(() => setNotice(null), 2500);
+      showToast(`Shortcut updated: ${combo}`);
     };
 
     window.addEventListener("keydown", handleKeyDown, { capture: true });
@@ -144,8 +142,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
     setBindings(updated);
     setRecordingActionId(null);
     setConflict(null);
-    setNotice(`Shortcut reassigned: ${conflict.combo}`);
-    setTimeout(() => setNotice(null), 2500);
+    showToast(`Shortcut reassigned: ${conflict.combo}`);
   }
 
   function handleResetOne(actionId: ShortcutActionId) {
@@ -162,8 +159,7 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
       setRecordingActionId(null);
       setConflict(null);
       setBrowserConflict(null);
-      setNotice(strings.shortcuts.resetAll);
-      setTimeout(() => setNotice(null), 2500);
+      showToast(strings.shortcuts.resetAll);
     }
   }
 
@@ -240,7 +236,6 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
         </div>
       )}
 
-      {notice && <div className="shortcuts-settings-notice" role="status">{notice}</div>}
 
       <div className="shortcuts-search-container">
         <div className="shortcuts-search-bar">
