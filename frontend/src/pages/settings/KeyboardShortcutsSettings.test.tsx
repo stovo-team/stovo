@@ -284,7 +284,8 @@ describe("KeyboardShortcutsSettings", () => {
 
     // Should be reset to default and announced through the shared status toast.
     expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
-    expect(document.querySelector('.app-toast[role="status"]')?.textContent).toContain("Reset all to defaults");
+    expect(Array.from(document.querySelectorAll('.app-toast[role="status"]'))
+      .some((toast) => toast.textContent?.includes("Reset all to defaults"))).toBe(true);
   });
 
   it("renders reset button when showResetAll prop is true", async () => {
