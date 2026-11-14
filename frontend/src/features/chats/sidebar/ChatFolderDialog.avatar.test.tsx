@@ -26,6 +26,27 @@ afterEach(() => {
 });
 
 describe("ChatFolderDialog avatar choices", () => {
+  it("places the delete action last in settings with a decorative SVG icon", () => {
+    const onDelete = vi.fn();
+    const folder = { id: "folder-work", name: "Work", rules: defaultFolderRules(), symbolId: "folder" as const, colorId: "red" as const };
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    mounts.push(container);
+    act(() => root.render(<ChatFolderDialog folder={folder} onClose={vi.fn()} onDelete={onDelete} onSave={vi.fn()} />));
+
+    const body = document.body.querySelector(".chat-folder-body");
+    const deleteButton = body?.querySelector<HTMLButtonElement>(".chat-folder-delete");
+    expect(body?.lastElementChild).toBe(deleteButton);
+    expect(deleteButton?.querySelector("svg")).not.toBeNull();
+    expect(deleteButton?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.body.querySelector(".chat-folder-actions .chat-folder-delete")).toBeNull();
+
+    act(() => deleteButton?.click());
+    expect(onDelete).toHaveBeenCalledWith(folder);
+  });
+
   it("saves a selected symbol and color with the folder", () => {
     const onSave = vi.fn();
     const folder = { id: "folder-work", name: "Work", rules: defaultFolderRules(), symbolId: "folder" as const, colorId: "red" as const };

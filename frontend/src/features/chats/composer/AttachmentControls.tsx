@@ -66,6 +66,7 @@ export function AttachmentControls() {
       />
       <input
         ref={cameraAttachmentInputRef}
+        accept="image/*"
         capture="environment"
         className="visually-hidden"
         disabled={disabled}

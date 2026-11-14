@@ -152,7 +152,7 @@ export function useMessageComposer({
     pendingAttachments, setPendingAttachments, attachmentInputRef, galleryAttachmentInputRef,
     cameraAttachmentInputRef, audioAttachmentInputRef, documentAttachmentInputRef,
     handleFileSelect, addSharedFileAttachments, removePendingAttachment, updatePendingAttachment
-  } = useComposerAttachments();
+  } = useComposerAttachments(onError);
   const { handleComposerChange } = useComposerDraftPersistence({
     chatId, selectedChatId: selectedChat?.id, setComposer, socketRef
   });
