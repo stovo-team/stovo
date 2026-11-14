@@ -17,7 +17,7 @@ describe("desktop app navigation active state", () => {
     expect(desktopNavigationStyles).toContain("padding: 6px 4px;");
 
     expect(desktopNavigationStyles).toContain(
-      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before,"
+      ".app-frame > .app-nav a.active::before {"
     );
     expect(desktopNavigationStyles).toContain("top: 50%;");
     expect(desktopNavigationStyles).toContain("transform: translate(-50%, -50%);");

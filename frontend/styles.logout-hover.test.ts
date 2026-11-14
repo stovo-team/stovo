@@ -10,9 +10,9 @@ it("parses the complete stylesheet after the logout hover rules", () => {
   expect(() => parse(styles)).not.toThrow();
 });
 
-it("keeps logout hover and keyboard focus on the destructive red palette", () => {
+it("keeps logout row hover and nav logout keyboard focus on the destructive red palette", () => {
   const row = rule(".app-frame .logout-row:is(:hover, :focus-visible)");
   expect(row).toContain("var(--danger)");
-  expect(rule(".app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before")).toContain("var(--danger)");
-  expect(rule(".app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > svg")).toContain("color: var(--danger)");
+  expect(rule(".app-frame > .app-nav .app-nav-logout:focus-visible::before")).toContain("var(--danger)");
+  expect(rule(".app-frame > .app-nav .app-nav-logout:focus-visible > svg")).toContain("color: var(--danger)");
 });
