@@ -850,8 +850,7 @@ button.mobile-active-ctrl-btn.end:active:not(:disabled) {
 }
 
 @media (max-width: 680px) {
-  .meeting-intel-popover--mobile .meeting-intel-card-icon,
-  .meeting-intel-popover--inline-menu .meeting-intel-card-icon {
+  .meeting-intel-popover--mobile .meeting-intel-card-icon {
     width: 40px;
     height: 40px;
     border-radius: var(--radius-surface);
