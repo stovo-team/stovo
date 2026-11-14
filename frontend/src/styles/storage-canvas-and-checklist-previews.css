@@ -33,6 +33,17 @@
 .admin-page .admin-role-list .admin-role-create { align-items: center; background: color-mix(in oklab, var(--accent-primary) 8%, transparent); border-radius: var(--radius-surface); color: var(--accent-primary); cursor: pointer; display: flex; font-weight: var(--font-weight-bold); gap: 8px; min-height: 48px; padding: 10px 14px; transition: background 0.16s ease; width: 100%; }
 .admin-page .admin-role-list .admin-role-create:hover, .admin-page .admin-role-list .admin-role-create:focus-visible { background: color-mix(in oklab, var(--accent-primary) 14%, transparent); outline: none; }
 .admin-role-editor { display: grid; gap: 14px; padding: 18px !important; }
+.admin-role-presets { border: 0; display: grid; gap: 8px; margin: 0; min-inline-size: 0; padding: 0; }
+.admin-role-presets legend { color: var(--color-palette-75ed0d1fc610); font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); padding: 0; }
+.admin-role-presets-card { background: color-mix(in oklab, var(--color-palette-f2074b6cef37) 4%, transparent); border: 1px solid var(--color-palette-a1c0fe2d1b69); border-radius: var(--radius-surface); display: grid; gap: 12px; padding: 14px; }
+.admin-role-preset-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-page .admin-role-preset-button { background: color-mix(in oklab, var(--color-palette-f2074b6cef37) 6%, transparent); border: 1px solid var(--color-palette-a1c0fe2d1b69); border-radius: var(--radius-surface); color: var(--color-palette-75ed0d1fc610); cursor: pointer; font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); min-height: 38px; padding: 8px 14px; transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease; }
+.admin-page .admin-role-preset-button:hover:not(:disabled):not(.active), .admin-page .admin-role-preset-button:focus-visible:not(:disabled) { background: color-mix(in oklab, var(--color-palette-f2074b6cef37) 11%, transparent); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--color-palette-a1c0fe2d1b69)); outline: none; }
+.admin-page .admin-role-preset-button.active { background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface)); border-color: var(--accent-primary); color: var(--color-palette-f2074b6cef37); }
+.admin-page .admin-role-preset-button:disabled { cursor: not-allowed; opacity: 0.52; }
+.admin-role-presets-note { color: var(--color-palette-b5a6c19603b5); font-size: var(--font-size-caption); line-height: var(--line-height-body); margin: 0; }
+.admin-role-preset-unavailable { align-items: center; border-top: 1px solid var(--color-palette-a1c0fe2d1b69); display: flex; flex-wrap: wrap; gap: 8px 12px; padding-top: 12px; }
+.admin-role-preset-unavailable small { color: var(--color-palette-b5a6c19603b5); flex: 1 1 220px; font-size: var(--font-size-caption); line-height: var(--line-height-body); }
 .admin-role-editor > label { display: grid; gap: 7px; font-weight: var(--font-weight-semibold); }
 .admin-role-editor input[type="text"], .admin-role-editor input:not([type]) { width: 100%; }
 .admin-role-permissions { display: grid; gap: 0; }
