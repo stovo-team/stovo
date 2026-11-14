@@ -7,6 +7,7 @@ import { useStrings } from "../i18n/LanguageContext";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
+import { PresetNumberControl } from "./ui/PresetNumberControl";
 import {
   MCP_PERMISSION_KEYS,
   MCPConnector,
@@ -515,16 +516,7 @@ export default function MCPConnectorsPanel({
           />
         </label>
 
-        <label>
-          {copy.maxHistoryMessages}
-          <input
-            type="number"
-            min={1}
-            max={500}
-            value={maxHistory}
-            onChange={(event) => setMaxHistory(Number(event.target.value) || 50)}
-          />
-        </label>
+        <label>{copy.maxHistoryMessages}<PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} min={1} max={500} value={maxHistory} onValueChange={(value) => setMaxHistory(Number(value) || 50)} /></label>
         <fieldset className="mcp-tag-fieldset">
           <legend>
             <span>{copy.chatScope}</span>
@@ -708,7 +700,7 @@ export default function MCPConnectorsPanel({
             </header>
             <form className="mcp-connector-form" onSubmit={saveEdit}>
               <PopupField label={copy.connectionName} value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} />
-              <PopupField label={copy.maxHistoryMessages} type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} />
+              <label className="popup-field"><span className="popup-field__label">{copy.maxHistoryMessages}</span><PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} inputClassName="popup-field__input" min={1} max={500} value={editHistory} disabled={isSaving} onValueChange={(value) => setEditHistory(Number(value) || 50)} /></label>
               <fieldset className="mcp-tag-fieldset"><legend>{copy.chatScope}</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong></label>)}</div></fieldset>
               <fieldset className="mcp-tag-fieldset"><legend>{copy.permissions}</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{permissionLabels[key]}</strong></label>)}</div></fieldset>
               <div className="public-access-actions"><PopupButton type="submit" variant="primary" disabled={isSaving || !editName.trim()}>{isSaving ? copy.saving : copy.saveSettings}</PopupButton><PopupButton type="button" variant="secondary" disabled={isSaving} onClick={() => setEditing(null)}>{copy.cancel}</PopupButton></div>

@@ -7,6 +7,7 @@ import { getNotificationProviderSettings, updateNotificationProviderSettings, ty
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { PresetNumberControl } from "../components/ui/PresetNumberControl";
 import "./AdminServerSettingsPage.css";
 import { GuestMeetingSelect } from "../features/chats/calling/GuestMeetingSelect";
 import { useStrings } from "../i18n/LanguageContext";
@@ -34,6 +35,7 @@ export default function AdminServerSettingsPage() {
     dmCallScreenShareBitrateKbps: 5000,
     dmCallCameraBitrateKbps: 1500,
   };
+  const bitratePresets = [1000, 1500, 2000, 3000, 5000, 8000, 10000, 15000, 20000];
   const [qualityDrafts, setQualityDrafts] = useState<Record<QualityField, string>>(
     Object.fromEntries(Object.entries(qualityDefaults).map(([key, value]) => [key, String(value)])) as Record<QualityField, string>,
   );
@@ -116,7 +118,20 @@ export default function AdminServerSettingsPage() {
     return <label className="appearance-setting-row" key={field}>
       <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
       <span><strong>{label}</strong></span>
-      <input className="admin-defaults-control" type="number" aria-label={label} min="1000" max="20000" step="500" inputMode="numeric" value={qualityDrafts[field]} disabled={!family || isSaving} onChange={(event) => updateBitrateDraft(field, event.target.value)} onBlur={() => saveBitrate(field)} />
+      <PresetNumberControl
+        ariaLabel={label}
+        customLabel={strings.chats?.details?.custom ?? "Custom"}
+        presets={bitratePresets}
+        className="admin-defaults-control"
+        inputMode="numeric"
+        min="1000"
+        max="20000"
+        step="500"
+        value={qualityDrafts[field]}
+        disabled={!family || isSaving}
+        onValueChange={(value) => updateBitrateDraft(field, value)}
+        onControlBlur={() => saveBitrate(field)}
+      />
     </label>;
   }
 

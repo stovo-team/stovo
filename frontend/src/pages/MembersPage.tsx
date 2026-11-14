@@ -12,6 +12,7 @@ import { ApiError } from "../api/client";
 import { peekApiResponseCache } from "../api/apiResponseCache";
 import { useAuth } from "../auth/AuthContext";
 import { EntityAvatar } from "../components/EntityAvatar";
+import { PresetNumberControl } from "../components/ui/PresetNumberControl";
 import { shareContent } from "../native/nativeSharePlugin";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
@@ -352,30 +353,8 @@ export default function MembersPage() {
                 ))}
               </select>
             </label>
-            <label>
-              {copy.hours}
-              <input
-                min={1}
-                max={720}
-                type="number"
-                value={inviteForm.expiresInHours}
-                onChange={(event) =>
-                  setInviteForm({ ...inviteForm, expiresInHours: Number(event.target.value) })
-                }
-              />
-            </label>
-            <label>
-              {copy.uses}
-              <input
-                min={1}
-                max={100}
-                type="number"
-                value={inviteForm.maxUses}
-                onChange={(event) =>
-                  setInviteForm({ ...inviteForm, maxUses: Number(event.target.value) })
-                }
-              />
-            </label>
+            <label>{copy.hours}<PresetNumberControl ariaLabel={copy.hours} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[1, 6, 12, 24, 48, 72, 168, 720]} min={1} max={720} value={inviteForm.expiresInHours} onValueChange={(value) => setInviteForm({ ...inviteForm, expiresInHours: Number(value) })} /></label>
+            <label>{copy.uses}<PresetNumberControl ariaLabel={copy.uses} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[1, 5, 10, 25, 50, 100]} min={1} max={100} value={inviteForm.maxUses} onValueChange={(value) => setInviteForm({ ...inviteForm, maxUses: Number(value) })} /></label>
             <button type="submit">{copy.createInvite}</button>
           </form>
         )}

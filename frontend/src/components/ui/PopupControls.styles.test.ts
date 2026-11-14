@@ -12,6 +12,11 @@ function ruleFor(selector: string) {
 }
 
 describe("shared popup control dimensions", () => {
+  it("hides native number input spinner arrows across browsers", () => {
+    expect(appStyles).toMatch(/input\[type="number"\]\s*\{[^}]*appearance:\s*textfield;/s);
+    expect(appStyles).toMatch(/input\[type="number"\]::-webkit-inner-spin-button[\s\S]*?appearance:\s*none;/);
+  });
+
   it("uses the app typography tokens for popup text", () => {
     expect(appEntry.indexOf('./design-system/tokens.css')).toBeLessThan(appEntry.indexOf('./styles.css'));
     expect(appStyles).toMatch(/font-family:\s*var\(--font-family-ui\)/);
