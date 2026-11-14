@@ -87,6 +87,8 @@ describe("Android space setup authentication", () => {
     expect(container.querySelector('button[type="submit"]')?.textContent).toBe("Connect");
     expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
     expect(container.querySelector('[data-auth-method="scan-qr"]')).not.toBeNull();
+    expect(container.textContent).toContain("On your computer, open Stovo → Settings → Profile");
+    expect(container.textContent).toContain("Create Android sign-in QR");
 
     await click('[data-auth-method="scan-qr"]');
     expect(container.querySelector('[data-auth-method="passkey"]')).toBeNull();
@@ -157,6 +159,16 @@ describe("Android space setup authentication", () => {
     await click('[data-auth-method="scan-qr"]');
     expect(container.querySelector('[role="alert"]')?.textContent).toBe("QR scanner is being installed. Try again shortly.");
     expect(container.querySelector('[role="alert"]')?.textContent).not.toContain("password");
+  });
+  it("explains camera access failures and keeps manual server setup available", async () => {
+    mocks.scan.mockRejectedValueOnce(new Error("Camera permission denied"));
+    await render();
+    await click('[data-auth-method="scan-qr"]');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("could not access the camera");
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("enter the server address manually");
+    expect(container.querySelector('[role="alert"]')?.textContent).not.toContain("password");
+    expect(container.querySelector('input[autocomplete="url"]')).not.toBeNull();
+    expect(container.querySelector('button[type="submit"]')?.disabled).toBe(false);
   });
   it("keeps the active server when QR redemption fails", async () => {
     mocks.redeemAndroidQRLogin.mockRejectedValueOnce(new Error("Expired grant"));

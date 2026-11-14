@@ -365,6 +365,7 @@ export const strings = {
     invalidVerificationCode: "Invalid verification code",
     scanQrFailed: "Could not scan a desktop sign-in QR code. Try again or use your password.",
     scanSetupQrFailed: "Could not scan QR code. Try again or connect with the server address.", qrScannerInstalling: "QR scanner is being installed. Try again shortly.",
+    qrLoginCameraUnavailable: "QR scanner could not access the camera. Check your device's camera access, or use your password to sign in.", qrSetupCameraUnavailable: "QR scanner could not access the camera. Check your device's camera access, or enter the server address manually.",
     androidQrSignInFailed: "QR sign-in failed. Try scanning a new code.",
   },
 

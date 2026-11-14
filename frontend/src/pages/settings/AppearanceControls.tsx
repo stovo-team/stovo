@@ -142,6 +142,7 @@ export function AppearanceAdvancedControls({ appearance, strings, updateAppearan
     const css = `linear-gradient(${angle}deg, ${start}, ${end})`;
     updateAppearance({ accent: "custom", customAccent: start });
     document.documentElement.style.setProperty("--color-brand-gradient", css);
+    document.documentElement.dataset.brandGradient = "custom";
     try {
       localStorage.setItem("familyMessenger.brandGradient", css);
     } catch {

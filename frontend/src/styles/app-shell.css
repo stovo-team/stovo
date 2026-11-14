@@ -1585,6 +1585,18 @@ h2 {
 }
 .auth-panel .form-grid > button:hover:not(:disabled) { background: var(--accent-primary); border-color: var(--accent-primary); }
 
+.auth-panel .server-setup-form > button:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--surface-card) !important;
+}
+
+:root[data-brand-gradient="custom"] .auth-panel .server-setup-form > button,
+:root[data-brand-gradient="custom"] .auth-panel .server-setup-form > button:hover:not(:disabled) {
+  background: var(--color-brand-gradient);
+  border-color: transparent;
+}
+
 .secondary-link {
   color: var(--text-secondary);
   margin: 20px 0 0;

@@ -19,9 +19,9 @@ const checks = () => ({
   source_sha: source,
   source_ancestry: { base_sha: currentSource, target_sha: source, is_descendant: true },
   bypass: false,
-  required: ['changes', 'solid-boundaries'],
+  required: ['changes'],
   conditional: { 'backend-ci': true, 'frontend-ci': true },
-  results: { changes: 'success', 'solid-boundaries': 'success', 'backend-ci': 'success', 'frontend-ci': 'success' },
+  results: { changes: 'success', 'backend-ci': 'success', 'frontend-ci': 'success' },
 });
 
 test('accepts a complete immutable release and returns its expected branch head', () => {
@@ -60,11 +60,11 @@ test('requires immutable digests for every application and infrastructure image'
 test('refuses failed, skipped, pending, canceled and absent required checks', () => {
   for (const status of ['failure', 'skipped', 'pending', 'cancelled', undefined]) {
     const result = checks();
-    result.results['solid-boundaries'] = status;
+    result.results['changes'] = status;
     assert.equal(planPromotion(current(), release(), result).ok, false, String(status));
   }
   const result = checks();
-  result.required = ['changes'];
+  result.required = [];
   assert.equal(planPromotion(current(), release(), result).ok, false);
 });
 
@@ -112,7 +112,7 @@ test('rejects stale, out-of-order, held and malformed branch state', () => {
 
 test('refuses malformed input without throwing or silently allowing promotion', () => {
   for (const invalid of [null, {}, { ...checks(), required: [] }, { ...checks(), conditional: {} },
-    { ...checks(), results: null }, { ...checks(), required: ['changes', 'changes', 'solid-boundaries'] }]) {
+    { ...checks(), results: null }, { ...checks(), required: ['changes', 'changes'] }]) {
     assert.doesNotThrow(() => planPromotion(current(), release(), invalid));
     assert.equal(planPromotion(current(), release(), invalid).ok, false);
   }
@@ -214,9 +214,9 @@ test('promotes a release branch with atomic compare-and-swap and handles rollbac
     const checkResults = {
       source_sha: source2,
       bypass: false,
-      required: ['changes', 'solid-boundaries'],
+      required: ['changes'],
       conditional: { 'backend-ci': true, 'frontend-ci': true },
-      results: { changes: 'success', 'solid-boundaries': 'success', 'backend-ci': 'success', 'frontend-ci': 'success' },
+      results: { changes: 'success', 'backend-ci': 'success', 'frontend-ci': 'success' },
     };
 
     const promoResult = promoteBranch({

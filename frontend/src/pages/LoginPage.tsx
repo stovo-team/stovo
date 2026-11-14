@@ -19,7 +19,7 @@ import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
 import { parseAndroidLoginQR, type AndroidLoginQR } from "../native/androidQrLogin";
-import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, scanAndroidLoginQR } from "../native/androidQrScanner";
+import { ANDROID_QR_SCANNER_INSTALLING_MESSAGE, isAndroidQrCameraUnavailable, scanAndroidLoginQR } from "../native/androidQrScanner";
 import AndroidQrConfirmation from "../components/AndroidQrConfirmation";
 import StovoLogo from "../components/StovoLogo";
 import { useResolvedLanguage, useStrings } from "../i18n/LanguageContext";
@@ -233,8 +233,10 @@ export default function LoginPage() {
       if (value !== null) setAndroidQR(parseAndroidLoginQR(value));
     } catch (err) {
       setError(err instanceof Error && err.message === ANDROID_QR_SCANNER_INSTALLING_MESSAGE
-        ? ANDROID_QR_SCANNER_INSTALLING_MESSAGE
-        : strings.auth.scanQrFailed);
+        ? strings.auth.qrScannerInstalling
+        : isAndroidQrCameraUnavailable(err)
+          ? strings.auth.qrLoginCameraUnavailable
+          : strings.auth.scanQrFailed);
     } finally { setIsSubmitting(false); }
   }
 
@@ -364,10 +366,10 @@ export default function LoginPage() {
               <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskeyShort}</span>
             </button>
             {!isSecureContext ? <p className="muted-copy">{strings.auth.secureContextRequired}</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">{strings.auth.supportedAndroidWebView}</p>}
-            <button type="button" className="secondary-button" data-auth-method="scan-qr" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
+            <button type="button" className="secondary-button" data-auth-method="scan-qr" aria-describedby="android-qr-find-guide" disabled={isSubmitting} onClick={() => void handleScanAndroidQR()}>
               <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.scanDesktopQrShort}</span>
             </button>
-            <p className="muted-copy">{strings.auth.androidQrFindOnComputer}</p>
+            <p id="android-qr-find-guide" className="muted-copy">{strings.auth.androidQrFindOnComputer}</p>
           </div>
         )}
         {!androidQR && <OwnerSetupPrompt setupRequired={setupRequired} />}

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redeemAndroidQRLogin } from "../api/auth";
 import { parseAndroidLoginQR } from "./androidQrLogin";
-import { scanAndroidLoginQR } from "./androidQrScanner";
+import { isAndroidQrCameraUnavailable, scanAndroidLoginQR } from "./androidQrScanner";
 import { apiRequest, getApiUrl, setApiUrlOverride } from "../api/client";
 import { getActiveServer, upsertServer } from "../api/serverRegistry";
 import { clearApiResponseCache, peekApiResponseCache, saveApiResponseCache } from "../api/apiResponseCache";
@@ -52,6 +52,10 @@ describe("Android scanner boundary", () => {
         expect(scanAndroidLoginQR).toBeTypeOf("function");
         scannerMocks.scan.mockRejectedValueOnce(new Error("camera error"));
         await expect(scanAndroidLoginQR()).rejects.toThrow("camera error");
+    });
+    it("recognizes camera access failures without changing scanner permissions", () => {
+        expect(isAndroidQrCameraUnavailable(new Error("Camera permission denied"))).toBe(true);
+        expect(isAndroidQrCameraUnavailable(new Error("network unavailable"))).toBe(false);
     });
     it("requests the missing Google scanner module and asks for a retry", async () => {
         expect(scanAndroidLoginQR).toBeTypeOf("function");

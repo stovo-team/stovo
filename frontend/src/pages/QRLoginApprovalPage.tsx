@@ -53,7 +53,7 @@ export default function QRLoginApprovalPage() {
     {error && <p role="alert">{error}</p>}
     {state === "done" ? <p role="status">{copy.qrApprovalDone}</p> : <div className="auth-actions">
       <button type="button" disabled={state === "working"} onClick={() => void respond("approve")}>{copy.qrApprovalLogin}</button>
-      <button type="button" className="button-secondary" disabled={state === "working"} onClick={() => void respond("reject")}>{copy.rejectSignIn}</button>
+      <button type="button" className="button-secondary" disabled={state === "working"} onClick={() => void respond("reject")}>{copy.cancel}</button>
     </div>}
   </section></main>;
 }

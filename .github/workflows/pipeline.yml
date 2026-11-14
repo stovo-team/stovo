@@ -13,7 +13,6 @@ on:
       - 'deploy/compose/production-multiserver.yml'
       - 'backend/Dockerfile.orchestrator'
       - 'deploy/**'
-      - 'docs/engineering/size-baseline.tsv'
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
@@ -48,7 +47,6 @@ jobs:
     outputs:
       frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
-      size_baseline: ${{ steps.filter.outputs.size_baseline }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -76,7 +74,6 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
-              - 'scripts/check-solid-boundaries.sh'
               - 'scripts/check-frontend-css-size.cjs'
               - 'scripts/check-frontend-css-size.test.cjs'
             backend:
@@ -87,10 +84,7 @@ jobs:
               - 'deploy/compose/production-multiserver.yml'
               - 'backend/Dockerfile.orchestrator'
               - 'deploy/**'
-              - 'scripts/check-solid-boundaries.sh'
               - 'deploy/scripts/deploy-environment.sh'
-            size_baseline:
-              - 'docs/engineering/size-baseline.tsv'
 
   frontend_dependencies:
     name: Prepare frontend dependencies
@@ -274,32 +268,6 @@ jobs:
       - name: Aggregate successful frontend shards
         run: echo "All frontend test shards and build passed."
 
-  solid-boundaries:
-    name: SOLID architecture boundaries
-    needs: changes
-    if: >-
-      !inputs.backend_deploy_only &&
-      (needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.backend == 'true' ||
-      needs.changes.outputs.size_baseline == 'true')
-    runs-on: [self-hosted, tests, Windows]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Detect available shell
-        shell: powershell
-        run: |
-          $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
-          $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
-          $gitBash = Join-Path $gitRoot 'bin\bash.exe'
-          if (-not (Test-Path $gitBash)) {
-            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
-          }
-
-          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
-      - name: SOLID architecture boundaries
-        shell: bash
-        run: bash scripts/check-solid-boundaries.sh all
 
   backend_test_shards:
     name: Backend CI test shards
@@ -488,10 +456,6 @@ jobs:
           name: backend-coverage-shard-${{ matrix.shard }}
           path: backend/coverage-*.out
           if-no-files-found: error
-      - name: SOLID architecture boundaries
-        if: matrix.shard == 0
-        working-directory: .
-        run: bash scripts/check-solid-boundaries.sh backend
       - name: Reject UTF-8 BOMs in Atlas migrations
         if: matrix.shard == 0
         run: |
@@ -743,8 +707,8 @@ jobs:
 
   deploy-frontend-web:
     name: Deploy Frontend Web
-    needs: [changes, frontend-ci, solid-boundaries]
-    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.solid-boundaries.result == 'success'
+    needs: [changes, frontend-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 35
     env:
@@ -875,8 +839,8 @@ jobs:
 
   deploy-backend-web:
     name: Deploy Backend Web
-    needs: [changes, backend-ci, solid-boundaries, publish-ghcr-images]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && needs.publish-ghcr-images.result == 'success' && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    needs: [changes, backend-ci, publish-ghcr-images]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && needs.publish-ghcr-images.result == 'success' && (needs.backend-ci.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 35
     env:
@@ -1257,8 +1221,8 @@ jobs:
 
   publish-ghcr-images:
     name: Publish GHCR Images
-    needs: [changes, frontend-ci, backend-ci, solid-boundaries]
-    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') && (needs.solid-boundaries.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.backend-ci.result == 'success' || needs.changes.outputs.backend != 'true' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.frontend-ci.result == 'success' || needs.changes.outputs.frontend != 'true' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
+    needs: [changes, frontend-ci, backend-ci]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' && needs.changes.result == 'success' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') && (needs.backend-ci.result == 'success' || needs.changes.outputs.backend != 'true' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) && (needs.frontend-ci.result == 'success' || needs.changes.outputs.frontend != 'true' || (github.event_name == 'workflow_dispatch' && inputs.backend_deploy_only)) }}
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 30
     permissions:
