@@ -1475,6 +1475,7 @@ export const strings = {
       defaultRole: "Default role",
       members: (count: number) => `${count} members`,
       createRole: "Create role",
+      presets: { title: "Start from a preset", admin: "Admin", member: "Member", manager: "Manager", teamLead: "Team Lead", managerNote: "Manager can create and manage server chats. Server-wide chat reading is not yet available.", teamLeadUnavailable: "Team Lead needs chat-folder scoped permissions, which this server does not support yet." },
       roleName: "Role name",
       description: "Description",
       defaultRoleDescription: "Default role — it can be edited but not deleted.",

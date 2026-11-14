@@ -88,6 +88,13 @@ func (s *Server) processSetup(ctx context.Context, payload transporthttp.SetupRe
 	if err != nil {
 		return nil, http.StatusInternalServerError, "Could not load user profile"
 	}
+	if _, err := s.roles.List(ctx, user.FamilyID); err != nil {
+		return nil, http.StatusInternalServerError, "Could not initialize server roles"
+	}
+	user, err = s.getUserByID(userID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, "Could not load user profile"
+	}
 	accessToken, expiresInSeconds, err := createAccessToken(s.cfg, user)
 	if err != nil {
 		return nil, http.StatusInternalServerError, "Could not create access token"

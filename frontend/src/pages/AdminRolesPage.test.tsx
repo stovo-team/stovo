@@ -76,4 +76,21 @@ describe("AdminRolesPage Russian localization and Premium locks", () => {
     expect(premiumRule).toMatch(/opacity:/);
     expect(premiumRule).toMatch(/pointer-events:\s*none/);
   });
+
+  it("offers safe role presets and does not enable an unscoped Team Lead", async () => {
+    await act(async () => { root.render(<AdminRolesPage />); });
+    const create = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Создать роль"));
+    expect(create).toBeDefined();
+    await act(async () => { create?.click(); });
+
+    const manager = [...container.querySelectorAll("button")].find((button) => button.textContent === "Менеджер");
+    const teamLead = [...container.querySelectorAll("button")].find((button) => button.textContent === "Руководитель команды");
+    expect(manager).toBeDefined();
+    expect(teamLead?.disabled).toBe(true);
+    expect(container.textContent).toContain("пределах папки чатов");
+    await act(async () => { manager?.click(); });
+    const selected = [...container.querySelectorAll<HTMLInputElement>('.admin-role-permission-options input[type="checkbox"]:checked')];
+    expect(selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent)).toContain("Управлять спейсами");
+    expect(selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent)).not.toContain("Управлять участниками");
+  });
 });

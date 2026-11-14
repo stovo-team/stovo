@@ -31,7 +31,7 @@ func (s *Server) intelligenceSourceV2Reply(ctx context.Context, identity httptra
 		JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
 		JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
 		WHERE c.id=$1 AND c.installation_id=$2 AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$6
-		FOR SHARE OF reply_grant,codex_grant,u,ch,cm,i`, identity.ConnectionID, identity.InstallationID, identity.FamilyID, identity.TenantID, identity.ChatID, s.intelligenceOIDCNow()).Scan(&userID)
+		FOR SHARE OF reply_grant,codex_grant,u,cm,i`, identity.ConnectionID, identity.InstallationID, identity.FamilyID, identity.TenantID, identity.ChatID, s.intelligenceOIDCNow()).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", httptransport.ErrIntelligenceSourceForbidden
 	}
