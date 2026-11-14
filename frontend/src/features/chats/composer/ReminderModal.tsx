@@ -4,6 +4,7 @@ import { BellRing, Repeat } from "lucide-react";
 import { PopupDialog } from "../../../components/ui/Popup";
 import { PopupButton } from "../../../components/ui/PopupButton";
 import { PopupField } from "../../../components/ui/PopupField";
+import { PresetNumberControl } from "../../../components/ui/PresetNumberControl";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import type { PendingLocalAttachment } from "../shared/types";
 import { useStrings } from "../../../i18n/LanguageContext";
@@ -35,7 +36,8 @@ export function ReminderModal({
   onClose,
   onConfirmReminder
 }: ReminderModalProps) {
-  const copy = useStrings().auditUi;
+  const strings = useStrings();
+  const copy = strings.auditUi;
   const weekdays = copy.weekdaysShort.map((label, index) => ({ label, value: (index + 1) % 7 }));
   const initialDate = useMemo(() => {
     const d = new Date();
@@ -250,31 +252,20 @@ export function ReminderModal({
           <div className="reminder-form-group">
             <label htmlFor="reminder-repeat-count" className="reminder-form-label">{copy.repeatCount}</label>
             <div className="reminder-repeat-presets">
-              {[1, 3, 5, 10, 30].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  className={`reminder-preset-chip${repeatCount === num ? " is-active" : ""}`}
-                  onClick={() => setRepeatCount(num)}
-                >
-                  {num} time{num > 1 ? "s" : ""}
-                </button>
-              ))}
-            </div>
-            <div className="reminder-repeat-custom-row">
-              <PopupField
-                label={copy.customCount}
+              <PresetNumberControl
+                ariaLabel={copy.customCount}
+                customLabel={strings.chats?.details?.custom ?? "Custom"}
+                presets={[1, 3, 5, 10, 30]}
                 id="reminder-repeat-count"
-                type="number"
                 min={1}
                 max={999}
-                className="reminder-count-input"
+                inputClassName="reminder-count-input"
                 value={repeatCount}
-                onChange={(e) => setRepeatCount(Math.max(1, Number(e.target.value) || 1))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleConfirm(e);
+                onValueChange={(value) => setRepeatCount(Math.max(1, Number(value) || 1))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleConfirm();
                   }
                 }}
               />

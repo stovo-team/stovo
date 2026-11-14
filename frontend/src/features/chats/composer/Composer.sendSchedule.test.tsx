@@ -138,11 +138,10 @@ describe("ReminderModal", () => {
     expect(dayChips.length).toBe(7); // Mon..Sun
 
     // Pick 10 times preset
-    const preset10 = Array.from(document.body.querySelectorAll(".reminder-preset-chip")).find(
-      (el) => el.textContent?.includes("10")
-    );
+    const repeatPreset = document.body.querySelector<HTMLSelectElement>(".preset-number-control__preset");
     act(() => {
-      preset10?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      if (repeatPreset) repeatPreset.value = "10";
+      repeatPreset?.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
     // Click Set Reminder button

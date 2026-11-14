@@ -32,3 +32,56 @@
 @import "./styles/intelligence-consent.css";
 @import "./styles/qr-login-approval.css";
 @import "./styles/solid-filled-button-hover.css";
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.preset-number-control {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+
+.preset-number-control__preset,
+.preset-number-control__value {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 42px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+.preset-number-control__preset {
+  flex: 1 1 0;
+  padding: 0 10px;
+}
+
+.preset-number-control .preset-number-control__value {
+  flex: 1.2 1 0;
+  padding: 0 12px;
+  width: auto;
+}
+
+.preset-number-control__preset:focus-visible,
+.preset-number-control__value:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.preset-number-control__preset:disabled,
+.preset-number-control__value:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
