@@ -86,11 +86,20 @@ describe("AdminRolesPage Russian localization and Premium locks", () => {
     const manager = [...container.querySelectorAll("button")].find((button) => button.textContent === "Менеджер");
     const teamLead = [...container.querySelectorAll("button")].find((button) => button.textContent === "Руководитель команды");
     expect(manager).toBeDefined();
+    expect(manager?.getAttribute("aria-pressed")).toBe("false");
     expect(teamLead?.disabled).toBe(true);
     expect(container.textContent).toContain("пределах папки чатов");
     await act(async () => { manager?.click(); });
+    expect(manager?.getAttribute("aria-pressed")).toBe("true");
+    expect(manager?.classList.contains("active")).toBe(true);
     const selected = [...container.querySelectorAll<HTMLInputElement>('.admin-role-permission-options input[type="checkbox"]:checked')];
     expect(selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent)).toContain("Управлять спейсами");
     expect(selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent)).not.toContain("Управлять участниками");
+
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
+    const presetsRule = css.match(/\.admin-role-presets\s*\{([^}]*)\}/)?.[1] ?? "";
+    const presetListRule = css.match(/\.admin-role-preset-list\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(presetsRule).toMatch(/border:\s*0/);
+    expect(presetListRule).toMatch(/gap:/);
   });
 });
