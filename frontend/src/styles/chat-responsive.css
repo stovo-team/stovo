@@ -177,7 +177,9 @@
     max-width: min(400px, 68%);
     width: min(400px, 68%);
   }
+}
 
+@media (max-width: 768px) {
   :root[data-platform="web"] .app-frame > .app-nav.app-nav--active-variant-a {
     background: transparent;
     border: 0;
@@ -296,7 +298,7 @@
 }
 
 :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
-  background: linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-7b2817bf9b80) 90%, transparent 100%);
+  background: transparent;
 }
 
 :root[data-platform="web"] .messenger-shell.chat-list-view .compose-fab {

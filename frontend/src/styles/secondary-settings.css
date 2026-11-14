@@ -807,7 +807,7 @@
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .app-frame > .app-nav {
     background: transparent;
     border: 0;
@@ -836,6 +836,9 @@
     position: relative;
     z-index: 1;
   }
+}
+
+@media (max-width: 1024px) {
 
   .storage-page,
   .contacts-page,
