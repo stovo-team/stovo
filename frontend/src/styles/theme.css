@@ -259,8 +259,8 @@
   box-sizing: border-box;
 }
 
-html {
-  background-color: var(--color-palette-7b2817bf9b80);
+:root {
+  background: var(--color-palette-7b2817bf9b80);
   overflow-x: hidden;
 }
 
@@ -271,7 +271,7 @@ body,
 }
 
 body {
-  background: var(--background-secondary, var(--color-palette-7b2817bf9b80));
+  background: var(--color-palette-7b2817bf9b80);
   color: var(--text-primary);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-body);
