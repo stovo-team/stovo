@@ -1751,6 +1751,7 @@ export const strings = {
   },
   imageEditor: {
     title: "Изменить изображение", editImage: "Редактировать изображение", reset: "Сбросить", resetAll: "Сбросить все изменения", close: "Закрыть редактор изображений", preview: "Предпросмотр",
+    photoPrepareError: "Не удалось уменьшить фото с камеры. Будет добавлен оригинал.",
     noPreview: "Предпросмотр недоступен", adjust: "Настроить изображение", crop: "Обрезать изображение", draw: "Рисовать на изображении", brightness: "Яркость",
     contrast: "Контрастность", gamma: "Гамма", aspectRatio: "Соотношение сторон:", xOffset: "Смещение по X", yOffset: "Смещение по Y", width: "Ширина", height: "Высота",
     color: "Цвет:", selectColor: (hex: string) => `Выбрать цвет ${hex}`, penSize: "Размер пера", pen: "Перо:", brushSize: "Размер кисти",

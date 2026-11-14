@@ -1,8 +1,11 @@
 import { ChangeEvent, RefObject, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import { createClientMessageId } from "../shared/messageState";
 import type { PendingLocalAttachment } from "../shared/types";
+import { optimizeCameraPhoto } from "../../../components/PhotoEditor";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 function toPendingAttachment(file: File): PendingLocalAttachment {
   const localId = `local:${createClientMessageId()}`;
@@ -19,7 +22,8 @@ function toPendingAttachment(file: File): PendingLocalAttachment {
   };
 }
 
-export function useComposerAttachments() {
+export function useComposerAttachments(onError: (message: string | null) => void = () => undefined) {
+  const strings = useStrings();
   const [pendingAttachments, setPendingAttachments] = useState<PendingLocalAttachment[]>([]);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -27,10 +31,22 @@ export function useComposerAttachments() {
   const audioAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const documentAttachmentInputRef = useRef<HTMLInputElement | null>(null);
 
-  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
+    const cameraCapture = event.currentTarget === cameraAttachmentInputRef.current
+      && Capacitor.isNativePlatform()
+      && Capacitor.getPlatform() === "android";
     event.target.value = "";
-    if (files.length) setPendingAttachments((current) => [...current, ...files.map(toPendingAttachment)]);
+    if (!files.length) return;
+    const preparedFiles = cameraCapture ? await Promise.all(files.map(async (file) => {
+      try {
+        return await optimizeCameraPhoto(file);
+      } catch {
+        onError(strings.imageEditor.photoPrepareError);
+        return file;
+      }
+    })) : files;
+    setPendingAttachments((current) => [...current, ...preparedFiles.map(toPendingAttachment)]);
   }
 
   function addSharedFileAttachments(files: File[]) {
