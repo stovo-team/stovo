@@ -409,6 +409,7 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
 
 test('Windows docs validation runs kubeconform natively without a Docker engine', () => {
   const workflow = read('.github/workflows/docs-validation.yml');
+  assert.match(workflow, /permissions:\r?\n\s+contents: read/);
   assert.match(workflow, /kubeconform-windows-amd64\.zip/);
   assert.match(workflow, /kubeconform-\$version-linux-amd64\.tar\.gz/);
   assert.match(workflow, /api\.github\.com\/repos\/yannh\/kubeconform\/releases\/assets\/\$asset_id/);
