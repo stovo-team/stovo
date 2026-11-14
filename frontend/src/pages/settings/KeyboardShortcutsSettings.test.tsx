@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KeyboardShortcutsSettings } from "./KeyboardShortcutsSettings";
+import { ToastViewport } from "../../components/ToastViewport";
 import {
   KEYBOARD_SHORTCUTS_STORAGE_KEY,
   loadShortcutBindings,
@@ -254,9 +255,9 @@ describe("KeyboardShortcutsSettings", () => {
     expect(document.body.textContent).not.toContain("Quick Switcher");
   });
 
-  it("updates shortcuts and displays notice when resetAllShortcutBindings is triggered", async () => {
+  it("updates shortcuts and announces resetAllShortcutBindings in the toast viewport", async () => {
     await act(async () => {
-      root?.render(<KeyboardShortcutsSettings />);
+      root?.render(<><ToastViewport /><KeyboardShortcutsSettings /></>);
     });
 
     // Enter recording for quick_switcher and assign custom key
@@ -281,10 +282,9 @@ describe("KeyboardShortcutsSettings", () => {
       resetAllShortcutBindings();
     });
 
-    // Should be reset to default and show notice
+    // Should be reset to default and announced through the shared status toast.
     expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
-    expect(document.querySelector(".shortcuts-settings-notice")).not.toBeNull();
-    expect(document.body.textContent).toContain("Reset all to defaults");
+    expect(document.querySelector('.app-toast[role="status"]')?.textContent).toContain("Reset all to defaults");
   });
 
   it("renders reset button when showResetAll prop is true", async () => {
