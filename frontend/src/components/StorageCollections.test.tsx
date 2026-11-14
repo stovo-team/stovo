@@ -50,6 +50,21 @@ describe("StorageCollections localization", () => {
     expect(host.textContent).toContain("Новая папка или альбом");
     expect(host.textContent).toContain("Создать");
     expect(document.body.querySelector("[role='option'][data-value='album']")?.textContent).toContain("Фотоальбом");
+    expect(document.body.querySelector(".storage-collection-create-actions")?.textContent).toContain("Отмена");
+    expect(document.body.querySelector(".storage-create-cover-picker .symbol-color-controls__icons button")).not.toBeNull();
+  });
+
+  it("allows selecting a cover icon while creating a collection", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    roots.push(root);
+    await act(async () => { root.render(<MemoryRouter><StorageCollections accessToken="token" files={[]} filter="all" currentUserId="user-1" /></MemoryRouter>); });
+    await act(async () => { host.querySelector<HTMLButtonElement>(".storage-collection-new")?.click(); });
+    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>(".storage-create-cover-picker .symbol-color-controls__icons button"));
+    expect(buttons.length).toBeGreaterThan(1);
+    await act(async () => { buttons[1].click(); });
+    expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
   });
 
   it("groups folders by their source chat and keeps chatless folders separate", async () => {
