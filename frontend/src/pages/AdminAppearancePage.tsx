@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
+import { showToast } from "../components/ToastViewport";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
 import { BackButton } from "../components/BackButton";
@@ -42,6 +43,7 @@ export default function AdminAppearancePage() {
       });
       setFamily(updated);
       window.dispatchEvent(new CustomEvent("stovo:family-updated", { detail: updated }));
+      showToast(strings.admin.appearance.saved);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save chat layout");
     } finally {
