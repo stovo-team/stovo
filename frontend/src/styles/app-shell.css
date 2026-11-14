@@ -331,7 +331,10 @@ h2 {
 }
 
 .messenger-shell.app-frame {
-  background: var(--canvas-amoled);
+  background: var(--messages-panel-background);
+  background-position: var(--wallpaper-background-position);
+  background-repeat: var(--wallpaper-background-repeat);
+  background-size: var(--wallpaper-background-size);
   overflow-x: hidden;
 }
 
@@ -1244,6 +1247,12 @@ h2 {
   overflow: hidden;
 }
 
+.messenger-shell.app-frame > .app-nav {
+  background: color-mix(in oklab, var(--island-surface) 88%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
 .summary-band > div {
   background: var(--background-secondary);
   display: grid;
@@ -1677,13 +1686,21 @@ h2 {
 .chat-sidebar,
 .chat-detail,
 .chat-details-panel {
-  background: var(--island-surface);
+  background: color-mix(in oklab, var(--island-surface) 88%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid color-mix(in oklab, var(--color-palette-f2074b6cef37) 8%, var(--color-palette-95b1a9665923));
   border-radius: var(--radius-panel);
   box-shadow: var(--float-shadow);
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+}
+
+.messenger-shell.has-active-chat .chat-detail {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .chat-sidebar {

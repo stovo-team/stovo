@@ -17,6 +17,7 @@ const chatPresentation = readFileSync(
 );
 const chatOverlays = readFileSync(resolve(process.cwd(), "src/features/chats/ChatOverlays.tsx"), "utf8");
 const wallpaperEditor = readFileSync(resolve(process.cwd(), "src/components/ChatWallpaperEditorModal.tsx"), "utf8");
+const chatsPage = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 
 describe("chat details controls", () => {
@@ -80,6 +81,15 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel.slice(infoStart)).not.toContain("strings.chats.details.wallpaper");
     expect(chatDetailsPanel).toContain('className="chat-info-wallpaper-upload"');
     expect(styles).toContain(".chat-info-wallpaper-upload {");
+  });
+
+  it("extends the active chat wallpaper under the app shell without repainting the conversation pane", () => {
+    expect(chatsPage).toMatch(/className=\{`app-shell app-frame messenger-shell[\s\S]*?style=\{detailsActions\.wallpaperStyle\}/);
+    expect(chatsPage).not.toMatch(/className="chat-detail"\s+style=\{detailsActions\.wallpaperStyle\}/);
+    expect(styles).toContain(".messenger-shell.app-frame {");
+    expect(styles).toContain("background: var(--messages-panel-background);");
+    expect(styles).toContain(".messenger-shell.has-active-chat .chat-detail {");
+    expect(styles).toContain("background: transparent;");
   });
 
   it("keeps the title edit control visually stable on hover", () => {

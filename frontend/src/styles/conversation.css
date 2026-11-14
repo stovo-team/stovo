@@ -102,10 +102,7 @@
 
 /* Active conversation: wallpaper fills the chat pane; header/composer float above */
 .messenger-shell.has-active-chat .chat-detail {
-  background: var(--messages-panel-background);
-  background-position: var(--wallpaper-background-position);
-  background-repeat: var(--wallpaper-background-repeat);
-  background-size: var(--wallpaper-background-size);
+  background: transparent;
   border: none;
   border-radius: 0;
   box-shadow: none;

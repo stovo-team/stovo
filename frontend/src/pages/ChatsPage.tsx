@@ -239,6 +239,7 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
   return (
     <main
       className={`app-shell app-frame messenger-shell ${hasActiveChat ? "has-active-chat" : "chat-list-view"}${chatListLayoutClass(family?.minimizedChatLayout ?? false)}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${videoPipBridge.isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
+      style={detailsActions.wallpaperStyle}
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
@@ -275,7 +276,6 @@ export default function ChatsPage({ routeChatId }: { routeChatId?: string } = {}
 
           <section
             className="chat-detail"
-            style={detailsActions.wallpaperStyle}
             onPointerCancel={endChatExitSwipe}
             onPointerDown={beginChatExitSwipe}
             onPointerMove={(event) => moveChatExitSwipe(event, isDraftsAndScheduledOpen ? () => setIsDraftsAndScheduledOpen(false) : requestCloseActiveChatSurface)}
