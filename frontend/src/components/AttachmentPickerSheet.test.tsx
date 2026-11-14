@@ -107,9 +107,31 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-nav-item.active");
   });
 
+  it("keeps the native mobile gallery edge-to-edge with safe-area composer insets", () => {
+    expect(styles).toMatch(/:root\[data-platform="native"\][\s\S]*?\.attachment-picker-sheet\.tg-style[\s\S]*?width:\s*100vw/);
+    expect(styles).toMatch(/\.attachment-picker-message-box[\s\S]*?padding:[^;]*env\(safe-area-inset-bottom/);
+    expect(styles).toMatch(/\.attachment-picker-message-box[\s\S]*?env\(safe-area-inset-left/);
+    expect(styles).toMatch(/\.attachment-picker-message-box[\s\S]*?env\(safe-area-inset-right/);
+    expect(styles).toMatch(/\.attachment-picker-sheet\.tg-style\.is-fullscreen[\s\S]*?border-radius:\s*var\(--radius-panel\)/);
+    expect(styles).toMatch(/\.attachment-picker-sheet\.tg-style\.is-fullscreen[\s\S]*?padding-top:\s*max\(env\(safe-area-inset-top/);
+  });
+
+  it("uses the accent for selected checks and preserves keyboard focus without touch highlight", () => {
+    expect(styles).toMatch(/\.media-tile-checkbox\.checked\s*\{[^}]*background:\s*var\(--accent-primary/);
+    expect(styles).toMatch(/\.media-tile-thumb-btn\s*\{[^}]*-webkit-tap-highlight-color:\s*transparent/);
+    expect(styles).toMatch(/\.media-tile-thumb-btn:focus-visible\s*\{[^}]*outline:/);
+    expect(styles).toMatch(/\.media-tile-checkbox:focus-visible\s*\{[^}]*outline:/);
+    expect(attachmentSheetSource).toContain('className="attachment-picker-close"');
+    expect(styles).toMatch(/\.attachment-picker-sheet\.tg-style\.is-fullscreen \.attachment-picker-close[\s\S]*?border-radius:\s*var\(--radius-circle\)/);
+  });
+
+  it("keeps the native editor rotate and close controls side by side", () => {
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.image-editor-close-btn\s*\{[^}]*position:\s*relative/);
+  });
+
   it("does not render a redundant close button in the poll and checklist sheet header", () => {
     expect(attachmentSheetSource).toContain('activeTab !== "poll" && activeTab !== "checklist"');
-    expect(attachmentSheetSource).toContain("<PopupCloseButton ariaLabel={strings.attachments.closeMenu}");
+    expect(attachmentSheetSource).toContain('<PopupCloseButton className="attachment-picker-close" ariaLabel={strings.attachments.closeMenu}');
   });
 
   it("supports sliding up from top to open full screen, sliding down to restore default state, and sliding down more to close", () => {

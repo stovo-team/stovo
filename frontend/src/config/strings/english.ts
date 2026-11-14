@@ -1710,6 +1710,8 @@ export const strings = {
   },
   imageEditor: {
     title: "Edit Image", editImage: "Edit image", reset: "Reset", resetAll: "Reset all edits", close: "Close image editor", preview: "Preview",
+    rotatePhoto: "Rotate image", selectPhoto: "Use photo", cropGridHint: "Drag on the grid to crop",
+    saveError: "Could not edit this photo. Try another image.", photoPrepareError: "Could not reduce this camera photo. The original will be attached.",
     noPreview: "No image preview available", adjust: "Adjust image", crop: "Crop image", draw: "Draw on image", brightness: "Brightness",
     contrast: "Contrast", gamma: "Gamma", aspectRatio: "Aspect Ratio:", xOffset: "X Offset", yOffset: "Y Offset", width: "Width", height: "Height",
     color: "Color:", selectColor: (hex: string) => `Select color ${hex}`, penSize: "Pen size", pen: "Pen:", brushSize: "Brush Size",

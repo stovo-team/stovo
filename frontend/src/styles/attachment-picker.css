@@ -463,7 +463,13 @@
   background: transparent;
   cursor: pointer;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity 220ms ease, transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.media-tile-thumb-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
 }
 
 .media-tile-thumb-btn:active {
@@ -541,8 +547,8 @@
 .media-tile-checkbox.checked:active,
 .media-tile-checkbox.checked:focus,
 .media-tile-checkbox.checked:focus-visible {
-  background: var(--color-palette-7be18e16198b);
-  border-color: var(--color-palette-ec8f9ad7eab9);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   color: var(--color-palette-f2074b6cef37);
 }
 
@@ -551,13 +557,19 @@
 }
 
 .media-tile-checkbox.checked {
-  background: var(--color-palette-7be18e16198b);
-  border-color: var(--color-palette-ec8f9ad7eab9);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--color-palette-f2074b6cef37);
   transform: scale(1.05);
 }
 
 .media-tile-checkbox.checked:active {
   transform: scale(0.95) !important;
+}
+
+.media-tile-checkbox:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .media-tile-checkbox svg {
@@ -990,6 +1002,30 @@
   padding: 8px 16px max(env(safe-area-inset-bottom, 0px), 10px);
   border-top: 1px solid var(--border-default, var(--color-palette-c34f5a2a4d80));
   background: var(--surface-card, var(--color-palette-35eccb9c9da4));
+}
+
+:root[data-platform="native"] .attachment-picker-sheet.tg-style,
+:root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen {
+  width: 100vw;
+  max-width: 100vw;
+}
+
+:root[data-platform="native"] .attachment-picker-sheet.tg-style { border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+:root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen { border-radius: var(--radius-panel); }
+:root[data-platform="native"] .attachment-picker-message-box.message-composer,
+:root[data-platform="native"] .attachment-picker-message-box {
+  padding: 4px max(env(safe-area-inset-right, 0px), 12px) max(env(safe-area-inset-bottom, 0px), 12px) max(env(safe-area-inset-left, 0px), 12px);
+  margin: 0;
+  width: 100%;
+}
+
+:root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen .attachment-picker-header {
+  padding-top: max(env(safe-area-inset-top, 0px), 16px);
+}
+
+:root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen .attachment-picker-close {
+  border-radius: var(--radius-circle);
+  background: var(--surface-raised);
 }
 
 .attachment-nav-item {

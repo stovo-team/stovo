@@ -53,7 +53,7 @@ describe("AttachmentControls", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("allows multiple files from each non-camera chooser without client MIME filtering", () => {
+  it("allows multiple files from non-camera choosers and restricts capture to images", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -82,6 +82,8 @@ describe("AttachmentControls", () => {
     const inputs = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="file"]'));
     expect(inputs).toHaveLength(5);
     expect(inputs.filter((input) => !input.hasAttribute("capture")).every((input) => input.multiple)).toBe(true);
-    expect(inputs.every((input) => !input.hasAttribute("accept"))).toBe(true);
+    const cameraInput = inputs.find((input) => input.hasAttribute("capture"));
+    expect(cameraInput?.accept).toBe("image/*");
+    expect(inputs.filter((input) => input !== cameraInput).every((input) => !input.hasAttribute("accept"))).toBe(true);
   });
 });
