@@ -12,7 +12,6 @@ export default function AdminAppearancePage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_server") === true;
   const prefix = getClusterPrefix();
@@ -35,7 +34,6 @@ export default function AdminAppearancePage() {
   async function updateMinimizedChatLayout(minimizedChatLayout: boolean) {
     if (!accessToken) return;
     setError(null);
-    setNotice(null);
     setIsSaving(true);
     try {
       const updated = await authRequest<Family>("/api/family", {
@@ -44,7 +42,6 @@ export default function AdminAppearancePage() {
       });
       setFamily(updated);
       window.dispatchEvent(new CustomEvent("stovo:family-updated", { detail: updated }));
-      setNotice(strings.admin.appearance.saved);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save chat layout");
     } finally {
@@ -65,7 +62,6 @@ export default function AdminAppearancePage() {
 
         {!canViewAdmin && <p className="error-text">{strings.admin.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
-        {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && (
           <section className="appearance-settings-panel admin-panel">

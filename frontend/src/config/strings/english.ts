@@ -29,6 +29,9 @@ export const strings = {
     ariaLabel: "Application navigation",
     unreadMessages: (count: number) => `${count} unread messages`,
   },
+  accessibility: {
+    dismissNotification: "Dismiss notification",
+  },
 
   spaceSwitcher: {
     selectSpace: "Select space",

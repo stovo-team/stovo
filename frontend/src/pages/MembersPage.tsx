@@ -13,6 +13,7 @@ import { peekApiResponseCache } from "../api/apiResponseCache";
 import { useAuth } from "../auth/AuthContext";
 import { EntityAvatar } from "../components/EntityAvatar";
 import { PresetNumberControl } from "../components/ui/PresetNumberControl";
+import { showToast } from "../components/ToastViewport";
 import { shareContent } from "../native/nativeSharePlugin";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
@@ -59,6 +60,7 @@ export default function MembersPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(() => {
@@ -310,7 +312,6 @@ export default function MembersPage() {
         </div>
 
         {error && <p className="error-text" role="alert">{error}</p>}
-        {notice && <p className="success-text" role="status">{notice}</p>}
 
         <label className="search-field contacts-search">
           <Search aria-hidden="true" size={18} />

@@ -1,5 +1,6 @@
 import { ChangeEvent, type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { showToast } from "../components/ToastViewport";
 import {
   Download,
   Archive,
@@ -268,6 +269,7 @@ export default function FilesPage() {
   const [sourceChatId, setSourceChatId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
@@ -723,7 +725,6 @@ export default function FilesPage() {
             <div aria-hidden="true" />
           </header>
           {error && <p className="error-text">{error}</p>}
-          {notice && <p className="success-text">{notice}</p>}
 
           <div className="storage-main-header">
             <div className="storage-search-tools">

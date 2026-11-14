@@ -40,6 +40,7 @@ import { IntelligenceConsentPage } from "./pages/IntelligenceConsentPage";
 import { useStrings } from "./i18n/LanguageContext";
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
 import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
+import { ToastViewport } from "./components/ToastViewport";
 
 if (typeof document !== "undefined") {
   document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
@@ -244,6 +245,7 @@ function App() {
               <NativeAppOrchestrators />
               <AppLockGate />
               <GlobalQuickSwitcher />
+              <ToastViewport />
               <Routes>
                 <Route path="/multi-admin" element={<MultiAdminPage />} />
                 <Route path="/s/:slug/*" element={<ClusterRoutes />} />

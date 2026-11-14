@@ -6,6 +6,7 @@ import type { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { showToast } from "../components/ToastViewport";
 import { useStrings } from "../i18n/LanguageContext";
 import { DEFAULT_DEVICE_PREFERENCES, type DevicePreferences } from "../settings/devicePreferences";
 
@@ -26,6 +27,7 @@ export default function AdminDefaultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => { if (notice) showToast(notice); }, [notice]);
 
   const load = useCallback(async () => {
     if (!accessToken || !isOwner) return;
@@ -62,7 +64,7 @@ export default function AdminDefaultsPage() {
     <section className="page-surface admin-surface">
       <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} /><h1>{strings.admin.defaults.title}</h1></div>
       {!isOwner && <p className="error-text">{strings.admin.defaults.ownerRequired}</p>}
-      {error && <p className="error-text">{error}</p>}{notice && <p className="success-text">{notice}</p>}
+      {error && <p className="error-text">{error}</p>}
       {isOwner && <div className="settings-toggle-groups admin-panel">
         <section><h2>{strings.admin.defaults.privacy}</h2>
           <label className="appearance-setting-row">
