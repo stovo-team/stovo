@@ -198,6 +198,11 @@
     transform: none;
     width: min(360px, calc(100vw - var(--active-chat-message-inset-x) - 64px));
   }
+
+  :root[data-platform="web"] .messenger-shell.has-active-chat .emoji-picker .EmojiPickerReact {
+    max-width: 100%;
+    width: 100% !important;
+  }
 }
 
 .message-bubble.mine .audio-player-play-pulse {
