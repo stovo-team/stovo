@@ -1551,6 +1551,27 @@ h2 {
   border-radius: var(--radius-panel);
 }
 
+.server-setup-eyebrow {
+  display: none;
+}
+
+.server-setup-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.server-setup-heading h1 {
+  margin: 0;
+  text-align: left;
+}
+
+.server-setup-form label {
+  padding-top: 12px;
+}
+
 .form-grid,
 .modal-form,
 .settings-form {
