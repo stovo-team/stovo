@@ -200,6 +200,58 @@ describe("CallSessionController camera lifecycle", () => {
   });
 });
 
+describe("CallSessionController screen-share lifecycle", () => {
+  it("keeps the call active through share replacement, stop, and denied permission", async () => {
+    const socket = { emit: vi.fn() };
+    const mesh = {
+      setScreenTrack: vi.fn(async () => undefined),
+      clearScreenTrack: vi.fn(async () => undefined),
+    };
+    const controller = new CallSessionController(socket as never, "token", {
+      createMesh: () => mesh,
+      createSFU: () => ({}),
+    } as unknown as MediaEngineFactory);
+    const makeStream = (id: string) => {
+      const track = { id, kind: "video", readyState: "live", stop: vi.fn() } as unknown as MediaStreamTrack;
+      const stream = { id: `stream-${id}`, getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
+      return { stream, track };
+    };
+    const first = makeStream("first");
+    const replacement = makeStream("replacement");
+    const getDisplayMedia = vi.fn()
+      .mockResolvedValueOnce(first.stream)
+      .mockResolvedValueOnce(replacement.stream)
+      .mockRejectedValueOnce(Object.assign(new Error("denied"), { name: "NotAllowedError" }));
+    const previousDescriptor = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+    Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getDisplayMedia } });
+    Object.assign(controller, { mediaConnected: true });
+
+    try {
+      await controller.toggleScreenShare(true);
+      expect(controller.getSettings().screenSharing).toBe(true);
+      expect(controller.getLocalScreenStream()).toBe(first.stream);
+
+      await controller.toggleScreenShare(true);
+      expect(first.track.stop).toHaveBeenCalledOnce();
+      expect(controller.getSettings().screenSharing).toBe(true);
+      expect(controller.getLocalScreenStream()).toBe(replacement.stream);
+
+      await controller.toggleScreenShare(false);
+      expect(replacement.track.stop).toHaveBeenCalledOnce();
+      expect(controller.getSettings().screenSharing).toBe(false);
+      expect(controller.getLocalScreenStream()).toBeNull();
+
+      await expect(controller.toggleScreenShare(true)).rejects.toMatchObject({ name: "NotAllowedError" });
+      expect(controller.getSettings().screenSharing).toBe(false);
+      expect((controller as unknown as { mediaConnected: boolean }).mediaConnected).toBe(true);
+      expect(socket.emit).not.toHaveBeenCalledWith("call:end", expect.anything());
+    } finally {
+      if (previousDescriptor) Object.defineProperty(navigator, "mediaDevices", previousDescriptor);
+      else Reflect.deleteProperty(navigator, "mediaDevices");
+    }
+  });
+});
+
 
 describe("call speech sampling", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });

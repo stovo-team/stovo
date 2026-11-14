@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
+import { isNativeScreenCapturePermissionPending } from "../../../native/screenCapturePlugin";
 
 import {
   addPictureInPictureListener,
@@ -32,6 +33,14 @@ type NativeEffectsParams = {
   restoreActiveVideoSurface: (state: PictureInPictureState) => void;
 };
 
+export function shouldEnterCallPictureInPicture(
+  isActive: boolean,
+  callPhase: CallPhase,
+  screenCapturePermissionPending: boolean,
+): boolean {
+  return !isActive && callPhase !== "idle" && !screenCapturePermissionPending;
+}
+
 /** Owns Android lifecycle, proximity, and PiP listeners for an active call. */
 export function useCallSessionNativeEffects({
   callPhase,
@@ -58,7 +67,7 @@ export function useCallSessionNativeEffects({
     let disposed = false;
     let removeListener: (() => void) | null = null;
     void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
-      if (isActive || callPhaseRef.current === "idle") return;
+      if (!shouldEnterCallPictureInPicture(isActive, callPhaseRef.current, isNativeScreenCapturePermissionPending())) return;
       const sessionId = activeCallSessionIdRef.current;
       if (!sessionId) return;
       void setNativeActiveCallState({ active: true, video: true, chatId: activeCallChatIdRef.current, sessionId })

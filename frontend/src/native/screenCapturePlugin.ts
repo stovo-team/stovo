@@ -38,6 +38,13 @@ export interface ScreenCapturePluginNative {
 
 export const ScreenCapturePlugin = registerPlugin<ScreenCapturePluginNative>("ScreenCapturePlugin");
 
+let pendingPermissionRequests = 0;
+
+/** True while Android's system screen-capture consent activity is open. */
+export function isNativeScreenCapturePermissionPending(): boolean {
+  return pendingPermissionRequests > 0;
+}
+
 export function isNativeScreenCaptureAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
@@ -61,7 +68,15 @@ export async function createNativeScreenCaptureStream(): Promise<MediaStream> {
     throw new Error("Native screen capture is only supported on Android");
   }
 
-  const startRes = await ScreenCapturePlugin.start();
+  // The Android consent activity temporarily backgrounds the WebView. Keep the
+  // call lifecycle from treating that expected transition as leaving the call.
+  pendingPermissionRequests++;
+  let startRes: ScreenCaptureStartResult;
+  try {
+    startRes = await ScreenCapturePlugin.start();
+  } finally {
+    pendingPermissionRequests = Math.max(0, pendingPermissionRequests - 1);
+  }
   const width = startRes.width || 720;
   const height = startRes.height || 1280;
 
