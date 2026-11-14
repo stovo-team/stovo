@@ -588,7 +588,7 @@ for step in 'Detect available shell' 'Install Helm on Windows runner' 'Install k
     exit 1
   fi
 done
-for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd64.zip' 'kubeconform-windows-amd64.zip' 'kubeconform-$version-linux-amd64.tar.gz' 'api.github.com/repos/yannh/kubeconform/releases/assets/$asset_id' 'sha256sum --check' 'docker-compose-windows-x86_64.exe' "if: runner.os == 'Linux'" 'docker-compose-linux-x86_64' 'run: node --test .github/docs-validation.test.mjs' '-strict -summary -kubernetes-version 1.30.0 -'; do
+for required in 'Get-Command git.exe' 'bin\bash.exe' 'helm-$version-windows-amd64.zip' 'kubeconform-windows-amd64.zip' 'kubeconform-$version-linux-amd64.tar.gz' 'https://github.com/yannh/kubeconform/releases/download/$version/kubeconform-linux-amd64.tar.gz' 'sha256sum --check' 'docker-compose-windows-x86_64.exe' "if: runner.os == 'Linux'" 'docker-compose-linux-x86_64' 'run: node --test .github/docs-validation.test.mjs' '-strict -summary -kubernetes-version 1.30.0 -'; do
   if ! grep -Fq -- "$required" <<< "$docs_workflow_contract"; then
     echo "Docs validation must preserve both platform setup and real checks ($required)." >&2
     exit 1
