@@ -119,7 +119,7 @@ func (s *Server) addChatMembers(ctx context.Context, user userPublic, chatID str
 	if chat.Type != "group" && chat.Type != "channel" && chat.Type != "voice" {
 		return nil, 0, newStatusError(http.StatusUnprocessableEntity, "People can only be added to group, channel, or voice chats")
 	}
-	if !hasPermission(user, permissionManageMembers) && !s.canManageChat(chat, user) {
+	if !s.canAddChatMembers(chat, user) {
 		return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
 	}
 	members, err := s.resolveChatMembers(user, userIDs)
@@ -397,6 +397,13 @@ func (s *Server) canManageChat(chat chatPublic, user userPublic) bool {
 		return true
 	}
 	return (chat.Type == "group" || chat.Type == "channel" || chat.Type == "voice") && chat.CreatedBy != nil && *chat.CreatedBy == user.ID
+}
+
+func (s *Server) canAddChatMembers(chat chatPublic, user userPublic) bool {
+	if hasPermission(user, permissionManageMembers) {
+		return true
+	}
+	return chat.CreatedBy != nil && *chat.CreatedBy == user.ID
 }
 
 func (s *Server) canSendToChat(chat chatPublic, user userPublic) bool {
@@ -731,9 +738,9 @@ func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
 			Username:           u.Username,
 			Role:               u.Role,
 			PublicKey:          u.PublicKey,
-			AvatarMode:          u.AvatarMode,
-			AvatarSymbolID:      u.AvatarSymbolID,
-			AvatarColorID:       u.AvatarColorID,
+			AvatarMode:         u.AvatarMode,
+			AvatarSymbolID:     u.AvatarSymbolID,
+			AvatarColorID:      u.AvatarColorID,
 			LastSeenVisibility: u.LastSeenVisibility,
 		}
 		if u.LastSeenAt != nil {

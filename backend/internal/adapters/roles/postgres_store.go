@@ -18,6 +18,13 @@ const roleSelect = `SELECT r.id, r.name, r.description, r.permissions, r.is_defa
 const roleGroup = ` GROUP BY r.id, r.name, r.description, r.permissions, r.is_default`
 
 func (s *PostgresStore) UserRoleID(ctx context.Context, userID string) (string, error) {
+	var familyID string
+	if err := s.db.QueryRowContext(ctx, `SELECT family_id FROM users WHERE id = $1`, userID).Scan(&familyID); err != nil {
+		return "", err
+	}
+	if err := s.ensureDefaultRoles(ctx, familyID); err != nil {
+		return "", err
+	}
 	var roleID string
 	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, userID).Scan(&roleID)
 	return roleID, err
@@ -27,6 +34,9 @@ func (s *PostgresStore) Get(ctx context.Context, familyID, roleID string) (featu
 	return scanRole(s.db.QueryRowContext(ctx, roleSelect+` WHERE r.family_id = $1 AND r.id = $2`+roleGroup, familyID, roleID))
 }
 func (s *PostgresStore) List(ctx context.Context, familyID string) ([]featureroles.Role, error) {
+	if err := s.ensureDefaultRoles(ctx, familyID); err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, roleSelect+` WHERE r.family_id = $1`+roleGroup+` ORDER BY r.is_default DESC, r.name`, familyID)
 	if err != nil {
 		return nil, err
@@ -41,6 +51,23 @@ func (s *PostgresStore) List(ctx context.Context, familyID string) ([]featurerol
 		result = append(result, role)
 	}
 	return result, rows.Err()
+}
+
+// ensureDefaultRoles repairs missing built-in rows and fills only null user
+// assignments from the legacy role column. Existing roles and assignments stay
+// untouched; conflicts on stable IDs or family role names are left as-is.
+func (s *PostgresStore) ensureDefaultRoles(ctx context.Context, familyID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO server_roles (id, family_id, name, description, permissions, is_default, created_at, updated_at)
+		VALUES
+			($1, $2, 'Admin', 'Full server administration', '["manage_server","manage_roles","manage_members","manage_channels","manage_messages","manage_calls","manage_plans","manage_files","manage_integrations"]', TRUE, now()::text, now()::text),
+			($3, $2, 'Member', '', '[]', TRUE, now()::text, now()::text)
+		ON CONFLICT DO NOTHING`, familyID+`:admin`, familyID, familyID+`:member`)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx, `UPDATE users u SET role_id = u.family_id || CASE WHEN u.role IN ('owner','admin') THEN ':admin' ELSE ':member' END WHERE u.family_id=$1 AND u.role_id IS NULL AND EXISTS (SELECT 1 FROM server_roles r WHERE r.id = u.family_id || CASE WHEN u.role IN ('owner','admin') THEN ':admin' ELSE ':member' END)`, familyID)
+	return err
 }
 func (s *PostgresStore) Create(ctx context.Context, command featureroles.CreateCommand) error {
 	permissions, err := json.Marshal(command.Permissions)

@@ -1,4 +1,4 @@
-h1:JvM/C+VAqbl1aIJAJf1ASIzrAtqVQ75yA42K3dv1p5Y=
+h1:HZaZGd+O15q92FVzy3+mF52tpgdCkB/lacU3xQamhBc=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -48,3 +48,5 @@ h1:JvM/C+VAqbl1aIJAJf1ASIzrAtqVQ75yA42K3dv1p5Y=
 20261011100000_add_chat_import_provenance.sql h1:S71n3DUtRuA+qONAXIuFy62k1M2FqyJdekm9bflyTCM=
 20261026120000_add_avatar_choices.sql h1:Wer5sOvyOWA1lv+3kzIUZhzfzvx+RKZaiYhPQ4fxNZw=
 20261026180000_retire_family_chat_type.sql h1:TDuM/nCrmChYYLzKDcdU+UPetbcBCyMDoduhvvMk8XQ=
+20261112100000_add_intelligence_source_v2_codex_reply_grants.sql h1:h0ujrHxuOEQE/SA16OpOKDfIyd1J6U4/9zMPFlMJTuM=
+20261114120000_repair_server_default_roles.sql h1:VVaK4QK+Jwp5V+zfBFFQGuM0FK1pHRkSeeOsXWjVe3I=
