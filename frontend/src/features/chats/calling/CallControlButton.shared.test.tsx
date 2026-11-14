@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ScreenShare, ScreenShareOff, Volume2, VolumeX } from "lucide-react";
+import { PhoneOff, ScreenShare, ScreenShareOff, Volume2, VolumeX } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CallControlButton } from "./CallControlButton";
 
@@ -111,16 +111,17 @@ describe("shared call control button", () => {
   });
 
   it("does not expose toggle state for one-shot actions", () => {
-    const endCall = renderControl({ action: "end-call", label: "End call", state: "idle", onClick: vi.fn() });
     const flipCamera = renderControl({ action: "flip-camera", label: "Flip camera", state: "idle", onClick: vi.fn() });
     const audioOutput = renderControl({ action: "audio-output", label: "Audio output", state: "idle", onClick: vi.fn() });
 
-    for (const host of [endCall, flipCamera, audioOutput]) {
+    for (const host of [flipCamera, audioOutput]) {
       expect(host.querySelector("button")?.hasAttribute("aria-pressed")).toBe(false);
     }
-    const slash = endCall.querySelector("svg line");
-    expect(slash?.getAttribute("x1")).toBe("3");
-    expect(slash?.getAttribute("x2")).toBe("21");
+    for (const state of ["active", "muted", "idle"] as const) {
+      const endCall = renderControl({ action: "end-call", label: "End call", state, onClick: vi.fn() });
+      expect(endCall.querySelector("button")?.hasAttribute("aria-pressed")).toBe(false);
+      expect(endCall.querySelector("svg")?.outerHTML).toBe(renderToStaticMarkup(<PhoneOff aria-hidden="true" size={20} />));
+    }
   });
 
   it("keeps end-call controls visually static while hovered or pressed", () => {
@@ -145,8 +146,8 @@ describe("shared call control button", () => {
 
   it("keeps Android minimize and invite icons larger without changing their button targets", () => {
     const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
-    expect(css).toMatch(/\.call-popup--android \.call-popup-minimize-btn svg\s*\{[^}]*width:\s*20px;[^}]*height:\s*20px/);
-    expect(css).toMatch(/\.call-popup--android \.call-popup-header-invite svg\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px/);
+    expect(css).toMatch(/\.call-popup--android \.call-popup-minimize-btn svg\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px/);
+    expect(css).toMatch(/\.call-popup--android \.call-popup-header-invite svg\s*\{[^}]*width:\s*28px;[^}]*height:\s*28px/);
     expect(css).toMatch(/\.call-popup-group-call \.call-popup-header-invite\s*\{[^}]*width:\s*40px;[^}]*height:\s*40px/);
   });
 

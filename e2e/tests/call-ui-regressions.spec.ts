@@ -104,7 +104,7 @@ test("mobile group controls stay visible by default and sharing has participants
   await page.screenshot({ path: "/tmp/call-mobile-fixed.png" });
 });
 
-test("Android mobile group camera tiles are square, undistorted and keep the end-call slash", async ({ page }) => {
+test("Android mobile group camera tiles are square, undistorted and keep the handset slash inside its icon", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixture}?android&mobile&camera`);
   const tile = page.locator(".mobile-active-video-stage .call-grid__tile--local");
@@ -113,8 +113,49 @@ test("Android mobile group camera tiles are square, undistorted and keep the end
   await expect(tile.locator("video")).toHaveCSS("object-fit", "cover");
   await expect(tile.locator("video")).toHaveCSS("transform", "matrix(-1, 0, 0, 1, 0, 0)");
   const end = page.getByRole("button", { name: "End call", exact: true });
-  await expect(end.locator("svg line")).toHaveAttribute("x2", "21");
+  await expect(end.locator("svg line")).toHaveCount(0);
+  await expect(end.locator("svg path")).not.toHaveCount(0);
   await page.screenshot({ path: "/tmp/call-android-mobile-group.png" });
+});
+
+test("desktop group-call participant tiles stay contained with one or two participants", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  for (const participantCount of [1, 2]) {
+    await page.goto(`${fixture}?participants=${participantCount}&controls-visible`);
+    const grid = page.locator(".call-popup-group-participants");
+    await expect(grid).toBeVisible();
+    const tiles = grid.locator(".call-popup-group-participant");
+    await expect(tiles).toHaveCount(participantCount);
+    await expect.poll(() => grid.evaluate((element) => {
+      const stage = element.closest(".call-popup-audio-stage")!.getBoundingClientRect();
+      const gridBounds = element.getBoundingClientRect();
+      const tileBounds = element.querySelector(".call-popup-group-participant")!.getBoundingClientRect();
+      return gridBounds.width <= 721 && Math.abs(gridBounds.left + gridBounds.width / 2 - (stage.left + stage.width / 2)) < 2
+        && gridBounds.left >= stage.left && gridBounds.right <= stage.right
+        && Math.abs(tileBounds.width / tileBounds.height - 16 / 9) < 0.05;
+    })).toBe(true);
+    await expect.poll(() => tiles.first().evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight;
+    })).toBe(true);
+    await page.screenshot({ path: `/tmp/call-desktop-group-${participantCount}.png` });
+  }
+});
+
+test("tablet call tiles and header SVGs retain desktop proportions", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 800 });
+  await page.goto(`${fixture}?android&participants=2&controls-visible`);
+  const tiles = page.locator(".call-popup-group-participant");
+  await expect(tiles).toHaveCount(2);
+  await expect.poll(() => tiles.first().locator(".voice-avatar-wrapper--md").evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width === 68 && rect.height === 68;
+  })).toBe(true);
+  await expect(page.locator(".call-popup-minimize-btn svg")).toHaveCSS("width", "24px");
+  await expect(page.locator(".call-popup-header-invite svg")).toHaveCSS("width", "28px");
+  const grid = page.locator(".call-popup-group-participants");
+  await expect.poll(() => grid.evaluate((element) => element.getBoundingClientRect().width)).toBeLessThanOrEqual(721);
+  await page.screenshot({ path: "/tmp/call-android-tablet-group.png" });
 });
 
 test("Android call settings fill a small screen and keep accessible top tabs", async ({ page }) => {
@@ -145,4 +186,58 @@ test("web call settings keep the desktop layout without header or column divider
   expect(await dialog.locator(".call-settings-dialog-header").evaluate((element) => getComputedStyle(element).borderBottomWidth)).toBe("0px");
   expect(await dialog.locator(".call-settings-tabs").evaluate((element) => getComputedStyle(element).borderRightWidth)).toBe("0px");
   await page.screenshot({ path: "/tmp/call-web-settings.png" });
+});
+
+test("desktop group calls show a slightly smaller local avatar", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(fixture);
+  const selfAvatar = page.locator(".call-popup-audio-stage .call-popup-group-participant.is-self .voice-avatar-wrapper--md");
+  await expect(selfAvatar).toBeVisible();
+  await expect(selfAvatar).toHaveCSS("width", "68px");
+  await expect(selfAvatar).toHaveCSS("height", "68px");
+});
+
+test("desktop call device dropdowns have no hover effect and keep focus and menu states", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`${fixture}?camera&devices`);
+  await page.locator(".call-popup-video-area").hover();
+  const controls = page.locator(".guest-call-controls .guest-device-menu-trigger");
+  const toggles = page.locator(".guest-call-controls .guest-device-control > .call-ctrl-btn");
+  await expect(controls).toHaveCount(3);
+  await expect(toggles).toHaveCount(3);
+
+  for (const [index, label] of ["Microphone", "Speaker", "Camera"].entries()) {
+    const toggle = toggles.nth(index);
+    const idleToggleStyle = await toggle.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.opacity, style.backgroundColor, style.color, style.borderColor, style.boxShadow, style.transform];
+    });
+    await toggle.hover();
+    await expect.poll(() => toggle.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.opacity, style.backgroundColor, style.color, style.borderColor, style.boxShadow, style.transform];
+    })).toEqual(idleToggleStyle);
+
+    const control = controls.nth(index);
+    const idleStyle = await control.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.backgroundColor, style.color, style.borderColor, style.boxShadow, style.transform];
+    });
+    await control.hover();
+    await expect.poll(() => control.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.backgroundColor, style.color, style.borderColor, style.boxShadow, style.transform];
+    })).toEqual(idleStyle);
+
+    await control.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => control.evaluate((element) => getComputedStyle(element).outlineWidth)).toBe("2px");
+
+    await control.click();
+    await expect(control).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("listbox", { name: `${label} device` })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(control).toHaveAttribute("aria-expanded", "false");
+  }
 });

@@ -228,6 +228,23 @@
   width: 100% !important;
   max-width: 100% !important;
 }
+@media (min-width: 681px) {
+  .call-popup.call-popup-group-call .call-popup-audio-stage .call-popup-group-participants {
+    width: min(100%, 720px) !important;
+    max-width: 720px !important;
+    margin-inline: auto;
+  }
+
+  .call-popup.call-popup-group-call .call-popup-audio-stage .call-popup-group-participant.is-self .voice-avatar-wrapper--md {
+    width: 68px;
+    height: 68px;
+  }
+
+  .call-popup.call-popup-group-call .call-popup-audio-stage .call-popup-group-participant.is-self .voice-avatar--md {
+    width: 68px !important;
+    height: 68px !important;
+  }
+}
 .call-popup-group-call .call-popup-ctrl-row .call-ctrl-wrap {
   flex-shrink: 0;
 }
