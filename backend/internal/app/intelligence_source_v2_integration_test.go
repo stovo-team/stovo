@@ -2004,7 +2004,7 @@ func TestIntelligenceSourceV2BrowserConsentTicketIsBoundOneUseAndConnectionsAreP
 	form := url.Values{
 		"response_type": {"code"}, "client_id": {fixture.clientID}, "redirect_uri": {fixture.redirectURI},
 		"state": {state}, "code_challenge": {fixture.challenge}, "code_challenge_method": {"S256"}, "chat_id": {fixture.chatID},
-		"read": {"true"}, "process": {"false"}, "external_transfer": {"true"}, "export": {"false"},
+		"read": {"true"}, "process": {"false"}, "external_transfer": {"true"}, "export": {"false"}, "codex": {"false"}, "reply": {"false"},
 	}
 	submitBrowserForm := func(values url.Values) *http.Response {
 		t.Helper()
