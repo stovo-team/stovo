@@ -37,3 +37,11 @@ describe("desktop app navigation active state", () => {
     expect(appNav).not.toContain("ms-icon");
   });
 });
+
+describe("native app navigation active state", () => {
+  it("keeps the active icon above its highlight at any WebView width", () => {
+    expect(styles).toMatch(
+      /:root\[data-platform="native"\][^{]*\.app-nav[^{}]*a\.active svg\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*1;/s
+    );
+  });
+});
