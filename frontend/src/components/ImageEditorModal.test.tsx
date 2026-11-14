@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppStrings } from "../config/strings";
+import { readCssSource } from "../test/cssSource";
 
 vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru") }));
 
@@ -116,6 +117,11 @@ describe("ImageEditorModal", () => {
     container = null;
     root = null;
     document.body.innerHTML = "";
+  });
+
+  it("keeps native rotate and close controls side by side", () => {
+    const styles = readCssSource("src/styles.css");
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.image-editor-close-btn\s*\{[^}]*position:\s*relative/);
   });
 
   it("renders image editor modal with adjustment controls and tabs", () => {
