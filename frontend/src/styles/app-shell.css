@@ -330,12 +330,16 @@ h2 {
   background: transparent;
 }
 
-.messenger-shell.app-frame {
+.app-frame {
   background: var(--messages-panel-background);
   background-position: var(--wallpaper-background-position);
   background-repeat: var(--wallpaper-background-repeat);
   background-size: var(--wallpaper-background-size);
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+.messenger-shell.app-frame {
+  background: var(--messages-panel-background);
 }
 
 .workspace,
@@ -511,25 +515,6 @@ h2 {
   }
 
 
-  .app-frame > .app-nav a:hover,
-  .app-frame > .app-nav .app-nav-logout:hover:not(:disabled) {
-    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);
-    border-color: transparent;
-    border-radius: var(--radius-bubble);
-    color: var(--stovo-primary);
-  }
-
-  .app-frame > .app-nav a:hover .ms-icon,
-  .app-frame > .app-nav .app-nav-logout:hover .ms-icon {
-    color: var(--stovo-primary);
-    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
-  }
-
-  .app-frame > .app-nav a:hover > span:not(.ms-icon):not(.nav-badge),
-  .app-frame > .app-nav .app-nav-logout:hover > span:not(.ms-icon) {
-    color: var(--stovo-primary);
-  }
-
   .app-frame > .app-nav a.active {
     background: color-mix(in oklab, var(--stovo-primary) 16%, transparent);
     border-radius: var(--radius-bubble);
@@ -626,12 +611,6 @@ h2 {
 }
 
 
-.app-nav a:hover {
-  background: color-mix(in oklab, var(--accent-soft) 12%, transparent);
-  border-radius: var(--radius-bubble);
-  color: var(--accent-primary-hover);
-}
-
 .app-frame > .app-nav a.active {
   background: color-mix(in oklab, var(--accent-soft) 20%, transparent);
   border-radius: var(--radius-bubble);
@@ -694,13 +673,6 @@ h2 {
 
 .app-frame > .app-nav .app-nav-logout {
   margin-top: auto;
-}
-
-.app-frame > .app-nav .app-nav-logout:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--accent-soft) 12%, transparent);
-  border-color: transparent;
-  box-shadow: none;
-  transform: none;
 }
 
 .section-header {
@@ -1251,6 +1223,14 @@ h2 {
   background: color-mix(in oklab, var(--island-surface) 88%, transparent);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+@media (min-width: 769px) {
+  .app-frame:not(.messenger-shell) > .app-nav {
+    background: color-mix(in oklab, var(--island-surface) 88%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
 }
 
 .summary-band > div {

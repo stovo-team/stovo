@@ -807,12 +807,12 @@
 /* Compact Admin — pure black, smaller scale */
 .admin-page,
 .admin-page.app-frame {
-  background: var(--color-palette-7b2817bf9b80);
+  background: transparent;
 }
 
 .admin-page > .page-surface,
 .admin-page .admin-surface {
-  background: var(--color-palette-7b2817bf9b80);
+  background: transparent;
   border: 0;
   box-shadow: none;
   max-width: 560px;

@@ -187,7 +187,7 @@
 
 /* Dedicated settings pages: AMOLED canvas with floating liquid-glass islands. */
 .settings-page.settings-detail-view {
-  background: var(--color-palette-7b2817bf9b80);
+  background: transparent;
 }
 
 .settings-page.settings-detail-view .settings-layout {
@@ -291,7 +291,7 @@
 .settings-page,
 .settings-page > .settings-layout,
 .settings-page .settings-layout {
-  background: var(--color-palette-7b2817bf9b80) !important;
+  background: transparent !important;
 }
 
 .settings-page:not(.settings-detail-view) .section-header .eyebrow,

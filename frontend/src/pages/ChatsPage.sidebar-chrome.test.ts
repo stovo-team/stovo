@@ -25,7 +25,7 @@ describe("left nav and chat sidebar chrome", () => {
     expect(transparentNavRules).toEqual([]);
   });
 
-  it("keeps the active nav icon and label above the tablet active indicator", () => {
+  it("keeps the active nav icon and label orange and layered above the translucent active indicator", () => {
     const tabletLayout = stylesheet.nodes?.find(
       node =>
         node.type === "atrule" &&
@@ -36,15 +36,55 @@ describe("left nav and chat sidebar chrome", () => {
 
     let activeIconZIndex: string | undefined;
     let activeIconColor: string | undefined;
+    let activeIndicatorBg: string | undefined;
     tabletLayout?.walkRules(rule => {
       if (rule.selector.includes("a.active .ms-icon")) {
         activeIconZIndex = rule.nodes?.find(node => node.type === "decl" && node.prop === "z-index")?.value;
         activeIconColor = rule.nodes?.find(node => node.type === "decl" && node.prop === "color")?.value;
       }
+      if (rule.selector.includes("a.active::before")) {
+        activeIndicatorBg = rule.nodes?.find(node => node.type === "decl" && node.prop === "background")?.value;
+      }
     });
 
     expect(activeIconZIndex).toBe("1");
-    expect(activeIconColor).toContain("var(--color-palette-f2074b6cef37)");
+    expect(activeIconColor).toContain("var(--stovo-primary)");
+    expect(activeIndicatorBg).toContain("color-mix(in oklab, var(--stovo-primary)");
+  });
+
+  it("applies the shared wallpaper to every .app-frame page and uses overflow-x: clip for sticky nav", () => {
+    let appFrameBg: string | undefined;
+    let appFrameOverflowX: string | undefined;
+    stylesheet.walkRules(".app-frame", rule => {
+      if (rule.parent?.type !== "root") return;
+      const bg = rule.nodes?.find(node => node.type === "decl" && node.prop === "background")?.value;
+      const ox = rule.nodes?.find(node => node.type === "decl" && node.prop === "overflow-x")?.value;
+      if (bg) appFrameBg = bg;
+      if (ox) appFrameOverflowX = ox;
+    });
+
+    expect(appFrameBg).toBe("var(--messages-panel-background)");
+    expect(appFrameOverflowX).toBe("clip");
+  });
+
+  it("removes hover states from navigation links and logout button", () => {
+    const navHoverDecls: string[] = [];
+    stylesheet.walkRules(rule => {
+      if (!rule.selector.includes(".app-nav") || !rule.selector.includes(":hover")) return;
+      const visualDecls = rule.nodes?.filter(
+        node =>
+          node.type === "decl" &&
+          ((node.prop === "background" && node.value !== "transparent") ||
+            node.prop === "color" ||
+            node.prop === "box-shadow" ||
+            node.prop === "opacity")
+      );
+      if (visualDecls && visualDecls.length > 0) {
+        navHoverDecls.push(rule.selector);
+      }
+    });
+
+    expect(navHoverDecls).toEqual([]);
   });
 
   it("keeps the web chat sidebar header background transparent", () => {
@@ -62,6 +102,26 @@ describe("left nav and chat sidebar chrome", () => {
     });
 
     expect(opaqueHeaderRules).toEqual([]);
+  });
+
+  it("scopes the 116px chat-list-view top padding to mobile (max-width: 768px)", () => {
+    const nonMobileChatListPadding: string[] = [];
+    stylesheet.walkAtRules("media", atRule => {
+      if (atRule.params.includes("max-width: 768px")) return;
+      atRule.walkRules(rule => {
+        if (
+          rule.selector.includes(':root[data-platform="web"]') &&
+          rule.selector.includes(".chat-list-view .chat-list") &&
+          rule.nodes?.some(
+            node => node.type === "decl" && node.prop === "padding-top" && node.value.includes("--web-chat-sidebar-header-height")
+          )
+        ) {
+          nonMobileChatListPadding.push(`${atRule.params} :: ${rule.selector}`);
+        }
+      });
+    });
+
+    expect(nonMobileChatListPadding).toEqual([]);
   });
 
   it("gives desktop 1200px-1599px viewports a wider chat sidebar than 280px", () => {
