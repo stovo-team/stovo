@@ -1,4 +1,5 @@
 import {
+  Download,
   Maximize2,
   Minimize2,
   Pause,
@@ -394,7 +395,10 @@ export function VideoPlayer({
         {videoNode}
 
         {!canLoad && !disabledReason && (
-          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>{strings.sharedUi.downloadVideo}</button>
+          <button type="button" className="video-player-download-button" onClick={() => setManualDownloadRequested(true)}>
+            <Download size={16} aria-hidden="true" />
+            {strings.sharedUi.downloadVideo}
+          </button>
         )}
         {canLoad && isLoading && !error && !disabledReason && (
           <div className="video-player-status" role="status" aria-live="polite">{copy.loading}</div>

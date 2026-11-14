@@ -701,4 +701,43 @@ describe("VideoPlayer", () => {
     expect(document.querySelectorAll("video")).toHaveLength(1);
     expect(document.querySelector(".video-player-lightbox")).toBeNull();
   });
+
+  it("streams range-capable media without eagerly downloading the full video blob", async () => {
+    createStreamingMediaUrlMock.mockResolvedValueOnce("https://api.example/api/media/file-1?token=stream-tok");
+    const { container } = renderPlayer(playerProps({ autoplay: false }));
+    await settle();
+
+    expect(createStreamingMediaUrlMock).toHaveBeenCalledWith("access-token", "file-1");
+    expect(media(container).src).toBe("https://api.example/api/media/file-1?token=stream-tok");
+    expect(downloadFileBlobMock).not.toHaveBeenCalled();
+  });
+
+  it("renders a clickable download button without a loading spinner when auto-download is skipped", async () => {
+    createStreamingMediaUrlMock.mockResolvedValueOnce("https://api.example/api/media/large-1?token=stream-tok");
+    const { container } = renderPlayer(playerProps({
+      file: familyFile({ id: "large-1", sizeBytes: 50 * 1024 * 1024 }),
+      identity: identity({ fileId: "large-1" }),
+      autoplay: false,
+    }));
+    await settle();
+
+    const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((el) => el.textContent?.includes("Download video"));
+    expect(button).toBeDefined();
+    expect(button?.classList.contains("video-player-status")).toBe(false);
+
+    const style = document.createElement("style");
+    style.textContent = readCssSource("src/styles.css");
+    document.head.appendChild(style);
+    try {
+      expect(getComputedStyle(button!).pointerEvents).toBe("auto");
+    } finally {
+      style.remove();
+    }
+
+    expect(createStreamingMediaUrlMock).not.toHaveBeenCalled();
+    act(() => button!.click());
+    await settle();
+    expect(createStreamingMediaUrlMock).toHaveBeenCalledWith("access-token", "large-1");
+  });
 });

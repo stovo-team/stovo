@@ -522,7 +522,8 @@
 }
 
 .video-player-status,
-.video-player-error {
+.video-player-error,
+.video-player-download-button {
   align-items: center;
   background: var(--color-palette-2b5d0be87676);
   border-radius: var(--radius-surface);
@@ -539,6 +540,12 @@
   top: 42%;
   transform: translate(-50%, -50%);
   z-index: 2;
+}
+
+.video-player-download-button {
+  border: 1px solid var(--color-palette-c0ed37419009);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .video-player-status::before {
@@ -621,7 +628,8 @@
 
 .messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-controls,
 .messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-status,
-.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-error {
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-error,
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-download-button {
   display: none;
 }
 
