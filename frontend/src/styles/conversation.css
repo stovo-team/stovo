@@ -111,7 +111,7 @@
 }
 
 /* Desktop only: fade wallpaper into black at panel edges (works for all wallpaper types). */
-@media (min-width: 1025px) {
+@media (min-width: 1200px) {
   .messenger-shell.has-active-chat .chat-detail {
     position: relative;
   }

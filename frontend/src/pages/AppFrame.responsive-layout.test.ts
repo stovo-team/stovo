@@ -8,7 +8,7 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
     node => node.type === "atrule"
       && node.name === "media"
       && node.params.includes("min-width: 769px")
-      && node.params.includes("max-width: 1024px")
+      && node.params.includes("max-width: 1199px")
   );
   let navGridColumn: string | undefined;
   let navWidth: string | undefined;

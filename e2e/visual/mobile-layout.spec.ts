@@ -1,6 +1,32 @@
 import {test,expect} from './fixtures';
 import {prepareVisualScenario,screenshot,type Scenario} from './scenarios';
 
+for (const width of [1165, 1199, 1200]) {
+  test(`tablet chat layout switches cleanly at ${width}px`, async ({ page }, info) => {
+    const s: Scenario = { id: `V-chat-breakpoint-${width}`, viewport: { width, height: 900 }, theme: 'dark', locale: 'en' };
+    await prepareVisualScenario(page, s, '/app/chats/chat-planning-team');
+    const geometry = await page.evaluate(() => {
+      const nav = document.querySelector<HTMLElement>('.app-nav.app-nav--active-variant-a')!;
+      const sidebar = document.querySelector<HTMLElement>('.chat-sidebar')!;
+      const detail = document.querySelector<HTMLElement>('.chat-detail')!;
+      const navPosition = getComputedStyle(nav).position;
+      const sidebarBounds = sidebar.getBoundingClientRect();
+      const detailBounds = detail.getBoundingClientRect();
+      return { navPosition, sidebarWidth: sidebarBounds.width, sidebarRight: sidebarBounds.right, detailLeft: detailBounds.left, detailWidth: detailBounds.width };
+    });
+
+    await screenshot(page, info, s);
+    if (width < 1200) {
+      expect(geometry.navPosition).toBe('sticky');
+      expect(geometry.sidebarWidth).toBeLessThanOrEqual(280);
+    } else {
+      expect(geometry.navPosition).toBe('fixed');
+    }
+    expect(geometry.detailLeft).toBeGreaterThanOrEqual(geometry.sidebarRight);
+    expect(geometry.detailWidth).toBeGreaterThan(0);
+  });
+}
+
 test('V-17 tablet chat list stays compact and keeps the new-chat button in its panel', async ({ page }, info) => {
   const s: Scenario = { id: 'V-17', viewport: { width: 1024, height: 900 }, theme: 'dark', locale: 'en' };
   await prepareVisualScenario(page, s, '/app/chats');

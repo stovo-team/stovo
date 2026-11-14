@@ -1,4 +1,4 @@
-@media (min-width: 1025px) {
+@media (min-width: 1200px) {
   .app-frame > .app-nav {
     --app-nav-state-circle-size: 60px;
     padding: 6px 4px;
@@ -127,7 +127,7 @@
 }
 
 /* Browser-only narrow layout. Capacitor keeps its native spacing and chrome. */
-@media (max-width: 1024px) {
+@media (max-width: 1199px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 116px;
     overflow: visible;
@@ -185,6 +185,17 @@
   :root[data-platform="web"] .app-frame > .app-nav.app-nav--active-variant-a::before {
     background: color-mix(in oklab, var(--mobile-glass-surface-strong) 62%, transparent);
     border: 0;
+  }
+}
+
+@media (max-width: 1199px) {
+  :root[data-platform="web"] .messenger-shell.has-active-chat .emoji-picker {
+    box-sizing: border-box;
+    left: 0;
+    max-width: min(360px, calc(100vw - var(--active-chat-message-inset-x) - 64px));
+    right: auto;
+    transform: none;
+    width: min(360px, calc(100vw - var(--active-chat-message-inset-x) - 64px));
   }
 }
 
@@ -389,7 +400,7 @@
   width: 32px;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1199px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip),
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip) {
     --web-chat-sidebar-header-height: 204px;
@@ -440,7 +451,7 @@
 }
 
 /* Capacitor renders the same narrow chat layout as the mobile browser. */
-@media (max-width: 1024px) {
+@media (max-width: 1199px) {
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 140px;
     position: relative;
@@ -986,7 +997,7 @@
 }
 
 /* Keep desktop chat content sized against the available layout space. */
-@media (min-width: 1025px) {
+@media (min-width: 1200px) {
   :root[data-platform="web"] .messenger-shell .chat-layout {
     container-type: inline-size;
   }
