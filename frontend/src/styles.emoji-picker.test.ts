@@ -36,7 +36,7 @@ const lastRule = (selector: string) => {
 };
 const desktopRule = (selector: string) => {
   const desktopMedia = styles.indexOf(
-    "@media (min-width: 1025px) {",
+    "@media (min-width: 1200px) {",
     styles.indexOf("/* Desktop conversation chrome")
   );
   const start = styles.indexOf(`${selector} {`, desktopMedia);
@@ -294,7 +294,7 @@ describe("message media sizing", () => {
     expect(rule(".message-media-album")).toContain("width: 100%;");
     expect(albumChildRule).toContain("width: 100%;");
     expect(styles).toMatch(
-      /@media \(min-width: 1025px\) \{[\s\S]*?\.message-bubble\.has-photo-attachments:has\(\.message-video-attachment\),[\s\S]*?width: min\(420px, 84%\);/
+      /@media \(min-width: 1200px\) \{[\s\S]*?\.message-bubble\.has-photo-attachments:has\(\.message-video-attachment\),[\s\S]*?width: min\(420px, 84%\);/
     );
     expect(rule(".message-bubble")).toContain(
       "font-size: calc(var(--font-size-body) * var(--message-scale));"

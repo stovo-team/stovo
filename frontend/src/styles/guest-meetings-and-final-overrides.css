@@ -2461,7 +2461,7 @@ button.minimized-call-button--end:active:not(:disabled) {
   aspect-ratio: auto;
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1199px) {
   .app-frame > .app-nav.app-nav--active-variant-a {
     grid-column: 1;
     height: calc(100dvh - 2 * var(--float-outer-gap));

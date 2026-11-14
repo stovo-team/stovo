@@ -7,7 +7,7 @@ const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
 describe("mobile chat emoji picker", () => {
   it("keeps the popup within the viewport instead of centering it off the composer edge", () => {
     const mobileRule = styles.match(
-      /@media \(max-width: 1024px\) \{[\s\S]*?\.messenger-shell\.has-active-chat \.emoji-picker \{([^}]*)\}/
+      /@media \(max-width: 1199px\) \{[\s\S]*?\.messenger-shell\.has-active-chat \.emoji-picker \{([^}]*)\}/
     )?.[1] ?? "";
 
     expect(mobileRule).toContain("left: 0;");

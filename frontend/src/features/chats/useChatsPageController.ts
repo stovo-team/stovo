@@ -244,7 +244,7 @@ export function useChatsPageController({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 1024px)");
+    const media = window.matchMedia("(max-width: 1199px)");
     const update = () => setIsMobileViewport(isMobileCallViewport());
     update();
     media.addEventListener("change", update);

@@ -642,7 +642,7 @@
   }
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1200px) {
   .message-bubble {
     max-width: min(640px, 84%);
   }

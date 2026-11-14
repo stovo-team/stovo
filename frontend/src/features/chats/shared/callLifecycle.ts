@@ -48,5 +48,5 @@ export function isMobileCallViewport(): boolean {
   if (Capacitor.isNativePlatform()) {
     return true;
   }
-  return window.matchMedia("(max-width: 1024px)").matches;
+  return window.matchMedia("(max-width: 1199px)").matches;
 }
