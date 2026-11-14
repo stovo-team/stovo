@@ -54,7 +54,9 @@ export function CallControlButton({
       aria-label={label}
       {...(isToggleAction ? { "aria-pressed": state === "active" } : {})}
     >
-      <Icon aria-hidden="true" size={iconSize} />
+      <Icon aria-hidden="true" size={iconSize}>
+        {action === "end-call" && <line x1="3" y1="3" x2="21" y2="21" />}
+      </Icon>
       {children}
     </button>
   );

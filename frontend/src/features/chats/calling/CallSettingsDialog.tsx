@@ -19,6 +19,7 @@ export function CallSettingsDialog({
   onClose,
   localStream = null,
   isMobile,
+  isAndroid = false,
 }: {
   initialTab: CallSettingsTab;
   preferences: CallUIPreferences;
@@ -31,6 +32,7 @@ export function CallSettingsDialog({
   onClose: () => void;
   localStream?: MediaStream | null;
   isMobile: boolean;
+  isAndroid?: boolean;
 }) {
   const copy = useStrings().auditUi;
   const tabs: Array<{ id: CallSettingsTab; label: string }> = [
@@ -81,7 +83,7 @@ export function CallSettingsDialog({
     <PopupBackdrop className="call-audio-popup-backdrop" onClick={closeDialog}>
       <section
         ref={dialogRef}
-        className="call-settings-dialog"
+        className={`call-settings-dialog${isAndroid ? " call-settings-dialog--android" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={copy.callSettings}

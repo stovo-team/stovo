@@ -1,6 +1,7 @@
 /** Browser regression fixture: real call UI with deterministic canvas media, no signaling server. */
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
 import { MemoryRouter } from "react-router-dom";
 import { CallFeature, CallFeatureProvider } from "../src/features/chats/calling/CallFeature";
 import { VoiceChannelStage } from "../src/features/chats/calling/VoiceChannelStage";
@@ -14,6 +15,10 @@ import "../src/styles.css";
 const params = new URLSearchParams(location.search);
 const voice = params.get("kind") === "voice";
 const withDevices = params.has("devices");
+if (params.has("android")) {
+  Capacitor.isNativePlatform = () => true;
+  Capacitor.getPlatform = () => "android";
+}
 if (params.has("controls-visible")) {
   localStorage.setItem("stovo.call-ui-preferences", JSON.stringify({ autoHideControls: false, cameraFit: "fit" }));
 }

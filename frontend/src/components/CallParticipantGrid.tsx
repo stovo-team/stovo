@@ -40,6 +40,7 @@ type CallParticipantGridProps = {
   isCallConnected?: boolean;
   hideParticipants?: boolean;
   participantProfiles?: Record<string, { id?: string; displayName: string; profilePhoto: FamilyFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null }>;
+  localProfile?: { id?: string; displayName: string; profilePhoto: FamilyFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null } | null;
   accessToken?: string | null;
 };
 
@@ -98,6 +99,7 @@ export default function CallParticipantGrid({
   isCallConnected = true,
   hideParticipants = false,
   participantProfiles = {},
+  localProfile = null,
   accessToken,
 }: CallParticipantGridProps) {
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
@@ -225,6 +227,7 @@ export default function CallParticipantGrid({
       localVideoPlaceholder={localVideoPlaceholder}
       accessToken={accessToken}
       profilePhoto={participantProfiles[localUserLabel]?.profilePhoto ?? null}
+      profile={localProfile ?? participantProfiles[localUserLabel] ?? null}
       entityId={participantProfiles[localUserLabel]?.id ?? localUserLabel}
       avatarMode={participantProfiles[localUserLabel]?.avatarMode}
       avatarSymbolId={participantProfiles[localUserLabel]?.avatarSymbolId}
@@ -248,7 +251,7 @@ export default function CallParticipantGrid({
   });
 
   const stageContent = focusedParticipantId ? (
-    <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} participantProfiles={participantProfiles} accessToken={accessToken} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} />
+    <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} participantProfiles={localProfile ? { ...participantProfiles, [localUserLabel]: localProfile } : participantProfiles} accessToken={accessToken} onSelect={focusParticipant} onClose={closeFocus} showCloseControl={!onFocusChange} mirrorLocal={mirrorLocal} />
   ) : (
     <div
       className={`call-grid${useMobilePair ? " call-grid--mobile-pair" : ""}${isPresenting ? " call-grid--presenting" : ""}${isGroupCall && remoteMedia.length === 0 ? " call-grid--single-group-participant" : ""}${useScreenShareRail ? " call-grid--screen-share" : ""}${useBottomScreenShareRail ? " call-grid--screen-share-bottom" : ""}${useMobilePresentationRow ? " call-grid--mobile-presentation" : ""}${hasLongMobileParticipantRow ? " call-grid--mobile-presentation-many" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}

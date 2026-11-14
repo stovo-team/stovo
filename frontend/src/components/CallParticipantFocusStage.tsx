@@ -26,6 +26,7 @@ export function CallParticipantFocusStage({
   onSelect,
   onClose,
   showCloseControl,
+  mirrorLocal = false,
 }: {
   participantId: string;
   localUserLabel: string;
@@ -39,6 +40,7 @@ export function CallParticipantFocusStage({
   onSelect: (participantId: string) => void;
   onClose: () => void;
   showCloseControl: boolean;
+  mirrorLocal?: boolean;
 }) {
   const copy = useStrings().sharedUi;
   const isLocal = participantId === localUserLabel;
@@ -60,7 +62,7 @@ export function CallParticipantFocusStage({
   return (
     <div className="call-grid call-grid--focus" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(100px, 22%)", gridTemplateRows: "minmax(0, 1fr) auto" }}>
       <div className="call-grid__focus-main" data-focus-main={participantId}>
-        {hasVideo && stream ? <video className="call-grid__video" style={videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, stream)} /> : isLocal && localPlaceholder ? localPlaceholder : (
+        {hasVideo && stream ? <video className="call-grid__video" style={isLocal && mirrorLocal ? { ...videoStyle, transform: "scaleX(-1)" } : videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, stream)} /> : isLocal && localPlaceholder ? localPlaceholder : (
           <div className="call-grid__avatar-wrap"><div className="call-grid__avatar-circle"><RealAvatar accessToken={accessToken ?? null} className="call-grid__avatar" entityId={focusedProfile?.id ?? participantId} file={focusedProfile?.profilePhoto ?? null} label={focusedProfile?.displayName ?? participantId} mode={focusedProfile?.avatarMode} symbolId={focusedProfile?.avatarSymbolId} colorId={focusedProfile?.avatarColorId} style={avatarStyle} /></div></div>
         )}
         <span className="call-grid__label" style={labelStyle}>{participantId}</span>
@@ -69,7 +71,7 @@ export function CallParticipantFocusStage({
       <div className="call-grid__focus-participants" aria-label={copy.otherParticipants}>
         {others.map((person) => (
           <button type="button" className="call-grid__focus-participant" style={{ aspectRatio: "16 / 9" }} data-focus-participant={person.id} key={person.id} onClick={() => onSelect(person.id)}>
-            {person.hasVideo && person.stream ? <video className="call-grid__video" style={videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, person.stream)} /> : <RealAvatar accessToken={accessToken ?? null} className="call-grid__avatar" entityId={participantProfiles[person.id]?.id ?? person.id} file={participantProfiles[person.id]?.profilePhoto ?? null} label={participantProfiles[person.id]?.displayName ?? person.id} mode={participantProfiles[person.id]?.avatarMode} symbolId={participantProfiles[person.id]?.avatarSymbolId} colorId={participantProfiles[person.id]?.avatarColorId} style={avatarStyle} />}
+            {person.hasVideo && person.stream ? <video className="call-grid__video" style={person.id === localUserLabel && mirrorLocal ? { ...videoStyle, transform: "scaleX(-1)" } : videoStyle} autoPlay playsInline muted ref={(element) => bindStream(element, person.stream)} /> : <RealAvatar accessToken={accessToken ?? null} className="call-grid__avatar" entityId={participantProfiles[person.id]?.id ?? person.id} file={participantProfiles[person.id]?.profilePhoto ?? null} label={participantProfiles[person.id]?.displayName ?? person.id} mode={participantProfiles[person.id]?.avatarMode} symbolId={participantProfiles[person.id]?.avatarSymbolId} colorId={participantProfiles[person.id]?.avatarColorId} style={avatarStyle} />}
             <span className="call-grid__label" style={labelStyle}>{person.id}</span>
           </button>
         ))}

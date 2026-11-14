@@ -671,7 +671,7 @@
   place-items: center;
   width: 52px;
   height: 52px;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-circle);
   overflow: hidden;
   background: var(--surface-raised);
 }

@@ -118,6 +118,9 @@ describe("shared call control button", () => {
     for (const host of [endCall, flipCamera, audioOutput]) {
       expect(host.querySelector("button")?.hasAttribute("aria-pressed")).toBe(false);
     }
+    const slash = endCall.querySelector("svg line");
+    expect(slash?.getAttribute("x1")).toBe("3");
+    expect(slash?.getAttribute("x2")).toBe("21");
   });
 
   it("keeps end-call controls visually static while hovered or pressed", () => {
@@ -138,6 +141,13 @@ describe("shared call control button", () => {
     expect(endRules).toMatch(/background(?:-color)?:\s*var\(--color-palette-3871da342003\)/i);
     expect(endRules).toMatch(/color:\s*var\(--color-palette-f2074b6cef37\)/);
     expect(activeRules).toMatch(/background(?:-color)?:\s*var\(--surface-raised/);
+  });
+
+  it("keeps Android minimize and invite icons larger without changing their button targets", () => {
+    const css = readCssSource(resolve(process.cwd(), "src/styles.css"));
+    expect(css).toMatch(/\.call-popup--android \.call-popup-minimize-btn svg\s*\{[^}]*width:\s*20px;[^}]*height:\s*20px/);
+    expect(css).toMatch(/\.call-popup--android \.call-popup-header-invite svg\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px/);
+    expect(css).toMatch(/\.call-popup-group-call \.call-popup-header-invite\s*\{[^}]*width:\s*40px;[^}]*height:\s*40px/);
   });
 
   it("outlines the grouped microphone, speaker, and camera controls", () => {

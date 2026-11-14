@@ -53,6 +53,7 @@ export function CallParticipantTile({
   isConnected = true,
   accessToken,
   profilePhoto,
+  profile,
   entityId,
   avatarMode,
   avatarSymbolId,
@@ -77,6 +78,7 @@ export function CallParticipantTile({
   isConnected?: boolean;
   accessToken?: string | null;
   profilePhoto?: FamilyFile | null;
+  profile?: { id?: string; displayName: string; profilePhoto: FamilyFile | null; avatarMode?: "photo" | "symbol"; avatarSymbolId?: string | null; avatarColorId?: string | null } | null;
   entityId?: string;
   avatarMode?: "photo" | "symbol";
   avatarSymbolId?: string | null;
@@ -127,7 +129,7 @@ export function CallParticipantTile({
       ) : (
         <div className="call-grid__avatar-wrap">
           <div className="call-grid__avatar-circle">
-            <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar call-grid__avatar" entityId={entityId ?? label} file={profilePhoto} label={label} mode={avatarMode} symbolId={avatarSymbolId} colorId={avatarColorId} />
+            <RealAvatar accessToken={accessToken ?? null} className="call-grid__profile-avatar call-grid__avatar" entityId={profile?.id ?? entityId ?? label} file={profile?.profilePhoto ?? profilePhoto} label={profile?.displayName ?? label} mode={profile?.avatarMode ?? avatarMode} symbolId={profile?.avatarSymbolId ?? avatarSymbolId} colorId={profile?.avatarColorId ?? avatarColorId} />
           </div>
         </div>
       )}

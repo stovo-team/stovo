@@ -300,7 +300,7 @@ export function VoiceChannelStage({
             remoteMedia={callRemoteMedia ?? []}
             mockScreenShareOwner={mockScreenShareOwner}
             localUserLabel={currentUser?.displayName ?? "You"}
-            mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
+            mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user")}
             callType={callType}
             isLocalSpeaking={isLocalSpeaking}
             isLocalMuted={callAudioSettings.micMuted}
@@ -407,7 +407,7 @@ export function VoiceChannelStage({
                           autoPlay
                           playsInline
                           muted={info.isSelf}
-                          className={`voice-participant-video-feed${hasScreenShare ? " is-screen-share" : ""}${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
+                            className={`voice-participant-video-feed${hasScreenShare ? " is-screen-share" : ""}${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user" ? " is-mirrored" : ""}`}
                         />
                         {info.isSelf && !hasScreenShare && callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream) && (
                           <CallControlButton

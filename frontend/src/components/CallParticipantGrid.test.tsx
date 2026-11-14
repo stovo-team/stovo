@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CallParticipantGrid from "./CallParticipantGrid";
+import { colorForAvatarId } from "./avatarIdentity";
 
 const mountedRoots: Root[] = [];
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -32,6 +33,26 @@ function styleRules(css: string, selector: string) {
 }
 
 describe("shared call participant presentation", () => {
+  it("uses the signed-in user's profile identity for the local avatar and clips it circularly", () => {
+    const container = renderGrid({
+      localStream: null,
+      localUserLabel: "You",
+      localProfile: { id: "account-42", displayName: "Ada Lovelace", profilePhoto: null },
+      remoteMedia: [],
+      callType: "video",
+    });
+    const avatar = container.querySelector<HTMLElement>(".call-grid__profile-avatar");
+    const css = readCssSource("src/styles.css");
+    expect(avatar?.querySelector(".avatar-initials")?.textContent).toBe("AL");
+    expect(avatar?.getAttribute("data-avatar-color")).toBe(colorForAvatarId("account-42"));
+    expect(styleRules(css, ".call-grid__profile-avatar")).toMatch(/border-radius:\s*var\(--radius-circle\)/);
+  });
+
+  it("uses square Android group tiles and fills camera video without stretching it", () => {
+    const css = readCssSource("src/styles.css");
+    expect(css).toMatch(/\.call-popup--android\.call-popup-group-call[^{}]*\.call-grid__tile:not\(\.call-grid__tile--screen\)[^{]*\{[^}]*aspect-ratio:\s*1\s*\/\s*1\s*!important/);
+    expect(css).toMatch(/\.call-popup--android\.call-popup-group-call[^{}]*\.call-grid__tile:not\(\.call-grid__tile--screen\) video\s*\{[^}]*object-fit:\s*cover/);
+  });
   it("keeps a lone participant tile compact on a large call stage", () => {
     const stage = { width: 1365, height: 756 };
     vi.stubGlobal("ResizeObserver", class {
@@ -91,6 +112,22 @@ describe("shared call participant presentation", () => {
     expect(focus).not.toHaveBeenCalled();
     expect(tile.getAttribute("role")).toBeNull();
     expect(tile.querySelector("video")?.hasAttribute("disablepictureinpicture")).toBe(true);
+  });
+  it("mirrors only local front-camera video in the focus rail", () => {
+    const localStream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const remoteStream = { getVideoTracks: () => [{ readyState: "live" }] } as unknown as MediaStream;
+    const container = renderGrid({
+      localStream,
+      remoteMedia: [{ userId: "remote-1", stream: remoteStream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false }],
+      localUserLabel: "You",
+      mirrorLocal: true,
+      callType: "video",
+    });
+    act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote")?.click());
+    const localFocusVideo = container.querySelector<HTMLVideoElement>(".call-grid__focus-participants video");
+    const remoteFocusVideo = container.querySelector<HTMLVideoElement>(".call-grid__focus-main video");
+    expect(localFocusVideo?.style.transform).toBe("scaleX(-1)");
+    expect(remoteFocusVideo?.style.transform).toBe("");
   });
   it("keeps the shared presentation primary and places 16:9 participants in a desktop side rail", () => {
     const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
