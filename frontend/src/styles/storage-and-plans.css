@@ -613,7 +613,10 @@
 }
 .plans-dialog label {
   gap: 8px;
+  font-weight: var(--font-weight-regular);
 }
+
+.plans-dialog .popup-field__label { font-weight: var(--font-weight-regular); }
 
 .plans-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.popup-field__input),
 .plans-dialog select,
@@ -630,7 +633,7 @@
   color: var(--text-primary);
   font: inherit;
   line-height: 1.45;
-  min-height: 88px;
+  min-height: 64px;
   resize: vertical;
   width: 100%;
 }
@@ -657,9 +660,25 @@
   width: 100%;
 }
 
+.plans-dialog-times .popup-field__input {
+  border-radius: var(--radius-pill);
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.time-preset-chips button { border-radius: var(--radius-pill); }
+
 .plans-dialog .popup-button--primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
   justify-self: stretch;
   width: 100%;
+}
+
+:root[data-brand-gradient="custom"] .plans-dialog .popup-button--primary {
+  background: var(--color-brand-gradient);
+  border-color: transparent;
 }
 
 .plans-create-fab {

@@ -125,6 +125,19 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain(".plans-dialog textarea:focus-visible {");
   });
 
+  it("keeps the new-plan form compact with regular labels and theme-aware primary fill", async () => {
+    const { resolve } = await import("node:path");
+    const styles = readCssSource(resolve(process.cwd(), "src/styles.css"));
+
+    expect(styles).toMatch(/\.plans-dialog(?:\.popup-dialog)?[^{}]*label[^{}]*\{[^}]*font-weight:\s*var\(--font-weight-regular\)/);
+    expect(styles).toMatch(/\.plans-dialog-times\s*\{[^}]*gap:\s*14px/);
+    expect(styles).toMatch(/\.plans-dialog-times \.popup-field__input\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/);
+    expect(styles).toMatch(/\.time-preset-chips button\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/);
+    expect(styles).toMatch(/\.plans-dialog textarea\s*\{[^}]*min-height:\s*64px/);
+    expect(styles).toMatch(/\.plans-dialog \.popup-button--primary\s*\{[^}]*background:\s*var\(--accent-primary\)/);
+    expect(styles).toMatch(/:root\[data-brand-gradient="custom"\] \.plans-dialog \.popup-button--primary[^{}]*\{[^}]*background:\s*var\(--color-brand-gradient\)/);
+  });
+
   it("renders timed three-day and week grids with compact attendance controls", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
