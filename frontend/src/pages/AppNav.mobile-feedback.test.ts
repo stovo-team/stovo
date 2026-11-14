@@ -8,8 +8,20 @@ describe("mobile app navigation feedback", () => {
     expect(styles).toContain(
       ':root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active::before'
     );
+    expect(styles).toMatch(
+      /:root\[data-platform="native"\] \.app-frame:not\(\.has-active-chat\) > \.app-nav\.app-nav--active-variant-a a\.active::before\s*\{[^}]*display:\s*block;/s
+    );
     expect(styles).toContain(
       ':root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active'
+    );
+  });
+
+  it("does not hide the active navigation highlight on mobile viewports", () => {
+    expect(styles).not.toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*display:\s*none;/s
+    );
+    expect(styles).not.toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*content:\s*none;/s
     );
   });
 

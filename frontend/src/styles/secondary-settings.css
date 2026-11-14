@@ -837,12 +837,6 @@
     z-index: 1;
   }
 
-  .app-frame > .app-nav.app-nav--active-variant-a a.active::before,
-  .app-frame > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c) a.active::before {
-    content: none;
-    display: none;
-  }
-
   .storage-page,
   .contacts-page,
   .settings-page,
