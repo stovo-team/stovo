@@ -33,7 +33,6 @@ export function useVideoSource(file: FamilyFile, accessToken: string, identity: 
     void createStreamingMediaUrl(accessToken, file.id).then((url) => {
       if (cancelled) return;
       setSourceUrl(url);
-      void downloadFileBlob(accessToken, file.id).catch(() => undefined);
     }).catch(() => {
       if (cancelled) return;
       void downloadFileBlob(accessToken, file.id).then((blob) => {
