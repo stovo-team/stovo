@@ -18,6 +18,18 @@ describe("native tab transition layer", () => {
     expect(styles).toMatch(/@keyframes app-tab-carousel-forward\s*\{[^}]*transform:/);
     expect(styles).toMatch(/@keyframes app-tab-carousel-back\s*\{[^}]*transform:/);
   });
+
+  it("does not stack mobile chat-list slide animation on top of the tab carousel when switching to chats", () => {
+    expect(styles).toMatch(
+      /\.app-route-layer--back \.messenger-shell\.chat-list-view \.chat-sidebar[\s\S]*?animation:\s*none;/
+    );
+    expect(styles).toMatch(
+      /\.app-route-layer--back \.messenger-shell\.chat-list-view \.chat-detail[\s\S]*?animation:\s*none;/
+    );
+    expect(appSource).not.toMatch(
+      /useEffect\(\(\)\s*=>\s*\{\s*if\s*\(chatRouteActive\)\s*\{\s*setHasVisitedChats\(true\);/
+    );
+  });
 });
 
 describe("call session route lifetime", () => {
