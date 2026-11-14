@@ -59,4 +59,9 @@ describe("shared popup control dimensions", () => {
     expect(ruleFor(".popup-button--danger")).toMatch(/var\(--danger\)/);
     expect(ruleFor(".popup-field__input:focus")).toMatch(/var\(--accent-primary\)/);
   });
+
+  it("uses the brand gradient for primary popup buttons when the gradient theme is selected", () => {
+    expect(styles).toMatch(/:root\[data-brand-gradient="custom"\]\s*\.popup-button--primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+    expect(styles).toMatch(/:root\[data-brand-gradient="custom"\]\s*\.popup-button--primary:hover:not\(:disabled\)[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+  });
 });

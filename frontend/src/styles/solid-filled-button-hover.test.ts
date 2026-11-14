@@ -21,4 +21,12 @@ describe("solid accent button hover colors", () => {
     expect(sharedStyles).not.toContain(".shared-call-controls .call-ctrl-btn.is-active:hover");
     expect(sharedStyles).not.toContain(".mobile-active-ctrl-btn.active:hover");
   });
+
+  it("applies the brand gradient to filled buttons and their hover states when the gradient theme is selected", () => {
+    expect(sharedStyles).toMatch(/:root\[data-brand-gradient="custom"\]\s+\.popup-button--primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+    expect(sharedStyles).toMatch(/:root\[data-brand-gradient="custom"\]\s+\.primary-button[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+    expect(sharedStyles).toMatch(/:root\[data-brand-gradient="custom"\]\s+\.btn-primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+    expect(sharedStyles).toMatch(/:root\[data-brand-gradient="custom"\]\s+\.plans-create-fab:hover:not\(:disabled\)[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+    expect(sharedStyles).toMatch(/:root\[data-brand-gradient="custom"\]\s+\.popup-button--primary:hover:not\(:disabled\)[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
+  });
 });
