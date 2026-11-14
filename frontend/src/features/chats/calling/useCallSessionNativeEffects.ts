@@ -75,7 +75,8 @@ export function useCallSessionNativeEffects({
       void disableNativeCallMode();
       return;
     }
-    const earpiece = callAudioSettings.speakerMode === "small" && !callAudioSettings.outputDeviceId;
+    const earpiece = callAudioSettings.speakerMode === "small" &&
+      (isNativeCallPluginAvailable() || !callAudioSettings.outputDeviceId);
     void enableNativeCallMode(earpiece);
     let removeListener: (() => void) | undefined;
     void addProximityListener((near) => setIsProximityNear(near)).then((remove) => { removeListener = remove; });

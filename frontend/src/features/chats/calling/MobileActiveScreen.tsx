@@ -190,10 +190,12 @@ export function MobileActiveScreen({
     setIsCameraFlipping(true);
     // Let the blackout paint before facingMode/mirror state updates. Starting
     // the device switch immediately also supports WebViews without RAF.
+    let switched = false;
     try {
       await onToggleFlip();
+      switched = true;
     } finally {
-      setPreviewFacingMode(nextFacing);
+      if (switched) setPreviewFacingMode(nextFacing);
       const schedule = typeof requestAnimationFrame === "function" ? requestAnimationFrame : setTimeout;
       schedule(() => setIsCameraFlipping(false));
     }
@@ -201,9 +203,7 @@ export function MobileActiveScreen({
 
   const localVideoMirrorTransform =
     mirrorLocalVideo && previewFacingMode === "user" ? "scaleX(-1)" : "none";
-  const localVideoSwitchStyle = isCameraFlipping
-    ? { opacity: 0 as const, transform: localVideoMirrorTransform }
-    : { transform: localVideoMirrorTransform };
+  const localVideoSwitchStyle = { transform: localVideoMirrorTransform };
 
   useEffect(() => {
     if (!callUIPreferences.autoHideControls) { setAreControlsVisible(true); return; }

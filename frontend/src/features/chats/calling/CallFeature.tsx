@@ -351,6 +351,7 @@ export function CallFeature() {
           devices={callAudioDevices}
           currentOutputDeviceId={callAudioSettings.outputDeviceId}
           speakerMode={callAudioSettings.speakerMode}
+          isAndroid={isAndroidPlatform}
           onSelect={(deviceId, mode) => {
             if (deviceId !== null) {
               void applyCallAudioPatch({ outputDeviceId: deviceId, speakerMode: mode });

@@ -8,16 +8,19 @@ export function CallSpeakerSheet({
   speakerMode,
   onSelect,
   onClose,
+  isAndroid = false,
 }: {
   devices: CallDevice[];
   currentOutputDeviceId: string;
   speakerMode: "small" | "large";
   onSelect: (deviceId: string | null, mode: "small" | "large") => void;
   onClose: () => void;
+  isAndroid?: boolean;
 }) {
   const copy = useStrings().callAudio;
   const outputDevices = devices.filter((d) => d.kind === "audiooutput");
-  const hasEnumerable = outputDevices.length > 0;
+  const selectableOutputDevices = isAndroid ? [] : outputDevices;
+  const hasEnumerable = selectableOutputDevices.length > 0;
 
   return (
     <PopupBackdrop
@@ -32,12 +35,13 @@ export function CallSpeakerSheet({
             <button
               type="button"
               className="call-speaker-sheet-item"
+              aria-pressed={speakerMode === "small" && (isAndroid || !currentOutputDeviceId)}
               onClick={() => { onSelect(null, "small"); onClose(); }}
             >
               <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
               <span className="call-speaker-sheet-label">{copy.earpiece}</span>
               <span className="call-speaker-sheet-check-slot" aria-hidden="true">
-                {speakerMode === "small" && !currentOutputDeviceId && (
+                {speakerMode === "small" && (isAndroid || !currentOutputDeviceId) && (
                   <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                 )}
               </span>
@@ -45,12 +49,13 @@ export function CallSpeakerSheet({
             <button
               type="button"
               className="call-speaker-sheet-item"
+              aria-pressed={speakerMode === "large" && (isAndroid || !currentOutputDeviceId)}
               onClick={() => { onSelect(null, "large"); onClose(); }}
             >
               <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
               <span className="call-speaker-sheet-label">{copy.loudspeaker}</span>
               <span className="call-speaker-sheet-check-slot" aria-hidden="true">
-                {speakerMode === "large" && !currentOutputDeviceId && (
+                {speakerMode === "large" && (isAndroid || !currentOutputDeviceId) && (
                   <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                 )}
               </span>
@@ -58,7 +63,7 @@ export function CallSpeakerSheet({
           </>
         )}
 
-        {hasEnumerable && outputDevices.map((d) => (
+        {hasEnumerable && selectableOutputDevices.map((d) => (
           <button
             key={d.deviceId}
             type="button"
