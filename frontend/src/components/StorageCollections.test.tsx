@@ -21,13 +21,14 @@ vi.mock("../features/chats/conversation/MessageDialogs", () => ({ ForwardChatDia
 vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru") }));
 
 import { StorageCollections } from "./StorageCollections";
-import { getCollections } from "../api/collections";
+import { getCollectionItems, getCollections } from "../api/collections";
 
 const roots: Root[] = [];
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => {
   for (const root of roots.splice(0)) act(() => root.unmount());
+  window.localStorage.removeItem("stovo:storage-collection-covers");
   document.body.innerHTML = "";
 });
 
@@ -50,6 +51,21 @@ describe("StorageCollections localization", () => {
     expect(host.textContent).toContain("Новая папка или альбом");
     expect(host.textContent).toContain("Создать");
     expect(document.body.querySelector("[role='option'][data-value='album']")?.textContent).toContain("Фотоальбом");
+    expect(document.body.querySelector(".storage-collection-create-actions")?.textContent).toContain("Отмена");
+    expect(document.body.querySelector(".storage-create-cover-picker .symbol-color-controls__icons button")).not.toBeNull();
+  });
+
+  it("allows selecting a cover icon while creating a collection", async () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    roots.push(root);
+    await act(async () => { root.render(<MemoryRouter><StorageCollections accessToken="token" files={[]} filter="all" currentUserId="user-1" /></MemoryRouter>); });
+    await act(async () => { host.querySelector<HTMLButtonElement>(".storage-collection-new")?.click(); });
+    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>(".storage-create-cover-picker .symbol-color-controls__icons button"));
+    expect(buttons.length).toBeGreaterThan(1);
+    await act(async () => { buttons[1].click(); });
+    expect(buttons[1].getAttribute("aria-pressed")).toBe("true");
   });
 
   it("groups folders by their source chat and keeps chatless folders separate", async () => {
@@ -75,6 +91,23 @@ describe("StorageCollections localization", () => {
     expect(host.querySelectorAll(".storage-collection-group")).toHaveLength(2);
     expect(host.querySelector('[data-chat-group="Planning Team"]')?.textContent).toContain("Planning files");
     expect(host.querySelector('[data-chat-group="Shared folders"]')?.textContent).toContain("Shared notes");
+  });
+
+  it("restores the saved cover icon and color when reopening a collection", async () => {
+    const collection = { id: "folder-saved-cover", familyId: "family", ownerId: "user", title: "Saved cover", displayKind: "folder", contentType: "mixed", customFileTypes: "", coverFileId: null, itemCount: 0, accessLevel: "editor", createdAt: "2026-10-20", updatedAt: "2026-10-20" } as StorageCollection;
+    window.localStorage.setItem("stovo:storage-collection-covers", JSON.stringify({ [collection.id]: { icon: "rocket", color: "#123456" } }));
+    vi.mocked(getCollections).mockResolvedValue([collection]);
+    vi.mocked(getCollectionItems).mockResolvedValue([]);
+    const host = document.createElement("div"); document.body.appendChild(host);
+    const root = createRoot(host); roots.push(root);
+    await act(async () => {
+      root.render(<MemoryRouter><StorageCollections accessToken="token" files={[]} filter="all" currentUserId="user-1" /></MemoryRouter>);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    await act(async () => { host.querySelector<HTMLButtonElement>(".storage-collection-open")?.click(); });
+    const detailCover = host.querySelector<HTMLElement>(".storage-custom-cover");
+    expect(detailCover?.style.backgroundColor).toBe("rgb(18, 52, 86)");
+    expect(detailCover?.querySelector(".lucide-rocket")).not.toBeNull();
   });
 });
 

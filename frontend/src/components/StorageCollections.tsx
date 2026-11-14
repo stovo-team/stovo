@@ -32,6 +32,13 @@ const extensionLabel = (file: FamilyFile) => {
 const typeLabel = (item: StorageCollection, copy: ReturnType<typeof useStrings>["files"]["collections"]) => item.displayKind === "music-album" ? copy.musicAlbum : item.displayKind === "album" ? copy.photoAlbum : copy.fileFolder;
 type CoverIconName = keyof typeof AVATAR_SYMBOL_COMPONENTS;
 const coverIconOptions = Object.entries(AVATAR_SYMBOL_COMPONENTS).map(([value, Icon]) => ({ value: value as CoverIconName, Icon }));
+const COVER_PREFERENCES_KEY = "stovo:storage-collection-covers";
+function loadCoverPreferences(): Record<string, { icon: CoverIconName; color: string }> {
+  try { return JSON.parse(window.localStorage.getItem(COVER_PREFERENCES_KEY) ?? "{}"); } catch { return {}; }
+}
+function saveCoverPreference(id: string, icon: CoverIconName, color: string) {
+  try { window.localStorage.setItem(COVER_PREFERENCES_KEY, JSON.stringify({ ...loadCoverPreferences(), [id]: { icon, color } })); } catch { /* storage may be unavailable */ }
+}
 const contentTypeOptions: Exclude<CollectionContentType, "custom">[] = ["mixed", "media", "audio", "documents"];
 const allowsContentType = (contentType: CollectionContentType, file: FamilyFile, customFileTypes = "") => {
   const fileKind = storageFileKind(file);
@@ -64,8 +71,9 @@ function AllowedFileTypePicker({ value, customFileTypes, onChange }: { value: Co
 }
 function Cover({ collection, token, file }: { collection: StorageCollection; token: string; file: FamilyFile | null }) {
   const url = useFilePreviewUrl(token, file, Boolean(file));
-  const Icon = collection.displayKind === "music-album" ? Music2 : collection.displayKind === "album" ? Image : Folder;
-  return <span className={`storage-collection-cover storage-collection-cover--${collection.displayKind}`}>{url ? <img src={url} alt="" /> : <Icon size={25} />}</span>;
+  const preference = loadCoverPreferences()[collection.id];
+  const Icon = preference ? coverIconOptions.find((option) => option.value === preference.icon)?.Icon ?? Folder : collection.displayKind === "music-album" ? Music2 : collection.displayKind === "album" ? Image : Folder;
+  return <span className={`storage-collection-cover storage-collection-cover--${collection.displayKind}`} style={preference && !url ? { backgroundColor: preference.color } : undefined}>{url ? <img src={url} alt="" /> : <Icon size={25} />}</span>;
 }
 function matches(collection: StorageCollection, filter: string) {
   if (filter === "all" || filter === "favorites") return true;
@@ -99,11 +107,11 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
   useEffect(() => { if (currentUserId) void saveCachedStorageItems(currentUserId, "collections", collections); }, [collections, currentUserId]);
   useEffect(() => { void load().catch(() => setError(copy.loadFailed)); }, [accessToken]);
   useEffect(() => { if (!accessToken) return; void Promise.all([getMembers(accessToken), getServerRoles(accessToken), getChats(accessToken)]).then(([m, r, c]) => { setMembers(m); setRoles(r); setChats(c); }); }, [accessToken]);
-  const open = async (collection: StorageCollection) => { if (!accessToken) return; setSelected(collection); setSettings(false); const [nextItems, nextGrants] = await Promise.all([getCollectionItems(accessToken, collection.id), collection.accessLevel === "editor" ? getCollectionGrants(accessToken, collection.id) : Promise.resolve([])]); setItems(nextItems); setGrants(nextGrants); };
+  const open = async (collection: StorageCollection) => { if (!accessToken) return; const preference = loadCoverPreferences()[collection.id]; setCoverIcon(preference?.icon ?? "folder"); setCoverColor(preference?.color ?? DESIGN_COLOR_VALUES.avatarPalette.blue); setSelected(collection); setSettings(false); const [nextItems, nextGrants] = await Promise.all([getCollectionItems(accessToken, collection.id), collection.accessLevel === "editor" ? getCollectionGrants(accessToken, collection.id) : Promise.resolve([])]); setItems(nextItems); setGrants(nextGrants); };
   useEffect(() => { opened.current = false; }, [requested]);
   useEffect(() => { const collection = requested ? collections.find((item) => item.id === requested) : null; if (collection && !opened.current) { opened.current = true; void open(collection); } }, [collections, requested]);
   const updateSelected = (next: StorageCollection) => { setSelected(next); setCollections((all) => all.map((item) => item.id === next.id ? next : item)); };
-  const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError(copy.createFailed); } };
+  const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); saveCoverPreference(next.id, coverIcon, coverColor); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError(copy.createFailed); } };
   const add = async (id: string, privateFile = false) => { if (!accessToken || !selected) return; const file = await addCollectionItem(accessToken, selected.id, id, privateFile); setItems((all) => [file, ...all.filter((item) => item.id !== file.id)]); setCollections((all) => all.map((item) => item.id === selected.id ? { ...item, itemCount: item.itemCount + (items.some((item) => item.id === file.id) ? 0 : 1) } : item)); };
   const addMany = async (ids: string[]) => { try { for (const id of ids) await add(id); setAdding(false); } catch { setError(copy.addSomeFailed); } };
   const requestStorageSelection = () => { if (!selected) return; onSelectFromStorage?.({ collectionId: selected.id, collectionTitle: selected.title, lockedFileIds: items.map((file) => file.id), allowedFileIds: files.filter((file) => allowsContentType(selected.contentType, file, selected.customFileTypes)).map((file) => file.id), onConfirm: addMany }); };
@@ -133,7 +141,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
     <header className="storage-collection-full-header">
       <BackButton className="storage-collection-back" ariaLabel={copy.backStorage} title={copy.backStorage} onClick={() => setSelected(null)} />
       <div className="storage-collection-full-title">
-        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title={copy.changeCover} onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><SymbolColorControls symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))} symbol={coverIcon} onSymbolChange={(id) => setCoverIcon(id as CoverIconName)} colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))} color={coverColor} onColorChange={setCoverColor} /><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCustomCover}</button></div>}</div>
+        <div className="storage-cover-menu-wrap"><button type="button" className="storage-collection-cover-edit" title={copy.changeCover} onClick={() => setCoverMenu((value) => !value)}>{current.coverFileId ? <Cover collection={current} token={accessToken} file={files.find((file) => file.id === current.coverFileId) ?? null} /> : <span className="storage-collection-cover storage-custom-cover" style={{ backgroundColor: coverColor }}><CustomCoverIcon size={25} /></span>}<span className="storage-cover-edit-mark"><Pencil size={16} /></span></button>{coverMenu && <div className="storage-cover-menu"><SymbolColorControls symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))} symbol={coverIcon} onSymbolChange={(id) => { const icon = id as CoverIconName; setCoverIcon(icon); saveCoverPreference(current.id, icon, coverColor); }} colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))} color={coverColor} onColorChange={(color) => { setCoverColor(color); saveCoverPreference(current.id, coverIcon, color); }} /><button type="button" className="storage-cover-upload" onClick={() => coverUploadRef.current?.click()}>{copy.uploadCustomCover}</button></div>}</div>
         <div>{renaming ? <input aria-label={copy.folderName} autoFocus value={title || current.title} onChange={(event) => setTitle(event.target.value)} onBlur={() => { if (title.trim()) void saveName(); setRenaming(false); }} /> : <div className="storage-collection-name"><strong>{current.title}</strong><button type="button" aria-label={copy.renameFolder} onClick={() => setRenaming(true)}><Pencil size={14} /></button></div>}<small>{copy.items(current.itemCount, typeLabel(current, copy))}</small></div>
       </div>
       <div className="storage-collection-full-actions">{current.accessLevel === "editor" && <><button type="button" className="storage-round-icon" title={copy.addFromStorage} onClick={requestStorageSelection}><Plus size={19} /></button><button type="button" className="storage-round-icon" title={copy.uploadFiles} onClick={() => uploadRef.current?.click()}><Upload size={18} /></button></>}<button type="button" className="storage-round-icon" title={copy.settings} onClick={() => setSettings((value) => !value)}><Settings2 size={18} /></button></div>
@@ -199,6 +207,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
       >
         <h2>{copy.newFolder}</h2>
         <PopupField label={copy.title} autoFocus value={title} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} />
+        <div className="storage-create-cover-picker"><span>{copy.cover}</span><div className="storage-create-cover-preview" style={{ backgroundColor: coverColor }}>{(() => { const Icon = coverIconOptions.find((option) => option.value === coverIcon)?.Icon ?? Folder; return <Icon size={25} />; })()}</div><SymbolColorControls symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))} symbol={coverIcon} onSymbolChange={(id) => setCoverIcon(id as CoverIconName)} colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))} color={coverColor} onColorChange={setCoverColor} /></div>
         <div className="storage-popup-select-field">
           <label id="storage-collection-kind-label">{copy.type}</label>
           <PopupSelect
@@ -208,7 +217,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
             options={[{ value: "folder", label: copy.fileFolder }, { value: "album", label: copy.photoAlbum }, { value: "music-album", label: copy.musicAlbum }]}
           />
         </div>
-        <PopupButton variant="primary" onClick={() => void create()}>{copy.create}</PopupButton>
+        <div className="storage-collection-create-actions"><PopupButton variant="secondary" onClick={() => { setCreating(false); setTitle(""); }}>{copy.cancel}</PopupButton><PopupButton variant="primary" disabled={!title.trim()} onClick={() => void create()}>{copy.create}</PopupButton></div>
       </PopupDialog>
     )}
     {selected && (

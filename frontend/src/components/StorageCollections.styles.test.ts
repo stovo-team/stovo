@@ -84,11 +84,13 @@ describe("open collection header layout", () => {
 
 describe("Storage collection creation dialog layout", () => {
   const createDialogRule = stylesheet.match(/\.storage-collection-create\s*\{([^}]+)\}/)?.[1] ?? "";
-  const createButtonRule = stylesheet.match(/\.storage-collection-create > \.popup-button--primary\s*\{([^}]+)\}/)?.[1] ?? "";
+  const createActionsRule = stylesheet.match(/\.storage-collection-create-actions\s*\{([^}]+)\}/)?.[1] ?? "";
 
   it("leaves room for the type menu and aligns Create to the bottom", () => {
     expect(createDialogRule).toMatch(/min-height:\s*(4[1-9]\d|[5-9]\d\d)px/);
-    expect(createDialogRule).toMatch(/grid-template-rows:\s*auto\s+auto\s+auto\s+1fr/);
-    expect(createButtonRule).toMatch(/align-self:\s*end/);
+    expect(createDialogRule).toMatch(/grid-template-rows:\s*auto\s+auto\s+auto\s+auto\s+1fr\s+auto/);
+    expect(createActionsRule).toMatch(/align-self:\s*end/);
+    expect(createActionsRule).toMatch(/justify-self:\s*end/);
+    expect(stylesheet).toMatch(/:root\[data-brand-gradient="custom"\][\s\S]*?\.chat-folder-actions \.popup-button--primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
   });
 });
