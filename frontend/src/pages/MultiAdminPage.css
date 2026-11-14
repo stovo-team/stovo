@@ -1,3 +1,5 @@
+.supervisor-login-header { align-items: safe center !important; }
+.supervisor-login-title { text-box: trim-both cap alphabetic; }
 .supervisor-admin-page .header { padding: 16px clamp(16px, 3vw, 32px); }
 .supervisor-admin-page .main { width: min(100%, 1320px) !important; padding: clamp(16px, 2.4vw, 28px) !important; }
 .supervisor-admin-page .statsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; margin-bottom: 20px !important; }

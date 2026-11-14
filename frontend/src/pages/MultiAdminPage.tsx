@@ -232,10 +232,10 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={{ marginBottom: 16 }}>
-            <StovoLogo size={36} />
+          <div style={styles.loginHeader} className="supervisor-login-header">
+            <StovoLogo size={32} />
+            <h1 style={styles.title} className="supervisor-login-title">{copy.title}</h1>
           </div>
-          <h1 style={styles.title}>{copy.title}</h1>
           <p style={styles.subtitle}>{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
@@ -580,10 +580,17 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 12,
     border: "1px solid var(--border-default, var(--color-palette-c34f5a2a4d80))",
   },
+  loginHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
   title: {
     fontSize: "var(--font-size-heading)",
     fontWeight: "var(--font-weight-extrabold)",
-    margin: "0 0 6px 0",
+    margin: 0,
+    minWidth: 0,
     letterSpacing: "-0.5px",
     color: "var(--color-palette-f2074b6cef37)",
   },
