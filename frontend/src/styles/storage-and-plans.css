@@ -616,8 +616,6 @@
   font-weight: var(--font-weight-regular);
 }
 
-.plans-dialog .popup-field__label { font-weight: var(--font-weight-regular); }
-
 .plans-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.popup-field__input),
 .plans-dialog select,
 .plans-dialog textarea {
@@ -659,15 +657,7 @@
   min-width: 0;
   width: 100%;
 }
-
-.plans-dialog-times .popup-field__input {
-  border-radius: var(--radius-pill);
-  box-sizing: border-box;
-  min-width: 0;
-  width: 100%;
-}
-
-.time-preset-chips button { border-radius: var(--radius-pill); }
+.plans-dialog-times .popup-field__input { border-radius: var(--radius-pill); box-sizing: border-box; min-width: 0; width: 100%; }
 
 .plans-dialog .popup-button--primary {
   background: var(--accent-primary);
@@ -676,10 +666,7 @@
   width: 100%;
 }
 
-:root[data-brand-gradient="custom"] .plans-dialog .popup-button--primary {
-  background: var(--color-brand-gradient);
-  border-color: transparent;
-}
+:root[data-brand-gradient="custom"] .plans-dialog .popup-button--primary { background: var(--color-brand-gradient); border-color: transparent; }
 
 .plans-create-fab {
   align-items: center;
