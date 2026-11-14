@@ -1869,12 +1869,20 @@ func TestIntelligenceSourceV2ReplyStreamsOneServerStampedChatMessage(t *testing.
 	if finalID := decodeMessageID(send(2, "complete Codex answer", true)); finalID != messageID {
 		t.Fatalf("stream update message ID=%q, want same message %q", finalID, messageID)
 	}
-	var senderID, chatID, content, origin, persistedOperation string
-	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT sender_id,chat_id,content FROM public.messages WHERE id=$1`, messageID).Scan(&senderID, &chatID, &content); err != nil {
+	var senderID, chatID, encryptionProtocol, origin, persistedOperation string
+	var ciphertext, nonce sql.NullString
+	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT sender_id,chat_id,encryption_protocol,ciphertext,nonce FROM public.messages WHERE id=$1`, messageID).Scan(&senderID, &chatID, &encryptionProtocol, &ciphertext, &nonce); err != nil {
 		t.Fatalf("read synthetic reply message: %v", err)
 	}
-	if senderID != fixture.userID || chatID != fixture.chatID || content != "complete Codex answer" {
-		t.Fatalf("stored reply sender/chat/content=%q/%q/%q", senderID, chatID, content)
+	if !ciphertext.Valid || !nonce.Valid {
+		t.Fatalf("stored reply was not encrypted at rest: ciphertext=%v nonce=%v", ciphertext.Valid, nonce.Valid)
+	}
+	content, err := fixture.server.decryptServerAtRest(fixture.familyID, ciphertext.String, nonce.String)
+	if err != nil {
+		t.Fatalf("decrypt stored source reply: %v", err)
+	}
+	if senderID != fixture.userID || chatID != fixture.chatID || encryptionProtocol != encryptionProtocolServerAtRest || content == nil || *content != "complete Codex answer" {
+		t.Fatalf("stored reply sender/chat/protocol/content=%q/%q/%q/%v", senderID, chatID, encryptionProtocol, content)
 	}
 	if err := fixture.server.sqlDB.QueryRowContext(context.Background(), `SELECT origin,operation_id FROM public.intelligence_source_v2_reply_origins WHERE connection_id=$1 AND message_id=$2`, connectionID, messageID).Scan(&origin, &persistedOperation); err != nil {
 		t.Fatalf("read server-stamped reply origin: %v", err)
