@@ -91,6 +91,12 @@
   border-color: var(--accent-primary);
 }
 
+:root[data-brand-gradient="custom"] .popup-button--primary,
+:root[data-brand-gradient="custom"] .popup-button--primary:hover:not(:disabled) {
+  background: var(--color-brand-gradient);
+  border-color: transparent;
+}
+
 .popup-button--secondary {
   color: var(--text-primary);
   background: transparent;

@@ -36,10 +36,6 @@
   .storage-page .storage-collection-new:hover:not(:disabled),
   .storage-page .storage-files-upload:hover:not(:disabled),
   .storage-selection-bar .primary-button:hover:not(:disabled),
-  .modal-form > button[type="submit"]:hover:not(:disabled),
-  .settings-form > button[type="submit"]:hover:not(:disabled),
-  .details-form > button[type="submit"]:hover:not(:disabled),
-  .toolbar-form > button[type="submit"]:hover:not(:disabled),
   .copy-sheet-actions .copy-sheet-copy-btn:hover:not(:disabled),
   .guest-meeting-invitation-join:hover:not(:disabled),
   .call-popup-header-invite.is-active:hover:not(:disabled) {
@@ -55,6 +51,52 @@
 
   .call-popup-header-invite.is-active:hover:not(:disabled) {
     border-color: var(--accent-border-soft);
+  }
+
+  :root[data-brand-gradient="custom"] .popup-button--primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .primary-button:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .plans-create-fab:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .btn-primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .crop-ratio-btn.is-active:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .image-editor-btn-save:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .avatar-editor-btn-save:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-card-add-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-creator-submit-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-btn-primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-cat-btn.active:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-add-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-action-btn.primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-card-add-submit:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .checklist-item-check-btn.checked:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .plan-rsvp button.active:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .plan-details-rsvp button.active:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .time-preset-chips button.active:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .poll-submit-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .chat-info-description-save:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .guest-prejoin-panel .guest-meeting-join-button:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .guest-link-create-button:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .quick-access-switch.is-on:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .call-invite-modal-actions .action-button.primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .form-grid button:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .modal-form > button[type="submit"]:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .settings-form > button[type="submit"]:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .details-form > button[type="submit"]:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .toolbar-form > button[type="submit"]:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .message-inline-editor-btn.save:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .message-enlarge-btn--primary:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .message-enlarge-circle-btn--send:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .popover-submit-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .attachment-picker-primary-action-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .storage-page .storage-collection-new:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .storage-page .storage-files-upload:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .storage-selection-bar .primary-button:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .copy-sheet-actions .copy-sheet-copy-btn:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .guest-meeting-invitation-join:hover:not(:disabled),
+  :root[data-brand-gradient="custom"] .call-popup-header-invite.is-active:hover:not(:disabled) {
+    background: var(--color-brand-gradient);
+    border-color: transparent;
+    filter: none;
+    opacity: 1;
   }
 
   .compose-fab:hover:not(:disabled),
@@ -105,4 +147,48 @@
     background: linear-gradient(115deg, var(--color-palette-bb741ad5532f), var(--color-palette-d47bbc23b804));
     border-color: transparent;
   }
+}
+
+:root[data-brand-gradient="custom"] .popup-button--primary,
+:root[data-brand-gradient="custom"] .primary-button,
+:root[data-brand-gradient="custom"] .plans-create-fab,
+:root[data-brand-gradient="custom"] .btn-primary,
+:root[data-brand-gradient="custom"] .crop-ratio-btn.is-active,
+:root[data-brand-gradient="custom"] .image-editor-btn-save,
+:root[data-brand-gradient="custom"] .avatar-editor-btn-save,
+:root[data-brand-gradient="custom"] .checklist-card-add-btn,
+:root[data-brand-gradient="custom"] .checklist-creator-submit-btn,
+:root[data-brand-gradient="custom"] .checklist-btn-primary,
+:root[data-brand-gradient="custom"] .checklist-cat-btn.active,
+:root[data-brand-gradient="custom"] .checklist-add-btn,
+:root[data-brand-gradient="custom"] .checklist-action-btn.primary,
+:root[data-brand-gradient="custom"] .checklist-card-add-submit,
+:root[data-brand-gradient="custom"] .checklist-item-check-btn.checked,
+:root[data-brand-gradient="custom"] .plan-rsvp button.active,
+:root[data-brand-gradient="custom"] .plan-details-rsvp button.active,
+:root[data-brand-gradient="custom"] .time-preset-chips button.active,
+:root[data-brand-gradient="custom"] .poll-submit-btn,
+:root[data-brand-gradient="custom"] .chat-info-description-save,
+:root[data-brand-gradient="custom"] .guest-prejoin-panel .guest-meeting-join-button,
+:root[data-brand-gradient="custom"] .guest-link-create-button,
+:root[data-brand-gradient="custom"] .quick-access-switch.is-on,
+:root[data-brand-gradient="custom"] .call-invite-modal-actions .action-button.primary,
+:root[data-brand-gradient="custom"] .form-grid button,
+:root[data-brand-gradient="custom"] .modal-form > button[type="submit"],
+:root[data-brand-gradient="custom"] .settings-form > button[type="submit"],
+:root[data-brand-gradient="custom"] .details-form > button[type="submit"],
+:root[data-brand-gradient="custom"] .toolbar-form > button[type="submit"],
+:root[data-brand-gradient="custom"] .message-inline-editor-btn.save,
+:root[data-brand-gradient="custom"] .message-enlarge-btn--primary,
+:root[data-brand-gradient="custom"] .message-enlarge-circle-btn--send,
+:root[data-brand-gradient="custom"] .popover-submit-btn,
+:root[data-brand-gradient="custom"] .attachment-picker-primary-action-btn,
+:root[data-brand-gradient="custom"] .storage-page .storage-collection-new,
+:root[data-brand-gradient="custom"] .storage-page .storage-files-upload,
+:root[data-brand-gradient="custom"] .storage-selection-bar .primary-button,
+:root[data-brand-gradient="custom"] .copy-sheet-actions .copy-sheet-copy-btn,
+:root[data-brand-gradient="custom"] .guest-meeting-invitation-join,
+:root[data-brand-gradient="custom"] .call-popup-header-invite.is-active {
+  background: var(--color-brand-gradient);
+  border-color: transparent;
 }
