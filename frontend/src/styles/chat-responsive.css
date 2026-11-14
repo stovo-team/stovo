@@ -1004,3 +1004,19 @@
   }
 
 }
+
+/* Tab-level navigation already animates .app-shell > :not(.app-nav) with
+   app-tab-carousel-*. Suppress the inner mobile chat-list/chat-detail slide
+   animations during tab switches so switching to Chats matches other pages. */
+@media (max-width: 1199px) {
+  .app-route-layer--forward .messenger-shell.chat-list-view .chat-sidebar,
+  .app-route-layer--forward .messenger-shell.chat-list-view .chat-detail,
+  .app-route-layer--forward .messenger-shell.has-active-chat .chat-sidebar,
+  .app-route-layer--forward .messenger-shell.has-active-chat .chat-detail,
+  .app-route-layer--back .messenger-shell.chat-list-view .chat-sidebar,
+  .app-route-layer--back .messenger-shell.chat-list-view .chat-detail,
+  .app-route-layer--back .messenger-shell.has-active-chat .chat-sidebar,
+  .app-route-layer--back .messenger-shell.has-active-chat .chat-detail {
+    animation: none;
+  }
+}

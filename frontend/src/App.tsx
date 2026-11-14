@@ -76,13 +76,11 @@ function ClusterRoutes() {
   };
   const previousIndex = tabIndex(previousPathRef.current);
   const currentIndex = tabIndex(location.pathname);
-  useEffect(() => {
-    if (chatRouteActive) {
-      setHasVisitedChats(true);
-    } else if (currentIndex === null) {
-      setHasVisitedChats(false);
-    }
-  }, [chatRouteActive, currentIndex]);
+  if (chatRouteActive && !hasVisitedChats) {
+    setHasVisitedChats(true);
+  } else if (currentIndex === null && hasVisitedChats) {
+    setHasVisitedChats(false);
+  }
 
   const showChatsRoute = chatRouteActive || (hasVisitedChats && currentIndex !== null);
   const routeDirection =
