@@ -18,13 +18,6 @@ const roleSelect = `SELECT r.id, r.name, r.description, r.permissions, r.is_defa
 const roleGroup = ` GROUP BY r.id, r.name, r.description, r.permissions, r.is_default`
 
 func (s *PostgresStore) UserRoleID(ctx context.Context, userID string) (string, error) {
-	var familyID string
-	if err := s.db.QueryRowContext(ctx, `SELECT family_id FROM users WHERE id = $1`, userID).Scan(&familyID); err != nil {
-		return "", err
-	}
-	if err := s.ensureDefaultRoles(ctx, familyID); err != nil {
-		return "", err
-	}
 	var roleID string
 	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, userID).Scan(&roleID)
 	return roleID, err

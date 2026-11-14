@@ -2,8 +2,68 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"testing"
+	"time"
 )
+
+func TestSetupSeedsServerDefaultRoles(t *testing.T) {
+	server, serverURL, client := newTestServer(t)
+	response := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName": "Default role setup test", "username": "default-role-owner", "password": "secure-password", "displayName": "Owner",
+	})
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d, want %d", response.StatusCode, http.StatusCreated)
+	}
+	_ = response.Body.Close()
+
+	var familyID, roleID string
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT family_id,role_id FROM users WHERE username='default-role-owner'`).Scan(&familyID, &roleID); err != nil {
+		t.Fatal(err)
+	}
+	if roleID != familyID+":admin" {
+		t.Fatalf("owner role_id = %q, want %q", roleID, familyID+":admin")
+	}
+	var defaults int
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT count(*) FROM server_roles WHERE family_id=$1 AND is_default`, familyID).Scan(&defaults); err != nil {
+		t.Fatal(err)
+	}
+	if defaults != 2 {
+		t.Fatalf("default role count = %d, want 2", defaults)
+	}
+}
+
+func TestUserRoleIDDoesNotWriteThroughCallerHeldUserLock(t *testing.T) {
+	server, _, _ := newTestServer(t)
+	ctx := context.Background()
+	familyID, userID := "role-read-lock-family", "role-read-lock-user"
+	if _, err := server.sqlDB.ExecContext(ctx, `INSERT INTO families (id,name,created_at,updated_at) VALUES ($1,'Role lock test',now()::text,now()::text)`, familyID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := server.sqlDB.ExecContext(ctx, `INSERT INTO users (id,family_id,username,password_hash,display_name,role,created_at) VALUES ($1,$2,$1,'unused',$1,'member',now()::text)`, userID, familyID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = server.sqlDB.ExecContext(context.Background(), `DELETE FROM users WHERE id=$1`, userID)
+		_, _ = server.sqlDB.ExecContext(context.Background(), `DELETE FROM server_roles WHERE family_id=$1`, familyID)
+		_, _ = server.sqlDB.ExecContext(context.Background(), `DELETE FROM families WHERE id=$1`, familyID)
+	})
+
+	tx, err := server.sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var lockedID string
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE id=$1 FOR SHARE`, userID).Scan(&lockedID); err != nil {
+		t.Fatal(err)
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer cancel()
+	if _, err := server.roles.UserRoleID(lookupCtx, userID); err != nil {
+		t.Fatalf("read user role while caller holds a shared user lock: %v", err)
+	}
+}
 
 func TestListRolesRepairsMissingDefaultWithoutChangingCustomRoles(t *testing.T) {
 	server, _, _ := newTestServer(t)

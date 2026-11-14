@@ -1927,7 +1927,7 @@ func TestIntelligenceSourceV2BrowserConsentTicketIsBoundOneUseAndConnectionsAreP
 	requestBody := map[string]any{
 		"flow": "source_v2", "response_type": "code", "client_id": fixture.clientID, "redirect_uri": fixture.redirectURI,
 		"state": state, "code_challenge": fixture.challenge, "code_challenge_method": "S256", "chat_id": fixture.chatID,
-		"grants": map[string]bool{"read": true, "process": false, "external_transfer": true, "export": false},
+		"grants": map[string]bool{"read": true, "process": false, "external_transfer": true, "export": false, "codex": false, "reply": false},
 	}
 	sessionResponse := sourceV2Request(t, fixture.httpClient, http.MethodPost, fixture.serverURL+"/api/v2/intelligence/authorize-session", fixture.userToken, requestBody)
 	if sessionResponse.StatusCode != http.StatusOK || sessionResponse.Header.Get("Cache-Control") != "no-store" {
