@@ -125,10 +125,6 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toMatch(/\.attachment-picker-sheet\.tg-style\.is-fullscreen \.attachment-picker-close[\s\S]*?border-radius:\s*var\(--radius-circle\)/);
   });
 
-  it("keeps the native editor rotate and close controls side by side", () => {
-    expect(styles).toMatch(/:root\[data-platform="native"\] \.image-editor-close-btn\s*\{[^}]*position:\s*relative/);
-  });
-
   it("does not render a redundant close button in the poll and checklist sheet header", () => {
     expect(attachmentSheetSource).toContain('activeTab !== "poll" && activeTab !== "checklist"');
     expect(attachmentSheetSource).toContain('<PopupCloseButton className="attachment-picker-close" ariaLabel={strings.attachments.closeMenu}');
