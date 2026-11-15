@@ -4,12 +4,13 @@ import { expect, it } from "vitest";
 
 it("keeps app pages beside the nav rail and chat list plain at tablet widths", () => {
   const stylesheet = parse(readCssSource("src/styles.css"));
-  const tabletLayout = stylesheet.nodes?.find(
+  const tabletLayouts = stylesheet.nodes?.filter(
     node => node.type === "atrule"
       && node.name === "media"
       && node.params.includes("min-width: 769px")
       && node.params.includes("max-width: 1199px")
-  );
+  ) ?? [];
+  const tabletLayout = tabletLayouts.at(-1);
   let navGridColumn: string | undefined;
   let navWidth: string | undefined;
   let frameRailWidth: string | undefined;
@@ -38,27 +39,34 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
   let chatAvatarHeight: string | undefined;
   let chatActionHeight: string | undefined;
 
-  tabletLayout?.walkRules(".app-frame", rule => {
-    if (rule.selector !== ".app-frame") return;
-    frameRailWidth = rule.nodes?.find(
-      node => node.type === "decl" && node.prop === "--nav-rail-width"
-    )?.value;
-  });
-
-  tabletLayout?.walkRules(".app-frame > .app-nav.app-nav--active-variant-a", rule => {
-    navGridColumn = rule.nodes?.find(
-      node => node.type === "decl" && node.prop === "grid-column"
-    )?.value;
-    navWidth = rule.nodes?.find(
-      node => node.type === "decl" && node.prop === "width"
-    )?.value;
-    navStateCircleSize = rule.nodes?.find(
-      node => node.type === "decl" && node.prop === "--app-nav-state-circle-size"
-    )?.value;
-    navPadding = rule.nodes?.find(
-      node => node.type === "decl" && node.prop === "padding"
-    )?.value;
-  });
+  for (const layout of tabletLayouts) {
+    layout.walkRules(rule => {
+      if (rule.type !== "rule") return;
+      const selectors = rule.selectors ?? [rule.selector];
+      if (selectors.includes(".app-frame")) {
+        frameRailWidth = rule.nodes?.find(
+          node => node.type === "decl" && node.prop === "--nav-rail-width"
+        )?.value ?? frameRailWidth;
+      }
+      const isNavRailRule = selectors.some(selector =>
+        selector === ".app-frame > .app-nav"
+        || selector === ".app-frame > .app-nav.app-nav--active-variant-a"
+      );
+      if (!isNavRailRule) return;
+      navGridColumn = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "grid-column"
+      )?.value ?? navGridColumn;
+      navWidth = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "width"
+      )?.value ?? navWidth;
+      navStateCircleSize = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "--app-nav-state-circle-size"
+      )?.value ?? navStateCircleSize;
+      navPadding = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "padding"
+      )?.value ?? navPadding;
+    });
+  }
 
   tabletLayout?.walkRules(".app-frame > .app-nav.app-nav--active-variant-a a.active", rule => {
     navActiveBackground = rule.nodes?.find(

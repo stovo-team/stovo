@@ -1,3 +1,15 @@
+@media (min-width: 769px) and (max-width: 1199px) {
+  .app-frame {
+    --nav-rail-width: 70px;
+  }
+
+  .app-frame > .app-nav,
+  .app-frame > .app-nav.app-nav--active-variant-a {
+    --app-nav-state-circle-size: 56px;
+    padding: 6px;
+  }
+}
+
 @media (min-width: 1200px) {
   .app-frame > .app-nav {
     --app-nav-state-circle-size: 56px;
