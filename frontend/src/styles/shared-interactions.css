@@ -51,7 +51,7 @@
   }
 
   .chat-sidebar-header {
-    background: linear-gradient(to bottom, var(--chat-layout-background), transparent);
+    background: transparent;
     border: none;
     gap: var(--chat-list-chrome-gap, 16px);
     margin: var(--float-outer-gap) var(--float-outer-gap) 0;

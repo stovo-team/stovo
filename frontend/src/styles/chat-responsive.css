@@ -12,23 +12,16 @@
     padding: 8px 2px;
   }
 
-  .app-frame > .app-nav a:not(.active):hover,
-  .app-frame > .app-nav .app-nav-logout:hover:not(:disabled) {
+  .app-frame > .app-nav a:not(.active):hover {
     background: transparent;
-  }
-
-  .app-frame > .app-nav a:not(.active):hover .ms-icon {
-    position: relative;
-    z-index: 1;
   }
 
   .app-frame > .app-nav a.active {
     background: transparent;
   }
 
-  .app-frame > .app-nav a:is(.active, :not(.active):hover)::before,
-  .app-frame > .app-nav .app-nav-logout:hover:not(:disabled)::before {
-    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);
+  .app-frame > .app-nav a.active::before {
+    background: color-mix(in oklab, var(--stovo-primary) 24%, transparent);
     border-radius: var(--radius-circle);
     content: "";
     height: var(--app-nav-state-circle-size);
@@ -127,8 +120,7 @@
   }
 }
 
-/* Browser-only narrow layout. Capacitor keeps its native spacing and chrome. */
-@media (max-width: 1199px) {
+@media (max-width: 768px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 116px;
     overflow: visible;
@@ -150,6 +142,10 @@
     margin-top: 0;
     padding-top: calc(var(--web-chat-sidebar-header-height) + var(--chat-list-chrome-gap, 16px));
   }
+}
+
+/* Browser-only narrow layout. Capacitor keeps its native spacing and chrome. */
+@media (max-width: 1199px) {
 
   :root[data-platform="web"] .messenger-shell.has-active-chat .messages-panel {
     margin-bottom: 8px;
@@ -177,7 +173,9 @@
     max-width: min(400px, 68%);
     width: min(400px, 68%);
   }
+}
 
+@media (max-width: 768px) {
   :root[data-platform="web"] .app-frame > .app-nav.app-nav--active-variant-a {
     background: transparent;
     border: 0;
@@ -301,7 +299,7 @@
 }
 
 :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
-  background: linear-gradient(to bottom, var(--color-palette-7b2817bf9b80) 0%, var(--color-palette-7b2817bf9b80) 90%, transparent 100%);
+  background: transparent;
 }
 
 :root[data-platform="web"] .messenger-shell.chat-list-view .compose-fab {

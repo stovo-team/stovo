@@ -87,6 +87,12 @@
   .messenger-shell .chat-layout:not(.voice-call-expanded) > .chat-detail { box-sizing: border-box; justify-self: center; max-width: 1400px; width: 100%; }
 }
 
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .messenger-shell .chat-layout:not(.voice-call-expanded) {
+    grid-template-columns: clamp(300px, 24vw, 322px) minmax(0, 1fr);
+  }
+}
+
 .chat-detail-header {
   align-items: center;
   border-radius: var(--radius-pill);

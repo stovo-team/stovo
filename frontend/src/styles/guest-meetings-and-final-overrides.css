@@ -2226,17 +2226,11 @@ button.minimized-call-button--end:active:not(:disabled) {
   border-color: var(--danger);
   color: var(--danger);
 }
-.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible),
-.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) .ms-icon,
-.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > span:not(.ms-icon) {
-  color: var(--danger);
-}
-.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible) > svg {
-  color: var(--danger);
-}
-.app-frame > .app-nav .app-nav-logout:is(:hover, :focus-visible)::before {
-  background: color-mix(in oklab, var(--danger) 16%, transparent);
-}
+.app-frame > .app-nav .app-nav-logout:focus-visible,
+.app-frame > .app-nav .app-nav-logout:focus-visible .ms-icon,
+.app-frame > .app-nav .app-nav-logout:focus-visible > span:not(.ms-icon),
+.app-frame > .app-nav .app-nav-logout:focus-visible > svg { color: var(--danger); }
+.app-frame > .app-nav .app-nav-logout:focus-visible::before { background: color-mix(in oklab, var(--danger) 16%, transparent); }
 @media (min-width: 721px) and (max-height: 800px) {
   .guest-prejoin-preview {
     aspect-ratio: 16 / 9;
@@ -2479,13 +2473,13 @@ button.minimized-call-button--end:active:not(:disabled) {
   .app-frame > .app-nav.app-nav--active-variant-a a.active {
     background: transparent;
     border-radius: 0;
-    color: var(--color-palette-f2074b6cef37) !important;
+    color: var(--stovo-primary) !important;
   }
 
   .app-frame > .app-nav.app-nav--active-variant-a a.active::before {
-    background: var(--color-brand-gradient) !important;
-    border-radius: var(--radius-pill);
-    box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
+    background: color-mix(in oklab, var(--stovo-primary) 24%, transparent) !important;
+    border-radius: var(--radius-circle);
+    box-shadow: none;
     content: "";
     display: block;
     height: 44px;
@@ -2496,6 +2490,11 @@ button.minimized-call-button--end:active:not(:disabled) {
     width: 44px;
     z-index: 0;
   }
+
+  .app-frame > .app-nav.app-nav--active-variant-a a.active .ms-icon,
+  .app-frame > .app-nav.app-nav--active-variant-a a.active .ms-icon.ms-icon--filled,
+  .app-frame > .app-nav.app-nav--active-variant-a a.active svg,
+  .app-frame > .app-nav.app-nav--active-variant-a a.active > span:not(.ms-icon):not(.nav-badge) { color: var(--stovo-primary) !important; position: relative; z-index: 1; }
 
   .app-frame > :not(.app-nav) {
     grid-column: 2;
