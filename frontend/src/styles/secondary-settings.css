@@ -851,10 +851,6 @@
     width: 100%;
   }
 
-  .storage-page {
-    background: var(--canvas-amoled, var(--color-palette-7b2817bf9b80)) !important;
-  }
-
   .storage-page > .page-surface,
   .contacts-page > .page-surface,
   .settings-page > .page-surface,
@@ -873,14 +869,13 @@
     width: 100%;
   }
 
-  .admin-page,
   .admin-page > .page-surface,
   .admin-page .admin-surface {
     background: var(--color-palette-7b2817bf9b80) !important;
   }
 
   .storage-page > .page-surface.storage-layout {
-    background: var(--canvas-amoled, var(--color-palette-7b2817bf9b80)) !important;
+    background: transparent !important;
     box-sizing: border-box;
     max-width: 100%;
     min-width: 0;

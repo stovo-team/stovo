@@ -37,8 +37,9 @@ describe("Storage mobile source dropdown", () => {
     );
   });
 
-  it("keeps an AMOLED black storage canvas and a pill source trigger after selection", () => {
-    expect(styles).toMatch(/\.storage-page\s*\{[^}]*background:\s*var\(--canvas-amoled/);
+  it("shows the selected wallpaper (AMOLED black for plain) and a pill source trigger after selection", () => {
+    expect(styles).toMatch(/\[data-wallpaper="plain"\]\s*\{[^}]*--messages-panel-background:\s*var\(--canvas-amoled\)/);
+    expect(styles).toMatch(/\.app-frame\s*\{[^}]*background:\s*var\(--messages-panel-background\)/);
     expect(styles).toMatch(
       /@media \(max-width:\s*1024px\)[\s\S]*\.storage-mobile-source-trigger[\s\S]*border-radius:\s*var\(--radius-pill\)/
     );

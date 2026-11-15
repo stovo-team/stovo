@@ -288,7 +288,6 @@
 .privacy-choice-check { color: var(--accent-primary); font-size: var(--font-size-heading); justify-self: end; }
 
 /* Final AMOLED settings geometry: no grey page canvas, no administration-card chrome. */
-.settings-page,
 .settings-page > .settings-layout,
 .settings-page .settings-layout {
   background: transparent !important;
