@@ -2482,12 +2482,12 @@ button.minimized-call-button--end:active:not(:disabled) {
     box-shadow: none;
     content: "";
     display: block;
-    height: 44px;
+    height: var(--app-nav-state-circle-size);
     left: 50%;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 44px;
+    width: var(--app-nav-state-circle-size);
     z-index: 0;
   }
 
