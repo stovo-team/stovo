@@ -26,26 +26,31 @@ describe("left nav and chat sidebar chrome", () => {
   });
 
   it("keeps the active nav icon and label orange and layered above the translucent active indicator", () => {
-    const tabletLayout = stylesheet.nodes?.find(
+    const tabletLayouts = stylesheet.nodes?.filter(
       node =>
         node.type === "atrule" &&
         node.name === "media" &&
         node.params.includes("min-width: 769px") &&
         node.params.includes("max-width: 1199px")
-    );
+    ) ?? [];
 
     let activeIconZIndex: string | undefined;
     let activeIconColor: string | undefined;
     let activeIndicatorBg: string | undefined;
-    tabletLayout?.walkRules(rule => {
-      if (rule.selector.includes("a.active .ms-icon")) {
-        activeIconZIndex = rule.nodes?.find(node => node.type === "decl" && node.prop === "z-index")?.value;
-        activeIconColor = rule.nodes?.find(node => node.type === "decl" && node.prop === "color")?.value;
-      }
-      if (rule.selector.includes("a.active::before")) {
-        activeIndicatorBg = rule.nodes?.find(node => node.type === "decl" && node.prop === "background")?.value;
-      }
-    });
+    for (const tabletLayout of tabletLayouts) {
+      tabletLayout.walkRules(rule => {
+        if (rule.selector.includes("a.active .ms-icon")) {
+          activeIconZIndex = rule.nodes?.find(node => node.type === "decl" && node.prop === "z-index")?.value
+            ?? activeIconZIndex;
+          activeIconColor = rule.nodes?.find(node => node.type === "decl" && node.prop === "color")?.value
+            ?? activeIconColor;
+        }
+        if (rule.selector.includes("a.active::before")) {
+          activeIndicatorBg = rule.nodes?.find(node => node.type === "decl" && node.prop === "background")?.value
+            ?? activeIndicatorBg;
+        }
+      });
+    }
 
     expect(activeIconZIndex).toBe("1");
     expect(activeIconColor).toContain("var(--stovo-primary)");
