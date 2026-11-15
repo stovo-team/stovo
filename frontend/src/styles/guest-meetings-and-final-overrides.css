@@ -2460,10 +2460,16 @@ button.minimized-call-button--end:active:not(:disabled) {
 }
 
 @media (min-width: 769px) and (max-width: 1199px) {
+  .app-frame {
+    --nav-rail-width: 70px;
+  }
+
   .app-frame > .app-nav.app-nav--active-variant-a {
+    --app-nav-state-circle-size: 56px;
     grid-column: 1;
     height: calc(100dvh - 2 * var(--float-outer-gap));
     left: auto;
+    padding: 6px;
     position: sticky;
     right: auto;
     top: var(--float-outer-gap);
@@ -2482,12 +2488,12 @@ button.minimized-call-button--end:active:not(:disabled) {
     box-shadow: none;
     content: "";
     display: block;
-    height: 44px;
+    height: var(--app-nav-state-circle-size);
     left: 50%;
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 44px;
+    width: var(--app-nav-state-circle-size);
     z-index: 0;
   }
 

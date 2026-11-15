@@ -1,15 +1,15 @@
 @media (min-width: 1200px) {
   .app-frame > .app-nav {
-    --app-nav-state-circle-size: 60px;
-    padding: 6px 4px;
+    --app-nav-state-circle-size: 56px;
+    padding: 6px;
   }
 
   .app-frame > .app-nav a {
-    padding: 5px 1px;
+    padding: 5px;
   }
 
   .app-frame > .app-nav .app-nav-logout {
-    padding: 8px 2px;
+    padding: 8px;
   }
 
   .app-frame > .app-nav a:not(.active):hover {
@@ -31,9 +31,12 @@
     top: 50%;
     transform: translate(-50%, -50%);
     width: var(--app-nav-state-circle-size);
+    z-index: 0;
   }
 
-  .app-frame > .app-nav a.active .ms-icon {
+  .app-frame > .app-nav a.active .ms-icon,
+  .app-frame > .app-nav a.active svg,
+  .app-frame > .app-nav a.active > span:not(.nav-badge) {
     position: relative;
     z-index: 1;
   }

@@ -12,6 +12,9 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
   );
   let navGridColumn: string | undefined;
   let navWidth: string | undefined;
+  let frameRailWidth: string | undefined;
+  let navStateCircleSize: string | undefined;
+  let navPadding: string | undefined;
   let navActiveBackground: string | undefined;
   let navActiveRadius: string | undefined;
   let navActiveIndicatorContent: string | undefined;
@@ -35,12 +38,25 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
   let chatAvatarHeight: string | undefined;
   let chatActionHeight: string | undefined;
 
+  tabletLayout?.walkRules(".app-frame", rule => {
+    if (rule.selector !== ".app-frame") return;
+    frameRailWidth = rule.nodes?.find(
+      node => node.type === "decl" && node.prop === "--nav-rail-width"
+    )?.value;
+  });
+
   tabletLayout?.walkRules(".app-frame > .app-nav.app-nav--active-variant-a", rule => {
     navGridColumn = rule.nodes?.find(
       node => node.type === "decl" && node.prop === "grid-column"
     )?.value;
     navWidth = rule.nodes?.find(
       node => node.type === "decl" && node.prop === "width"
+    )?.value;
+    navStateCircleSize = rule.nodes?.find(
+      node => node.type === "decl" && node.prop === "--app-nav-state-circle-size"
+    )?.value;
+    navPadding = rule.nodes?.find(
+      node => node.type === "decl" && node.prop === "padding"
     )?.value;
   });
 
@@ -153,11 +169,14 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
 
   expect(navGridColumn).toBe("1");
   expect(navWidth).toBe("var(--nav-rail-width)");
+  expect(frameRailWidth).toBe("70px");
+  expect(navStateCircleSize).toBe("56px");
+  expect(navPadding).toBe("6px");
   expect(navActiveBackground).toBe("transparent");
   expect(navActiveRadius).toBe("0");
   expect(navActiveIndicatorContent).toBe('""');
-  expect(navActiveIndicatorHeight).toBe("44px");
-  expect(navActiveIndicatorWidth).toBe("44px");
+  expect(navActiveIndicatorHeight).toBe("var(--app-nav-state-circle-size)");
+  expect(navActiveIndicatorWidth).toBe("var(--app-nav-state-circle-size)");
   expect(pageGridColumn).toBe("2");
   expect(chatPaneColumns).toContain("minmax(240px, 280px)");
   expect(chatSidebarBackground).toBe("transparent");

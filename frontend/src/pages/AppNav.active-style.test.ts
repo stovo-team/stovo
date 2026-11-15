@@ -11,10 +11,10 @@ const desktopNavigationStyles = styles.slice(
 );
 
 describe("desktop app navigation active state", () => {
-  it("centers one 60px circular highlight behind the navigation icon", () => {
-    expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 60px;");
-    expect(styles).toContain("--nav-rail-width: 76px;");
-    expect(desktopNavigationStyles).toContain("padding: 6px 4px;");
+  it("centers one 56px circular highlight behind the icon and label", () => {
+    expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 56px;");
+    expect(styles).toContain("--nav-rail-width: 70px;");
+    expect(desktopNavigationStyles).toContain("padding: 6px;");
 
     expect(desktopNavigationStyles).toContain(
       ".app-frame > .app-nav a.active::before {"
@@ -22,7 +22,7 @@ describe("desktop app navigation active state", () => {
     expect(desktopNavigationStyles).toContain("top: 50%;");
     expect(desktopNavigationStyles).toContain("transform: translate(-50%, -50%);");
     expect(styles).toContain("  gap: 3px;");
-    expect(styles).toContain("    padding: 5px 1px;");
+    expect(styles).toContain("    padding: 5px;");
   });
 
   it("uses rounded outline Lucide icons for all nav destinations", () => {

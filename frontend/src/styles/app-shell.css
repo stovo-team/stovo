@@ -467,10 +467,14 @@ h2 {
     display: inline-flex;
   }
 
+  .app-frame {
+    --nav-rail-width: 70px;
+  }
+
   .app-frame > .app-nav {
-    --nav-rail-width: 76px;
+    --app-nav-state-circle-size: 56px;
     gap: 10px;
-    padding: 14px 8px;
+    padding: 6px;
     width: var(--nav-rail-width);
   }
 
@@ -593,9 +597,10 @@ h2 {
   display: grid;
   justify-items: center;
   max-height: 64px;
-  max-width: 64px;
+  max-width: none;
   min-height: 58px;
   padding: 5px 2px;
+  width: 100%;
 }
 
 .app-nav a > span:not(.ms-icon):not(.nav-badge) {
