@@ -1,4 +1,4 @@
-import { navigateToSelectedChat } from "./shared/chatNavigation";
+import { canAutoOpenLastChat, navigateToSelectedChat } from "./shared/chatNavigation";
 import { requestCallChatReveal } from "./sidebar/useCallChatReveal";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
@@ -290,7 +290,7 @@ export function useChatsPageController({
   const didAutoOpenDesktopChatRef = useRef(false);
 
   useLayoutEffect(() => {
-    if (chatId || isMobileViewport) {
+    if (chatId || !canAutoOpenLastChat(window.innerWidth, Capacitor.isNativePlatform())) {
       didAutoOpenDesktopChatRef.current = false;
       return;
     }
