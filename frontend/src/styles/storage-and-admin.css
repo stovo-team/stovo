@@ -805,11 +805,6 @@
 
 
 /* Compact Admin — pure black, smaller scale */
-.admin-page,
-.admin-page.app-frame {
-  background: transparent;
-}
-
 .admin-page > .page-surface,
 .admin-page .admin-surface {
   background: transparent;
