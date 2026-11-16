@@ -4,6 +4,7 @@ import { Settings } from "lucide-react";
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import { useStrings } from "../i18n/LanguageContext";
+import CodexBridgeSetupPanel from "./CodexBridgeSetupPanel";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
@@ -424,15 +425,13 @@ export default function MCPConnectorsPanel({
           </div>
           <small>{copy.connectionSession}</small>
         </article>
-        <article className="mcp-connection-mode is-unavailable" aria-describedby="local-bridge-note">
+        <article className="mcp-connection-mode mcp-local-codex-mode">
           <div>
-            <span className="mcp-mode-kicker">{copy.desktop}</span>
-            <h3>{copy.localAgentBridge}</h3>
-            <p id="local-bridge-note">{copy.desktopBridgeDescription}</p>
+            <span className="mcp-mode-kicker">{copy.localCodex}</span>
+            <h3>{strings.codexBridgeSetup.title}</h3>
+            <p>{strings.codexBridgeSetup.intro}</p>
           </div>
-          <button type="button" className="secondary-button" disabled aria-disabled="true">
-            {copy.availableInDesktop}
-          </button>
+          <CodexBridgeSetupPanel />
         </article>
       </section>
 

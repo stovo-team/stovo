@@ -12,7 +12,7 @@ The bridge runs on your computer. Stovo Insight uses the Messenger connection yo
 
 ## Guided setup
 
-Open the Stovo Messenger website's `/codex-bridge` setup page and copy its prompt into Codex running on your own computer. The page only copies text; a browser cannot install or execute the local companion. Review every command Codex proposes and approve file changes and installations individually.
+Open **Admin → MCP Connectors → Local Codex** in Stovo Messenger and copy the setup prompt into Codex running on your own computer. The setup is embedded in the existing MCP connectors page; it is not a separate setup route. The page only copies text; a browser cannot install or execute the local companion. Review every command Codex proposes and approve file changes and installations individually.
 
 The prompt directs Codex to inspect this repository's `backend/codex-bridge` source, prepare a private local checkout/configuration, and check prerequisites. It deliberately stops for you to verify the existing Insight connection, perform `pair_local_codex(connection_id, chat_id)` in your authenticated Insight MCP session, install the managed approval policy, and type the short-lived pairing code into the companion's terminal prompt. Never paste the pairing code or relay credential into the Codex conversation, the website, a file under source control, or a command line.
 

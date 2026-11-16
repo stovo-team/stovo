@@ -42,6 +42,10 @@ describe("MCPConnectorsPanel Russian localization", () => {
     });
 
     expect(container.textContent).toContain("Подключить Stovo к агенту");
+    expect(container.textContent).toContain("Локальный Codex · установка из исходного кода");
+    expect(container.querySelector(".mcp-local-codex-panel textarea")?.value).toContain("pair_local_codex(connection_id, chat_id)");
+    expect(container.textContent).toContain("Вы сохраняете контроль");
+    expect(container.querySelector(".mcp-local-codex-panel details")).toBeTruthy();
     expect(container.textContent).toContain("Создать подключение агента");
     expect(container.textContent).toContain("Доступ к чатам в этом Space");
     expect(container.textContent).toContain("Права (изначально выключены)");

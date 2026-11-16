@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import CodexBridgeSetupPage from "./CodexBridgeSetupPage";
+import CodexBridgeSetupPanel from "./CodexBridgeSetupPanel";
 import { englishStrings, russianStrings } from "../config/strings";
 
 vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => englishStrings }));
@@ -20,11 +20,11 @@ function renderPage() {
   document.body.appendChild(container);
   const root = createRoot(container);
   roots.push(root);
-  act(() => root.render(<CodexBridgeSetupPage />));
+  act(() => root.render(<CodexBridgeSetupPanel />));
   return container;
 }
 
-describe("CodexBridgeSetupPage", () => {
+describe("CodexBridgeSetupPanel", () => {
   it("offers a copyable prompt with explicit manual pairing and safety boundaries", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });

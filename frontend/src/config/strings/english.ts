@@ -1401,6 +1401,7 @@ export const strings = {
       secureConnectionDescription: "Secure MCP connection for AI agents with scoped chat and action access.",
       connectionSession: "Connection session · MCP",
       desktop: "Stovo Desktop",
+      localCodex: "Local Codex · source setup",
       localAgentBridge: "Local agent bridge",
       desktopBridgeDescription: "Device-level bridge for paired desktop environments. Requires Stovo Desktop.",
       availableInDesktop: "Available in Stovo Desktop",

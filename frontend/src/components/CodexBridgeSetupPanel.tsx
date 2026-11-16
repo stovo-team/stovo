@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Copy, ShieldCheck, Terminal } from "lucide-react";
 import { useStrings } from "../i18n/LanguageContext";
-import "./CodexBridgeSetupPage.css";
+import "./CodexBridgeSetupPanel.css";
 
 const setupPrompt = `Help me set up the Local Stovo Codex Bridge on this computer. Guide me one step at a time and stop for my confirmation before every command that changes files, installs software, uses sudo, or contacts an account. First explain the exact command and its effect. Never run publish or deployment commands.
 
@@ -19,7 +19,7 @@ Before starting, review requirements.example.toml with me. The managed Codex app
 
 Only after all checks and my explicit approval, show me the exact start command: npm start -- ./config.json. Explain how to stop with Ctrl-C and how to revoke the companion in Insight with revoke_local_codex_companion(companion_id). If anything is unclear, insecure, unsupported, or different from the repository documentation, stop and explain the blocker instead of guessing.`;
 
-export default function CodexBridgeSetupPage() {
+export default function CodexBridgeSetupPanel() {
   const strings = useStrings().codexBridgeSetup;
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -37,34 +37,32 @@ export default function CodexBridgeSetupPage() {
   }
 
   return (
-    <main className="bridge-setup">
-      <section className="bridge-setup__hero">
-        <div className="bridge-setup__icon" aria-hidden="true"><Terminal size={25} /></div>
-        <p className="bridge-setup__eyebrow">{strings.eyebrow}</p>
-        <h1>{strings.title}</h1>
-        <p className="bridge-setup__intro">{strings.intro}</p>
-        <button className="bridge-setup__copy" onClick={copyPrompt} type="button">
-          {copied ? <Check size={18} /> : <Copy size={18} />}
+    <section className="mcp-local-codex-panel">
+      <div className="mcp-copy-field">
+        <div className="mcp-copy-field-label">
+          <span>{strings.promptLabel}</span>
+          <button className="mcp-inline-copy" onClick={copyPrompt} type="button">
+            {copied ? <Check size={16} /> : <Copy size={16} />}
           {copied ? strings.copied : strings.copy}
-        </button>
-        {copyFailed && <p className="bridge-setup__copy-error" role="status">{strings.copyError}</p>}
-      </section>
+          </button>
+        </div>
+        <textarea className="mcp-setup-prompt" aria-label={strings.promptLabel} readOnly rows={5} value={setupPrompt} onFocus={(event) => event.currentTarget.select()} />
+        {copyFailed && <p className="mcp-local-codex-copy-error" role="status">{strings.copyError}</p>}
+      </div>
 
-      <section className="bridge-setup__prompt" aria-labelledby="bridge-prompt-title">
-        <div className="bridge-setup__section-heading"><Terminal size={18} /><h2 id="bridge-prompt-title">{strings.promptLabel}</h2></div>
-        <textarea aria-label={strings.promptLabel} readOnly value={setupPrompt} onFocus={(event) => event.currentTarget.select()} />
-      </section>
-
-      <section className="bridge-setup__steps">
-        <h2>{strings.stepsTitle}</h2>
+      <section className="mcp-local-codex-details">
+        <h4><Terminal size={15} aria-hidden="true" />{strings.stepsTitle}</h4>
         <ol><li>{strings.stepOne}</li><li>{strings.stepTwo}</li><li>{strings.stepThree}</li><li>{strings.stepFour}</li></ol>
       </section>
 
-      <section className="bridge-setup__notice bridge-setup__notice--safe">
+      <section className="mcp-local-codex-note">
         <ShieldCheck size={20} aria-hidden="true" /><div><h2>{strings.safetyTitle}</h2><p>{strings.safety}</p></div>
       </section>
-      <section className="bridge-setup__notice"><div><h2>{strings.limitsTitle}</h2><p>{strings.limits}</p></div></section>
-      <section className="bridge-setup__notice bridge-setup__notice--warning"><div><h2>{strings.failureTitle}</h2><p>{strings.failure}</p></div></section>
-    </main>
+      <details className="mcp-local-codex-details">
+        <summary>{strings.limitsTitle} &amp; {strings.failureTitle}</summary>
+        <p><strong>{strings.limitsTitle}:</strong> {strings.limits}</p>
+        <p><strong>{strings.failureTitle}:</strong> {strings.failure}</p>
+      </details>
+    </section>
   );
 }

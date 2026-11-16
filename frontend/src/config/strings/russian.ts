@@ -1430,6 +1430,7 @@ export const strings = {
       secureConnectionDescription: "Безопасное подключение MCP для ИИ-агентов с доступом только к выбранным чатам и действиям.",
       connectionSession: "Сессия подключения · MCP",
       desktop: "Stovo Desktop",
+      localCodex: "Локальный Codex · установка из исходного кода",
       localAgentBridge: "Локальный мост для агента",
       desktopBridgeDescription: "Подключение к устройству для настольных приложений. Требуется Stovo Desktop.",
       availableInDesktop: "Доступно в Stovo Desktop",
