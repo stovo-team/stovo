@@ -102,7 +102,7 @@ func (s *Store) BuildBackfillPage(ctx context.Context, identity httptransport.In
 			return BackfillPage{}, err
 		}
 	}
-	result.Snapshots, err = loadBackfillPage(ctx, tx, backfillID, pageNumber)
+	result.Snapshots, err = loadBackfillPage(ctx, tx, identity, backfillID, pageNumber)
 	if err != nil {
 		return BackfillPage{}, err
 	}
@@ -165,13 +165,20 @@ func insertBackfillSnapshot(ctx context.Context, tx *sql.Tx, identity httptransp
 	return err
 }
 
-func loadBackfillPage(ctx context.Context, tx *sql.Tx, backfillID string, pageNumber int) ([]BackfillSnapshot, error) {
+func loadBackfillPage(ctx context.Context, tx *sql.Tx, identity httptransport.IntelligenceSourceIdentity, backfillID string, pageNumber int) ([]BackfillSnapshot, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT r.resource_id,r.revision_id,r.metadata,r.observed_at,r.encryption_protocol,p.content,p.ciphertext,p.nonce
 		FROM public.intelligence_source_v2_backfill_items item
+		JOIN public.intelligence_source_v2_connections c ON c.id=item.connection_id AND c.id=$3
 		JOIN public.intelligence_source_v2_revisions r ON r.connection_id=item.connection_id AND r.resource_id=item.resource_id AND r.revision_id=item.revision_id
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
-		WHERE item.backfill_id=$1 AND item.page_number=$2 ORDER BY item.item_number`, backfillID, pageNumber)
+		JOIN public.chats ch ON ch.id=r.chat_id AND ch.family_id=$5
+		JOIN public.chat_members current_member ON current_member.chat_id=r.chat_id AND current_member.user_id=$4
+		JOIN public.intelligence_source_v2_connection_chats scoped_chat ON scoped_chat.connection_id=c.id AND scoped_chat.chat_id=r.chat_id
+		WHERE item.backfill_id=$1 AND item.page_number=$2
+		  AND (($6::text IS NULL AND c.scope_kind='space' AND c.scope_family_id=$5)
+		    OR ($6::text IS NOT NULL AND c.scope_kind='chat' AND r.chat_id=$6))
+		ORDER BY item.item_number`, backfillID, pageNumber, identity.ConnectionID, identity.PrincipalUserID, identity.FamilyID, nullableChatScope(identity.ChatID))
 	if err != nil {
 		return nil, err
 	}

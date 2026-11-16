@@ -362,6 +362,49 @@ func TestIntelligenceSourceV2BackfillAndFenceReplayPreserveExactSnapshots(t *tes
 	}
 }
 
+func TestIntelligenceSourceV2SpaceBackfillRetryRechecksMembershipPerSnapshot(t *testing.T) {
+	fixture := newIntelligenceSourceV2ConsentFixture(t)
+	ctx := context.Background()
+	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connections SET scope_kind='space',scope_family_id=$2 WHERE id=$1`, connectionID, fixture.familyID); err != nil {
+		t.Fatalf("configure synthetic Space-scoped connection: %v", err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `INSERT INTO public.intelligence_source_v2_connection_chats(connection_id,chat_id) VALUES($1,$2)`, connectionID, fixture.secondChatID); err != nil {
+		t.Fatalf("add direct-chat membership to synthetic Space scope: %v", err)
+	}
+	groupMessageID := "source-v2-space-backfill-group-" + uuid.NewString()
+	directMessageID := "source-v2-space-backfill-direct-" + uuid.NewString()
+	createdAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `
+		INSERT INTO public.messages(id,chat_id,sender_id,type,content,created_at,updated_at)
+		VALUES($1,$2,$3,'text','group payload',$5,$5),($4,$6,$3,'text','direct payload',$5,$5)`,
+		groupMessageID, fixture.chatID, fixture.userID, directMessageID, createdAt, fixture.secondChatID); err != nil {
+		t.Fatalf("insert synthetic Space backfill messages: %v", err)
+	}
+	identity, err := fixture.server.authenticateIntelligenceSourceV2Credential(ctx, credential)
+	if err != nil {
+		t.Fatalf("authenticate synthetic Space credential: %v", err)
+	}
+	started, err := fixture.server.intelligenceSourceV2StartBackfill(ctx, identity)
+	if err != nil {
+		t.Fatalf("start synthetic Space backfill: %v", err)
+	}
+	page, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, started.BackfillID, started.SnapshotCursor, 100)
+	if err != nil || len(page.Snapshots) != 2 {
+		t.Fatalf("materialize Space backfill page=%#v err=%v", page, err)
+	}
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `DELETE FROM public.chat_members WHERE chat_id=$1 AND user_id=$2`, fixture.chatID, fixture.userID); err != nil {
+		t.Fatalf("remove current membership from one Space chat: %v", err)
+	}
+	replayed, err := fixture.server.intelligenceSourceV2BackfillSnapshots(ctx, identity, started.BackfillID, started.SnapshotCursor, 100)
+	if err != nil {
+		t.Fatalf("retry cached Space backfill page after membership change: %v", err)
+	}
+	if len(replayed.Snapshots) != 1 || replayed.Snapshots[0].ResourceID != directMessageID {
+		t.Fatalf("cached Space page returned snapshots outside current chat membership: %#v", replayed.Snapshots)
+	}
+}
+
 func TestIntelligenceSourceV2BackfillCursorBindingExpiryRetryAndReset(t *testing.T) {
 	fixture := newIntelligenceSourceV2ConsentFixture(t)
 	ctx := context.Background()
