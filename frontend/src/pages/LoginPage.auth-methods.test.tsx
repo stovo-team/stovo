@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -35,6 +35,7 @@ vi.mock("qrcode", () => ({ default: { toDataURL: mocks.qrToDataURL } }));
 vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 
 import LoginPage from "./LoginPage";
+import ServerSetupPage from "./ServerSetupPage";
 import { getApiUrl, setApiUrlOverride } from "../api/client";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -67,16 +68,22 @@ describe("LoginPage authentication methods", () => {
     act(() => root.unmount());
     container.remove();
     document.body.innerHTML = "";
+    vi.unstubAllGlobals();
     Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36" });
     delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
     delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
 
-  async function renderPage() {
+  async function renderPage(initialEntry = "/login") {
     await act(async () => {
-      root.render(<MemoryRouter initialEntries={["/login"]}><LoginPage /></MemoryRouter>);
+      root.render(<MemoryRouter initialEntries={[initialEntry]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/server-setup" element={<ServerSetupPage />} /></Routes><CurrentLocation /></MemoryRouter>);
     });
+  }
+
+  function CurrentLocation() {
+    const location = useLocation();
+    return <output data-testid="current-location">{location.pathname}{location.search}</output>;
   }
 
   it("keeps username and password as the default and offers passkey and QR as secondary methods", async () => {
@@ -95,9 +102,49 @@ describe("LoginPage authentication methods", () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();
     expect(container.textContent).toContain("Никнейм");
-    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ доступа");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ");
     expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
     expect(container.textContent).not.toContain("Sign in with Passkey");
+  });
+
+  it("uses compact passkey and QR labels on desktop in Russian too", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ");
+    expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
+  });
+
+  it("offers a centered, keyboard-focusable space URL action in both locales", async () => {
+    await renderPage();
+    const changeUrl = container.querySelector<HTMLAnchorElement>(".change-space-url a");
+    expect(changeUrl?.textContent).toBe("Change Space URL");
+    expect(changeUrl?.closest(".change-space-url")?.getAttribute("class")).toContain("change-space-url");
+    changeUrl?.focus();
+    expect(document.activeElement).toBe(changeUrl);
+
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(container.querySelector(".change-space-url a")?.textContent).toBe("Сменить URL спейса");
+  });
+
+  it("preserves device login mode and supplied username through change-space setup", async () => {
+    setApiUrlOverride("https://tenant.example.com");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ familyName: "Tenant" }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    await renderPage("/login?deviceLogin=1&username=alex%2Barchive%40example.com");
+
+    const changeUrl = container.querySelector<HTMLAnchorElement>(".change-space-url a");
+    expect(changeUrl?.getAttribute("href")).toBe("/server-setup?server=https%3A%2F%2Ftenant.example.com&deviceLogin=1&username=alex%2Barchive%40example.com");
+    await act(async () => changeUrl?.click());
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="url"]')?.value).toBe("https://tenant.example.com");
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.click());
+
+    expect(container.querySelector('[data-testid="current-location"]')?.textContent).toBe("/login?username=alex%2Barchive%40example.com&deviceLogin=1");
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="username"]')?.value).toBe("alex+archive@example.com");
+    expect(container.textContent).toContain("Send code to Message Archive");
+    expect(mocks.login).not.toHaveBeenCalled();
+    expect(mocks.acceptAuthResponse).not.toHaveBeenCalled();
   });
 
   it("shows QR sign-in without login fields and offers passkey or password", async () => {
@@ -109,7 +156,8 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector('input[autocomplete="username"]')).toBeNull();
     expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
     expect(container.querySelector('.qr-login-panel img[alt="QR code to approve this browser sign-in with Stovo"]')).not.toBeNull();
-    expect(container.textContent).toContain("Sign in with Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.getAttribute("aria-label")).toBe("Sign in with Passkey");
 
     const passwordAction = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Sign in with Password"));
     await act(async () => passwordAction?.click());

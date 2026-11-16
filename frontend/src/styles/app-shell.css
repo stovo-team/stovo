@@ -260,6 +260,10 @@ h2 {
   padding: 34px;
 }
 
+.login-page-shell .auth-panel {
+  background: transparent;
+}
+
 .app-lock-gate {
   align-items: center;
   background: var(--color-palette-7b2817bf9b80);
@@ -1406,6 +1410,8 @@ h2 {
   padding: 0 20px;
   font-size: var(--font-size-body);
   width: 100%;
+  background: var(--color-brand-gradient);
+  border-color: transparent;
 }
 
 .auth-method-options {
@@ -1455,7 +1461,7 @@ h2 {
 }
 
 .auth-divider span {
-  background: var(--color-palette-63d0e2756ab6);
+  background: transparent;
   padding: 0 10px;
   position: relative;
 }
@@ -1598,7 +1604,7 @@ h2 {
   color: var(--color-palette-f2074b6cef37);
   justify-self: start;
 }
-.auth-panel .form-grid > button:hover:not(:disabled) { background: var(--accent-primary); border-color: var(--accent-primary); }
+.auth-panel .form-grid > button:hover:not(:disabled) { background: var(--color-brand-gradient); border-color: transparent; }
 
 .auth-panel .server-setup-form > button:focus-visible {
   outline: 2px solid var(--focus-ring) !important;
@@ -1620,6 +1626,29 @@ h2 {
 .secondary-link a {
   color: var(--accent-primary-hover);
   font-weight: var(--font-weight-extrabold);
+}
+
+.change-space-url {
+  font-size: var(--font-size-small);
+  margin: 8px 0 0;
+  padding-top: 6px;
+  text-align: center;
+}
+
+.change-space-url a {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.change-space-url a:hover {
+  text-decoration: underline;
+}
+
+.change-space-url a:focus-visible {
+  border-radius: var(--radius-small);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
 }
 
 .messenger-workspace {

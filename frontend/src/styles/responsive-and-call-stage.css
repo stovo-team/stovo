@@ -25,6 +25,17 @@
     box-shadow: 0 16px 48px var(--color-palette-f71fbab13810);
   }
 
+  .login-page-shell .auth-panel {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+
   .server-setup-eyebrow {
     display: none;
   }

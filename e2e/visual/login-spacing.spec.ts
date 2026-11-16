@@ -8,7 +8,7 @@ async function openLogin(page: import('@playwright/test').Page) {
   });
   await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401, json: { detail: 'No session' } }));
   await page.route('**/api/auth/setup-status', route => route.fulfill({ json: { setupRequired: false, familyName: 'Stovo' } }));
-  await page.goto('/login');
+  await page.goto('/login?mockSignedOut=1');
   await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
@@ -48,7 +48,17 @@ test('login error has red background and space above it', async ({ page }, testI
 test('filled sign in button retains its appearance on hover', async ({ page }) => {
   await openLogin(page);
   const button = page.getByRole('button', { name: 'Sign In', exact: true });
-  const before = await button.evaluate(el => getComputedStyle(el).backgroundColor);
+  const gradient = await button.evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(gradient).toContain('linear-gradient');
   await button.hover();
-  await expect.poll(() => button.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(before);
+  await expect.poll(() => button.evaluate(el => getComputedStyle(el).backgroundImage)).toBe(gradient);
+});
+
+test('desktop login panel and separator label have transparent backgrounds', async ({ page }) => {
+  await openLogin(page);
+  const panelBackground = await page.locator('.auth-panel').evaluate(el => getComputedStyle(el).backgroundColor);
+  const separatorBackground = await page.locator('.auth-divider span').evaluate(el => getComputedStyle(el).backgroundColor);
+
+  expect(panelBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(separatorBackground).toBe('rgba(0, 0, 0, 0)');
 });

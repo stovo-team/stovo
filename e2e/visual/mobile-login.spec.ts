@@ -42,9 +42,27 @@ test("mobile web login uses short auth labels in English", async ({ page }, test
   await capture(page, testInfo, "mobile-login-en", "en", "Login page; Android browser; dark theme; 390x844");
 });
 
+test("mobile Russian login uses the screen without a card surface", async ({ page }, testInfo) => {
+  await openMobileLogin(page, "ru");
+  const surface = await page.locator(".auth-panel").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      background: style.backgroundColor,
+      borderWidth: style.borderTopWidth,
+      boxShadow: style.boxShadow,
+      padding: style.padding,
+    };
+  });
+  const separatorBackground = await page.locator(".auth-divider span").evaluate((element) => getComputedStyle(element).backgroundColor);
+
+  expect(surface).toEqual({ background: "rgba(0, 0, 0, 0)", borderWidth: "0px", boxShadow: "none", padding: "0px" });
+  expect(separatorBackground).toBe("rgba(0, 0, 0, 0)");
+  await capture(page, testInfo, "mobile-login-fullscreen-ru", "ru", "Full-screen login form without a card surface; Android browser; dark theme; 390x844");
+});
+
 test("mobile QR sign-in automatically opens Stovo without a manual fallback in Russian", async ({ page }, testInfo) => {
   await openMobileLogin(page, "ru");
-  await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Ключ доступа");
+  await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Ключ");
   await expect(page.locator('[data-auth-method="qr"]')).toHaveText("QR-код");
   await page.locator('[data-auth-method="qr"]').click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("visualAppLaunchUrl"))).toBe(approvalUrl);
