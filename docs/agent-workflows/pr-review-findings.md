@@ -16,7 +16,7 @@ Use this workflow when reporting a defect or risk found while reviewing a pull r
 
 ### Choose evidence that fits the finding
 
-- **Visual or frontend behavior:** attach a screenshot or short recording whenever the reported state can be safely reproduced and captured. Include the viewport/device and the steps or state needed to reach it. For a visual regression, show the affected result and a useful comparison when available. If capture is unavailable or would not clarify the finding, describe the observed state precisely and explain why.
+- **Visual or frontend behavior:** actively reproduce the reported defect on the running mock server (`npm --prefix frontend run dev:mock`), and attach real screenshot images showing the reproduced state. Include the viewport/device and the steps or state needed to reach it. For a visual regression, show the affected result and a distinct comparison screenshot when available. If capture is unavailable or would not clarify the finding, describe the observed state precisely and explain why.
 - **Non-visual behavior:** include a minimal reproduction, focused test name and result, sanitized request/response, relevant log or trace excerpt, or another artifact that demonstrates the behavior. Identify the command or environment when it affects the result.
 - **Code-only risk:** point to the exact path through the code and explain the concrete input or state that makes it fail. A source citation alone is not evidence of runtime impact; use a focused test or a short reasoning trace when execution is impractical.
 
@@ -24,7 +24,8 @@ Do not attach evidence that contains credentials, private messages, personal dat
 
 ## Include evidence when opening a PR
 
-Put verification evidence in the PR description so reviewers can understand the change before reading the diff. For visual changes, include before-and-after screenshots or a short recording when the relevant UI can be safely reproduced; state the viewport/device and interaction shown. For non-visual changes, list the focused checks and results, or link a sanitized trace or reproduction artifact. For documentation-only changes, report the validation command and result; screenshots are unnecessary unless the docs change itself affects a rendered UI.
+Put verification evidence in the PR description so reviewers can understand the change before reading the diff. For visual changes, reproduce the issue on the mock server and embed real before-and-after screenshots using Markdown images (`![Caption](url)`) or direct viewable image links to committed assets; state the viewport/device, theme, locale, and interaction shown. Never use bare file paths in code backticks (e.g. `` `path/to/image.png` ``) or fake `(prior)` annotations in place of actual screenshots. For non-visual changes, list the focused checks and results, or link a sanitized trace or reproduction artifact. For documentation-only changes, report the validation command and result; screenshots are unnecessary unless the docs change itself affects a rendered UI.
+
 
 ## Keep findings useful
 

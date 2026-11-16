@@ -9,7 +9,8 @@ Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/
 
 Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the canonical Stovo workflow once; reuse a generic installed skill for its specialized work without starting a duplicate overall process. Applicable human and higher-priority host instructions prevail.
 
-Output: Self-contained English PR body, required check results, evidence and outstanding blockers. Verify actual human authorization before remote writes.
+Output: Self-contained English PR body, required check results, evidence and outstanding blockers. For frontend changes, verify that the defect was reproduced on the mock server, before/after screenshots are distinct real images, and visual evidence is embedded as actual rendered Markdown images, not bare paths in backticks. Verify actual human authorization before remote writes.
+
 
 Complete only when actual command results or observed artifacts support each claim. Record missing prerequisites as blocked and preserve unrelated work.
 
