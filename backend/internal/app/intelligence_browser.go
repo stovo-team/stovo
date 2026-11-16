@@ -61,11 +61,15 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 	}
 	digest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
+	scopeKind := ""
+	if input.Flow == "source_v2" {
+		scopeKind = defaultSourceScope(input.ScopeKind)
+	}
 	err = s.intelligenceSourceV2Persistence().CreateBrowserSession(ctx, adapterintelligencesourcev2.BrowserSession{
 		TicketHash: digest[:], Flow: input.Flow, UserID: principal.UserID, FamilyID: principal.FamilyID,
 		ClientID: input.ClientID, RedirectURI: input.RedirectURI, State: input.State,
 		CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
-		Nonce: input.Nonce, ChatID: input.ChatID, ScopeKind: defaultSourceScope(input.ScopeKind), ConfirmSpaceAccess: input.ConfirmSpaceAccess, Grants: input.Grants,
+		Nonce: input.Nonce, ChatID: input.ChatID, ScopeKind: scopeKind, ConfirmSpaceAccess: input.ConfirmSpaceAccess, Grants: input.Grants,
 		CreatedAt: now, ExpiresAt: now.Add(intelligenceBrowserTicketTTL),
 	})
 	if errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {

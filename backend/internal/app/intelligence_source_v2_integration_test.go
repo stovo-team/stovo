@@ -365,6 +365,9 @@ func TestIntelligenceSourceV2BackfillAndFenceReplayPreserveExactSnapshots(t *tes
 func TestIntelligenceSourceV2SpaceBackfillRetryRechecksMembershipPerSnapshot(t *testing.T) {
 	fixture := newIntelligenceSourceV2ConsentFixture(t)
 	ctx := context.Background()
+	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.users SET role='owner' WHERE id=$1`, fixture.userID); err != nil {
+		t.Fatalf("grant synthetic Space backfill principal integration admin access: %v", err)
+	}
 	connectionID, credential := createIntelligenceSourceV2TestConnection(t, fixture, fixture.chatID, map[string]bool{"read": true})
 	if _, err := fixture.server.sqlDB.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connections SET scope_kind='space',scope_family_id=$2 WHERE id=$1`, connectionID, fixture.familyID); err != nil {
 		t.Fatalf("configure synthetic Space-scoped connection: %v", err)
