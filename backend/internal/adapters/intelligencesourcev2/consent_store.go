@@ -47,7 +47,8 @@ func (s *Store) AuthorizeConsent(ctx context.Context, input ConsentAuthorization
 	if scopeKind == "" {
 		scopeKind = "chat"
 	}
-	if scopeKind == "space" {
+	switch scopeKind {
+	case "space":
 		if !input.ConfirmSpaceAccess {
 			return ErrForbidden
 		}
@@ -56,7 +57,7 @@ func (s *Store) AuthorizeConsent(ctx context.Context, input ConsentAuthorization
 			(u.role='owner' OR EXISTS (
 				SELECT 1 FROM public.server_roles r CROSS JOIN LATERAL jsonb_array_elements_text(r.permissions::jsonb) p
 				WHERE r.id=u.role_id AND r.family_id=u.family_id AND p='manage_integrations')) FOR SHARE OF u`, input.UserID, input.FamilyID).Scan(new(bool))
-	} else if scopeKind == "chat" {
+	case "chat":
 		var accessible bool
 		err = tx.QueryRowContext(ctx, `
 		SELECT true FROM public.users u
@@ -64,7 +65,7 @@ func (s *Store) AuthorizeConsent(ctx context.Context, input ConsentAuthorization
 		JOIN public.chats ch ON ch.id=cm.chat_id AND ch.family_id=u.family_id
 		WHERE u.id=$1 AND u.family_id=$2 AND u.is_active=1 AND ch.id=$3
 		FOR SHARE OF u,cm,ch`, input.UserID, input.FamilyID, input.ChatID).Scan(&accessible)
-	} else {
+	default:
 		return ErrForbidden
 	}
 	if errors.Is(err, sql.ErrNoRows) {
