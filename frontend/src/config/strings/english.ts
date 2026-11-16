@@ -15,6 +15,26 @@ export const strings = {
     /** Eyebrow on the server setup page */
     setup: "Setup",
   },
+  codexBridgeSetup: {
+    eyebrow: "Local companion",
+    title: "Bring your local Codex into a Stovo chat",
+    intro: "Copy this setup request into Codex on your own computer. Codex will guide you through installing the open source companion and preparing a chat scoped connection.",
+    copy: "Copy setup prompt",
+    copied: "Prompt copied",
+    copyError: "Clipboard access was unavailable. Select and copy the prompt below.",
+    promptLabel: "Prompt for your local Codex",
+    stepsTitle: "What happens next",
+    stepOne: "Codex checks your computer for Node.js 22+, Codex CLI, and a workspace you choose.",
+    stepTwo: "It downloads the companion source from the Stovo Messenger repository and prepares a private local configuration.",
+    stepThree: "You install the managed approval policy yourself, then authorize the existing Insight connection and chat.",
+    stepFour: "You paste the five minute, one time pairing code into the local terminal. The companion stores its credential in a private file and starts locally.",
+    safetyTitle: "You stay in control",
+    safety: "The website cannot run code on your computer. The prompt contains no account details or credentials. Review Codex commands before approving them. Every companion action needs a separate approval. Insight Connect is an explicit step you complete in your authenticated Insight session.",
+    limitsTitle: "Before you start",
+    limits: "Requires macOS or Linux, Node.js 22+, Codex CLI with app-server support, and an Insight deployment with the local Codex relay enabled. No signed installer is published yet. The companion is source based; managed approval policy installation may require an administrator. Windows is not supported by this setup flow.",
+    failureTitle: "If setup stops",
+    failure: "If the relay is disabled, grants are missing, pairing expires, or Codex cannot load the managed policy, stop and resolve that issue with your Stovo or Insight administrator. Do not retry with a different chat or share the pairing code. Generate a fresh code in the same Insight session after correcting the issue.",
+  },
 
   // ── Navigation ─────────────────────────────────────────────────────
   nav: {

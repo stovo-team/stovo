@@ -37,6 +37,7 @@ import CanvasPage from "./pages/CanvasPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import LegalDocumentsPage from "./pages/LegalDocumentsPage";
 import { IntelligenceConsentPage } from "./pages/IntelligenceConsentPage";
+import CodexBridgeSetupPage from "./pages/CodexBridgeSetupPage";
 import { useStrings } from "./i18n/LanguageContext";
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
 import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
@@ -125,6 +126,7 @@ function ClusterRoutes() {
     <Routes location={location}>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/server-setup" element={<ServerSetupPage />} />
+      <Route path="/codex-bridge" element={<CodexBridgeSetupPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/intelligence/consent" element={<RequireAuth><IntelligenceConsentPage strings={strings} /></RequireAuth>} />
