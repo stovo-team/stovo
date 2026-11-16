@@ -45,3 +45,33 @@ describe("native app navigation active state", () => {
     );
   });
 });
+
+describe("mobile bottom nav active state", () => {
+  it("matches desktop left-nav orange partially transparent background and bigger circle radius", () => {
+    expect(styles).not.toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before\s*\{[^}]*background:\s*var\(--color-brand-gradient\)/s
+    );
+    expect(styles).toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*background:\s*color-mix\(in oklab,\s*var\(--stovo-primary\)\s*24%,\s*transparent\)/s
+    );
+    expect(styles).not.toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*height:\s*44px/s
+    );
+    expect(styles).toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*border-radius:\s*var\(--radius-circle\)/s
+    );
+    expect(styles).toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*height:\s*var\(--app-nav-state-circle-size/s
+    );
+    expect(styles).toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active::before[^}]*width:\s*var\(--app-nav-state-circle-size/s
+    );
+    expect(styles).not.toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active\s*>\s*span:not\(\.ms-icon\)\s*\{[^}]*color:\s*var\(--color-palette-f2074b6cef37\)/s
+    );
+    expect(styles).toMatch(
+      /\.app-frame\s*>\s*\.app-nav\.app-nav--active-variant-a a\.active\s*>\s*span:not\(\.ms-icon\)[^}]*color:\s*var\(--stovo-primary\)/s
+    );
+  });
+});
+

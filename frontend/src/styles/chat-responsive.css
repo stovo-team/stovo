@@ -89,28 +89,28 @@
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active {
   background: transparent;
-  color: var(--color-palette-f2074b6cef37) !important;
+  color: var(--stovo-primary) !important;
 }
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active::before {
-  background: var(--color-brand-gradient);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
+  background: color-mix(in oklab, var(--stovo-primary) 24%, transparent);
+  border-radius: var(--radius-circle);
+  box-shadow: none;
   content: "";
   display: block;
-  height: 44px;
+  height: var(--app-nav-state-circle-size, 56px);
   left: 50%;
   pointer-events: none;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 44px;
+  width: var(--app-nav-state-circle-size, 56px);
   z-index: 0;
 }
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active svg,
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav.app-nav--active-variant-a a.active > span:not(.nav-badge) {
-  color: var(--color-palette-f2074b6cef37) !important;
+  color: var(--stovo-primary) !important;
   font-weight: var(--font-weight-bold);
 }
 

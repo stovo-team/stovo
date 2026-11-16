@@ -9,9 +9,10 @@ describe("brand gradient active states", () => {
     expect(css).toMatch(/\.server-switcher-item\.is-active[^{]*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--accent-primary\)\s*35%,\s*transparent\)/);
   });
 
-  it("applies brand gradient to active left navigation pill", () => {
-    expect(css).toMatch(/\.app-frame > \.app-nav.*a\.active::before\s*\{[^}]*background:\s*var\(--color-brand-gradient\) !important/);
+  it("applies orange partially transparent background to active navigation pill", () => {
+    expect(css).toMatch(/\.app-frame > \.app-nav.*a\.active::before\s*\{[^}]*background:\s*color-mix\(in oklab,\s*var\(--stovo-primary\)\s*24%,\s*transparent\) !important/);
   });
+
 
   it("constrains space switcher menu width to fit within chat list", () => {
     expect(css).toMatch(/\.server-switcher-menu\s*\{[^}]*max-width:\s*min\(240px,\s*calc\(100vw - 32px\)\)/);

@@ -1093,6 +1093,7 @@
   }
 
   .app-frame > .app-nav {
+    --app-nav-state-circle-size: 56px;
     align-items: center;
     background: transparent;
     border: 0;
@@ -1145,16 +1146,16 @@
   .app-frame > .app-nav.app-nav--active-variant-a a.active,
   .app-frame > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c) a.active {
     background: transparent;
-    color: var(--accent-primary);
+    color: var(--stovo-primary);
   }
 
   .app-frame > .app-nav.app-nav--active-variant-a a.active::before,
   .app-frame > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c) a.active::before {
-    background: var(--color-brand-gradient) !important;
-    border-radius: var(--radius-pill);
-    box-shadow: 0 2px 8px var(--color-palette-279245c0d6e0);
+    background: color-mix(in oklab, var(--stovo-primary) 24%, transparent) !important;
+    border-radius: var(--radius-circle);
+    box-shadow: none;
     content: "";
-    height: 44px;
+    height: var(--app-nav-state-circle-size, 56px);
     left: 50%;
     position: absolute;
     top: 50%;
@@ -1162,7 +1163,7 @@
     transition:
       opacity var(--motion-route-duration-fast) var(--motion-route-ease),
       transform var(--motion-route-duration-fast) var(--motion-route-ease);
-    width: 44px;
+    width: var(--app-nav-state-circle-size, 56px);
     z-index: 0;
   }
 
@@ -1174,7 +1175,7 @@
     > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c)
     a.active
     > span:not(.ms-icon) {
-    color: var(--color-palette-f2074b6cef37) !important;
+    color: var(--stovo-primary) !important;
     font-size: var(--font-size-caption);
     font-weight: var(--font-weight-bold);
   }
