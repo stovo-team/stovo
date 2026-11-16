@@ -29,7 +29,7 @@ export const strings = {
     stepThree: "You install the managed approval policy yourself, then authorize the existing Insight connection and chat.",
     stepFour: "You paste the five minute, one time pairing code into the local terminal. The companion stores its credential in a private file and starts locally.",
     safetyTitle: "You stay in control",
-    safety: "The website cannot run code on your computer. The prompt contains no account details or credentials. Review Codex commands before approving them. Each file change, shell command, and publish or deployment command needs its own one-time approval; read-only turns do not require an approval checkpoint. Insight Connect is an explicit step you complete in your authenticated Insight session.",
+    safety: "The website cannot run code on your computer. The prompt contains no account details or credentials. Review Codex commands before approving them. The bridge requests approval before file changes, shell commands, and publish or deployment commands. Read-only turns do not trigger approval checkpoints. Insight Connect is an explicit step you complete in your authenticated Insight session.",
     limitsTitle: "Before you start",
     limits: "Requires macOS or Linux, Node.js 22+, Codex CLI with app-server support, and an Insight deployment with the local Codex relay enabled. No signed installer is published yet. The companion is source based; managed approval policy installation may require an administrator. Windows is not supported by this setup flow.",
     failureTitle: "If setup stops",

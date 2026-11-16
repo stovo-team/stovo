@@ -36,8 +36,8 @@ describe("CodexBridgeSetupPage", () => {
     expect(prompt?.value).toContain("Do not use sudo or edit the system policy automatically");
     expect(page.textContent).toContain(englishStrings.codexBridgeSetup.limits);
     expect(page.textContent).toContain(englishStrings.codexBridgeSetup.failure);
-    expect(englishStrings.codexBridgeSetup.safety).toContain("read-only turns do not require an approval checkpoint");
-    expect(russianStrings.codexBridgeSetup.safety).toContain("для операций только на чтение отдельный этап подтверждения не нужен");
+    expect(englishStrings.codexBridgeSetup.safety).toContain("Read-only turns do not trigger approval checkpoints");
+    expect(russianStrings.codexBridgeSetup.safety).toContain("Для операций только на чтение этап подтверждения не запускается");
 
     await act(async () => page.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(writeText).toHaveBeenCalledWith(prompt?.value);
