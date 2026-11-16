@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -35,6 +35,7 @@ vi.mock("qrcode", () => ({ default: { toDataURL: mocks.qrToDataURL } }));
 vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 
 import LoginPage from "./LoginPage";
+import ServerSetupPage from "./ServerSetupPage";
 import { getApiUrl, setApiUrlOverride } from "../api/client";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -67,6 +68,7 @@ describe("LoginPage authentication methods", () => {
     act(() => root.unmount());
     container.remove();
     document.body.innerHTML = "";
+    vi.unstubAllGlobals();
     Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
     Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36" });
     delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
@@ -75,8 +77,13 @@ describe("LoginPage authentication methods", () => {
 
   async function renderPage(initialEntry = "/login") {
     await act(async () => {
-      root.render(<MemoryRouter initialEntries={[initialEntry]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/server-setup" element={<p data-testid="server-setup-route">Server URL entry</p>} /></Routes></MemoryRouter>);
+      root.render(<MemoryRouter initialEntries={[initialEntry]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/server-setup" element={<ServerSetupPage />} /></Routes><CurrentLocation /></MemoryRouter>);
     });
+  }
+
+  function CurrentLocation() {
+    const location = useLocation();
+    return <output data-testid="current-location">{location.pathname}{location.search}</output>;
   }
 
   it("keeps username and password as the default and offers passkey and QR as secondary methods", async () => {
@@ -113,15 +120,21 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector(".change-space-url a")?.textContent).toBe("Сменить URL спейса");
   });
 
-  it("returns to space URL entry with the selected server and without touching authentication", async () => {
+  it("preserves device login mode and supplied username through change-space setup", async () => {
     setApiUrlOverride("https://tenant.example.com");
-    await renderPage();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ familyName: "Tenant" }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    await renderPage("/login?deviceLogin=1&username=alex%2Barchive%40example.com");
 
     const changeUrl = container.querySelector<HTMLAnchorElement>(".change-space-url a");
-    expect(changeUrl?.getAttribute("href")).toBe("/server-setup?server=https%3A%2F%2Ftenant.example.com");
+    expect(changeUrl?.getAttribute("href")).toBe("/server-setup?server=https%3A%2F%2Ftenant.example.com&deviceLogin=1&username=alex%2Barchive%40example.com");
     await act(async () => changeUrl?.click());
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="url"]')?.value).toBe("https://tenant.example.com");
 
-    expect(container.querySelector('[data-testid="server-setup-route"]')).not.toBeNull();
+    await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.click());
+
+    expect(container.querySelector('[data-testid="current-location"]')?.textContent).toBe("/login?username=alex%2Barchive%40example.com&deviceLogin=1");
+    expect(container.querySelector<HTMLInputElement>('input[autocomplete="username"]')?.value).toBe("alex+archive@example.com");
+    expect(container.textContent).toContain("Send code to Message Archive");
     expect(mocks.login).not.toHaveBeenCalled();
     expect(mocks.acceptAuthResponse).not.toHaveBeenCalled();
   });

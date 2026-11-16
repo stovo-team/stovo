@@ -1624,7 +1624,8 @@ h2 {
 
 .change-space-url {
   font-size: var(--font-size-small);
-  margin: 0;
+  margin: 8px 0 0;
+  padding-top: 6px;
   text-align: center;
 }
 

@@ -103,6 +103,11 @@ export default function LoginPage() {
   const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
   const prefix = getClusterPrefix();
   const isDeviceLogin = new URLSearchParams(location.search).get("deviceLogin") === "1";
+  const loginParams = new URLSearchParams(location.search);
+  const changeSpaceParams = new URLSearchParams({ server: currentUrl });
+  if (isDeviceLogin) changeSpaceParams.set("deviceLogin", "1");
+  if (loginParams.has("username")) changeSpaceParams.set("username", loginParams.get("username") ?? "");
+  const changeSpaceUrl = `/server-setup?${changeSpaceParams.toString()}`;
   const isMobileBrowser = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const passkeyLabel = isMobileBrowser ? strings.auth.signInWithPasskeyShort : strings.auth.signInWithPasskey;
   const postLoginPath = getSafeLoginReturnPath(location.state, `${prefix}/app/chats`);
@@ -375,7 +380,7 @@ export default function LoginPage() {
         {!androidQR && <OwnerSetupPrompt setupRequired={setupRequired} />}
         {!androidQR && (
           <p className="secondary-link change-space-url">
-            <Link to={`/server-setup?server=${encodeURIComponent(currentUrl)}`}>{strings.auth.changeSpaceUrl}</Link>
+            <Link to={changeSpaceUrl}>{strings.auth.changeSpaceUrl}</Link>
           </p>
         )}
       </section>
