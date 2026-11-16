@@ -102,7 +102,7 @@ describe("LoginPage authentication methods", () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();
     expect(container.textContent).toContain("Никнейм");
-    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ");
     expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
     expect(container.textContent).not.toContain("Sign in with Passkey");
   });
@@ -111,7 +111,7 @@ describe("LoginPage authentication methods", () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();
 
-    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ");
     expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
   });
 

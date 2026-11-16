@@ -8,7 +8,7 @@ async function openLogin(page: import('@playwright/test').Page) {
   });
   await page.route('**/api/auth/refresh', route => route.fulfill({ status: 401, json: { detail: 'No session' } }));
   await page.route('**/api/auth/setup-status', route => route.fulfill({ json: { setupRequired: false, familyName: 'Stovo' } }));
-  await page.goto('/login');
+  await page.goto('/login?mockSignedOut=1');
   await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }

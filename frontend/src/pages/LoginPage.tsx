@@ -281,7 +281,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell login-page-shell">
       <section className="auth-panel">
         <div className="auth-brand-header">
           <StovoLogo className="auth-brand-logo" title="Stovo" />
