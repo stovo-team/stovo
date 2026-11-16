@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CodexBridgeSetupPage from "./CodexBridgeSetupPage";
-import { englishStrings } from "../config/strings";
+import { englishStrings, russianStrings } from "../config/strings";
 
 vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => englishStrings }));
 
@@ -36,6 +36,8 @@ describe("CodexBridgeSetupPage", () => {
     expect(prompt?.value).toContain("Do not use sudo or edit the system policy automatically");
     expect(page.textContent).toContain(englishStrings.codexBridgeSetup.limits);
     expect(page.textContent).toContain(englishStrings.codexBridgeSetup.failure);
+    expect(englishStrings.codexBridgeSetup.safety).toContain("read-only turns do not require an approval checkpoint");
+    expect(russianStrings.codexBridgeSetup.safety).toContain("для операций только на чтение отдельный этап подтверждения не нужен");
 
     await act(async () => page.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(writeText).toHaveBeenCalledWith(prompt?.value);
