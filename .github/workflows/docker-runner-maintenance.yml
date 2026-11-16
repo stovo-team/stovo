@@ -1,0 +1,40 @@
+name: Docker runner maintenance
+
+on:
+  schedule:
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-runner-maintenance
+  cancel-in-progress: false
+
+jobs:
+  reclaim:
+    name: Reclaim stale Docker data
+    runs-on: [self-hosted, Windows, tests]
+    timeout-minutes: 20
+    steps:
+      - name: Report Docker disk usage before cleanup
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          docker info | Out-Host
+          if ($LASTEXITCODE -ne 0) { throw 'Docker Desktop is unavailable; no cleanup was attempted.' }
+          docker system df
+          if ($LASTEXITCODE -ne 0) { throw 'Could not read Docker disk usage.' }
+      - name: Reclaim unused Docker cache and stale objects
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          docker builder prune --all --force --filter "until=168h"
+          if ($LASTEXITCODE -ne 0) { throw 'Docker builder cache cleanup failed.' }
+          docker container prune --force --filter "until=168h"
+          if ($LASTEXITCODE -ne 0) { throw 'Stale container cleanup failed.' }
+          docker image prune --all --force --filter "until=168h"
+          if ($LASTEXITCODE -ne 0) { throw 'Stale image cleanup failed.' }
+          docker system df
+          if ($LASTEXITCODE -ne 0) { throw 'Could not report Docker disk usage after cleanup.' }
