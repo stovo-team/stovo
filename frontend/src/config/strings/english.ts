@@ -330,6 +330,7 @@ export const strings = {
     newServer: "New space?",
     createOwnerAccount: "Create owner account",
     changeServerAddress: "Change space address",
+    changeSpaceUrl: "Change Space URL",
     showPassword: "Show password",
     hidePassword: "Hide password",
     verificationCode: "Verification code",

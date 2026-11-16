@@ -1622,6 +1622,28 @@ h2 {
   font-weight: var(--font-weight-extrabold);
 }
 
+.change-space-url {
+  font-size: var(--font-size-small);
+  margin: 0;
+  text-align: center;
+}
+
+.change-space-url a {
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.change-space-url a:hover {
+  text-decoration: underline;
+}
+
+.change-space-url a:focus-visible {
+  border-radius: var(--radius-small);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
 .messenger-workspace {
   background: transparent;
   display: flex;

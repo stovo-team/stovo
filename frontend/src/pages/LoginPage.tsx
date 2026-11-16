@@ -373,9 +373,9 @@ export default function LoginPage() {
           </div>
         )}
         {!androidQR && <OwnerSetupPrompt setupRequired={setupRequired} />}
-        {!androidQR && Capacitor.isNativePlatform() && (
-          <p className="secondary-link">
-            <Link to="/server-setup">{strings.auth.changeServerAddress}</Link>
+        {!androidQR && (
+          <p className="secondary-link change-space-url">
+            <Link to={`/server-setup?server=${encodeURIComponent(currentUrl)}`}>{strings.auth.changeSpaceUrl}</Link>
           </p>
         )}
       </section>

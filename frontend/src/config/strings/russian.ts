@@ -346,6 +346,7 @@ export const strings = {
     newServer: "Новый спейс?",
     createOwnerAccount: "Создать аккаунт владельца",
     changeServerAddress: "Сменить адрес спейса",
+    changeSpaceUrl: "Сменить URL спейса",
     showPassword: "Показать пароль",
     hidePassword: "Скрыть пароль",
     verificationCode: "Код подтверждения",

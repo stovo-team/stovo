@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -73,9 +73,9 @@ describe("LoginPage authentication methods", () => {
     delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
 
-  async function renderPage() {
+  async function renderPage(initialEntry = "/login") {
     await act(async () => {
-      root.render(<MemoryRouter initialEntries={["/login"]}><LoginPage /></MemoryRouter>);
+      root.render(<MemoryRouter initialEntries={[initialEntry]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/server-setup" element={<p data-testid="server-setup-route">Server URL entry</p>} /></Routes></MemoryRouter>);
     });
   }
 
@@ -98,6 +98,32 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ доступа");
     expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
     expect(container.textContent).not.toContain("Sign in with Passkey");
+  });
+
+  it("offers a centered, keyboard-focusable space URL action in both locales", async () => {
+    await renderPage();
+    const changeUrl = container.querySelector<HTMLAnchorElement>(".change-space-url a");
+    expect(changeUrl?.textContent).toBe("Change Space URL");
+    expect(changeUrl?.closest(".change-space-url")?.getAttribute("class")).toContain("change-space-url");
+    changeUrl?.focus();
+    expect(document.activeElement).toBe(changeUrl);
+
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+    expect(container.querySelector(".change-space-url a")?.textContent).toBe("Сменить URL спейса");
+  });
+
+  it("returns to space URL entry with the selected server and without touching authentication", async () => {
+    setApiUrlOverride("https://tenant.example.com");
+    await renderPage();
+
+    const changeUrl = container.querySelector<HTMLAnchorElement>(".change-space-url a");
+    expect(changeUrl?.getAttribute("href")).toBe("/server-setup?server=https%3A%2F%2Ftenant.example.com");
+    await act(async () => changeUrl?.click());
+
+    expect(container.querySelector('[data-testid="server-setup-route"]')).not.toBeNull();
+    expect(mocks.login).not.toHaveBeenCalled();
+    expect(mocks.acceptAuthResponse).not.toHaveBeenCalled();
   });
 
   it("shows QR sign-in without login fields and offers passkey or password", async () => {
