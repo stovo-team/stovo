@@ -102,9 +102,17 @@ describe("LoginPage authentication methods", () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
     await renderPage();
     expect(container.textContent).toContain("Никнейм");
-    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Ключ доступа");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
     expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
     expect(container.textContent).not.toContain("Sign in with Passkey");
+  });
+
+  it("uses compact passkey and QR labels on desktop in Russian too", async () => {
+    Object.defineProperty(navigator, "language", { configurable: true, value: "ru-RU" });
+    await renderPage();
+
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="qr"]')?.textContent?.trim()).toBe("QR-код");
   });
 
   it("offers a centered, keyboard-focusable space URL action in both locales", async () => {
@@ -148,7 +156,8 @@ describe("LoginPage authentication methods", () => {
     expect(container.querySelector('input[autocomplete="username"]')).toBeNull();
     expect(container.querySelector('input[autocomplete="current-password"]')).toBeNull();
     expect(container.querySelector('.qr-login-panel img[alt="QR code to approve this browser sign-in with Stovo"]')).not.toBeNull();
-    expect(container.textContent).toContain("Sign in with Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.textContent?.trim()).toBe("Passkey");
+    expect(container.querySelector('[data-auth-method="passkey"]')?.getAttribute("aria-label")).toBe("Sign in with Passkey");
 
     const passwordAction = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Sign in with Password"));
     await act(async () => passwordAction?.click());

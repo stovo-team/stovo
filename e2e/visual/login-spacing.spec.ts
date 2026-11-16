@@ -48,7 +48,8 @@ test('login error has red background and space above it', async ({ page }, testI
 test('filled sign in button retains its appearance on hover', async ({ page }) => {
   await openLogin(page);
   const button = page.getByRole('button', { name: 'Sign In', exact: true });
-  const before = await button.evaluate(el => getComputedStyle(el).backgroundColor);
+  const gradient = await button.evaluate(el => getComputedStyle(el).backgroundImage);
+  expect(gradient).toContain('linear-gradient');
   await button.hover();
-  await expect.poll(() => button.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(before);
+  await expect.poll(() => button.evaluate(el => getComputedStyle(el).backgroundImage)).toBe(gradient);
 });

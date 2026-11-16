@@ -44,7 +44,7 @@ test("mobile web login uses short auth labels in English", async ({ page }, test
 
 test("mobile QR sign-in automatically opens Stovo without a manual fallback in Russian", async ({ page }, testInfo) => {
   await openMobileLogin(page, "ru");
-  await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Ключ доступа");
+  await expect(page.locator('[data-auth-method="passkey"]')).toHaveText("Passkey");
   await expect(page.locator('[data-auth-method="qr"]')).toHaveText("QR-код");
   await page.locator('[data-auth-method="qr"]').click();
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("visualAppLaunchUrl"))).toBe(approvalUrl);

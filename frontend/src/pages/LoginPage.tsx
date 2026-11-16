@@ -109,7 +109,7 @@ export default function LoginPage() {
   if (loginParams.has("username")) changeSpaceParams.set("username", loginParams.get("username") ?? "");
   const changeSpaceUrl = `/server-setup?${changeSpaceParams.toString()}`;
   const isMobileBrowser = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const passkeyLabel = isMobileBrowser ? strings.auth.signInWithPasskeyShort : strings.auth.signInWithPasskey;
+  const passkeyLabel = strings.auth.signInWithPasskeyShort;
   const postLoginPath = getSafeLoginReturnPath(location.state, `${prefix}/app/chats`);
 
   useEffect(() => {
@@ -334,7 +334,7 @@ export default function LoginPage() {
               <span>{strings.auth.or}</span>
             </div>
             <div className="auth-method-grid">
-              <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+              <button type="button" className="secondary-button" data-auth-method="passkey" aria-label={strings.auth.signInWithPasskey} disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
                 <KeyRound aria-hidden="true" size={18} /> <span>{passkeyLabel}</span>
               </button>
               <button type="button" className="secondary-button" disabled={isSubmitting} onClick={() => { setAuthView("password"); setQrLogin(null); }}>
@@ -350,11 +350,11 @@ export default function LoginPage() {
               <span>{strings.auth.or}</span>
             </div>
             <div className="auth-method-grid">
-              <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+              <button type="button" className="secondary-button" data-auth-method="passkey" aria-label={strings.auth.signInWithPasskey} disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
                 <KeyRound aria-hidden="true" size={18} /> <span>{passkeyLabel}</span>
               </button>
-              <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
-                <QrCode aria-hidden="true" size={18} /> <span>{isMobileBrowser ? strings.auth.signInWithQrShort : strings.auth.signInWithQr}</span>
+              <button type="button" className="secondary-button" data-auth-method="qr" aria-label={strings.auth.signInWithQr} disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
+                <QrCode aria-hidden="true" size={18} /> <span>{strings.auth.signInWithQrShort}</span>
               </button>
             </div>
             {!isSecureContext && <p className="muted-copy">{strings.auth.secureContextRequired}</p>}
@@ -367,7 +367,7 @@ export default function LoginPage() {
             onConfirm={() => void handleConfirmAndroidQR()}
             onCancel={() => setAndroidQR(null)}
           /> : <div className="auth-method-options android-auth-methods">
-            <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+            <button type="button" className="secondary-button" data-auth-method="passkey" aria-label={strings.auth.signInWithPasskey} disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
               <KeyRound aria-hidden="true" size={18} /> <span>{strings.auth.signInWithPasskeyShort}</span>
             </button>
             {!isSecureContext ? <p className="muted-copy">{strings.auth.secureContextRequired}</p> : typeof window.PublicKeyCredential === "undefined" && <p className="muted-copy">{strings.auth.supportedAndroidWebView}</p>}
