@@ -9,6 +9,7 @@ Find the current checkout root with `git rev-parse --show-toplevel`. Read `docs/
 
 Read `docs/agent-workflows/approvals.md` for review and action scopes. Use the canonical Stovo workflow once; reuse a generic installed skill for its specialized work without starting a duplicate overall process. Applicable human and higher-priority host instructions prevail.
 
-Output: Headless mock screenshots, exact source/environment evidence and relevant test results. Use the dedicated runner; report actual results and any blocked comparison approval.
+Output: Headless mock screenshots from the running mock server (`npm --prefix frontend run dev:mock`), exact source/environment evidence and relevant test results. Actively reproduce defects on the mock server before editing and capture genuine before screenshots. Deliver real rendered screenshot embeds (`![Caption](url)`), never raw file paths in code backticks. Use the dedicated runner; report actual results and any blocked comparison approval.
+
 
 Complete only when actual command results or observed artifacts support each claim. Record missing prerequisites as blocked and preserve unrelated work.

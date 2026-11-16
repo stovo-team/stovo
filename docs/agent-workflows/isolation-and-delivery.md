@@ -54,7 +54,8 @@ For refactoring tasks, partition into: preparatory abstractions/helpers -> calle
 
 ## Review readiness
 
-Use [human approvals](approvals.md) for action scopes and freshness. A delivery includes acceptance coverage, exact checks/results, independent QA where required, and before/after evidence for visual behavior. Prepare a self-contained English PR description and a short manual review scenario before requesting publication. Existing publication authorization applies within its stated scope.
+Use [human approvals](approvals.md) for action scopes and freshness. A delivery includes acceptance coverage, exact checks/results, independent QA where required, and real before/after screenshot evidence for visual behavior (reproduced on the local mock server and embedded in the PR description as actual Markdown images or direct viewable links, never plain-text paths in backticks). Prepare a self-contained English PR description and a short manual review scenario before requesting publication. Existing publication authorization applies within its stated scope.
+
 
 Use [dependency and reusable-code assessment](dependency-and-reuse.md) when substantial capability or extraction is involved.
 

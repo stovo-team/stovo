@@ -25,6 +25,22 @@ Successful tests attach screenshots; failures retain screenshots and traces. A s
 
 Capture first, present concrete references for human review, then enable pixel comparisons only for accepted references. Missing or changed references must produce a reviewable diff and a failing comparison, never an automatic acceptance. Preserve blocked/failed outcomes. Follow [testing](testing.md), [approvals](approvals.md), and [PR evidence](pr-review-findings.md).
 
+## Mock server and bug reproduction
+
+When fixing a frontend defect, bug, or layout issue:
+1. **Start the local mock server:** `npm --prefix frontend run dev:mock` (or `npm run dev:mock` from `frontend/`). It serves the real application with synthetic data on `http://127.0.0.1:5174`.
+2. **Mandatory bug reproduction:** Before making any code changes, navigate to the affected route, match the reported viewport dimensions, theme, and locale, and execute the user interactions. Confirm and document that the defect actively reproduces on the running mock server.
+3. **Capture real BEFORE screenshot:** Capture the actual defect state directly from the running mock server and save it under `docs/agent-workflows/evidence/<task>/` (or `e2e/visual/evidence/<task>/`).
+4. **Fix and verify:** After implementing the fix, verify that the defect is gone on `http://127.0.0.1:5174` under identical conditions, and capture the actual **AFTER** screenshot.
+
+## PR visual evidence standards
+
+Visual evidence in pull request descriptions must display real rendered screenshots, not plain text paths:
+- **Embed real images:** Use Markdown image embeds (`![Caption](https://raw.githubusercontent.com/stovo-team/stovo-messenger/<branch>/path/to/image.png)`) or `<img src="..." width="..." />` so that reviewers see the actual visual output in GitHub.
+- **Strictly forbidden:** NEVER put bare text file paths in code backticks (e.g. `` `e2e/visual/...png` ``) or fake text placeholders like `path.png (prior)` in tables or PR bodies.
+- **Distinct before and after images:** Before and after screenshots must be distinct image files showing the actual transition from the reproduced defect to the resolved state under matching viewport, theme, and locale.
+
+
 ## Reference gate and revision comparison
 
 `STOVO_VISUAL_COMPARE=true` enables exact screenshot comparisons only when `e2e/visual/__screenshots__/<platform>/reference-approval.json` cites a real human decision and hashes the references in the same browser/platform/timezone. Missing, changed or mismatched references fail. Capture output remains separate; it never certifies its own reference approval. Review the generated gallery first, then copy only accepted images into the reference directory and record their digests/source. A baseline update is another reviewable change.

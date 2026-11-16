@@ -25,7 +25,7 @@ export function validateEvidence(m,{root=process.cwd(),contract,contractDigest,e
  for(const [id,pair] of pairs){
   need(!!pair.after,`missing after screenshot: ${id}`);
   if(!pair.before){need(Array.isArray(m.afterOnly)&&m.afterOnly.some(x=>x?.scenarioId===id&&nonempty(x.reason)&&nonempty(x.source)),`missing before screenshot/reviewed after-only reason: ${id}`);continue;}
-  if(pair.after)need(JSON.stringify(pair.before.viewport)===JSON.stringify(pair.after.viewport)&&pair.before.theme===pair.after.theme&&pair.before.locale===pair.after.locale,`screenshot metadata mismatch: ${id}`);
+  if(pair.after){need(pair.before.path!==pair.after.path,`before and after screenshots must use distinct files: ${id}`);need(JSON.stringify(pair.before.viewport)===JSON.stringify(pair.after.viewport)&&pair.before.theme===pair.after.theme&&pair.before.locale===pair.after.locale,`screenshot metadata mismatch: ${id}`);}
  }
  return {ok:errors.length===0,errors};
 }
