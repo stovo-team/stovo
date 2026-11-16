@@ -16,6 +16,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
+      - '.github/workflows/docker-runner-maintenance.yml'
       - '.github/workflows/trusted-pr-tests.yml'
       - '.github/workflows/caddy-watchdog.yml'
   workflow_dispatch:
@@ -132,28 +133,29 @@ jobs:
           echo "arch=$RUNNER_ARCH" >> "$GITHUB_OUTPUT"
           echo "node=$(node --version)" >> "$GITHUB_OUTPUT"
           echo "npm=$(npm --version)" >> "$GITHUB_OUTPUT"
-          rm -f frontend-dependencies.tar
+          rm -f frontend-dependencies.tar.gz
       - name: Cache installed frontend dependencies
         id: dependencies-cache
         if: github.ref == 'refs/heads/master'
         continue-on-error: true
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          path: frontend-dependencies.tar
-          key: frontend-deps-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.npm }}-${{ hashFiles('frontend/package.json', 'frontend/package-lock.json', 'frontend/.npmrc', '.npmrc') }}
+          path: frontend-dependencies.tar.gz
+          key: frontend-deps-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.node }}-${{ steps.versions.outputs.npm }}-${{ hashFiles('frontend/package.json', 'frontend/package-lock.json', 'frontend/.npmrc', '.npmrc') }}
       - name: Install and package frontend dependencies
         if: steps.dependencies-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           (cd frontend && npm ci)
-          tar -cf frontend-dependencies.tar -C frontend node_modules
+          tar -czf frontend-dependencies.tar.gz -C frontend node_modules
       - name: Upload frontend dependencies for this run
         id: upload
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: frontend-dependencies
-          path: frontend-dependencies.tar
+          path: frontend-dependencies.tar.gz
+          compression-level: 0
           if-no-files-found: error
           retention-days: 1
           overwrite: true
@@ -224,11 +226,14 @@ jobs:
           set -euo pipefail
           restored=false
           artifact_dir="$RUNNER_TEMP/frontend-dependencies-$GITHUB_RUN_ID"
+          if [ "$RUNNER_OS" = Windows ]; then
+            artifact_dir="$(cygpath -u "$artifact_dir")"
+          fi
           if [ "$PREP_RESULT" = success ] && [ "$ARTIFACT_READY" = true ] &&
              [ "$PREP_OS" = "$RUNNER_OS" ] && [ "$PREP_ARCH" = "$RUNNER_ARCH" ] &&
              [ "$PREP_NODE" = "$(node --version)" ] && [ "$PREP_NPM" = "$(npm --version)" ]; then
-            if [ -f "$artifact_dir/frontend-dependencies.tar" ] &&
-               tar -xf "$artifact_dir/frontend-dependencies.tar" -C frontend; then
+            if [ -f "$artifact_dir/frontend-dependencies.tar.gz" ] &&
+               tar -xzf "$artifact_dir/frontend-dependencies.tar.gz" -C frontend; then
               restored=true
             fi
           fi

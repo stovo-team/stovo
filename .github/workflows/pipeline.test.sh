@@ -212,13 +212,13 @@ done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' "$workflow")
   shards=$(sed -n '/^  frontend_test_shards:/,/^  frontend-ci:/p' "$workflow")
-  for required in '(cd frontend && npm ci)' 'tar -cf frontend-dependencies.tar' 'name: frontend-dependencies' 'id: upload' 'overwrite: true'; do
+  for required in '(cd frontend && npm ci)' 'tar -czf frontend-dependencies.tar.gz' 'name: frontend-dependencies' 'id: upload' 'overwrite: true' 'compression-level: 0'; do
     if ! grep -Fq -- "$required" <<< "$preparation"; then
       echo "Frontend preparation in $workflow must build and share the installed tree ($required)." >&2
       exit 1
     fi
   done
-  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '2'" 'PREP_OS' 'PREP_ARCH' 'PREP_NODE' 'PREP_NPM' 'uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4' 'name: frontend-dependencies' 'timeout-minutes: 5' 'tar -xf' '(cd frontend && npm ci)' 'run: npm test -- --shard='; do
+  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '2'" 'PREP_OS' 'PREP_ARCH' 'PREP_NODE' 'PREP_NPM' 'uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4' 'name: frontend-dependencies' 'timeout-minutes: 5' 'cygpath -u' 'tar -xzf' '(cd frontend && npm ci)' 'run: npm test -- --shard='; do
     if ! grep -Fq -- "$required" <<< "$shards"; then
       echo "Frontend shards in $workflow must restore compatible dependencies or install them and run with two workers ($required)." >&2
       exit 1
@@ -230,8 +230,8 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
   fi
 done
 master_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/pipeline.yml)
-master_key=$(grep -F 'key: frontend-deps-v1-' <<< "$master_preparation")
-pr_key=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml | grep -F 'key: frontend-deps-v1-')
+master_key=$(grep -F 'key: frontend-deps-v2-' <<< "$master_preparation")
+pr_key=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml | grep -F 'key: frontend-deps-v2-')
 if [[ -z "$master_key" || "$master_key" != "$pr_key" ]] || ! grep -Fq "if: github.ref == 'refs/heads/master'" <<< "$master_preparation"; then
   echo "Only master may populate the exact frontend cache key shared with PRs." >&2
   exit 1
@@ -262,6 +262,17 @@ grep -Fq 'RUN --mount=type=cache,target=/root/.npm \' frontend/Dockerfile || {
 }
 if [ "$(grep -Fc 'bash deploy/scripts/ensure-docker-buildx.sh' .github/workflows/pipeline.yml)" -lt 2 ]; then
   echo "Both production deployment jobs must ensure Docker Buildx before building images." >&2
+  exit 1
+fi
+maintenance=$(cat .github/workflows/docker-runner-maintenance.yml)
+for required in "cron: '17 4 * * 0'" 'runs-on: [self-hosted, Windows, tests]' 'docker builder prune --all --force --filter "until=168h"' 'docker container prune --force --filter "until=168h"' 'docker image prune --all --force --filter "until=168h"'; do
+  if ! grep -Fq "$required" <<< "$maintenance"; then
+    echo "Scheduled Docker runner maintenance must reclaim only stale unused resources ($required)." >&2
+    exit 1
+  fi
+done
+if grep -Eq 'docker (volume|system|network) prune' <<< "$maintenance"; then
+  echo "Scheduled Docker runner maintenance must not remove volumes, all system data, or networks." >&2
   exit 1
 fi
 buildx_deploy_contract=$(sed -n '/- name: Build and publish multi-arch container images/,/^      - name:/p' .github/workflows/pipeline.yml | sed '$d')
