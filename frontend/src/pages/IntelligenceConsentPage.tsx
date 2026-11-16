@@ -90,6 +90,8 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
   const [offer, setOffer] = useState<IntelligenceConsentOffer | null>(null);
   const chatIDPrefixes = useMemo(() => duplicateChatIDPrefixes(offer?.chats ?? []), [offer]);
   const [chatID, setChatID] = useState("");
+  const [scopeKind, setScopeKind] = useState<"chat" | "space">("chat");
+  const [confirmSpaceAccess, setConfirmSpaceAccess] = useState(false);
   const [grants, setGrants] = useState<IntelligenceGrants>({ read: false, process: false, external_transfer: false, export: false, codex: false, reply: false });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,14 +141,16 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
 
   async function handleSourceAuthorize(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!offer || !chatID || !offer.chats.some((chat) => chat.id === chatID)) return;
+    if (!offer || (scopeKind === "chat" && (!chatID || !offer.chats.some((chat) => chat.id === chatID))) || (scopeKind === "space" && (!offer.space_scope_available || !confirmSpaceAccess))) return;
     setError(null);
     setIsSubmitting(true);
     try {
       await createBrowserSession({
         flow: "source_v2",
         ...consent.parameters,
-        chat_id: chatID,
+        scope_kind: scopeKind,
+        chat_id: scopeKind === "chat" ? chatID : "",
+        confirm_space_access: scopeKind === "space" && confirmSpaceAccess,
         grants,
       });
       formRef.current?.submit();
@@ -196,13 +200,28 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
       <form className="intelligence-consent-form" ref={formRef} method="post" action={intelligenceSourceAuthorizeEndpoint()} onSubmit={(event) => void handleSourceAuthorize(event)}>
         <fieldset className="intelligence-consent-fieldset intelligence-consent-chat-list" disabled={isSubmitting}>
           <legend>{strings.intelligence.chooseOneChat}</legend>
-          {offer.chats.map((chat) => <label className="intelligence-consent-choice" key={chat.id}>
+          <label className="intelligence-consent-choice">
+            <input type="radio" checked={scopeKind === "chat"} onChange={() => { setScopeKind("chat"); setConfirmSpaceAccess(false); }} />
+            <span>{strings.intelligence.singleChatScope}</span>
+          </label>
+          {scopeKind === "chat" && offer.chats.map((chat) => <label className="intelligence-consent-choice" key={chat.id}>
             <input type="radio" name="chat_id" value={chat.id} checked={chatID === chat.id} onChange={() => setChatID(chat.id)} />
             <span className="intelligence-consent-choice-copy">
               <span>{chat.title || chat.id}</span>
               {chatIDPrefixes.has(chat.id) && <small>{strings.intelligence.chatIdLabel} · {chatIDPrefixes.get(chat.id)}</small>}
             </span>
           </label>)}
+          {offer.space_scope_available && <label className="intelligence-consent-choice">
+            <input type="radio" checked={scopeKind === "space"} onChange={() => { setScopeKind("space"); setChatID(""); }} />
+            <span>{strings.intelligence.allSpaceChats}</span>
+          </label>}
+          {scopeKind === "space" && <div className="intelligence-consent-space-warning">
+            <p>{strings.intelligence.allSpaceChatsWarning}</p>
+            <label className="intelligence-consent-choice">
+              <input type="checkbox" checked={confirmSpaceAccess} onChange={(event) => setConfirmSpaceAccess(event.target.checked)} />
+              <span>{strings.intelligence.confirmAllSpaceChats}</span>
+            </label>
+          </div>}
         </fieldset>
         <fieldset className="intelligence-consent-fieldset intelligence-consent-grants" disabled={isSubmitting}>
           <legend>{strings.intelligence.chooseGrants}</legend>
@@ -211,7 +230,9 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
             <span>{strings.intelligence.grants[grant]}</span>
           </label>)}
         </fieldset>
-        {isSubmitting && <input type="hidden" name="chat_id" value={chatID} />}
+        {isSubmitting && <input type="hidden" name="chat_id" value={scopeKind === "chat" ? chatID : ""} />}
+        <input type="hidden" name="scope_kind" value={scopeKind} />
+        <input type="hidden" name="confirm_space_access" value={scopeKind === "space" && confirmSpaceAccess ? "true" : "false"} />
         {parsed.parameters.response_type && <input type="hidden" name="response_type" value={parsed.parameters.response_type} />}
         <input type="hidden" name="client_id" value={parsed.parameters.client_id} />
         <input type="hidden" name="redirect_uri" value={parsed.parameters.redirect_uri} />
@@ -219,7 +240,7 @@ export function IntelligenceConsentPage({ strings }: IntelligenceConsentPageProp
         <input type="hidden" name="code_challenge" value={parsed.parameters.code_challenge} />
         <input type="hidden" name="code_challenge_method" value={parsed.parameters.code_challenge_method} />
         {grantKeys.map((grant) => <input key={grant} type="hidden" name={grant} value={grants[grant] ? "true" : "false"} />)}
-        <PopupButton variant="primary" type="submit" loading={isSubmitting} disabled={!chatID}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.approveConsent}</PopupButton>
+        <PopupButton variant="primary" type="submit" loading={isSubmitting} disabled={scopeKind === "chat" ? !chatID : !confirmSpaceAccess}>{isSubmitting ? strings.intelligence.continuing : strings.intelligence.approveConsent}</PopupButton>
       </form>
     </>}
   </section></main>;

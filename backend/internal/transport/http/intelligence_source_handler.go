@@ -38,6 +38,7 @@ type IntelligenceSourceIdentity struct {
 	FamilyID            string `json:"-"`
 	PrincipalUserID     string `json:"-"`
 	ChatID              string `json:"-"`
+	ScopeKind           string `json:"-"`
 	InstallationEnabled bool   `json:"-"`
 	ConnectionEnabled   bool   `json:"-"`
 }

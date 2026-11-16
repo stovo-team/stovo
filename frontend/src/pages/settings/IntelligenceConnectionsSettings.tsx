@@ -58,7 +58,7 @@ export function IntelligenceConnectionsSettings({ strings, authRequest }: Intell
       const revoked = connection.revoked_at !== null;
       return <article className="settings-row intelligence-connection" key={connection.id}>
         <div className="intelligence-connection__details">
-          <strong>{connection.chat_title || connection.chat_id}</strong>
+          <strong>{connection.scope_kind === "space" ? strings.intelligence.allSpaceConnection : connection.chat_title || connection.chat_id}</strong>
           <small>{strings.intelligence.connectionCreated}: {new Date(connection.created_at).toLocaleDateString()}</small>
           <small>{strings.intelligence.connectionExpires}: {new Date(connection.expires_at).toLocaleDateString()}</small>
           {revoked && <small>{strings.intelligence.connectionRevoked}</small>}

@@ -45,17 +45,20 @@ type IntelligenceSourceV2ConsentChat struct {
 }
 
 type IntelligenceSourceV2ConsentOffer struct {
-	ClientID    string                            `json:"client_id"`
-	RedirectURI string                            `json:"redirect_uri"`
-	State       string                            `json:"state"`
-	Chats       []IntelligenceSourceV2ConsentChat `json:"chats"`
-	Grants      map[string]bool                   `json:"grants"`
+	ClientID            string                            `json:"client_id"`
+	RedirectURI         string                            `json:"redirect_uri"`
+	State               string                            `json:"state"`
+	Chats               []IntelligenceSourceV2ConsentChat `json:"chats"`
+	SpaceScopeAvailable bool                              `json:"space_scope_available"`
+	Grants              map[string]bool                   `json:"grants"`
 }
 
 type IntelligenceSourceV2ConsentRequest struct {
 	IntelligenceSourceV2ConsentParameters
-	ChatID string          `json:"chat_id"`
-	Grants map[string]bool `json:"grants"`
+	ScopeKind          string          `json:"scope_kind,omitempty"`
+	ChatID             string          `json:"chat_id,omitempty"`
+	ConfirmSpaceAccess bool            `json:"confirm_space_access,omitempty"`
+	Grants             map[string]bool `json:"grants"`
 }
 
 type IntelligenceSourceV2ConsentRedirect struct {
@@ -73,7 +76,9 @@ type IntelligenceBrowserSessionRequest struct {
 	Nonce               string          `json:"nonce,omitempty"`
 	CodeChallenge       string          `json:"code_challenge"`
 	CodeChallengeMethod string          `json:"code_challenge_method"`
+	ScopeKind           string          `json:"scope_kind,omitempty"`
 	ChatID              string          `json:"chat_id,omitempty"`
+	ConfirmSpaceAccess  bool            `json:"confirm_space_access,omitempty"`
 	Grants              map[string]bool `json:"grants,omitempty"`
 }
 
@@ -84,7 +89,8 @@ type IntelligenceBrowserSessionTicket struct {
 
 type IntelligenceSourceV2ConnectionSummary struct {
 	ID        string          `json:"id"`
-	ChatID    string          `json:"chat_id"`
+	ScopeKind string          `json:"scope_kind"`
+	ChatID    string          `json:"chat_id,omitempty"`
 	ChatTitle string          `json:"chat_title"`
 	Grants    map[string]bool `json:"grants"`
 	CreatedAt time.Time       `json:"created_at"`
@@ -94,7 +100,9 @@ type IntelligenceSourceV2ConnectionSummary struct {
 
 type IntelligenceSourceV2CredentialResponse struct {
 	ConnectionID     string          `json:"connection_id"`
-	ChatID           string          `json:"chat_id"`
+	ScopeKind        string          `json:"scope_kind"`
+	ScopeID          string          `json:"scope_id"`
+	ChatID           string          `json:"chat_id,omitempty"`
 	SourceCredential string          `json:"source_credential"`
 	TokenType        string          `json:"token_type"`
 	ExpiresIn        int64           `json:"expires_in"`
@@ -202,7 +210,7 @@ func (h *IntelligenceSourceV2ConsentHandler) authorize(w stdhttp.ResponseWriter,
 		writeSourceV2ConsentOperationError(w, ErrIntelligenceSourceV2ConsentInvalidRequest)
 		return
 	}
-	if !validSourceV2ConsentParameters(request.IntelligenceSourceV2ConsentParameters) || strings.TrimSpace(request.ChatID) == "" || len(request.ChatID) > 256 || !validSourceV2ConsentGrants(request.Grants) || h.config.Operations.Authorize == nil {
+	if !validSourceV2ConsentParameters(request.IntelligenceSourceV2ConsentParameters) || !validSourceV2ConsentScope(request.ScopeKind, request.ChatID, request.ConfirmSpaceAccess) || len(request.ChatID) > 256 || !validSourceV2ConsentGrants(request.Grants) || h.config.Operations.Authorize == nil {
 		writeSourceV2ConsentError(w, stdhttp.StatusBadRequest, "invalid_request")
 		return
 	}
@@ -277,7 +285,7 @@ func (h *IntelligenceSourceV2ConsentHandler) authorizeBrowser(w stdhttp.Response
 		return
 	}
 	r.Body = stdhttp.MaxBytesReader(w, r.Body, intelligenceSourceV2ConsentMaxBodyBytes)
-	if err := r.ParseForm(); err != nil || len(r.PostForm) != 13 {
+	if err := r.ParseForm(); err != nil || (len(r.PostForm) != 13 && len(r.PostForm) != 15) {
 		writeSourceV2ConsentError(w, stdhttp.StatusBadRequest, "invalid_request")
 		return
 	}
@@ -288,9 +296,15 @@ func (h *IntelligenceSourceV2ConsentHandler) authorizeBrowser(w stdhttp.Response
 	challenge, e := singleFormValue(r.PostForm, "code_challenge")
 	method, f := singleFormValue(r.PostForm, "code_challenge_method")
 	chatID, g := singleFormValue(r.PostForm, "chat_id")
+	scopeKind, hPresent := singleFormValue(r.PostForm, "scope_kind")
+	confirmedValue, i := singleFormValue(r.PostForm, "confirm_space_access")
+	if len(r.PostForm) == 13 {
+		scopeKind, hPresent, confirmedValue, i = "chat", true, "false", true
+	}
 	parameters := IntelligenceSourceV2ConsentParameters{ResponseType: responseType, ClientID: clientID, RedirectURI: redirectURI, State: state, CodeChallenge: challenge, CodeChallengeMethod: method}
-	request := IntelligenceSourceV2ConsentRequest{IntelligenceSourceV2ConsentParameters: parameters, ChatID: chatID, Grants: make(map[string]bool, len(intelligenceSourceV2GrantFormFields))}
-	valid := a && b && c && d && e && f && g && responseType == "code"
+	confirmed := confirmedValue == "true"
+	request := IntelligenceSourceV2ConsentRequest{IntelligenceSourceV2ConsentParameters: parameters, ScopeKind: scopeKind, ChatID: chatID, ConfirmSpaceAccess: confirmed, Grants: make(map[string]bool, len(intelligenceSourceV2GrantFormFields))}
+	valid := a && b && c && d && e && f && g && hPresent && i && (confirmedValue == "true" || confirmedValue == "false") && responseType == "code"
 	for grant := range intelligenceSourceV2GrantFormFields {
 		value, found := singleFormValue(r.PostForm, grant)
 		if !found || (value != "true" && value != "false") {
@@ -299,7 +313,7 @@ func (h *IntelligenceSourceV2ConsentHandler) authorizeBrowser(w stdhttp.Response
 		}
 		request.Grants[grant] = value == "true"
 	}
-	if !valid || !validSourceV2ConsentParameters(parameters) || strings.TrimSpace(chatID) == "" || len(chatID) > 256 {
+	if !valid || !validSourceV2ConsentParameters(parameters) || !validSourceV2ConsentScope(scopeKind, chatID, confirmed) || len(chatID) > 256 {
 		writeSourceV2ConsentError(w, stdhttp.StatusBadRequest, "invalid_request")
 		return
 	}

@@ -17,6 +17,8 @@ var ErrUnavailable = errors.New("intelligence source unavailable")
 type RotatedCredential struct {
 	InstallationID  string
 	PrincipalUserID string
+	ScopeKind       string
+	ScopeID         string
 	ChatID          string
 	Grants          map[string]bool
 }
@@ -28,21 +30,29 @@ func (s *Store) RotateCredential(ctx context.Context, connectionID string, oldDi
 	}
 	defer func() { _ = tx.Rollback() }()
 	var rotated RotatedCredential
+	var chatID sql.NullString
+	var familyID string
 	err = tx.QueryRowContext(ctx, `
-		SELECT i.id,c.principal_user_id,
-		       (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)
+		SELECT i.id,c.principal_user_id,c.scope_kind,i.family_id,
+		       (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id ORDER BY scope.chat_id LIMIT 1)
 		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.enabled
 		JOIN public.users u ON u.id=c.principal_user_id AND u.is_active=1 AND u.family_id=i.family_id
 		WHERE c.id=$1 AND c.credential_hash=$2 AND c.enabled AND c.revoked_at IS NULL
 		  AND c.credential_expires_at>$3
-		  AND (SELECT count(*) FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)=1
+		  AND ((c.scope_kind='chat' AND (SELECT count(*) FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)=1
 		  AND EXISTS (SELECT 1 FROM public.intelligence_source_v2_connection_chats scope
 		    JOIN public.chats ch ON ch.id=scope.chat_id AND ch.family_id=i.family_id
-		    JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id WHERE scope.connection_id=c.id)
-		FOR UPDATE OF c`, connectionID, oldDigest, now).Scan(&rotated.InstallationID, &rotated.PrincipalUserID, &rotated.ChatID)
+		    JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id WHERE scope.connection_id=c.id))
+		  OR (c.scope_kind='space' AND c.scope_family_id=i.family_id AND (SELECT count(*) FROM public.intelligence_source_v2_connection_chats s WHERE s.connection_id=c.id)>0))
+		FOR UPDATE OF c`, connectionID, oldDigest, now).Scan(&rotated.InstallationID, &rotated.PrincipalUserID, &rotated.ScopeKind, &familyID, &chatID)
 	if err != nil {
 		return RotatedCredential{}, err
+	}
+	rotated.ChatID = chatID.String
+	rotated.ScopeID = rotated.ChatID
+	if rotated.ScopeKind == "space" {
+		rotated.ScopeID = familyID
 	}
 	update, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connections SET credential_hash=$1,credential_expires_at=$2 WHERE id=$3 AND credential_hash=$4 AND enabled AND revoked_at IS NULL AND credential_expires_at>$5`, newDigest, expiresAt, connectionID, oldDigest, now)
 	if err != nil {
@@ -72,17 +82,20 @@ func (s *Store) Revoke(ctx context.Context, connectionID, principalUserID, grant
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	var installationID, chatID string
+	var installationID, scopeKind string
 	var connectionEnabled bool
 	var revokedAt sql.NullTime
 	err = tx.QueryRowContext(ctx, `
-		SELECT c.installation_id,scope.chat_id,c.enabled,c.revoked_at
+		SELECT c.installation_id,c.scope_kind,c.enabled,c.revoked_at
 		FROM public.intelligence_source_v2_connections c
-		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id
-		WHERE c.id=$1 AND c.principal_user_id=$2 FOR UPDATE OF c`, connectionID, principalUserID).Scan(&installationID, &chatID, &connectionEnabled, &revokedAt)
+		WHERE c.id=$1 AND c.principal_user_id=$2 FOR UPDATE OF c`, connectionID, principalUserID).Scan(&installationID, &scopeKind, &connectionEnabled, &revokedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
+	if err != nil {
+		return err
+	}
+	chatIDs, err := connectionScopeChats(ctx, tx, connectionID)
 	if err != nil {
 		return err
 	}
@@ -95,8 +108,10 @@ func (s *Store) Revoke(ctx context.Context, connectionID, principalUserID, grant
 			return err
 		}
 		if wasGranted {
-			if err := emitScopeTombstone(ctx, tx, connectionID, chatID, "grant_revoked:"+grantType, grantType == "read"); err != nil {
-				return err
+			for _, chatID := range chatIDs {
+				if err := emitScopeTombstone(ctx, tx, connectionID, chatID, "grant_revoked:"+grantType, grantType == "read"); err != nil {
+					return err
+				}
 			}
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connection_grants SET granted=false,revoked_at=COALESCE(revoked_at,$1),updated_at=$1 WHERE connection_id=$2 AND grant_type=$3`, now, connectionID, grantType)
@@ -113,8 +128,10 @@ func (s *Store) Revoke(ctx context.Context, connectionID, principalUserID, grant
 		}
 	} else {
 		if connectionEnabled && !revokedAt.Valid {
-			if err := emitScopeTombstone(ctx, tx, connectionID, chatID, "connection_revoked", true); err != nil {
-				return err
+			for _, chatID := range chatIDs {
+				if err := emitScopeTombstone(ctx, tx, connectionID, chatID, "connection_revoked", true); err != nil {
+					return err
+				}
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE public.intelligence_source_v2_connections SET enabled=false,revoked_at=COALESCE(revoked_at,$1) WHERE id=$2 AND principal_user_id=$3`, now, connectionID, principalUserID); err != nil {
@@ -128,6 +145,23 @@ func (s *Store) Revoke(ctx context.Context, connectionID, principalUserID, grant
 		}
 	}
 	return tx.Commit()
+}
+
+func connectionScopeChats(ctx context.Context, tx *sql.Tx, connectionID string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT chat_id FROM public.intelligence_source_v2_connection_chats WHERE connection_id=$1 ORDER BY chat_id`, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	values := make([]string, 0)
+	for rows.Next() {
+		var value string
+		if err := rows.Scan(&value); err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, rows.Err()
 }
 
 func readGrants(ctx context.Context, tx *sql.Tx, connectionID string) (map[string]bool, error) {

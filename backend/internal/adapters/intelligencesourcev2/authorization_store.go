@@ -25,6 +25,8 @@ func (s *Store) AuthorizeResources(ctx context.Context, identity httptransport.I
 		err := tx.QueryRowContext(ctx, `
 			SELECT f.ai_notes_enabled,
 			       (u.is_active=1 AND cm.user_id IS NOT NULL AND ch.family_id=i.family_id
+		        AND ((c.scope_kind='chat' AND EXISTS (SELECT 1 FROM public.intelligence_source_v2_connection_chats s WHERE s.connection_id=c.id AND s.chat_id=ch.id AND s.chat_id=$5))
+		             OR (c.scope_kind='space' AND c.scope_family_id=ch.family_id))
 		        AND c.enabled AND c.revoked_at IS NULL AND c.credential_expires_at>$6
 		        AND ch.encryption_protocol IN ('legacy_plaintext','server_at_rest')
 		        AND m.deleted_at IS NULL AND m.type='text' AND m.encryption_protocol IN ('legacy_plaintext','server_at_rest')
@@ -45,7 +47,6 @@ func (s *Store) AuthorizeResources(ctx context.Context, identity httptransport.I
 		JOIN public.intelligence_source_v2_connections c ON c.id=$2 AND c.principal_user_id=$3
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.family_id=f.id AND i.id=$7 AND i.tenant_id=$8 AND i.enabled
 		JOIN public.users u ON u.id=c.principal_user_id AND u.family_id=i.family_id
-		JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id AND scope.chat_id=ch.id AND scope.chat_id=$5
 		LEFT JOIN public.chat_members cm ON cm.chat_id=ch.id AND cm.user_id=u.id
 		LEFT JOIN public.intelligence_source_v2_connection_grants read_grant ON read_grant.connection_id=c.id AND read_grant.grant_type='read'
 		LEFT JOIN public.intelligence_source_v2_connection_grants operation_grant ON operation_grant.connection_id=c.id AND operation_grant.grant_type=$4
@@ -76,7 +77,12 @@ func (s *Store) AuthorizeResources(ctx context.Context, identity httptransport.I
 		decisions = append(decisions, httptransport.IntelligenceSourceV2AuthorizationDecision{
 			SchemaVersion: "v2", TenantID: identity.TenantID, ConnectionID: identity.ConnectionID,
 			PrincipalID: identity.PrincipalUserID, ResourceID: resourceID, Operation: operation,
-			Allowed: allowed, Scope: httptransport.IntelligenceSourceV2DecisionScope{Kind: "chat", ResourceID: identity.ChatID},
+			Allowed: allowed, Scope: httptransport.IntelligenceSourceV2DecisionScope{Kind: identity.ScopeKind, ResourceID: func() string {
+				if identity.ScopeKind == "space" {
+					return identity.FamilyID
+				}
+				return identity.ChatID
+			}()},
 			PolicyRevision: policyRevision, DecidedAt: decidedAt, ValidUntil: validUntil,
 		})
 	}

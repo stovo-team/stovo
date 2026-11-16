@@ -13,7 +13,15 @@ import (
 
 func validIntelligenceSourceV2Decision(decision IntelligenceSourceV2AuthorizationDecision, identity IntelligenceSourceIdentity, resourceID, operation string, now time.Time) bool {
 	ttl := decision.ValidUntil.Sub(decision.DecidedAt)
-	return decision.SchemaVersion == "v2" && decision.TenantID == identity.TenantID && decision.ConnectionID == identity.ConnectionID && decision.PrincipalID == identity.PrincipalUserID && decision.ResourceID == resourceID && decision.Operation == operation && decision.Scope.Kind == "chat" && decision.Scope.ResourceID == identity.ChatID && decision.PolicyRevision != "" && !decision.DecidedAt.IsZero() && !decision.ValidUntil.IsZero() && ttl > 0 && ttl <= intelligenceSourceV2MaxDecisionAge && !decision.DecidedAt.After(now) && now.Before(decision.ValidUntil) && now.Sub(decision.DecidedAt) <= intelligenceSourceV2MaxDecisionAge
+	scopeKind := identity.ScopeKind
+	if scopeKind == "" {
+		scopeKind = "chat"
+	}
+	scopeID := identity.ChatID
+	if scopeKind == "space" {
+		scopeID = identity.FamilyID
+	}
+	return decision.SchemaVersion == "v2" && decision.TenantID == identity.TenantID && decision.ConnectionID == identity.ConnectionID && decision.PrincipalID == identity.PrincipalUserID && decision.ResourceID == resourceID && decision.Operation == operation && decision.Scope.Kind == scopeKind && decision.Scope.ResourceID == scopeID && decision.PolicyRevision != "" && !decision.DecidedAt.IsZero() && !decision.ValidUntil.IsZero() && ttl > 0 && ttl <= intelligenceSourceV2MaxDecisionAge && !decision.DecidedAt.After(now) && now.Before(decision.ValidUntil) && now.Sub(decision.DecidedAt) <= intelligenceSourceV2MaxDecisionAge
 }
 
 func (h *IntelligenceSourceV2Handler) requireCurrentRead(ctx context.Context, identity IntelligenceSourceIdentity, resourceID string) error {
@@ -38,7 +46,11 @@ func validIntelligenceSourceV2Snapshot(snapshot IntelligenceSourceV2ResourceSnap
 }
 
 func validIntelligenceSourceV2Event(event IntelligenceSourceV2Event, identity IntelligenceSourceIdentity) bool {
-	if event.SchemaVersion != "v2" || event.EventID == "" || event.TenantID != identity.TenantID || event.ConnectionID != identity.ConnectionID || event.PrincipalID != identity.PrincipalUserID || event.ResourceID == "" || event.RevisionID == "" || event.OrderToken == "" || event.SourceSequence <= 0 || event.ContainerID != identity.ChatID || event.ObservedAt.IsZero() || !validSourceEventKind(event.Kind) {
+	scopeKind := identity.ScopeKind
+	if scopeKind == "" {
+		scopeKind = "chat"
+	}
+	if event.SchemaVersion != "v2" || event.EventID == "" || event.TenantID != identity.TenantID || event.ConnectionID != identity.ConnectionID || event.PrincipalID != identity.PrincipalUserID || event.ResourceID == "" || event.RevisionID == "" || event.OrderToken == "" || event.SourceSequence <= 0 || event.ContainerID == "" || (scopeKind != "space" && event.ContainerID != identity.ChatID) || event.ObservedAt.IsZero() || !validSourceEventKind(event.Kind) {
 		return false
 	}
 	if event.Origin == "" {
@@ -120,7 +132,10 @@ func (h *IntelligenceSourceV2Handler) serve(w stdhttp.ResponseWriter, r *stdhttp
 		writeIntelligenceSourceV2Error(buffered, status, result)
 		return
 	}
-	if !identity.InstallationEnabled || !identity.ConnectionEnabled || identity.InstallationID == "" || identity.TenantID == "" || identity.ConnectionID == "" || identity.FamilyID == "" || identity.PrincipalUserID == "" || identity.ChatID == "" {
+	if identity.ScopeKind == "" {
+		identity.ScopeKind = "chat"
+	}
+	if !identity.InstallationEnabled || !identity.ConnectionEnabled || identity.InstallationID == "" || identity.TenantID == "" || identity.ConnectionID == "" || identity.FamilyID == "" || identity.PrincipalUserID == "" || (identity.ScopeKind != "space" && (identity.ScopeKind != "chat" || identity.ChatID == "")) {
 		status, result = stdhttp.StatusForbidden, "disabled_or_denied"
 		writeIntelligenceSourceV2Error(buffered, status, "disabled_or_denied")
 		return

@@ -20,7 +20,7 @@ func validIntelligenceBrowserSessionRequest(request IntelligenceBrowserSessionRe
 	case "oidc":
 		return request.Nonce != "" && validSourceV2ConsentString(request.Nonce, 512) && request.ChatID == "" && len(request.Grants) == 0
 	case "source_v2":
-		if request.Nonce != "" || strings.TrimSpace(request.ChatID) == "" || len(request.ChatID) > 256 || len(request.Grants) != len(intelligenceSourceV2GrantFormFields) {
+		if request.Nonce != "" || !validSourceV2ConsentScope(request.ScopeKind, request.ChatID, request.ConfirmSpaceAccess) || len(request.ChatID) > 256 || len(request.Grants) != len(intelligenceSourceV2GrantFormFields) {
 			return false
 		}
 		for grant := range request.Grants {
