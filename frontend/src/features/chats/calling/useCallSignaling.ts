@@ -194,6 +194,6 @@ export function useCallSignaling(dependencies: CallSignalingDependencies) {
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser?.id]
+    [currentUser?.id]
   );
 }
