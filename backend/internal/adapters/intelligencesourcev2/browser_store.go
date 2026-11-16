@@ -46,8 +46,13 @@ func (s *Store) CreateBrowserSession(ctx context.Context, session BrowserSession
 		return err
 	}
 	var chatValue, nonceValue any
-	scopeKind := session.ScopeKind
-	if scopeKind == "" && session.Flow == "source_v2" { scopeKind = "chat" }
+	var scopeKind any
+	if session.Flow == "source_v2" {
+		scopeKind = session.ScopeKind
+		if scopeKind == "" {
+			scopeKind = "chat"
+		}
+	}
 	if session.Flow == "oidc" {
 		nonceValue = session.Nonce
 	} else if scopeKind == "space" {
@@ -173,7 +178,9 @@ func (s *Store) AuthorizeSourceV2BrowserSession(ctx context.Context, input Sourc
 	}
 	chatID = chatValue.String
 	inputScopeKind := input.ScopeKind
-	if inputScopeKind == "" { inputScopeKind = "chat" }
+	if inputScopeKind == "" {
+		inputScopeKind = "chat"
+	}
 	grants := map[string]bool{"read": readGranted, "process": processGranted, "external_transfer": externalTransferGranted, "export": exportGranted, "codex": codexGranted, "reply": replyGranted}
 	if record.ClientID != input.ClientID || record.RedirectURI != input.RedirectURI || record.State != input.State || challenge != input.CodeChallenge || method != input.CodeChallengeMethod || chatID != input.ChatID || scopeKind != inputScopeKind || confirmSpace != input.ConfirmSpaceAccess || len(input.Grants) != 6 || input.Grants["read"] != readGranted || input.Grants["process"] != processGranted || input.Grants["external_transfer"] != externalTransferGranted || input.Grants["export"] != exportGranted || input.Grants["codex"] != codexGranted || input.Grants["reply"] != replyGranted {
 		return OIDCBrowserAuthorization{}, ErrInvalidRequest
