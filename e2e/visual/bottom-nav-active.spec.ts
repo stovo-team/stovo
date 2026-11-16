@@ -53,11 +53,10 @@ for (const platform of ['web', 'native'] as const) {
       expect(chatsState.found).toBe(true);
       expect(chatsState.beforeContent).not.toBe('none');
       expect(chatsState.beforeDisplay).not.toBe('none');
-      expect(chatsState.beforeWidth).toBeGreaterThanOrEqual(40);
-      expect(chatsState.beforeHeight).toBeGreaterThanOrEqual(40);
-      expect(
-        chatsState.beforeBgImage !== 'none' || chatsState.beforeBgColor !== 'rgba(0, 0, 0, 0)'
-      ).toBe(true);
+      expect(chatsState.beforeWidth).toBe(56);
+      expect(chatsState.beforeHeight).toBe(56);
+      expect(chatsState.beforeBgImage).toBe('none');
+      expect(chatsState.beforeBgColor).not.toBe('rgba(0, 0, 0, 0)');
 
       // Navigate to Files tab and verify active state persists after route transition
       await page.locator('.app-nav a[href$="/app/files"]').click();
@@ -69,11 +68,10 @@ for (const platform of ['web', 'native'] as const) {
       expect(filesState.href).toContain('/app/files');
       expect(filesState.beforeContent).not.toBe('none');
       expect(filesState.beforeDisplay).not.toBe('none');
-      expect(filesState.beforeWidth).toBeGreaterThanOrEqual(40);
-      expect(filesState.beforeHeight).toBeGreaterThanOrEqual(40);
-      expect(
-        filesState.beforeBgImage !== 'none' || filesState.beforeBgColor !== 'rgba(0, 0, 0, 0)'
-      ).toBe(true);
+      expect(filesState.beforeWidth).toBe(56);
+      expect(filesState.beforeHeight).toBe(56);
+      expect(filesState.beforeBgImage).toBe('none');
+      expect(filesState.beforeBgColor).not.toBe('rgba(0, 0, 0, 0)');
 
       await screenshot(page, info, scenario);
     });
