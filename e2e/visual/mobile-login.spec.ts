@@ -53,8 +53,10 @@ test("mobile Russian login uses the screen without a card surface", async ({ pag
       padding: style.padding,
     };
   });
+  const separatorBackground = await page.locator(".auth-divider span").evaluate((element) => getComputedStyle(element).backgroundColor);
 
   expect(surface).toEqual({ background: "rgba(0, 0, 0, 0)", borderWidth: "0px", boxShadow: "none", padding: "0px" });
+  expect(separatorBackground).toBe("rgba(0, 0, 0, 0)");
   await capture(page, testInfo, "mobile-login-fullscreen-ru", "ru", "Full-screen login form without a card surface; Android browser; dark theme; 390x844");
 });
 

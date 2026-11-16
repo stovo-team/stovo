@@ -53,3 +53,12 @@ test('filled sign in button retains its appearance on hover', async ({ page }) =
   await button.hover();
   await expect.poll(() => button.evaluate(el => getComputedStyle(el).backgroundImage)).toBe(gradient);
 });
+
+test('desktop login panel and separator label have transparent backgrounds', async ({ page }) => {
+  await openLogin(page);
+  const panelBackground = await page.locator('.auth-panel').evaluate(el => getComputedStyle(el).backgroundColor);
+  const separatorBackground = await page.locator('.auth-divider span').evaluate(el => getComputedStyle(el).backgroundColor);
+
+  expect(panelBackground).toBe('rgba(0, 0, 0, 0)');
+  expect(separatorBackground).toBe('rgba(0, 0, 0, 0)');
+});

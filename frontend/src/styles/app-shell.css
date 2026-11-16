@@ -260,6 +260,10 @@ h2 {
   padding: 34px;
 }
 
+.login-page-shell .auth-panel {
+  background: transparent;
+}
+
 .app-lock-gate {
   align-items: center;
   background: var(--color-palette-7b2817bf9b80);
@@ -1457,7 +1461,7 @@ h2 {
 }
 
 .auth-divider span {
-  background: var(--color-palette-63d0e2756ab6);
+  background: transparent;
   padding: 0 10px;
   position: relative;
 }
