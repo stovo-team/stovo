@@ -47,6 +47,10 @@ function markdownFiles(directory, found = []) {
   return found;
 }
 
+function markdownWithoutInlineCode(text) {
+  return text.replace(/(`+)(?!`)[\s\S]*?\1(?!`)/g, '');
+}
+
 function sourceFiles(directory, found = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
@@ -207,7 +211,8 @@ test('all Markdown local links and GitHub heading anchors resolve', () => {
   for (const file of markdownFiles(root)) {
     const source = readFileSync(file, 'utf8').replace(/^\s{0,3}(```|~~~)[\s\S]*?^\s{0,3}\1[^\n]*$/gm, '');
     const headings = markdownHeadings(source);
-    for (const [, rawTarget] of source.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
+    const linkSource = markdownWithoutInlineCode(source);
+    for (const [, rawTarget] of linkSource.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
       const target = rawTarget.trim().replace(/^<|>$/g, '').split(/[ \t]+['"]/)[0];
       if (/^(?:https?:|mailto:|tel:|data:|javascript:)/i.test(target)) continue;
       const [rawPath, rawFragment] = target.split('#', 2);
