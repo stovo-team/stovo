@@ -14,7 +14,7 @@ Source access stays disabled unless both process gates are enabled:
 - `INTELLIGENCE_SOURCE_ENABLED` defaults to `false`.
 - `INTELLIGENCE_OIDC_ENABLED` defaults to `false` and is a separate gate.
 
-Keep both false in development, staging, and production until the Intelligence owner has approved the v2 contract and the rollout owner has separately authorized an installation. Enabling these flags alone does not grant a user or client access. The client ID, exact HTTPS callback allow-list, active installation, one-chat connection, and each individual grant are checked separately. Grants (`read`, `process`, `external_transfer`, and `export`) start denied; do not treat chat membership as consent.
+Keep both false in development, staging, and production until the Intelligence owner has approved the v2 contract and the rollout owner has separately authorized an installation. Enabling these flags alone does not grant a user or client access. The client ID, exact HTTPS callback allow-list, active installation, selected scope, and each individual grant are checked separately. A connection can remain chat-scoped or explicitly cover all eligible chats in one Space that the linking user can currently access, including direct/private chats. Space-wide consent requires an owner or `manage_integrations` administrator and separate explicit confirmation. Grants (`read`, `process`, `external_transfer`, and `export`) start denied; do not treat chat membership as consent.
 
 ## Preparing Messenger credentials
 
@@ -50,7 +50,7 @@ When a future rollout is approved, provision only operator-controlled configurat
 
 OIDC ID tokens, one-use consent codes, and source bearer credentials are separate credentials. Store only the source credential verifier in Messenger; deliver the source credential once to the registered confidential client. Never pass Messenger credentials to Codex or use an ID token as a source credential.
 
-The confidential `/api/v2/intelligence/token` exchange response also includes the selected `chat_id`. Messenger reads it from the single-use consent record in the same transaction that creates the source connection; it is never accepted from the callback or token request. Intelligence persists this scope with the credential when the link completes, before backfill starts. Credential rotation returns the already-pinned chat scope.
+The confidential `/api/v2/intelligence/token` exchange response includes `scope_kind` and stable `scope_id`; chat scope also includes `chat_id`, while Space scope uses the Messenger family ID as `scope_id` and omits `chat_id`. Messenger reads scope from the single-use consent record in the same transaction that creates the source connection; callback and token request parameters cannot choose it. Intelligence persists this scope with the credential before backfill. Credential rotation returns the pinned scope. For Space connections Messenger internally tracks the linked user’s current chat membership, including direct chats, while each resource read also checks current membership and visibility. A chat added to that user’s accessible set becomes eligible; a chat removed from it stops being eligible.
 
 ## Signing-key rotation
 

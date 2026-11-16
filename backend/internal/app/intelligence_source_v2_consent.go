@@ -18,6 +18,23 @@ const (
 
 var intelligenceSourceV2GrantTypes = []string{"read", "process", "external_transfer", "export", "codex", "reply"}
 
+func validAppSourceScope(kind, chatID string, confirmed bool) bool {
+	if kind == "" {
+		kind = "chat"
+	}
+	if kind == "chat" {
+		return chatID != "" && !confirmed
+	}
+	return kind == "space" && chatID == "" && confirmed
+}
+
+func defaultSourceScope(kind string) string {
+	if kind == "" {
+		return "chat"
+	}
+	return kind
+}
+
 func (s *Server) intelligenceSourceV2ConsentHandler() http.Handler {
 	return httptransport.NewIntelligenceSourceV2ConsentHandler(httptransport.IntelligenceSourceV2ConsentHandlerConfig{
 		BrowserAppURL: s.cfg.AppURL,
@@ -82,6 +99,14 @@ func (s *Server) intelligenceSourceV2ConsentOffer(ctx context.Context, request *
 		Chats:  make([]httptransport.IntelligenceSourceV2ConsentChat, 0),
 		Grants: map[string]bool{"read": false, "process": false, "external_transfer": false, "export": false, "codex": false, "reply": false},
 	}
+	var canManageIntegrations bool
+	if err := s.sqlDB.QueryRowContext(ctx, `SELECT u.role='owner' OR EXISTS (
+		SELECT 1 FROM public.server_roles r CROSS JOIN LATERAL jsonb_array_elements_text(r.permissions::jsonb) p
+		WHERE r.id=u.role_id AND r.family_id=u.family_id AND p='manage_integrations')
+		FROM public.users u WHERE u.id=$1 AND u.family_id=$2 AND u.is_active=1`, principal.UserID, principal.FamilyID).Scan(&canManageIntegrations); err != nil {
+		return httptransport.IntelligenceSourceV2ConsentOffer{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
+	}
+	offer.SpaceScopeAvailable = canManageIntegrations
 	for rows.Next() {
 		var chat httptransport.IntelligenceSourceV2ConsentChat
 		if err := rows.Scan(&chat.ID, &chat.Title, &chat.Type); err != nil {
@@ -115,6 +140,13 @@ func (s *Server) authorizeIntelligenceSourceV2Consent(ctx context.Context, reque
 	if err := s.requireActiveIntelligenceSourceV2Principal(ctx, principal); err != nil {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, err
 	}
+	scopeKind := input.ScopeKind
+	if scopeKind == "" {
+		scopeKind = "chat"
+	}
+	if scopeKind == "space" && (!input.ConfirmSpaceAccess || input.ChatID != "") {
+		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
+	}
 	code, err := randomToken()
 	if err != nil {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
@@ -127,7 +159,7 @@ func (s *Server) authorizeIntelligenceSourceV2Consent(ctx context.Context, reque
 	}
 	err = s.intelligenceSourceV2Persistence().AuthorizeConsent(ctx, adapterintelligencesourcev2.ConsentAuthorization{
 		CodeHash: digest[:], ClientID: parameters.ClientID, RedirectURI: parameters.RedirectURI,
-		UserID: principal.UserID, FamilyID: principal.FamilyID, ChatID: input.ChatID,
+		UserID: principal.UserID, FamilyID: principal.FamilyID, ChatID: input.ChatID, ScopeKind: scopeKind, ConfirmSpaceAccess: input.ConfirmSpaceAccess,
 		CodeChallenge: parameters.CodeChallenge, Grants: grants, Now: now,
 		ExpiresAt: now.Add(intelligenceSourceV2ConsentCodeTTL),
 	})
@@ -178,7 +210,7 @@ func (s *Server) exchangeIntelligenceSourceV2Consent(ctx context.Context, reques
 		return httptransport.IntelligenceSourceV2CredentialResponse{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	return httptransport.IntelligenceSourceV2CredentialResponse{
-		ConnectionID: issued.ConnectionID, ChatID: issued.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
+		ConnectionID: issued.ConnectionID, ScopeKind: issued.ScopeKind, ScopeID: issued.ScopeID, ChatID: issued.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
 		ExpiresIn: int64(intelligenceSourceV2CredentialTTL.Seconds()), Grants: issued.Grants,
 	}, nil
 }

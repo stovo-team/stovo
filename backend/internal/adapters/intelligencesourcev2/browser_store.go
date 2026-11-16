@@ -13,6 +13,8 @@ type BrowserSession struct {
 	ClientID, RedirectURI, State              string
 	CodeChallenge, CodeChallengeMethod, Nonce string
 	ChatID                                    string
+	ScopeKind                                 string
+	ConfirmSpaceAccess                        bool
 	Grants                                    map[string]bool
 	CreatedAt, ExpiresAt                      time.Time
 }
@@ -27,10 +29,11 @@ type OIDCBrowserSessionExpectation struct {
 type OIDCBrowserAuthorization struct{ UserID, ClientID, RedirectURI, State string }
 
 type SourceV2BrowserAuthorization struct {
-	TicketHash, CodeHash                                                     []byte
-	ClientID, RedirectURI, State, CodeChallenge, CodeChallengeMethod, ChatID string
-	Grants                                                                   map[string]bool
-	Now, CodeExpiresAt                                                       time.Time
+	TicketHash, CodeHash                                                                []byte
+	ClientID, RedirectURI, State, CodeChallenge, CodeChallengeMethod, ChatID, ScopeKind string
+	ConfirmSpaceAccess                                                                  bool
+	Grants                                                                              map[string]bool
+	Now, CodeExpiresAt                                                                  time.Time
 }
 
 func (s *Store) CreateBrowserSession(ctx context.Context, session BrowserSession) error {
@@ -43,8 +46,29 @@ func (s *Store) CreateBrowserSession(ctx context.Context, session BrowserSession
 		return err
 	}
 	var chatValue, nonceValue any
+	var scopeKind any
+	if session.Flow == "source_v2" {
+		scopeKind = session.ScopeKind
+		if scopeKind == "" {
+			scopeKind = "chat"
+		}
+	}
 	if session.Flow == "oidc" {
 		nonceValue = session.Nonce
+	} else if scopeKind == "space" {
+		if !session.ConfirmSpaceAccess {
+			return ErrForbidden
+		}
+		var admin bool
+		if err := tx.QueryRowContext(ctx, `SELECT u.role='owner' OR EXISTS (
+			SELECT 1 FROM public.server_roles r CROSS JOIN LATERAL jsonb_array_elements_text(r.permissions::jsonb) p
+			WHERE r.id=u.role_id AND r.family_id=u.family_id AND p='manage_integrations')
+			FROM public.users u WHERE u.id=$1 AND u.family_id=$2 AND u.is_active=1 FOR SHARE OF u`, session.UserID, session.FamilyID).Scan(&admin); err != nil {
+			return err
+		}
+		if !admin {
+			return ErrForbidden
+		}
 	} else {
 		if err := oneEnabledInstallationForFamily(ctx, tx, session.FamilyID); err != nil {
 			return err
@@ -67,11 +91,11 @@ func (s *Store) CreateBrowserSession(ctx context.Context, session BrowserSession
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO public.intelligence_browser_authorization_sessions
 			(ticket_hash,flow,user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,nonce,chat_id,
-			 read_granted,process_granted,external_transfer_granted,export_granted,codex_granted,reply_granted,expires_at,created_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+			 read_granted,process_granted,external_transfer_granted,export_granted,codex_granted,reply_granted,expires_at,created_at,scope_kind,confirm_space_access)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
 		session.TicketHash, session.Flow, session.UserID, session.FamilyID, session.ClientID, session.RedirectURI, session.State,
 		session.CodeChallenge, session.CodeChallengeMethod, nonceValue, chatValue,
-		session.Grants["read"], session.Grants["process"], session.Grants["external_transfer"], session.Grants["export"], session.Grants["codex"], session.Grants["reply"], session.ExpiresAt, session.CreatedAt)
+		session.Grants["read"], session.Grants["process"], session.Grants["external_transfer"], session.Grants["export"], session.Grants["codex"], session.Grants["reply"], session.ExpiresAt, session.CreatedAt, scopeKind, session.ConfirmSpaceAccess)
 	if err != nil {
 		return err
 	}
@@ -135,14 +159,16 @@ func (s *Store) AuthorizeSourceV2BrowserSession(ctx context.Context, input Sourc
 	}
 	defer func() { _ = tx.Rollback() }()
 	var record OIDCBrowserAuthorization
-	var familyID, challenge, method, chatID string
+	var familyID, challenge, method, chatID, scopeKind string
+	var chatValue sql.NullString
+	var confirmSpace bool
 	var readGranted, processGranted, externalTransferGranted, exportGranted, codexGranted, replyGranted bool
 	err = tx.QueryRowContext(ctx, `
-		SELECT user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,chat_id,
+		SELECT user_id,family_id,client_id,redirect_uri,state,code_challenge,code_challenge_method,chat_id,scope_kind,confirm_space_access,
 		       read_granted,process_granted,external_transfer_granted,export_granted,codex_granted,reply_granted
 		FROM public.intelligence_browser_authorization_sessions
 		WHERE ticket_hash=$1 AND flow='source_v2' AND expires_at>$2 FOR UPDATE`, input.TicketHash, input.Now).Scan(
-		&record.UserID, &familyID, &record.ClientID, &record.RedirectURI, &record.State, &challenge, &method, &chatID,
+		&record.UserID, &familyID, &record.ClientID, &record.RedirectURI, &record.State, &challenge, &method, &chatValue, &scopeKind, &confirmSpace,
 		&readGranted, &processGranted, &externalTransferGranted, &exportGranted, &codexGranted, &replyGranted)
 	if errors.Is(err, sql.ErrNoRows) {
 		return OIDCBrowserAuthorization{}, ErrNotFound
@@ -150,8 +176,13 @@ func (s *Store) AuthorizeSourceV2BrowserSession(ctx context.Context, input Sourc
 	if err != nil {
 		return OIDCBrowserAuthorization{}, err
 	}
+	chatID = chatValue.String
+	inputScopeKind := input.ScopeKind
+	if inputScopeKind == "" {
+		inputScopeKind = "chat"
+	}
 	grants := map[string]bool{"read": readGranted, "process": processGranted, "external_transfer": externalTransferGranted, "export": exportGranted, "codex": codexGranted, "reply": replyGranted}
-	if record.ClientID != input.ClientID || record.RedirectURI != input.RedirectURI || record.State != input.State || challenge != input.CodeChallenge || method != input.CodeChallengeMethod || chatID != input.ChatID || len(input.Grants) != 6 || input.Grants["read"] != readGranted || input.Grants["process"] != processGranted || input.Grants["external_transfer"] != externalTransferGranted || input.Grants["export"] != exportGranted || input.Grants["codex"] != codexGranted || input.Grants["reply"] != replyGranted {
+	if record.ClientID != input.ClientID || record.RedirectURI != input.RedirectURI || record.State != input.State || challenge != input.CodeChallenge || method != input.CodeChallengeMethod || chatID != input.ChatID || scopeKind != inputScopeKind || confirmSpace != input.ConfirmSpaceAccess || len(input.Grants) != 6 || input.Grants["read"] != readGranted || input.Grants["process"] != processGranted || input.Grants["external_transfer"] != externalTransferGranted || input.Grants["export"] != exportGranted || input.Grants["codex"] != codexGranted || input.Grants["reply"] != replyGranted {
 		return OIDCBrowserAuthorization{}, ErrInvalidRequest
 	}
 	installationID, err := oneEnabledInstallationID(ctx, tx, familyID)
@@ -159,12 +190,19 @@ func (s *Store) AuthorizeSourceV2BrowserSession(ctx context.Context, input Sourc
 		return OIDCBrowserAuthorization{}, err
 	}
 	var accessible bool
-	err = tx.QueryRowContext(ctx, `
+	if scopeKind == "space" {
+		err = tx.QueryRowContext(ctx, `SELECT true FROM public.users u JOIN public.families f ON f.id=u.family_id AND f.id=$2
+			WHERE u.id=$1 AND u.is_active=1 AND (u.role='owner' OR EXISTS (
+			SELECT 1 FROM public.server_roles r CROSS JOIN LATERAL jsonb_array_elements_text(r.permissions::jsonb) p
+			WHERE r.id=u.role_id AND r.family_id=u.family_id AND p='manage_integrations')) FOR SHARE OF u,f`, record.UserID, familyID).Scan(&accessible)
+	} else {
+		err = tx.QueryRowContext(ctx, `
 		SELECT true FROM public.users u
 		JOIN public.families f ON f.id=u.family_id AND f.id=$2
 		JOIN public.chat_members cm ON cm.user_id=u.id AND cm.chat_id=$3
 		JOIN public.chats ch ON ch.id=cm.chat_id AND ch.family_id=f.id
 		WHERE u.id=$1 AND u.is_active=1 FOR SHARE OF u,f,cm,ch`, record.UserID, familyID, chatID).Scan(&accessible)
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return OIDCBrowserAuthorization{}, ErrForbidden
 	}
@@ -177,9 +215,9 @@ func (s *Store) AuthorizeSourceV2BrowserSession(ctx context.Context, input Sourc
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO public.intelligence_source_v2_consent_codes
 			(code_hash,client_id,redirect_uri,installation_id,user_id,family_id,chat_id,code_challenge,
-			 read_granted,process_granted,external_transfer_granted,export_granted,codex_granted,reply_granted,expires_at,created_at)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`, input.CodeHash, record.ClientID, record.RedirectURI,
-		installationID, record.UserID, familyID, chatID, challenge, grants["read"], grants["process"], grants["external_transfer"], grants["export"], grants["codex"], grants["reply"], input.CodeExpiresAt, input.Now); err != nil {
+			 read_granted,process_granted,external_transfer_granted,export_granted,codex_granted,reply_granted,expires_at,created_at,scope_kind,confirm_space_access)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`, input.CodeHash, record.ClientID, record.RedirectURI,
+		installationID, record.UserID, familyID, chatValue, challenge, grants["read"], grants["process"], grants["external_transfer"], grants["export"], grants["codex"], grants["reply"], input.CodeExpiresAt, input.Now, scopeKind, confirmSpace); err != nil {
 		return OIDCBrowserAuthorization{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM public.intelligence_browser_authorization_sessions WHERE ticket_hash=$1`, input.TicketHash); err != nil {

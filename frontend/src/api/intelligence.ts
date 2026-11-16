@@ -20,12 +20,14 @@ export interface IntelligenceConsentOffer {
   redirect_uri: string;
   state: string;
   chats: Array<{ id: string; title: string; type: string }>;
+  space_scope_available: boolean;
   grants: IntelligenceGrants;
 }
 
 export interface IntelligenceConnection {
   id: string;
-  chat_id: string;
+  scope_kind: "chat" | "space";
+  chat_id?: string;
   chat_title: string;
   grants: IntelligenceGrants;
   created_at: string;

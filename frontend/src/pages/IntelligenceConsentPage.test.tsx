@@ -204,7 +204,9 @@ describe("IntelligenceConsentPage", () => {
         client_id: "intelligence-client",
         redirect_uri: "https://intelligence.example/callback?tenant=one",
         state: "opaque-state",
+        scope_kind: "chat",
         chat_id: "chat-b",
+        confirm_space_access: false,
         grants: { read: true, process: false, external_transfer: true, export: false, codex: false, reply: false },
       }),
     }));
@@ -214,6 +216,24 @@ describe("IntelligenceConsentPage", () => {
     expect(form.method.toLowerCase()).toBe("post");
     expect(form.action).toContain("/api/v2/intelligence/authorize");
     expect(form.querySelector<HTMLInputElement>('input[name="chat_id"]:checked')?.value).toBe("chat-b");
+  });
+
+  it("requires explicit confirmation before connecting all accessible chats in the Space", async () => {
+    setOfferResponse({ ...offer, space_scope_available: true });
+    const container = await renderConsent();
+    const spaceScope = Array.from(container.querySelectorAll("label")).find((label) => label.textContent?.includes(englishStrings.intelligence.allSpaceChats));
+    expect(spaceScope).toBeDefined();
+    await act(async () => { spaceScope!.querySelector("input")!.click(); });
+    const approve = container.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(approve.disabled).toBe(true);
+    const confirm = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).find((input) => input.closest("label")?.textContent?.includes(englishStrings.intelligence.confirmAllSpaceChats));
+    expect(confirm).toBeDefined();
+    await act(async () => { confirm!.click(); });
+    expect(approve.disabled).toBe(false);
+    await act(async () => { approve.click(); });
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/v2/intelligence/authorize-session", expect.objectContaining({
+      body: expect.objectContaining({ scope_kind: "space", chat_id: "", confirm_space_access: true }),
+    }));
   });
 
   it("renders a safe error when callback parameters or the server offer are invalid", async () => {

@@ -40,7 +40,7 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 			ResponseType: input.ResponseType, ClientID: input.ClientID, RedirectURI: input.RedirectURI,
 			State: input.State, CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
 		}
-		if input.ResponseType != "code" || !s.validIntelligenceSourceV2Client(input.ClientID, input.RedirectURI) || !httptransportConsentParametersValid(parameters) || input.Nonce != "" || input.ChatID == "" || len(input.ChatID) > 256 || len(input.Grants) != len(intelligenceSourceV2GrantTypes) {
+		if input.ResponseType != "code" || !s.validIntelligenceSourceV2Client(input.ClientID, input.RedirectURI) || !httptransportConsentParametersValid(parameters) || input.Nonce != "" || !validAppSourceScope(input.ScopeKind, input.ChatID, input.ConfirmSpaceAccess) || len(input.ChatID) > 256 || len(input.Grants) != len(intelligenceSourceV2GrantTypes) {
 			return httptransport.IntelligenceBrowserSessionTicket{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
 		}
 		for grant := range input.Grants {
@@ -61,11 +61,15 @@ func (s *Server) createIntelligenceBrowserSession(ctx context.Context, request *
 	}
 	digest := sha256.Sum256([]byte(ticket))
 	now := s.intelligenceOIDCNow()
+	scopeKind := ""
+	if input.Flow == "source_v2" {
+		scopeKind = defaultSourceScope(input.ScopeKind)
+	}
 	err = s.intelligenceSourceV2Persistence().CreateBrowserSession(ctx, adapterintelligencesourcev2.BrowserSession{
 		TicketHash: digest[:], Flow: input.Flow, UserID: principal.UserID, FamilyID: principal.FamilyID,
 		ClientID: input.ClientID, RedirectURI: input.RedirectURI, State: input.State,
 		CodeChallenge: input.CodeChallenge, CodeChallengeMethod: input.CodeChallengeMethod,
-		Nonce: input.Nonce, ChatID: input.ChatID, Grants: input.Grants,
+		Nonce: input.Nonce, ChatID: input.ChatID, ScopeKind: scopeKind, ConfirmSpaceAccess: input.ConfirmSpaceAccess, Grants: input.Grants,
 		CreatedAt: now, ExpiresAt: now.Add(intelligenceBrowserTicketTTL),
 	})
 	if errors.Is(err, adapterintelligencesourcev2.ErrForbidden) {
@@ -124,7 +128,7 @@ func (s *Server) authorizeIntelligenceSourceV2BrowserSession(ctx context.Context
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, err
 	}
 	parameters := input.IntelligenceSourceV2ConsentParameters
-	if ticket == "" || parameters.ResponseType != "code" || !s.validIntelligenceSourceV2Client(parameters.ClientID, parameters.RedirectURI) || !httptransportConsentParametersValid(parameters) || input.ChatID == "" || len(input.Grants) != len(intelligenceSourceV2GrantTypes) {
+	if ticket == "" || parameters.ResponseType != "code" || !s.validIntelligenceSourceV2Client(parameters.ClientID, parameters.RedirectURI) || !httptransportConsentParametersValid(parameters) || !validAppSourceScope(input.ScopeKind, input.ChatID, input.ConfirmSpaceAccess) || len(input.ChatID) > 256 || len(input.Grants) != len(intelligenceSourceV2GrantTypes) {
 		return httptransport.IntelligenceSourceV2ConsentRedirect{}, httptransport.ErrIntelligenceSourceV2ConsentInvalidRequest
 	}
 	for grant := range input.Grants {
@@ -142,7 +146,7 @@ func (s *Server) authorizeIntelligenceSourceV2BrowserSession(ctx context.Context
 	stored, err := s.intelligenceSourceV2Persistence().AuthorizeSourceV2BrowserSession(ctx, adapterintelligencesourcev2.SourceV2BrowserAuthorization{
 		TicketHash: ticketDigest[:], CodeHash: codeDigest[:], ClientID: parameters.ClientID,
 		RedirectURI: parameters.RedirectURI, State: parameters.State, CodeChallenge: parameters.CodeChallenge,
-		CodeChallengeMethod: parameters.CodeChallengeMethod, ChatID: input.ChatID, Grants: input.Grants,
+		CodeChallengeMethod: parameters.CodeChallengeMethod, ChatID: input.ChatID, ScopeKind: input.ScopeKind, ConfirmSpaceAccess: input.ConfirmSpaceAccess, Grants: input.Grants,
 		Now: now, CodeExpiresAt: now.Add(intelligenceSourceV2ConsentCodeTTL),
 	})
 	if errors.Is(err, adapterintelligencesourcev2.ErrNotFound) {
@@ -168,7 +172,7 @@ func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *htt
 		return nil, err
 	}
 	rows, err := s.sqlDB.QueryContext(ctx, `
-		SELECT c.id,COALESCE(scope.chat_id,''),COALESCE(ch.title,''),c.created_at,c.credential_expires_at,c.revoked_at,
+		SELECT c.id,c.scope_kind,COALESCE(scope.chat_id,''),CASE WHEN c.scope_kind='space' THEN '' ELSE COALESCE(ch.title,'') END,c.created_at,c.credential_expires_at,c.revoked_at,
 		       COALESCE(bool_or(g.grant_type='read' AND g.granted),false),
 		       COALESCE(bool_or(g.grant_type='process' AND g.granted),false),
 		       COALESCE(bool_or(g.grant_type='external_transfer' AND g.granted),false),
@@ -177,11 +181,11 @@ func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *htt
 		       COALESCE(bool_or(g.grant_type='reply' AND g.granted),false)
 		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id AND i.family_id=$2
-		LEFT JOIN public.intelligence_source_v2_connection_chats scope ON scope.connection_id=c.id
+		LEFT JOIN LATERAL (SELECT s.chat_id FROM public.intelligence_source_v2_connection_chats s WHERE s.connection_id=c.id AND c.scope_kind='chat' ORDER BY s.chat_id LIMIT 1) scope ON true
 		LEFT JOIN public.chats ch ON ch.id=scope.chat_id
 		LEFT JOIN public.intelligence_source_v2_connection_grants g ON g.connection_id=c.id
 		WHERE c.principal_user_id=$1
-		GROUP BY c.id,scope.chat_id,ch.title
+		GROUP BY c.id,c.scope_kind,scope.chat_id,ch.title
 		ORDER BY c.created_at DESC,c.id`, principal.UserID, principal.FamilyID)
 	if err != nil {
 		return nil, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
@@ -192,7 +196,7 @@ func (s *Server) listIntelligenceSourceV2Connections(ctx context.Context, _ *htt
 		var item httptransport.IntelligenceSourceV2ConnectionSummary
 		var revokedAt sql.NullTime
 		var read, process, externalTransfer, export, codex, reply bool
-		if err := rows.Scan(&item.ID, &item.ChatID, &item.ChatTitle, &item.CreatedAt, &item.ExpiresAt, &revokedAt, &read, &process, &externalTransfer, &export, &codex, &reply); err != nil {
+		if err := rows.Scan(&item.ID, &item.ScopeKind, &item.ChatID, &item.ChatTitle, &item.CreatedAt, &item.ExpiresAt, &revokedAt, &read, &process, &externalTransfer, &export, &codex, &reply); err != nil {
 			return nil, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 		}
 		if revokedAt.Valid {

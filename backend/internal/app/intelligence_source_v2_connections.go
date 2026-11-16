@@ -45,7 +45,7 @@ func (s *Server) rotateIntelligenceSourceV2Credential(ctx context.Context, reque
 		return httptransport.IntelligenceSourceV2CredentialResponse{}, httptransport.ErrIntelligenceSourceV2ConsentUnavailable
 	}
 	return httptransport.IntelligenceSourceV2CredentialResponse{
-		ConnectionID: connectionID, ChatID: rotated.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
+		ConnectionID: connectionID, ScopeKind: rotated.ScopeKind, ScopeID: rotated.ScopeID, ChatID: rotated.ChatID, SourceCredential: rawCredential, TokenType: "Bearer",
 		ExpiresIn: int64(intelligenceSourceV2CredentialTTL.Seconds()), Grants: rotated.Grants,
 	}, nil
 }
@@ -84,8 +84,8 @@ func (s *Server) authenticateIntelligenceSourceV2Credential(ctx context.Context,
 	var identity httptransport.IntelligenceSourceIdentity
 	var scopedChatCount int
 	err := s.sqlDB.QueryRowContext(ctx, `
-		SELECT i.id,i.tenant_id,c.id,i.family_id,c.principal_user_id,i.enabled,c.enabled,
-	       (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id LIMIT 1),
+		SELECT i.id,i.tenant_id,c.id,i.family_id,c.principal_user_id,i.enabled,c.enabled,c.scope_kind,
+		       COALESCE(CASE WHEN c.scope_kind='chat' THEN (SELECT scope.chat_id FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id LIMIT 1) END,''),
 		       (SELECT count(*) FROM public.intelligence_source_v2_connection_chats scope WHERE scope.connection_id=c.id)
 		FROM public.intelligence_source_v2_connections c
 		JOIN public.intelligence_installations i ON i.id=c.installation_id
@@ -94,14 +94,14 @@ func (s *Server) authenticateIntelligenceSourceV2Credential(ctx context.Context,
 		WHERE c.credential_hash=$1 AND c.revoked_at IS NULL
 		  AND c.credential_expires_at>now() AND u.is_active=1`, digest[:]).Scan(
 		&identity.InstallationID, &identity.TenantID, &identity.ConnectionID, &identity.FamilyID,
-		&identity.PrincipalUserID, &identity.InstallationEnabled, &identity.ConnectionEnabled, &identity.ChatID, &scopedChatCount)
+		&identity.PrincipalUserID, &identity.InstallationEnabled, &identity.ConnectionEnabled, &identity.ScopeKind, &identity.ChatID, &scopedChatCount)
 	if errors.Is(err, sql.ErrNoRows) {
 		return httptransport.IntelligenceSourceIdentity{}, httptransport.ErrIntelligenceSourceUnauthorized
 	}
 	if err != nil {
 		return httptransport.IntelligenceSourceIdentity{}, httptransport.ErrIntelligenceSourceUnavailable
 	}
-	if scopedChatCount != 1 {
+	if (identity.ScopeKind == "chat" && scopedChatCount != 1) || (identity.ScopeKind == "space" && scopedChatCount == 0) {
 		return httptransport.IntelligenceSourceIdentity{}, httptransport.ErrIntelligenceSourceForbidden
 	}
 	return identity, nil

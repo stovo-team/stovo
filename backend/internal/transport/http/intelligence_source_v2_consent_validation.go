@@ -12,6 +12,22 @@ import (
 	"strings"
 )
 
+func validSourceV2ConsentScope(kind, chatID string, confirmed bool) bool {
+	kind = strings.TrimSpace(kind)
+	chatID = strings.TrimSpace(chatID)
+	if kind == "" { // Keep existing chat-scoped clients compatible.
+		kind = "chat"
+	}
+	switch kind {
+	case "chat":
+		return chatID != "" && !confirmed
+	case "space":
+		return chatID == "" && confirmed
+	default:
+		return false
+	}
+}
+
 func parseSourceV2ConsentParameters(values url.Values) (IntelligenceSourceV2ConsentParameters, bool) {
 	if len(values) != 5 && len(values) != 6 {
 		return IntelligenceSourceV2ConsentParameters{}, false
