@@ -1,7 +1,7 @@
 import {test,expect} from './fixtures';
 import {prepareVisualScenario,screenshot,type Scenario} from './scenarios';
 
-for (const width of [1165, 1199, 1200]) {
+for (const width of [1070, 1084, 1165, 1199, 1200]) {
   test(`tablet chat layout switches cleanly at ${width}px`, async ({ page }, info) => {
     const s: Scenario = { id: `V-chat-breakpoint-${width}`, viewport: { width, height: 900 }, theme: 'dark', locale: 'en' };
     await prepareVisualScenario(page, s, '/app/chats/chat-planning-team');
@@ -12,13 +12,21 @@ for (const width of [1165, 1199, 1200]) {
       const navPosition = getComputedStyle(nav).position;
       const sidebarBounds = sidebar.getBoundingClientRect();
       const detailBounds = detail.getBoundingClientRect();
-      return { navPosition, sidebarWidth: sidebarBounds.width, sidebarRight: sidebarBounds.right, detailLeft: detailBounds.left, detailWidth: detailBounds.width };
+      const header = document.querySelector<HTMLElement>('.chat-sidebar-header')!.getBoundingClientRect();
+      const search = document.querySelector<HTMLElement>('.chat-list-search')!.getBoundingClientRect();
+      return { navPosition, sidebarWidth: sidebarBounds.width, sidebarLeft: sidebarBounds.left, sidebarRight: sidebarBounds.right, detailLeft: detailBounds.left, detailWidth: detailBounds.width, headerTop: header.top, headerLeft: header.left, headerRight: header.right, searchTop: search.top, searchLeft: search.left, searchRight: search.right };
     });
 
     await screenshot(page, info, s);
     if (width < 1200) {
       expect(geometry.navPosition).toBe('sticky');
       expect(geometry.sidebarWidth).toBeLessThanOrEqual(280);
+      expect(geometry.headerTop).toBeLessThanOrEqual(20);
+      expect(geometry.headerLeft).toBeCloseTo(geometry.sidebarLeft, 0);
+      expect(geometry.headerRight).toBeCloseTo(geometry.sidebarRight, 0);
+      expect(geometry.searchLeft).toBeCloseTo(geometry.headerLeft, 0);
+      expect(geometry.searchRight).toBeCloseTo(geometry.headerRight, 0);
+      expect(geometry.searchTop).toBeLessThanOrEqual(84);
     } else {
       expect(geometry.navPosition).toBe('fixed');
     }
@@ -40,6 +48,7 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
     };
     return {
       sidebar: bounds('.chat-sidebar'),
+      header: bounds('.chat-sidebar-header'),
       compose: bounds('.compose-fab'),
       search: bounds('.chat-list-search'),
       chat: bounds('.chat-list-item'),
@@ -54,6 +63,8 @@ test('V-17 tablet chat list stays compact and keeps the new-chat button in its p
   expect(geometry.composePosition).toBe('absolute');
   expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.search.right).toBeLessThanOrEqual(geometry.sidebar.right);
+  expect(geometry.search.left).toBeCloseTo(geometry.header.left, 0);
+  expect(geometry.search.right).toBeCloseTo(geometry.header.right, 0);
   expect(geometry.filterTagsAbsent).toBe(true);
   expect(geometry.chat.right).toBeLessThanOrEqual(geometry.sidebar.right);
   expect(geometry.detail.left).toBeGreaterThanOrEqual(geometry.sidebar.right);
@@ -84,6 +95,8 @@ test.describe('V-18 narrow desktop chat list', () => {
         composePosition: getComputedStyle(document.querySelector('.compose-fab')!).position,
         detailVisibility: getComputedStyle(document.querySelector('.chat-detail')!).visibility,
         sidebarOverflow: getComputedStyle(document.querySelector('.chat-sidebar')!).overflowX,
+    headerPaddingLeft: getComputedStyle(document.querySelector<HTMLElement>('.chat-sidebar-header')!).paddingLeft,
+    headerPaddingRight: getComputedStyle(document.querySelector<HTMLElement>('.chat-sidebar-header')!).paddingRight,
         filterTagsAbsent: document.querySelector('.chat-list-filters') === null,
         composeHitTarget: (() => {
           const compose = document.querySelector<HTMLElement>('.compose-fab')!;
@@ -97,6 +110,8 @@ test.describe('V-18 narrow desktop chat list', () => {
     await screenshot(page, info, s);
     expect(geometry.sidebar.width).toBeLessThanOrEqual(280);
     expect(geometry.composePosition).toBe('absolute');
+  expect(geometry.headerPaddingLeft).toBe('0px');
+  expect(geometry.headerPaddingRight).toBe('0px');
     expect(geometry.compose.left).toBeGreaterThanOrEqual(geometry.sidebar.left);
     expect(geometry.compose.right).toBeLessThanOrEqual(geometry.sidebar.right);
     expect(geometry.sidebar.right - geometry.compose.right).toBeGreaterThanOrEqual(12);

@@ -109,6 +109,24 @@ describe("left nav and chat sidebar chrome", () => {
     expect(opaqueHeaderRules).toEqual([]);
   });
 
+  it("keeps the web chat server and search row close to the top below 1200px", () => {
+    const compactHeaderRules: string[] = [];
+    stylesheet.walkAtRules("media", atRule => {
+      if (!atRule.params.includes("max-width: 1199px")) return;
+      atRule.walkRules(':root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header', rule => {
+        const padding = rule.nodes?.find(node => node.type === "decl" && node.prop === "padding");
+        if (
+          padding?.value === "max(4px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0" &&
+          padding.important
+        ) {
+          compactHeaderRules.push(padding.value);
+        }
+      });
+    });
+
+    expect(compactHeaderRules).toHaveLength(1);
+  });
+
   it("scopes the 116px chat-list-view top padding to mobile (max-width: 768px)", () => {
     const nonMobileChatListPadding: string[] = [];
     stylesheet.walkAtRules("media", atRule => {

@@ -430,7 +430,11 @@
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
-    padding: max(12px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
+    padding: max(4px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
+  }
+
+  :root[data-platform="web"] .messenger-shell.has-active-chat .chat-sidebar-header {
+    margin: 0;
   }
 
   :root[data-platform="web"] .messenger-shell.has-active-chat .message-composer {
