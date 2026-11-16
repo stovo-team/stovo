@@ -10,6 +10,16 @@ The bridge runs on your computer. Stovo Insight uses the Messenger connection yo
 - An Insight deployment with `messenger_local_codex_relay_enabled=true` and the tenant feature flag `messenger_local_codex_relay=true`. Both gates default off. Enable them only after the matching Messenger and Insight migrations/releases are installed.
 - A local checkout explicitly assigned to the configured chat.
 
+## Guided setup
+
+Open **Admin → MCP Connectors → Local Codex** in Stovo Messenger and copy the setup prompt into Codex running on your own computer. The setup is embedded in the existing MCP connectors page; it is not a separate setup route. The page only copies text; a browser cannot install or execute the local companion. Review every command Codex proposes and approve file changes and installations individually.
+
+The prompt directs Codex to inspect this repository's `backend/codex-bridge` source, prepare a private local checkout/configuration, and check prerequisites. It deliberately stops for you to verify the existing Insight connection, perform `pair_local_codex(connection_id, chat_id)` in your authenticated Insight MCP session, install the managed approval policy, and type the short-lived pairing code into the companion's terminal prompt. Never paste the pairing code or relay credential into the Codex conversation, the website, a file under source control, or a command line.
+
+This is not a signed installer. The companion is distributed as source in the Stovo Messenger repository, so you must verify the repository and inspect the code before running it. The guided flow supports macOS and Linux with Node.js 22+ and Codex CLI app-server support. Windows is not supported by this setup flow. Policy installation at `/etc/codex/requirements.toml` is a manual administrator task; the bridge will refuse to start if the managed policy cannot be verified. No automatic Insight login, consent, feature-gate enablement, privilege escalation, or browser-to-local execution is performed.
+
+If the relay tool is unavailable, `read`, `process`, `codex`, or `reply` is missing, or either relay feature gate is off, stop and ask the Stovo/Insight administrator to resolve it. Pairing codes expire after five minutes and are chat scoped. If a code expires or pairing fails, correct the cause and generate a new code for the same connection and chat. Do not reuse or share the old code.
+
 ## Pair and run
 
 1. In the already connected Stovo Insight MCP session, call `messenger_source_connections` and confirm the selected connection has `read`, `process`, `codex`, and `reply` enabled.

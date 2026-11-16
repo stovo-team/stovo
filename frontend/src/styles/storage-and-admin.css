@@ -138,9 +138,10 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px;
-  border: 1px solid var(--color-palette-0f0262202ddd);
+  border: 1px solid var(--border-default, var(--color-palette-0f0262202ddd));
   border-radius: var(--radius-bubble);
-  background: var(--color-palette-a082ae38274c);
+  color: var(--text-primary, var(--color-palette-dd15e6f7d489));
+  background: var(--surface-card, var(--color-palette-a082ae38274c));
 }
 
 .mcp-icon-button {
@@ -203,7 +204,7 @@
 
 .mcp-connection-mode p {
   max-width: 62ch;
-  color: var(--color-palette-c81e1c112488);
+  color: var(--text-secondary, var(--color-palette-c81e1c112488));
   font-size: var(--font-size-small);
   line-height: 1.45;
 }
@@ -217,7 +218,7 @@
 }
 
 .mcp-connection-mode > small {
-  color: var(--color-palette-b5a6c19603b5);
+  color: var(--text-muted, var(--color-palette-b5a6c19603b5));
   font-size: var(--font-size-caption);
   white-space: nowrap;
 }
