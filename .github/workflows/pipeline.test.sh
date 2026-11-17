@@ -130,7 +130,7 @@ awk '
     if (job_needs["frontend_test_shards"] != "[changes, frontend_dependencies]" || job_needs["frontend-ci"] != "[changes, frontend_test_shards]") {
       fail("Frontend shards must depend on dependency preparation and Frontend CI must aggregate the shards.")
     }
-    if (job_needs["backend_test_shards"] != "changes" || job_needs["backend-ci"] != "[changes, backend_test_shards, backend_lint]") {
+    if (job_needs["backend_test_shards"] != "[changes, backend_test_services]" || job_needs["backend-ci"] != "[changes, backend_test_shards, backend_lint]") {
       fail("Backend shards must run independently of Frontend CI and Backend CI must aggregate the shards.")
     }
     if (job_runner["frontend_test_shards"] != "[self-hosted, e2e]" || job_runner["frontend-ci"] != "[self-hosted, e2e]") {
@@ -139,7 +139,7 @@ awk '
     if (job_runner["changes"] != "[self-hosted, Windows, tests]") {
       fail("The changes job must use the Windows self-hosted tests runner instead of GitHub-hosted Windows.")
     }
-    if (job_runner["backend_test_shards"] != "[self-hosted, tests, Windows]" || job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
+    if (job_runner["backend_test_shards"] != "[self-hosted, tests, Windows]" || job_runner["backend_test_services"] != "[self-hosted, tests, Windows]" || job_runner["backend-ci"] != "[self-hosted, tests, Windows]") {
       fail("Backend shards and aggregate must use the Windows tests runner.")
     }
     if (!shell_detection_step || !shell_detection_shell || !git_command_lookup || !git_bash_path || !git_bash_added_to_path) {
@@ -400,28 +400,29 @@ require_trusted_pr_runner pipeline-contract 'self-hosted Windows tests'
 require_trusted_pr_runner frontend_dependencies 'self-hosted e2e'
 require_trusted_pr_runner frontend_test_shards 'self-hosted e2e'
 require_trusted_pr_runner frontend-ci 'self-hosted e2e'
+require_trusted_pr_runner backend_test_services 'self-hosted tests Windows'
 require_trusted_pr_runner backend_test_shards 'self-hosted tests Windows'
+require_trusted_pr_runner backend_test_services_cleanup 'self-hosted tests Windows'
 require_trusted_pr_runner backend_lint 'self-hosted tests Windows'
 require_trusted_pr_runner backend-ci 'self-hosted tests Windows'
 if grep -Fq 'author_association' "$trusted_pr_workflow"; then
   echo "Trusted PR runner selection must not trust the author's association; fork code stays on hosted runners." >&2
   exit 1
 fi
-backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
-for required in 'name: Start Docker Desktop for backend test services' "if: runner.os == 'Windows'" 'docker info' 'postgres:16' 'redis:7' 'if: always()' 'docker rm -f'; do
-  if ! grep -Fq "$required" <<< "$backend_ci_contract"; then
-    echo "Trusted PR backend CI must initialize and clean up Docker services on the Windows runner when needed ($required)." >&2
+backend_service_contract=$(sed -n '/^  backend_test_services:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'head.repo.full_name == github.repository' 'Start shared PostgreSQL and Redis test services' 'backend-test-services.ps1 -Action Start' 'machine_name:'; do
+  if ! grep -Fq "$required" <<< "$backend_service_contract"; then
+    echo "Trusted PR backend services must be shared only for same-repository Windows runs ($required)." >&2
     exit 1
   fi
 done
-if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_ci_contract"; then
-  echo "Trusted PR backend CI must tolerate Docker CLI stderr while probing Windows engine startup." >&2
-  exit 1
-fi
-if grep -Fq '    services:' <<< "$backend_ci_contract"; then
-  echo "Trusted PR backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
-  exit 1
-fi
+trusted_backend_shards_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+for required in 'needs: [changes, backend_test_services]' "needs.backend_test_services.result == 'success'" "if: runner.os == 'Linux'" 'Configure shared backend test service connections' 'matrix.shard'; do
+  if ! grep -Fq "$required" <<< "$trusted_backend_shards_contract"; then
+    echo "Trusted PR backend shards must use shared same-host services internally and per-shard services on hosted fork runners ($required)." >&2
+    exit 1
+  fi
+done
 
 grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" || {
   echo "Trusted PR checks must run pipeline.test.sh before merge." >&2
@@ -440,12 +441,18 @@ if grep -Fq 'npm cache clean --force' <<< "$frontend_ci_contract"; then
   exit 1
 fi
 
-if ! grep -Fq 'needs: changes' <<< "$backend_ci_contract"; then
+trusted_backend_aggregate=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$trusted_pr_workflow")
+if ! grep -Fq 'needs: [changes, backend_test_shards, backend_lint]' <<< "$trusted_backend_aggregate"; then
   echo "Trusted PR backend CI must be eligible independently of Frontend CI because it uses a separate runner pool." >&2
   exit 1
 fi
-if ! grep -Fq '!cancelled()' <<< "$backend_ci_contract"; then
+if ! grep -Fq '!cancelled()' <<< "$trusted_backend_aggregate"; then
   echo "Trusted PR backend CI must still run when Frontend CI is skipped for backend-only changes." >&2
+  exit 1
+fi
+trusted_backend_guard=$(sed -n '/^      - name: Require successful backend test shards/,/^      - name: Aggregate successful backend shards/p' <<< "$trusted_backend_aggregate")
+if ! grep -Fq '          }' <<< "$trusted_backend_guard" || grep -Eq '^[[:space:]]+fi[[:space:]]*$' <<< "$trusted_backend_guard"; then
+  echo "Trusted PR Backend CI PowerShell guard must close its block with a brace, not Bash's fi." >&2
   exit 1
 fi
 
@@ -546,45 +553,20 @@ fi
 
 backend_workflow_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  cleanup=$(sed -n '/^      - name: Stop backend test containers/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  if grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup" ||
-     ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup"; then
-    echo "Backend cleanup in $workflow must remove only its own test containers and anonymous volumes." >&2
+  service_contract=$(sed -n '/^  backend_test_services:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  cleanup_contract=$(sed -n '/^  backend_test_services_cleanup:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  if ! grep -Fq 'backend-test-services.ps1 -Action Start' <<< "$service_contract" || \
+     ! grep -Fq 'backend_test_shards' <<< "$cleanup_contract" || \
+     ! grep -Fq 'always()' <<< "$cleanup_contract" || \
+     ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup_contract" || \
+     grep -Eq 'docker (container|buildx|system|builder) prune' <<< "$cleanup_contract"; then
+    echo "Backend workflow $workflow must start run-scoped services once and clean up only those services after all shards." >&2
     exit 1
   fi
 done
-for required in 'runs-on: [self-hosted, tests, Windows]' 'shell: bash' 'name: Detect available shell' 'shell: powershell' 'Get-Command git.exe' 'name: Start Docker Desktop for backend test services' 'name: Start PostgreSQL and Redis test containers' 'name: Stop backend test containers' 'if: always()'; do
-  if ! grep -Fq "$required" <<< "$backend_workflow_contract"; then
-    echo "Master backend CI must run its Docker services on the Windows tests runner and use Bash for backend commands ($required)." >&2
-    exit 1
-  fi
-done
-trusted_backend_aggregate=$(sed -n '/^  backend-ci:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/trusted-pr-tests.yml)
-for required in 'name: Require successful backend test shards' 'shell: powershell' '$env:BACKEND_SHARD_RESULT' '$env:BACKEND_LINT_RESULT' 'name: Aggregate successful backend shards'; do
-  if ! grep -Fq "$required" <<< "$trusted_backend_aggregate"; then
-    echo "Trusted PR Backend CI must aggregate Windows runner results with PowerShell ($required)." >&2
-    exit 1
-  fi
-done
-trusted_backend_guard=$(sed -n '/^      - name: Require successful backend test shards/,/^      - name: Aggregate successful backend shards/p' .github/workflows/trusted-pr-tests.yml)
-if ! grep -Fq '          }' <<< "$trusted_backend_guard" || grep -Eq '^[[:space:]]+fi[[:space:]]*$' <<< "$trusted_backend_guard"; then
-  echo "Trusted PR Backend CI PowerShell guard must close its block with a brace, not Bash's fi." >&2
-  exit 1
-fi
-if ! grep -Fq "\$ErrorActionPreference = 'Continue'" <<< "$backend_workflow_contract"; then
-  echo "Master backend CI must tolerate Docker CLI stderr while probing engine startup." >&2
-  exit 1
-fi
-if grep -Fq '    services:' <<< "$backend_workflow_contract"; then
-  echo "Master backend CI must not use GitHub's Linux-only service-container feature on Windows." >&2
-  exit 1
-fi
-for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  cleanup_contract=$(sed -n '/- name: Stop backend test containers/,/^[[:space:]]*backend-ci:/p' "$workflow")
-  if ! grep -Fq 'docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix"' <<< "$cleanup_contract" || \
-    grep -Fq 'docker container prune' <<< "$cleanup_contract" || \
-    grep -Fq 'docker buildx prune' <<< "$cleanup_contract"; then
-    echo "Backend shard cleanup must remove only its own containers and anonymous volumes ($workflow)." >&2
+for required in 'runs-on: [self-hosted, tests, Windows]' 'name: Verify shared backend test service host' 'name: Configure shared backend test service connections' 'family_messenger_test_shard_${{ matrix.shard }}' '127.0.0.1:$env:REDIS_PORT/${{ matrix.shard }}'; do
+  if ! grep -Fq -- "$required" <<< "$backend_workflow_contract"; then
+    echo "Master backend shards must share host services while using isolated database indices ($required)." >&2
     exit 1
   fi
 done
@@ -655,27 +637,29 @@ for deployment in deploy-frontend-web deploy-backend-web; do
   fi
 done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
-  backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'docker run --detach --name $postgresContainer --publish 127.0.0.1::5432' 'docker run --detach --name $redisContainer --publish 127.0.0.1::6379' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_ENV'; do
-    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
-      echo "Backend CI in $workflow must dynamically publish Docker test service ports and export them for later steps ($required)." >&2
+  service_contract=$(sed -n '/^  backend_test_services:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  shard_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
+  for required in 'outputs:' 'steps.services.outputs.postgres_port' 'steps.services.outputs.redis_port' 'docker port $postgresContainer 5432/tcp' 'docker port $redisContainer 6379/tcp' 'Add-Content -Path $env:GITHUB_OUTPUT' 'createdb -U family_user'; do
+    if ! grep -Fq -- "$required" <<< "$service_contract" && ! grep -Fq -- "$required" .github/workflows/backend-test-services.ps1; then
+      echo "Backend CI in $workflow must publish dynamic host ports from the single shared service job ($required)." >&2
       exit 1
     fi
   done
-  for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/' 'TEST_REDIS_URL=redis://127.0.0.1:$redisPort/'; do
-    if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
-      echo "Backend CI in $workflow must use the dynamically allocated test service ports ($required)." >&2
+  for required in 'TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$env:POSTGRES_PORT/family_messenger_test_shard_' 'TEST_REDIS_URL=redis://127.0.0.1:$env:REDIS_PORT/'; do
+    if ! grep -Fq -- "$required" <<< "$shard_contract"; then
+      echo "Backend CI in $workflow must route each shard to isolated logical databases ($required)." >&2
       exit 1
     fi
   done
-  if grep -Fq -- '--publish 5432:5432' <<< "$backend_ci_contract" || grep -Fq -- '--publish 6379:6379' <<< "$backend_ci_contract"; then
-    echo "Backend CI in $workflow must not bind fixed host ports for test services." >&2
+  if grep -Fq -- '--publish 5432:5432' <<< "$service_contract" || grep -Fq -- '--publish 6379:6379' <<< "$service_contract"; then
+    echo "Backend CI in $workflow must not bind fixed host ports for shared test services." >&2
     exit 1
   fi
 done
 
+
 backend_ci_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' .github/workflows/pipeline.yml)
-for required in 'POSTGRES_TEST_CONTAINER=$postgresContainer' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
+for required in 'POSTGRES_TEST_CONTAINER=stovo-test-postgres-$suffix' '--network "container:$POSTGRES_TEST_CONTAINER"' 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/'; do
   if ! grep -Fq -- "$required" <<< "$backend_ci_contract"; then
     echo "Master backend CI must run Atlas in the PostgreSQL container network namespace ($required)." >&2
     exit 1

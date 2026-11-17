@@ -203,13 +203,39 @@ jobs:
       - name: Aggregate successful frontend shards
         run: echo "All frontend test shards and build passed."
 
-  backend_test_shards:
-    name: Backend CI test shards
+  backend_test_services:
+    name: Start shared backend test services
     needs: changes
     if: >-
       !cancelled() &&
       github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       needs.changes.outputs.backend == 'true'
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 10
+    outputs:
+      postgres_port: ${{ steps.services.outputs.postgres_port }}
+      redis_port: ${{ steps.services.outputs.redis_port }}
+      machine_name: ${{ steps.services.outputs.machine_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Start shared PostgreSQL and Redis test services
+        id: services
+        shell: powershell
+        run: .github/workflows/backend-test-services.ps1 -Action Start
+
+  backend_test_shards:
+    name: Backend CI test shards
+    needs: [changes, backend_test_services]
+    if: >-
+      always() &&
+      github.event.pull_request.draft == false &&
+      needs.changes.outputs.backend == 'true' &&
+      (needs.backend_test_services.result == 'success' || github.event.pull_request.head.repo.full_name != github.repository)
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     strategy:
       fail-fast: false
@@ -244,73 +270,8 @@ jobs:
           }
 
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
-      - name: Start Docker Desktop for backend test services
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
-          if (-not $dockerCli) {
-            $dockerCliDirectories = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-            )
-            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
-            if (-not $dockerCliDirectory) {
-              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
-            }
-            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
-            $env:PATH = "$dockerCliDirectory;$env:PATH"
-          }
-
-          docker desktop start --detach 2>$null | Out-Null
-          $desktopStartExitCode = $LASTEXITCODE
-          if ($desktopStartExitCode -ne 0) {
-            $desktopCandidates = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
-            )
-            $dockerDesktop = $desktopCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if (-not $dockerDesktop) {
-              throw 'Docker Desktop was not found. Install it for the Windows runner account.'
-            }
-            if (-not (Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue)) {
-              Start-Process -FilePath $dockerDesktop
-            }
-          }
-
-          $deadline = (Get-Date).AddMinutes(3)
-          do {
-            Start-Sleep -Seconds 3
-            $ErrorActionPreference = 'Continue'
-            $dockerOs = docker info --format '{{.OSType}}' 2>$null
-            $dockerInfoExitCode = $LASTEXITCODE
-            $ErrorActionPreference = 'Stop'
-            if ($dockerInfoExitCode -eq 0) { break }
-          } while ((Get-Date) -lt $deadline)
-          if ($dockerInfoExitCode -ne 0) {
-            throw 'Docker Desktop did not start within 3 minutes. Ensure the Windows runner account can access the Docker engine.'
-          }
-
-          if ($dockerOs -ne 'linux') {
-            docker desktop engine use linux
-            if ($LASTEXITCODE -ne 0) {
-              throw 'Could not switch Docker Desktop to Linux containers. Update Docker Desktop to a version with the desktop CLI and allow the runner account to switch engines.'
-            }
-            $deadline = (Get-Date).AddMinutes(3)
-            do {
-              Start-Sleep -Seconds 3
-              $ErrorActionPreference = 'Continue'
-              $dockerOs = docker info --format '{{.OSType}}' 2>$null
-              $dockerInfoExitCode = $LASTEXITCODE
-              $ErrorActionPreference = 'Stop'
-              if ($dockerInfoExitCode -eq 0 -and $dockerOs -eq 'linux') { break }
-            } while ((Get-Date) -lt $deadline)
-            if ($dockerInfoExitCode -ne 0 -or $dockerOs -ne 'linux') {
-              throw 'Docker Desktop did not become ready with its Linux container engine within 3 minutes.'
-            }
-          }
-      - name: Start PostgreSQL and Redis test containers
+      - name: Start per-shard test services for hosted fork runners
+        if: runner.os == 'Linux'
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
@@ -359,6 +320,25 @@ jobs:
 
           Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$postgresPort/family_messenger_test?sslmode=disable"
           Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$redisPort/0"
+      - name: Verify shared backend test service host
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          EXPECTED_MACHINE_NAME: ${{ needs.backend_test_services.outputs.machine_name }}
+        run: |
+          $actualMachineName = (Get-CimInstance Win32_ComputerSystem).Name
+          if ($actualMachineName -ne $env:EXPECTED_MACHINE_NAME) {
+            throw "Backend services are on '$env:EXPECTED_MACHINE_NAME' but this shard is on '$actualMachineName'."
+          }
+      - name: Configure shared backend test service connections
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          POSTGRES_PORT: ${{ needs.backend_test_services.outputs.postgres_port }}
+          REDIS_PORT: ${{ needs.backend_test_services.outputs.redis_port }}
+        run: |
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$env:POSTGRES_PORT/family_messenger_test_shard_${{ matrix.shard }}?sslmode=disable"
+          Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$env:REDIS_PORT/${{ matrix.shard }}"
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
@@ -386,12 +366,40 @@ jobs:
           name: backend-test-events-${{ matrix.shard }}
           path: backend/test-events-${{ matrix.shard }}.jsonl
           if-no-files-found: warn
-      - name: Stop backend test containers
-        if: always()
+      - name: Stop per-shard test services for hosted fork runners
+        if: ${{ always() && runner.os == 'Linux' }}
         shell: powershell
         run: |
           if (Get-Command docker -ErrorAction SilentlyContinue) {
             $suffix = "${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}"
+            docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
+          }
+
+  backend_test_services_cleanup:
+    name: Stop shared backend test services
+    needs: [changes, backend_test_services, backend_test_shards]
+    if: >-
+      always() &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.changes.outputs.backend == 'true'
+    runs-on: [self-hosted, tests, Windows]
+    timeout-minutes: 5
+    steps:
+      - name: Stop shared backend test containers
+        shell: powershell
+        run: |
+          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
+          if (-not $dockerCli) {
+            $dockerCliDirectories = @(
+              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
+              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
+            )
+            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
+            if ($dockerCliDirectory) { $env:PATH = "$dockerCliDirectory;$env:PATH" }
+          }
+          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
+            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
             docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
           }
 
