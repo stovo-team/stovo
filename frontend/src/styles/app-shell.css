@@ -1636,13 +1636,17 @@ h2 {
 }
 
 .change-space-url a {
+  border-radius: var(--radius-pill);
   color: var(--text-secondary);
+  display: inline-flex;
   font-weight: var(--font-weight-medium);
+  padding: 6px 12px;
   text-decoration: none;
 }
 
 .change-space-url a:hover {
-  text-decoration: underline;
+  background: color-mix(in srgb, white 10%, transparent);
+  text-decoration: none;
 }
 
 .change-space-url a:focus-visible {
