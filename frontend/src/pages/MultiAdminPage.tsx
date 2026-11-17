@@ -563,7 +563,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     maxWidth: 400,
     backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 36,
     boxShadow: "0 25px 60px var(--color-palette-2101efd095aa)",
@@ -706,7 +706,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statCard: {
     backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 24,
     boxShadow: "0 10px 30px var(--color-palette-4c85ca9b7179)",
@@ -725,7 +725,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   panelCard: {
     backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 32,
     boxShadow: "0 20px 40px var(--color-palette-f71fbab13810)",
