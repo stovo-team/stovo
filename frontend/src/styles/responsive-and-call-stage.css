@@ -30,10 +30,31 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    margin: 0;
+    margin: auto 0;
     max-height: none;
     overflow: visible;
     padding: 0;
+  }
+
+  .login-page-shell {
+    justify-content: center;
+    padding: calc(88px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+  }
+
+  .login-brand-lockup {
+    gap: 10px;
+    left: 16px;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+  }
+
+  .login-brand-lockup .auth-brand-logo {
+    height: 34px;
+    width: 34px;
+  }
+
+  .login-brand-lockup .auth-brand-title {
+    font-size: var(--font-size-heading-small);
   }
 
   .server-setup-eyebrow {

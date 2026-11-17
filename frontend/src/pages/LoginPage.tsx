@@ -282,14 +282,14 @@ export default function LoginPage() {
 
   return (
     <main className="app-shell login-page-shell">
-      <section className="auth-panel">
-        <div className="auth-brand-header">
-          <StovoLogo className="auth-brand-logo" title="Stovo" />
-          <div className="auth-brand-info">
-            <h1 className="auth-brand-title">Stovo</h1>
-            {serverName && <span className="auth-server-name">{serverName}</span>}
-          </div>
+      <div className="login-brand-lockup">
+        <StovoLogo className="auth-brand-logo" title="Stovo Spaces" />
+        <div className="auth-brand-info">
+          <h1 className="auth-brand-title">Stovo Spaces</h1>
+          {serverName && <span className="auth-server-name">{serverName}</span>}
         </div>
+      </div>
+      <section className="auth-panel">
         {!androidQR && (isDeviceLogin || authView === "password") && (
           <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
             <label>
