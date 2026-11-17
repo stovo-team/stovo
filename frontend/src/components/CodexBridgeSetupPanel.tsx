@@ -21,6 +21,27 @@ Only after all checks and my explicit approval, show me the exact start command:
 
 export default function CodexBridgeSetupPanel() {
   const strings = useStrings().codexBridgeSetup;
+  return (
+    <section className="mcp-local-codex-panel">
+      <section className="mcp-local-codex-details mcp-local-codex-steps">
+        <h4><Terminal size={15} aria-hidden="true" />{strings.stepsTitle}</h4>
+        <ol><li>{strings.stepOne}</li><li>{strings.stepTwo}</li><li>{strings.stepThree}</li><li>{strings.stepFour}</li></ol>
+      </section>
+
+      <section className="mcp-local-codex-note">
+        <ShieldCheck size={20} aria-hidden="true" /><div><h2>{strings.safetyTitle}</h2><p>{strings.safety}</p></div>
+      </section>
+      <details className="mcp-local-codex-details mcp-local-codex-limits">
+        <summary>{strings.limitsTitle} &amp; {strings.failureTitle}</summary>
+        <p><strong>{strings.limitsTitle}:</strong> {strings.limits}</p>
+        <p><strong>{strings.failureTitle}:</strong> {strings.failure}</p>
+      </details>
+    </section>
+  );
+}
+
+export function CodexBridgeSetupPrompt() {
+  const strings = useStrings().codexBridgeSetup;
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -37,32 +58,17 @@ export default function CodexBridgeSetupPanel() {
   }
 
   return (
-    <section className="mcp-local-codex-panel">
+    <section className="mcp-local-codex-prompt">
       <div className="mcp-copy-field">
         <div className="mcp-copy-field-label">
           <span>{strings.promptLabel}</span>
-          <button className="mcp-inline-copy" onClick={copyPrompt} type="button">
+          <button className="mcp-inline-copy" onClick={copyPrompt} type="button" aria-label={copied ? strings.copied : strings.copy} title={copied ? strings.copied : strings.copy}>
             {copied ? <Check size={16} /> : <Copy size={16} />}
-          {copied ? strings.copied : strings.copy}
           </button>
         </div>
         <textarea className="mcp-setup-prompt" aria-label={strings.promptLabel} readOnly rows={5} value={setupPrompt} onFocus={(event) => event.currentTarget.select()} />
         {copyFailed && <p className="mcp-local-codex-copy-error" role="status">{strings.copyError}</p>}
       </div>
-
-      <section className="mcp-local-codex-details">
-        <h4><Terminal size={15} aria-hidden="true" />{strings.stepsTitle}</h4>
-        <ol><li>{strings.stepOne}</li><li>{strings.stepTwo}</li><li>{strings.stepThree}</li><li>{strings.stepFour}</li></ol>
-      </section>
-
-      <section className="mcp-local-codex-note">
-        <ShieldCheck size={20} aria-hidden="true" /><div><h2>{strings.safetyTitle}</h2><p>{strings.safety}</p></div>
-      </section>
-      <details className="mcp-local-codex-details">
-        <summary>{strings.limitsTitle} &amp; {strings.failureTitle}</summary>
-        <p><strong>{strings.limitsTitle}:</strong> {strings.limits}</p>
-        <p><strong>{strings.failureTitle}:</strong> {strings.failure}</p>
-      </details>
     </section>
   );
 }

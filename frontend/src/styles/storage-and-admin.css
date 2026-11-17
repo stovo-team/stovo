@@ -123,6 +123,7 @@
 .mcp-connection-modes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
 }
 
@@ -135,8 +136,8 @@
 .mcp-connection-mode {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--border-default, var(--color-palette-0f0262202ddd));
   border-radius: var(--radius-bubble);
