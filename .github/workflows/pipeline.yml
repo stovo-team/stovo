@@ -16,6 +16,8 @@ on:
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
+      - '.github/workflows/backend-test-services.ps1'
+      - '.github/workflows/backend-test-shards.sh'
       - '.github/workflows/frontend-dependencies.mjs'
       - '.github/workflows/docker-runner-maintenance.yml'
       - '.github/workflows/trusted-pr-tests.yml'
@@ -88,6 +90,8 @@ jobs:
               - 'backend/Dockerfile.orchestrator'
               - 'deploy/**'
               - 'deploy/scripts/deploy-environment.sh'
+              - '.github/workflows/backend-test-services.ps1'
+              - '.github/workflows/backend-test-shards.sh'
 
   frontend_dependencies:
     name: Prepare frontend dependencies
@@ -213,35 +217,11 @@ jobs:
         run: echo "All frontend test shards and build passed."
 
 
-  backend_test_services:
-    name: Start shared backend test services
+  backend_test_shards:
+    name: Backend CI test shards
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
     runs-on: [self-hosted, tests, Windows]
-    timeout-minutes: 10
-    outputs:
-      postgres_port: ${{ steps.services.outputs.postgres_port }}
-      redis_port: ${{ steps.services.outputs.redis_port }}
-      machine_name: ${{ steps.services.outputs.machine_name }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 1
-      - name: Start shared PostgreSQL and Redis test services
-        id: services
-        shell: powershell
-        run: .github/workflows/backend-test-services.ps1 -Action Start
-
-  backend_test_shards:
-    name: Backend CI test shards
-    needs: [changes, backend_test_services]
-    if: ${{ !cancelled() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
-    runs-on: [self-hosted, tests, Windows]
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        shard: [0, 1, 2]
     timeout-minutes: 45
     defaults:
       run:
@@ -253,57 +233,23 @@ jobs:
           fetch-depth: 0
       - name: Detect available shell
         shell: powershell
+        working-directory: .
         run: |
           $git = Get-Command git.exe -CommandType Application -ErrorAction Stop
           $gitRoot = Split-Path (Split-Path $git.Source -Parent) -Parent
           $gitBash = Join-Path $gitRoot 'bin\bash.exe'
-          if (-not (Test-Path $gitBash)) {
-            throw "Git for Windows Bash was not found at '$gitBash'. Install Git for Windows on the self-hosted runner."
-          }
-
+          if (-not (Test-Path $gitBash)) { throw "Git for Windows Bash was not found at '$gitBash'." }
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
+      - name: Start shared PostgreSQL and Redis test services
+        shell: powershell
+        working-directory: .
+        run: .github/workflows/backend-test-services.ps1 -Action Start
       - name: Report runner capacity
         shell: powershell
+        working-directory: .
         run: |
           $os = Get-CimInstance Win32_OperatingSystem
           Write-Host "Runner capacity: $([Environment]::ProcessorCount) logical CPUs; $([math]::Round($os.TotalVisibleMemorySize / 1MB, 1)) GiB RAM; $([math]::Round($os.FreePhysicalMemory / 1MB, 1)) GiB available."
-      - name: Verify shared backend test service host
-        shell: powershell
-        env:
-          EXPECTED_MACHINE_NAME: ${{ needs.backend_test_services.outputs.machine_name }}
-        run: |
-          $actualMachineName = (Get-CimInstance Win32_ComputerSystem).Name
-          if ($actualMachineName -ne $env:EXPECTED_MACHINE_NAME) {
-            throw "Backend services are on '$env:EXPECTED_MACHINE_NAME' but this shard is on '$actualMachineName'."
-          }
-      # Each app test resets the public schema and flushes Redis, so shards need separate logical stores.
-      - name: Configure shared backend test service connections
-        shell: powershell
-        env:
-          POSTGRES_PORT: ${{ needs.backend_test_services.outputs.postgres_port }}
-          REDIS_PORT: ${{ needs.backend_test_services.outputs.redis_port }}
-        run: |
-          $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
-          Add-Content -Path $env:GITHUB_ENV -Value "TEST_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:$env:POSTGRES_PORT/family_messenger_test_shard_${{ matrix.shard }}?sslmode=disable"
-          Add-Content -Path $env:GITHUB_ENV -Value "TEST_REDIS_URL=redis://127.0.0.1:$env:REDIS_PORT/${{ matrix.shard }}"
-          Add-Content -Path $env:GITHUB_ENV -Value 'ATLAS_DATABASE_URL=postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable'
-          Add-Content -Path $env:GITHUB_ENV -Value "POSTGRES_TEST_CONTAINER=stovo-test-postgres-$suffix"
-      - name: Ensure Docker CLI is available for Atlas
-        if: matrix.shard == 0
-        shell: powershell
-        run: |
-          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
-          if (-not $dockerCli) {
-            $dockerCliDirectories = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-            )
-            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
-            if (-not $dockerCliDirectory) {
-              throw 'Docker CLI was not found. Install Docker Desktop for the Windows runner account.'
-            }
-            Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
-          }
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
@@ -311,137 +257,142 @@ jobs:
       - name: Download modules
         run: go mod download
       - name: Ent generation drift
-        if: matrix.shard == 0
+        working-directory: .
+        shell: bash
         run: |
+          cd backend
           go generate ./ent
           if ! git diff --quiet -- ent; then
             echo "ent/ is out of date; run go generate ./ent and commit"
             git diff -- ent
             exit 1
           fi
-      - name: Sharded unit and integration tests with coverage
+      - name: Run three isolated backend test shards concurrently
         env:
-          BACKEND_TEST_SHARD: ${{ matrix.shard }}
-        run: |
-          set -o pipefail
-          testRegex="$(go test -list '^(Test|Example|Fuzz)' ./internal/app | go run ./cmd/test-shard select -shard "$BACKEND_TEST_SHARD" -shards 3 -timings cmd/test-shard/test-durations.json -shard-zero-load 90)"
-          go test -json -count=1 -covermode=atomic -coverprofile="coverage-app-$BACKEND_TEST_SHARD.out" -run "$testRegex" ./internal/app | tee "test-events-$BACKEND_TEST_SHARD.jsonl"
-          if [ "$BACKEND_TEST_SHARD" = "0" ]; then
-            mapfile -t packages < <(go list ./... | grep -v '/internal/app$')
-            if [ "${#packages[@]}" -gt 0 ]; then
-              go test -count=1 -covermode=atomic -coverprofile=coverage-other.out "${packages[@]}"
-            fi
-          fi
-      - name: Upload backend coverage shard
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+          BACKEND_TEST_SHARD_ZERO_LOAD: 90
+          BACKEND_TEST_WITH_COVERAGE: 'true'
+        run: bash ../.github/workflows/backend-test-shards.sh
+      - name: Upload backend coverage shard 0
         if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         continue-on-error: true
         with:
-          name: backend-coverage-shard-${{ matrix.shard }}
-          path: backend/coverage-*.out
+          name: backend-coverage-shard-0
+          path: |
+            backend/coverage-app-0.out
+            backend/coverage-other.out
           if-no-files-found: error
+      - name: Upload backend coverage shard 1
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-coverage-shard-1
+          path: backend/coverage-app-1.out
+          if-no-files-found: error
+      - name: Upload backend coverage shard 2
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-coverage-shard-2
+          path: backend/coverage-app-2.out
+          if-no-files-found: error
+      - name: Upload backend test events shard 0
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-test-events-0
+          path: backend/test-events-0.jsonl
+          if-no-files-found: warn
+      - name: Upload backend test events shard 1
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-test-events-1
+          path: backend/test-events-1.jsonl
+          if-no-files-found: warn
+      - name: Upload backend test events shard 2
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        continue-on-error: true
+        with:
+          name: backend-test-events-2
+          path: backend/test-events-2.jsonl
+          if-no-files-found: warn
       - name: Reject UTF-8 BOMs in Atlas migrations
-        if: matrix.shard == 0
+        working-directory: .
+        shell: bash
         run: |
+          cd backend
           set -euo pipefail
-          if LC_ALL=C grep -rl $'^\xEF\xBB\xBF' migrations --include='*.sql'; then
+          if LC_ALL=C grep -rl $'\xEF\xBB\xBF' migrations --include='*.sql'; then
             echo "Atlas migration files must be UTF-8 without a byte-order mark." >&2
             exit 1
           fi
+      - name: Ensure Docker CLI is available for Atlas
+        shell: powershell
+        working-directory: .
+        run: |
+          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
+          if (-not $dockerCli) {
+            $dockerDirectory = Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'
+            if (-not (Test-Path (Join-Path $dockerDirectory 'docker.exe'))) { throw 'Docker CLI was not found.' }
+            Add-Content -Path $env:GITHUB_PATH -Value $dockerDirectory
+          }
       - name: Atlas migrate validate
-        if: matrix.shard == 0 && hashFiles('backend/migrations/atlas.sum') != ''
+        if: hashFiles('backend/migrations/atlas.sum') != ''
         run: |
           migration_dir="$(cygpath -w "$PWD/migrations")"
           migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
           docker run --rm --mount "$migration_mount" arigaio/atlas:1.3.2 migrate validate --dir "file:///migrations"
       - name: Reject out-of-order migrations
-        if: matrix.shard == 0
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           set -euo pipefail
-          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -q '^0\{40\}$'; then
-            exit 0
-          fi
-
-          latest_existing="$(git ls-tree -r --name-only "$BASE_SHA" -- migrations \
-            | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p' \
-            | sort \
-            | tail -n 1)"
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -q '^0\{40\}$'; then exit 0; fi
+          latest_existing="$(git ls-tree -r --name-only "$BASE_SHA" -- migrations | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p' | sort | tail -n 1)"
           [ -n "$latest_existing" ] || exit 0
-
-          git diff --diff-filter=A --name-only "$BASE_SHA" HEAD -- migrations \
-            | while IFS= read -r migration; do
-                version="$(printf '%s' "$migration" | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p')"
-                [ -n "$version" ] || continue
-                if [ "$version" \< "$latest_existing" ] || [ "$version" = "$latest_existing" ]; then
-                  echo "New migration $migration is not later than existing migration version $latest_existing." >&2
-                  echo "Use a new timestamp after the current migration tail; do not insert migrations into deployed history." >&2
-                  exit 1
-                fi
-              done
+          git diff --diff-filter=A --name-only "$BASE_SHA" HEAD -- migrations | while IFS= read -r migration; do
+            version="$(printf '%s' "$migration" | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p')"
+            [ -n "$version" ] || continue
+            if [ "$version" \< "$latest_existing" ] || [ "$version" = "$latest_existing" ]; then
+              echo "New migration $migration is not later than existing migration version $latest_existing." >&2
+              exit 1
+            fi
+          done
       - name: Atlas replay empty install
-        if: matrix.shard == 0 && hashFiles('backend/migrations/*.sql') != ''
+        if: hashFiles('backend/migrations/*.sql') != ''
+        env:
+          ATLAS_DATABASE_URL: postgres://family_user:family_password@127.0.0.1:5432/family_messenger_test?sslmode=disable
+          POSTGRES_TEST_CONTAINER: stovo-test-postgres-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           migration_dir="$(cygpath -w "$PWD/migrations")"
           migration_mount="type=bind,source=$migration_dir,target=/migrations,readonly"
-          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" arigaio/atlas:1.3.2 \
-            schema clean -u "$ATLAS_DATABASE_URL" --auto-approve
-          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" --mount "$migration_mount" arigaio/atlas:1.3.2 \
-            migrate apply --dir "file:///migrations" --url "$ATLAS_DATABASE_URL"
+          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" arigaio/atlas:1.3.2 schema clean -u "$ATLAS_DATABASE_URL" --auto-approve
+          docker run --rm --network "container:$POSTGRES_TEST_CONTAINER" --mount "$migration_mount" arigaio/atlas:1.3.2 migrate apply --dir "file:///migrations" --url "$ATLAS_DATABASE_URL"
       - name: Forbid raw SQL in app packages
-        if: matrix.shard == 0
+        working-directory: .
+        shell: bash
         run: |
+          cd backend
           set -euo pipefail
-          if ! command -v rg >/dev/null 2>&1; then
-            echo "ripgrep not found, skipping raw SQL check"
-            exit 0
+          if ! command -v rg >/dev/null 2>&1; then echo "ripgrep not found, skipping raw SQL check"; exit 0; fi
+          if rg -n --glob '*.go' --glob '!*_test.go' --glob '!sql_tracer.go' --glob '!checklist_operations.go' --glob '!unfurl_operations.go' '(\.Query\(|\.QueryRow\(|\.Exec\(|BeginTx\()' internal/app; then
+            echo "database/sql query helpers still used in internal/app"; exit 1
           fi
-          if rg -n --glob '*.go' --glob '!*_test.go' --glob '!sql_tracer.go' --glob '!checklist_operations.go' --glob '!unfurl_operations.go' \
-            '(\.Query\(|\.QueryRow\(|\.Exec\(|BeginTx\()' \
-            internal/app; then
-            echo "database/sql query helpers still used in internal/app"
-            exit 1
-          fi
-          if rg -n --glob '*.go' --glob '!*_test.go' --glob '!checklist_operations.go' \
-            '"(SELECT |INSERT |UPDATE |DELETE FROM |CREATE TABLE |ALTER TABLE |DROP TABLE )' \
-            internal/app; then
-            echo "raw SQL literals found in internal/app (only Atlas migrations + tests allowed)"
-            exit 1
+          if rg -n --glob '*.go' --glob '!*_test.go' --glob '!checklist_operations.go' '"(SELECT |INSERT |UPDATE |DELETE FROM |CREATE TABLE |ALTER TABLE |DROP TABLE )' internal/app; then
+            echo "raw SQL literals found in internal/app (only Atlas migrations + tests allowed)"; exit 1
           fi
           echo "app SQL gate passed"
-      - name: Upload backend test events
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        continue-on-error: true
-        with:
-          name: backend-test-events-${{ matrix.shard }}
-          path: backend/test-events-${{ matrix.shard }}.jsonl
-          if-no-files-found: warn
-
-  backend_test_services_cleanup:
-    name: Stop shared backend test services
-    needs: [changes, backend_test_services, backend_test_shards]
-    if: ${{ always() && needs.changes.outputs.backend == 'true' && !inputs.backend_deploy_only }}
-    runs-on: [self-hosted, tests, Windows]
-    timeout-minutes: 5
-    steps:
       - name: Stop shared backend test containers
+        if: always()
         shell: powershell
-        run: |
-          $dockerCli = Get-Command docker.exe -ErrorAction SilentlyContinue
-          if (-not $dockerCli) {
-            $dockerCliDirectories = @(
-              (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin'),
-              (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin')
-            )
-            $dockerCliDirectory = $dockerCliDirectories | Where-Object { Test-Path (Join-Path $_ 'docker.exe') } | Select-Object -First 1
-            if ($dockerCliDirectory) { $env:PATH = "$dockerCliDirectory;$env:PATH" }
-          }
-          if (Get-Command docker.exe -ErrorAction SilentlyContinue) {
-            $suffix = "${{ github.run_id }}-${{ github.run_attempt }}"
-            docker rm -f -v "stovo-test-postgres-$suffix" "stovo-test-redis-$suffix" 2>$null | Out-Null
-          }
+        working-directory: .
+        run: .github/workflows/backend-test-services.ps1 -Action Stop
 
   backend_lint:
     name: Backend Go lint

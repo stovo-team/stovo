@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet('Start')]
+  [ValidateSet('Start', 'Stop')]
   [string]$Action
 )
 
@@ -17,6 +17,14 @@ if (-not $dockerCli) {
   }
   Add-Content -Path $env:GITHUB_PATH -Value $dockerCliDirectory
   $env:PATH = "$dockerCliDirectory;$env:PATH"
+}
+
+$suffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+$postgresContainer = "stovo-test-postgres-$suffix"
+$redisContainer = "stovo-test-redis-$suffix"
+if ($Action -eq 'Stop') {
+  docker rm -f -v $postgresContainer $redisContainer 2>$null | Out-Null
+  exit 0
 }
 
 docker desktop start --detach 2>$null | Out-Null
@@ -67,9 +75,6 @@ if ($dockerOs -ne 'linux') {
   }
 }
 
-$suffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-$postgresContainer = "stovo-test-postgres-$suffix"
-$redisContainer = "stovo-test-redis-$suffix"
 docker rm -f -v $postgresContainer $redisContainer 2>$null | Out-Null
 
 docker run --detach --name $postgresContainer --publish 127.0.0.1::5432 `
@@ -113,7 +118,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the Redis host port.' }
 $redisPortMatch = [regex]::Match([string]$redisPortBinding, ':(\d+)$')
 if (-not $redisPortMatch.Success) { throw "Unexpected Redis host port binding: $redisPortBinding" }
 
-$machineName = (Get-CimInstance Win32_ComputerSystem).Name
-Add-Content -Path $env:GITHUB_OUTPUT -Value "postgres_port=$($postgresPortMatch.Groups[1].Value)"
-Add-Content -Path $env:GITHUB_OUTPUT -Value "redis_port=$($redisPortMatch.Groups[1].Value)"
-Add-Content -Path $env:GITHUB_OUTPUT -Value "machine_name=$machineName"
+Add-Content -Path $env:GITHUB_ENV -Value "POSTGRES_PORT=$($postgresPortMatch.Groups[1].Value)"
+Add-Content -Path $env:GITHUB_ENV -Value "REDIS_PORT=$($redisPortMatch.Groups[1].Value)"
