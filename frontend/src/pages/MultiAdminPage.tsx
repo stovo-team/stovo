@@ -230,13 +230,16 @@ export default function MultiAdminPage() {
 
   if (!token) {
     return (
-      <div style={styles.loginContainer}>
-        <div style={styles.loginCard}>
+      <div style={styles.loginContainer} className="supervisor-login-page">
+        <div className="supervisor-login-brand">
+          <StovoLogo size={36} />
+          <span className="supervisor-login-brand-name">Stovo Spaces</span>
+        </div>
+        <div style={styles.loginCard} className="supervisor-login-card">
           <div style={styles.loginHeader} className="supervisor-login-header">
-            <StovoLogo size={32} />
             <h1 style={styles.title} className="supervisor-login-title">{copy.title}</h1>
           </div>
-          <p style={styles.subtitle}>{copy.login}</p>
+          <p style={styles.subtitle} className="supervisor-login-subtitle">{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
@@ -553,11 +556,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loginContainer: {
     display: "flex",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "var(--color-palette-7b2817bf9b80)",
     padding: 20,
+    boxSizing: "border-box",
+    isolation: "isolate",
+    overflow: "hidden",
+    position: "relative",
   },
   loginCard: {
     width: "100%",
@@ -567,6 +574,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "var(--radius-panel)",
     padding: 36,
     boxShadow: "none",
+    position: "relative",
+    zIndex: 1,
   },
   badgePill: {
     display: "inline-block",

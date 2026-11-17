@@ -69,14 +69,15 @@ describe("supervisor space management", () => {
     expect(container.querySelector<HTMLInputElement>('input[type="text"]')!.autocomplete).toBe("username");
   });
 
-  it("renders the Stovo logo and title on the same row in the login card", async () => {
+  it("renders the Stovo Spaces brand in the upper-left login lockup", async () => {
     localStorage.removeItem("master_admin_token");
     await act(async () => { root.render(<MultiAdminPage />); });
+    const brand = container.querySelector<HTMLElement>(".supervisor-login-brand");
     const headerRow = container.querySelector<HTMLElement>(".supervisor-login-header");
+    expect(brand).toBeTruthy();
+    expect(brand?.querySelector('img[alt="Stovo logo"]')).toBeTruthy();
+    expect(brand?.querySelector(".supervisor-login-brand-name")?.textContent).toBe("Stovo Spaces");
     expect(headerRow).toBeTruthy();
-    expect(headerRow?.style.display).toBe("flex");
-    expect(headerRow?.style.alignItems).toBe("center");
-    expect(headerRow?.querySelector('img[alt="Stovo logo"]')).toBeTruthy();
     expect(headerRow?.querySelector("h1")?.textContent).toMatch(/Stovo Spaces|Пространства Stovo/);
   });
 
