@@ -727,7 +727,7 @@ describe("VideoPlayer", () => {
     expect(button?.classList.contains("video-player-status")).toBe(false);
 
     const style = document.createElement("style");
-    style.textContent = readCssSource("src/styles.css");
+    style.textContent = readCssSource("src/styles/media-attachments.css");
     document.head.appendChild(style);
     try {
       expect(getComputedStyle(button!).pointerEvents).toBe("auto");

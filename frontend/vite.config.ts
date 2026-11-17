@@ -1,10 +1,13 @@
 /// <reference types="vitest/config" />
-import { cpSync } from "node:fs";
+import { cpSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { searchForWorkspaceRoot } from "vite";
 
 const disableHmr = process.env.VITE_DISABLE_HMR === "true";
+const workspaceRoot = searchForWorkspaceRoot(process.cwd());
+const nodeModulesRoot = realpathSync("node_modules");
 
 function bundlePdfJsSupportAssets() {
   return {
@@ -59,6 +62,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
   },
   server: {
+    fs: { allow: [workspaceRoot, nodeModulesRoot] },
     host: "0.0.0.0",
     allowedHosts: ["frontend", ".loca.lt", "stovo-cloud.stovo.ru"],
     port: 5173,
