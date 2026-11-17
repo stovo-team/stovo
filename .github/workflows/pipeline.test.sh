@@ -212,33 +212,31 @@ done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' "$workflow")
   shards=$(sed -n '/^  frontend_test_shards:/,/^  frontend-ci:/p' "$workflow")
-  for required in '(cd frontend && npm ci)' 'tar -czf frontend-dependencies.tar.gz' 'name: frontend-dependencies' 'id: upload' 'overwrite: true' 'compression-level: 0'; do
+  for required in '.github/workflows/frontend-dependencies.mjs prepare' 'frontend_dependencies'; do
     if ! grep -Fq -- "$required" <<< "$preparation"; then
-      echo "Frontend preparation in $workflow must build and share the installed tree ($required)." >&2
+      echo "Frontend preparation in $workflow must use the local runner dependency cache ($required)." >&2
       exit 1
     fi
   done
-  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '1'" 'PREP_OS' 'PREP_ARCH' 'PREP_NODE' 'PREP_NPM' 'uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4' 'name: frontend-dependencies' 'timeout-minutes: 5' 'cygpath -u' 'tar -xzf' '(cd frontend && npm ci)' 'run: npm test -- --shard='; do
+  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '1'" '.github/workflows/frontend-dependencies.mjs restore' 'run: npm test -- --shard='; do
     if ! grep -Fq -- "$required" <<< "$shards"; then
-      echo "Frontend shards in $workflow must restore compatible dependencies or install them and run with one worker ($required)." >&2
+      echo "Frontend shards in $workflow must restore local dependencies or install on a cache miss and run with one worker ($required)." >&2
       exit 1
     fi
   done
-  if grep -Fq 'gh run download' <<< "$shards"; then
-    echo "Frontend shards in $workflow must use the official current-run artifact download action." >&2
+  if grep -Eq 'actions/(upload|download)-artifact|tar -xzf|frontend-dependencies\.tar\.gz' <<< "$preparation$shards"; then
+    echo "Frontend dependency jobs in $workflow must not package or transfer node_modules artifacts." >&2
     exit 1
   fi
 done
 master_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/pipeline.yml)
-master_key=$(grep -F 'key: frontend-deps-v2-' <<< "$master_preparation")
-pr_key=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml | grep -F 'key: frontend-deps-v2-')
-if [[ -z "$master_key" || "$master_key" != "$pr_key" ]] || ! grep -Fq "if: github.ref == 'refs/heads/master'" <<< "$master_preparation"; then
-  echo "Only master may populate the exact frontend cache key shared with PRs." >&2
+pr_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml)
+if ! grep -Fq "FRONTEND_DEPENDENCY_CACHE_WRITE: \${{ github.ref == 'refs/heads/master' }}" <<< "$master_preparation" || ! grep -Fq "FRONTEND_DEPENDENCY_CACHE_WRITE: 'false'" <<< "$pr_preparation"; then
+  echo "Only master may populate the runner-local frontend dependency cache." >&2
   exit 1
 fi
-pr_preparation=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' .github/workflows/trusted-pr-tests.yml)
-if ! grep -Fq 'uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830' <<< "$pr_preparation" || grep -Eq '^    cache-mode:' <<< "$pr_preparation" || ! grep -Fq "if: steps.dependencies-cache.outputs.cache-hit != 'true'" <<< "$pr_preparation"; then
-  echo "PR dependency preparation must use read-only cache access and install on a cache miss." >&2
+if ! grep -Fq 'github.event.pull_request.head.repo.full_name == github.repository' <<< "$pr_preparation"; then
+  echo "Fork PRs must skip dependency preparation on ephemeral runners." >&2
   exit 1
 fi
 
@@ -425,7 +423,7 @@ grep -Fq 'run: bash .github/workflows/pipeline.test.sh' "$trusted_pr_workflow" |
 }
 
 frontend_ci_contract=$(sed -n '/^  frontend_test_shards:/,/^  backend_test_shards:/p' "$trusted_pr_workflow")
-for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' '(cd frontend && npm ci)' 'run: npm test' 'run: npm run build'; do
+for required in "Ensure Git Bash is available on Windows" "if: runner.os == 'Windows'" 'shell: bash' '.github/workflows/frontend-dependencies.mjs restore' 'run: npm test' 'run: npm run build'; do
   if ! grep -Fq "$required" <<< "$frontend_ci_contract"; then
     echo "Trusted PR frontend checks must support both hosted Linux and the self-hosted Windows e2e runner ($required)." >&2
     exit 1
