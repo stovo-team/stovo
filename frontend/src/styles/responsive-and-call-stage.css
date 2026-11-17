@@ -1,3 +1,88 @@
+.login-page-shell {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  isolation: isolate;
+  justify-content: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 40px 24px;
+  position: relative;
+}
+
+.login-page-shell::before,
+.login-page-shell::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.login-page-shell::before {
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  border-radius: var(--radius-circle);
+  height: min(72vw, 740px);
+  right: -12vw;
+  top: -34vw;
+  width: min(72vw, 740px);
+}
+
+.login-page-shell::after {
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--accent-primary) 13%, transparent), transparent 70%);
+  height: min(70vw, 720px);
+  left: -30vw;
+  top: 18%;
+  width: min(70vw, 720px);
+}
+
+.login-brand-lockup {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  left: 40px;
+  position: absolute;
+  right: 40px;
+  top: 32px;
+  z-index: 1;
+}
+
+.login-brand-lockup .auth-brand-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.login-brand-lockup .auth-brand-logo {
+  height: 40px;
+  width: 40px;
+}
+
+.login-brand-lockup .auth-brand-title {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.04em;
+  line-height: var(--line-height-tight);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.login-brand-lockup .auth-server-name {
+  display: block;
+  font-size: var(--font-size-caption);
+  max-width: 100%;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.login-page-shell .auth-panel {
+  margin: 0 auto;
+  max-width: 440px;
+  padding: 28px;
+  width: 100%;
+  z-index: 1;
+}
+
 @media (max-width: 680px) {
   h1 {
     font-size: var(--font-size-heading-small);
@@ -30,10 +115,32 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    margin: 0;
+    margin: auto 0;
     max-height: none;
     overflow: visible;
     padding: 0;
+  }
+
+  .login-page-shell {
+    justify-content: center;
+    padding: calc(88px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+  }
+
+  .login-brand-lockup {
+    gap: 10px;
+    left: 16px;
+    right: 16px;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+  }
+
+  .login-brand-lockup .auth-brand-logo {
+    height: 34px;
+    width: 34px;
+  }
+
+  .login-brand-lockup .auth-brand-title {
+    font-size: var(--font-size-heading-small);
   }
 
   .server-setup-eyebrow {

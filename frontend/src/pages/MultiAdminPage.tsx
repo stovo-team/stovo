@@ -230,13 +230,13 @@ export default function MultiAdminPage() {
 
   if (!token) {
     return (
-      <div style={styles.loginContainer}>
-        <div style={styles.loginCard}>
-          <div style={styles.loginHeader} className="supervisor-login-header">
-            <StovoLogo size={32} />
-            <h1 style={styles.title} className="supervisor-login-title">{copy.title}</h1>
-          </div>
-          <p style={styles.subtitle}>{copy.login}</p>
+      <div style={styles.loginContainer} className="supervisor-login-page">
+        <div className="supervisor-login-brand">
+          <StovoLogo size={36} />
+          <h1 className="supervisor-login-brand-name">Stovo Spaces</h1>
+        </div>
+        <div style={styles.loginCard} className="supervisor-login-card">
+          <p style={styles.subtitle} className="supervisor-login-subtitle">{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
@@ -553,20 +553,26 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loginContainer: {
     display: "flex",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "var(--color-palette-7b2817bf9b80)",
     padding: 20,
+    boxSizing: "border-box",
+    isolation: "isolate",
+    overflow: "hidden",
+    position: "relative",
   },
   loginCard: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    backgroundColor: "transparent",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 36,
-    boxShadow: "0 25px 60px var(--color-palette-2101efd095aa)",
+    boxShadow: "none",
+    position: "relative",
+    zIndex: 1,
   },
   badgePill: {
     display: "inline-block",
@@ -674,8 +680,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 28px",
-    borderBottom: "1px solid var(--color-palette-c34f5a2a4d80)",
-    backgroundColor: "var(--color-palette-c2081841e010)",
+    borderBottom: 0,
+    backgroundColor: "transparent",
   },
   headerTitleGroup: {
     display: "flex",
@@ -705,11 +711,11 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 36,
   },
   statCard: {
-    backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    backgroundColor: "transparent",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 24,
-    boxShadow: "0 10px 30px var(--color-palette-4c85ca9b7179)",
+    boxShadow: "none",
     transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease",
   },
   statLabel: {
@@ -724,11 +730,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--color-palette-f2074b6cef37)",
   },
   panelCard: {
-    backgroundColor: "var(--color-palette-95b1a9665923)",
-    border: "1px solid var(--color-palette-c34f5a2a4d80)",
+    backgroundColor: "transparent",
+    border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 32,
-    boxShadow: "0 20px 40px var(--color-palette-f71fbab13810)",
+    boxShadow: "none",
   },
   sectionHeader: {
     display: "flex",
@@ -760,7 +766,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.5px",
   },
   tr: {
-    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    backgroundColor: "transparent",
     borderRadius: "var(--radius-bubble)",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
