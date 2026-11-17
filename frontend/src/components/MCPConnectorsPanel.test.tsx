@@ -43,7 +43,11 @@ describe("MCPConnectorsPanel Russian localization", () => {
 
     expect(container.textContent).toContain("Подключить Stovo к агенту");
     expect(container.textContent).toContain("Локальный Codex · установка из исходного кода");
-    expect(container.querySelector(".mcp-local-codex-panel textarea")?.value).toContain("pair_local_codex(connection_id, chat_id)");
+    expect(container.querySelector(".mcp-local-codex-prompt textarea")?.value).toContain("pair_local_codex(connection_id, chat_id)");
+    expect(container.querySelector(".mcp-local-codex-prompt")?.parentElement).toBe(container.querySelector(".mcp-connectors-panel"));
+    expect(container.querySelector(".mcp-local-codex-prompt")?.previousElementSibling?.classList.contains("mcp-connection-modes")).toBe(true);
+    expect(container.querySelector(".mcp-local-codex-prompt")?.nextElementSibling?.classList.contains("mcp-local-codex-panel")).toBe(true);
+    expect(container.querySelector(".mcp-connection-modes .mcp-local-codex-panel")).toBeNull();
     expect(container.textContent).toContain("Вы сохраняете контроль");
     expect(container.querySelector(".mcp-local-codex-panel details")).toBeTruthy();
     expect(container.textContent).toContain("Создать подключение агента");

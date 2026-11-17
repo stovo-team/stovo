@@ -4,7 +4,7 @@ import { Settings } from "lucide-react";
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import { useStrings } from "../i18n/LanguageContext";
-import CodexBridgeSetupPanel from "./CodexBridgeSetupPanel";
+import CodexBridgeSetupPanel, { CodexBridgeSetupPrompt } from "./CodexBridgeSetupPanel";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
@@ -431,9 +431,10 @@ export default function MCPConnectorsPanel({
             <h3>{strings.codexBridgeSetup.title}</h3>
             <p>{strings.codexBridgeSetup.intro}</p>
           </div>
-          <CodexBridgeSetupPanel />
         </article>
       </section>
+      <CodexBridgeSetupPrompt />
+      <CodexBridgeSetupPanel />
 
       {secret && (
         <article className="invite-link-card mcp-secret-card">

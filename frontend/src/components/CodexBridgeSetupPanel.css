@@ -1,31 +1,64 @@
 .mcp-local-codex-panel {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px 24px;
   width: 100%;
+  padding: 18px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--color-palette-7b2817bf9b80);
 }
 
-.mcp-local-codex-panel .mcp-copy-field-label {
+.mcp-local-codex-limits {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 680px) {
+  .mcp-local-codex-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .mcp-local-codex-limits {
+    grid-column: auto;
+  }
+}
+
+.mcp-local-codex-prompt {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 18px;
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: var(--color-palette-7b2817bf9b80);
+}
+
+.mcp-local-codex-prompt .mcp-copy-field-label {
   align-items: center;
   color: var(--text-primary);
 }
 
-.mcp-local-codex-panel .mcp-inline-copy {
+.mcp-local-codex-prompt .mcp-inline-copy {
   color: var(--accent-primary);
 }
 
-.mcp-local-codex-panel .mcp-setup-prompt {
+.mcp-local-codex-prompt .mcp-setup-prompt {
   box-sizing: border-box;
-  min-height: 116px;
-  max-height: 180px;
+  min-height: 230px;
+  max-height: 420px;
   resize: vertical;
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-caption);
+  padding: 14px 16px;
+  border-radius: var(--radius-control);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-body);
   color: var(--text-primary);
-  background: var(--background-primary);
+  background: var(--color-palette-7b2817bf9b80);
   border: 1px solid var(--border-default);
 }
 
-.mcp-local-codex-panel .mcp-setup-prompt:focus-visible {
+.mcp-local-codex-prompt .mcp-setup-prompt:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
