@@ -31,11 +31,12 @@ export default defineConfig({
   cacheDir: process.env.STOVO_VITE_CACHE_DIR || undefined,
   plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
-    // Limit CI concurrency to keep memory available on the shared self-hosted E2E runners.
+    // Start one worker at a time on shared Windows E2E runners; parallel forks
+    // intermittently time out during worker startup before running their tests.
     maxWorkers: process.env.CI
       ? process.env.VITEST_MAX_WORKERS
         ? Number(process.env.VITEST_MAX_WORKERS)
-        : 2
+        : 1
       : undefined,
     environment: "jsdom",
     environmentMatchGlobs: [
