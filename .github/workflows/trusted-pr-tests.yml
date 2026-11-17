@@ -32,6 +32,8 @@ jobs:
               - '.github/workflows/frontend-dependencies.mjs'
             backend:
               - 'backend/**'
+              - '.github/workflows/backend-test-services.ps1'
+              - '.github/workflows/backend-test-shards.sh'
               - 'deploy/migrations/master/**'
               - 'deploy/**'
 
