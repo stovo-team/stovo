@@ -562,11 +562,11 @@ const styles: Record<string, React.CSSProperties> = {
   loginCard: {
     width: "100%",
     maxWidth: 400,
-    backgroundColor: "var(--color-palette-95b1a9665923)",
+    backgroundColor: "transparent",
     border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 36,
-    boxShadow: "0 25px 60px var(--color-palette-2101efd095aa)",
+    boxShadow: "none",
   },
   badgePill: {
     display: "inline-block",
@@ -674,8 +674,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 28px",
-    borderBottom: "1px solid var(--color-palette-c34f5a2a4d80)",
-    backgroundColor: "var(--color-palette-c2081841e010)",
+    borderBottom: 0,
+    backgroundColor: "transparent",
   },
   headerTitleGroup: {
     display: "flex",
@@ -705,11 +705,11 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 36,
   },
   statCard: {
-    backgroundColor: "var(--color-palette-95b1a9665923)",
+    backgroundColor: "transparent",
     border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 24,
-    boxShadow: "0 10px 30px var(--color-palette-4c85ca9b7179)",
+    boxShadow: "none",
     transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease",
   },
   statLabel: {
@@ -724,11 +724,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--color-palette-f2074b6cef37)",
   },
   panelCard: {
-    backgroundColor: "var(--color-palette-95b1a9665923)",
+    backgroundColor: "transparent",
     border: 0,
     borderRadius: "var(--radius-panel)",
     padding: 32,
-    boxShadow: "0 20px 40px var(--color-palette-f71fbab13810)",
+    boxShadow: "none",
   },
   sectionHeader: {
     display: "flex",
@@ -760,7 +760,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.5px",
   },
   tr: {
-    backgroundColor: "var(--color-palette-47ed8310ca0c)",
+    backgroundColor: "transparent",
     borderRadius: "var(--radius-bubble)",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },

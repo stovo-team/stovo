@@ -12,7 +12,7 @@
 .supervisor-admin-page .table { border-spacing: 0 8px !important; min-width: 700px !important; }
 .supervisor-admin-page .th { padding: 8px 12px !important; }
 .supervisor-admin-page .td { padding: 12px !important; font-size: var(--font-size-small) !important; }
-.supervisor-admin-page .supervisor-space-row > td { background: var(--color-palette-47ed8310ca0c); }
+.supervisor-admin-page .supervisor-space-row > td { background: transparent; }
 .supervisor-admin-page .supervisor-space-row > td:first-child { border-radius: var(--radius-panel) 0 0 var(--radius-panel); }
 .supervisor-admin-page .supervisor-space-row > td:last-child { border-radius: 0 var(--radius-panel) var(--radius-panel) 0; }
 .supervisor-admin-page .actionGroup { gap: 6px; }

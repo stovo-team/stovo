@@ -141,7 +141,7 @@
   border: 0;
   border-radius: var(--radius-bubble);
   color: var(--text-primary, var(--color-palette-dd15e6f7d489));
-  background: var(--surface-card, var(--color-palette-a082ae38274c));
+  background: transparent;
 }
 
 .mcp-icon-button {
@@ -228,7 +228,7 @@
 }
 
 .mcp-connection-mode.is-unavailable {
-  background: var(--color-palette-7425a82693ba);
+  background: transparent;
 }
 
 .mcp-connection-mode.is-unavailable .mcp-mode-kicker {
