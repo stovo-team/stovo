@@ -181,7 +181,15 @@ jobs:
         run: npm run check:css-size
       - name: Test
         working-directory: frontend
-        run: npm test -- --shard=${{ matrix.shard }}/2
+        run: npm test -- --shard=${{ matrix.shard }}/2 --reporter=default --reporter=json --outputFile=frontend-test-timings-${{ matrix.shard }}.json
+      - name: Upload frontend test timing report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: frontend-test-timings-${{ matrix.shard }}
+          path: frontend/frontend-test-timings-${{ matrix.shard }}.json
+          if-no-files-found: ignore
       - name: Build
         if: matrix.shard == 1
         working-directory: frontend

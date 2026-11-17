@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir, platform, arch } from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -45,7 +45,7 @@ async function restore() {
     throw error;
   }
   await rm(modules, { recursive: true, force: true });
-  await cp(path.join(cache, 'node_modules'), modules, { recursive: true });
+  await symlink(path.join(cache, 'node_modules'), modules, platform() === 'win32' ? 'junction' : 'dir');
   console.log(`Restored frontend node_modules from the local runner cache (${key}).`);
   return true;
 }

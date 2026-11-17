@@ -224,7 +224,13 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
       exit 1
     fi
   done
-  if grep -Eq 'actions/(upload|download)-artifact|tar -xzf|frontend-dependencies\.tar\.gz' <<< "$preparation$shards"; then
+  for required in '--reporter=json' '--outputFile=frontend-test-timings-${{ matrix.shard }}.json' 'name: Upload frontend test timing report' 'frontend/frontend-test-timings-${{ matrix.shard }}.json'; do
+    if ! grep -Fq -- "$required" <<< "$shards"; then
+      echo "Frontend shards in $workflow must collect per-file Vitest timing reports ($required)." >&2
+      exit 1
+    fi
+  done
+  if grep -Eq 'actions/(upload|download)-artifact|tar -xzf|frontend-dependencies\.tar\.gz' <<< "$preparation"; then
     echo "Frontend dependency jobs in $workflow must not package or transfer node_modules artifacts." >&2
     exit 1
   fi

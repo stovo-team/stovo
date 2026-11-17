@@ -30,6 +30,7 @@ SCRIPT
   rm -rf frontend/node_modules
   node .github/workflows/frontend-dependencies.mjs restore
   test -f frontend/node_modules/example.txt
+  test "$(realpath frontend/node_modules)" = "$(realpath "$(find "$tmp/cache" -type f -name .package-lock.json -printf '%h\n' | head -1)")"
   test "$(wc -l < "$NPM_CALLS")" -eq 1
   printf '\n' >> frontend/package-lock.json
   node .github/workflows/frontend-dependencies.mjs restore
@@ -40,7 +41,7 @@ fi
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   grep -Fq '.github/workflows/frontend-dependencies.mjs prepare' "$workflow"
   grep -Fq '.github/workflows/frontend-dependencies.mjs restore' "$workflow"
-  frontend_jobs=$(sed -n '/^  frontend_dependencies:/,/^  backend_test_shards:/p' "$workflow")
+  frontend_jobs=$(sed -n '/^  frontend_dependencies:/,/^  frontend_test_shards:/p' "$workflow")
   if grep -Eq 'actions/(upload|download)-artifact|frontend-dependencies\.tar\.gz' <<< "$frontend_jobs"; then
     echo "Frontend dependencies in $workflow must stay unpacked on the runner and must not be transferred as artifacts." >&2
     exit 1
