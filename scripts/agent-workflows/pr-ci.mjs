@@ -38,7 +38,7 @@ export async function watchPr({read, required=[], sleep=delay, interval=15000, t
 const requiredChecks = ['Pipeline Contract','Agent workflow gate'];
 const execute = (tool,args) => execFileSync(tool,args,{encoding:'utf8',timeout:60000});
 export function isTaskBranch(branch) {
-  return /^(feature|hotfix|release|left-try)\//.test(branch) || /^ao\/[^/]+\/[^/]+$/.test(branch);
+  return /^(feature|hotfix|release|left-try)\//.test(branch) || /^ao\/[^/]+\/[^/]+$/.test(branch) || /^ao\/[^/]+-[^/]+$/.test(branch);
 }
 function readPrChecks(repo, pr, run=execute) {
   const result=JSON.parse(run('gh',['pr','view',String(pr),'--repo',repo,'--json','headRefOid,statusCheckRollup'])), seen=new Set();

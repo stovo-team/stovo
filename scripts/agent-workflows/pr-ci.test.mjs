@@ -35,6 +35,7 @@ test('red returns immediately and pending times out without a false pass', async
 
 test('recognizes AO task branches without accepting arbitrary branch paths', () => {
   assert.equal(isTaskBranch('ao/connection-buttons/codex-consent-actions'), true);
+  assert.equal(isTaskBranch('ao/stovo-team-88-dependicle-speed'), true);
   assert.equal(isTaskBranch('feature/codex-consent-actions'), true);
   assert.equal(isTaskBranch('ao/connection-buttons/root/nested'), false);
   assert.equal(isTaskBranch('other/codex-consent-actions'), false);
