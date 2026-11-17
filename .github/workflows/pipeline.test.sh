@@ -218,9 +218,9 @@ for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-test
       exit 1
     fi
   done
-  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '2'" '.github/workflows/frontend-dependencies.mjs restore' 'run: npm test -- --shard='; do
+  for required in 'needs: [changes, frontend_dependencies]' "VITEST_MAX_WORKERS: '1'" '.github/workflows/frontend-dependencies.mjs restore' 'run: npm test -- --shard='; do
     if ! grep -Fq -- "$required" <<< "$shards"; then
-      echo "Frontend shards in $workflow must restore local dependencies or install on a cache miss and run with two workers ($required)." >&2
+      echo "Frontend shards in $workflow must restore local dependencies or install on a cache miss and run with one worker ($required)." >&2
       exit 1
     fi
   done

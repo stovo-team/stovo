@@ -143,7 +143,7 @@ jobs:
       GIT_CONFIG_COUNT: 1
       GIT_CONFIG_KEY_0: core.autocrlf
       GIT_CONFIG_VALUE_0: 'false'
-      VITEST_MAX_WORKERS: '2'
+      VITEST_MAX_WORKERS: '1'
     steps:
       - name: Configure Git long paths and workspace
         if: runner.os == 'Windows'

@@ -174,10 +174,11 @@ func loadBackfillPage(ctx context.Context, tx *sql.Tx, identity httptransport.In
 		JOIN public.intelligence_source_v2_revision_payloads p ON p.connection_id=r.connection_id AND p.revision_id=r.revision_id
 		JOIN public.chats ch ON ch.id=r.chat_id AND ch.family_id=$5
 		JOIN public.chat_members current_member ON current_member.chat_id=r.chat_id AND current_member.user_id=$4
-		JOIN public.intelligence_source_v2_connection_chats scoped_chat ON scoped_chat.connection_id=c.id AND scoped_chat.chat_id=r.chat_id
 		WHERE item.backfill_id=$1 AND item.page_number=$2
 		  AND (($6::text IS NULL AND c.scope_kind='space' AND c.scope_family_id=$5)
-		    OR ($6::text IS NOT NULL AND c.scope_kind='chat' AND r.chat_id=$6))
+		    OR ($6::text IS NOT NULL AND c.scope_kind='chat' AND r.chat_id=$6
+		      AND EXISTS (SELECT 1 FROM public.intelligence_source_v2_connection_chats scoped_chat
+		                  WHERE scoped_chat.connection_id=c.id AND scoped_chat.chat_id=r.chat_id)))
 		ORDER BY item.item_number`, backfillID, pageNumber, identity.ConnectionID, identity.PrincipalUserID, identity.FamilyID, nullableChatScope(identity.ChatID))
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-h1:f0/NPhdQVUDmJCyIo6HJyr6+bwNVlQnx2ECm77Aiukk=
+h1:LT+mP/e6twOEzI6O9OPVe8nWGIFOoGVr5ImUvaPqH7M=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -51,3 +51,4 @@ h1:f0/NPhdQVUDmJCyIo6HJyr6+bwNVlQnx2ECm77Aiukk=
 20261112100000_add_intelligence_source_v2_codex_reply_grants.sql h1:h0ujrHxuOEQE/SA16OpOKDfIyd1J6U4/9zMPFlMJTuM=
 20261114120000_repair_server_default_roles.sql h1:VVaK4QK+Jwp5V+zfBFFQGuM0FK1pHRkSeeOsXWjVe3I=
 20261116090000_add_intelligence_source_space_scope.sql h1:dec+ZBU8QYdh1OQbLo2uX60XndUevQ/gFfogjPCO7mw=
+20261117060000_scope_space_membership_payload_purge.sql h1:I80bNdF2VsqjiQuU03XMEEAki3T6BZlnoC4Lttq5dps=
