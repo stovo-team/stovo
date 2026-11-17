@@ -73,12 +73,10 @@ describe("supervisor space management", () => {
     localStorage.removeItem("master_admin_token");
     await act(async () => { root.render(<MultiAdminPage />); });
     const brand = container.querySelector<HTMLElement>(".supervisor-login-brand");
-    const headerRow = container.querySelector<HTMLElement>(".supervisor-login-header");
     expect(brand).toBeTruthy();
     expect(brand?.querySelector('img[alt="Stovo logo"]')).toBeTruthy();
-    expect(brand?.querySelector(".supervisor-login-brand-name")?.textContent).toBe("Stovo Spaces");
-    expect(headerRow).toBeTruthy();
-    expect(headerRow?.querySelector("h1")?.textContent).toMatch(/Stovo Spaces|Пространства Stovo/);
+    expect(brand?.querySelector("h1.supervisor-login-brand-name")?.textContent).toBe("Stovo Spaces");
+    expect(container.querySelector(".supervisor-login-header")).toBeNull();
   });
 
   it("renders Stovo logo and brand gradient login button on login screen", async () => {

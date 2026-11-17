@@ -233,12 +233,9 @@ export default function MultiAdminPage() {
       <div style={styles.loginContainer} className="supervisor-login-page">
         <div className="supervisor-login-brand">
           <StovoLogo size={36} />
-          <span className="supervisor-login-brand-name">Stovo Spaces</span>
+          <h1 className="supervisor-login-brand-name">Stovo Spaces</h1>
         </div>
         <div style={styles.loginCard} className="supervisor-login-card">
-          <div style={styles.loginHeader} className="supervisor-login-header">
-            <h1 style={styles.title} className="supervisor-login-title">{copy.title}</h1>
-          </div>
           <p style={styles.subtitle} className="supervisor-login-subtitle">{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}

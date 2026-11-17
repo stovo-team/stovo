@@ -36,17 +36,12 @@
   font-weight: var(--font-weight-extrabold);
   letter-spacing: -0.04em;
   line-height: var(--line-height-tight);
-}
-.supervisor-login-header { margin-bottom: 10px !important; }
-.supervisor-login-title {
-  font-weight: var(--font-weight-extrabold) !important;
-  letter-spacing: -0.04em !important;
-  line-height: var(--line-height-tight) !important;
+  margin: 0;
 }
 .supervisor-login-subtitle {
   color: var(--text-secondary) !important;
   font-size: var(--font-size-body-large) !important;
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-bold) !important;
   letter-spacing: -0.015em;
   line-height: var(--line-height-heading) !important;
 }
