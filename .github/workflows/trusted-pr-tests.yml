@@ -211,7 +211,7 @@ jobs:
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.changes.outputs.backend == 'true'
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 10
     outputs:
       postgres_port: ${{ steps.services.outputs.postgres_port }}
@@ -383,7 +383,7 @@ jobs:
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       needs.changes.outputs.backend == 'true'
-    runs-on: [self-hosted, tests, Windows]
+    runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 5
     steps:
       - name: Stop shared backend test containers
