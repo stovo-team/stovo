@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
@@ -21,4 +22,9 @@ it("configures node environment for pure style and logic tests", async () => {
   const { default: config } = await import("./vite.config");
   expect(config.test?.environmentMatchGlobs).toBeDefined();
   expect(config.test?.environmentMatchGlobs?.some(([pattern, env]) => pattern === "src/styles.*.test.ts" && env === "node")).toBe(true);
+});
+it("allows dependencies restored from an external runner cache", async () => {
+  const nodeModules = realpathSync("node_modules");
+  const { default: config } = await import("./vite.config");
+  expect(config.server?.fs?.allow).toContain(nodeModules);
 });
