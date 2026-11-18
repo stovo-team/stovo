@@ -120,31 +120,6 @@
   gap: 14px;
 }
 
-.mcp-connection-modes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 12px;
-}
-
-@media (max-width: 680px) {
-  .mcp-connection-modes {
-    grid-template-columns: 1fr;
-  }
-}
-
-.mcp-connection-mode {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 16px;
-  border: 0;
-  border-radius: var(--radius-bubble);
-  color: var(--text-primary, var(--color-palette-dd15e6f7d489));
-  background: transparent;
-}
-
 .mcp-icon-button {
   display: inline-flex;
   align-items: center;
@@ -189,56 +164,12 @@
   font-size: var(--font-size-body-large);
 }
 
-.mcp-connection-mode > div {
-  display: grid;
-  gap: 5px;
-}
-
-.mcp-connection-mode h3,
-.mcp-connection-mode p {
-  margin: 0;
-}
-
-.mcp-connection-mode h3 {
-  font-size: var(--font-size-body);
-}
-
-.mcp-connection-mode p {
-  max-width: 62ch;
-  color: var(--text-secondary, var(--color-palette-c81e1c112488));
-  font-size: var(--font-size-small);
-  line-height: 1.45;
-}
-
 .mcp-mode-kicker {
   color: var(--accent-primary, var(--color-palette-8940f2c623d0));
   font-size: var(--font-size-micro);
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.mcp-connection-mode > small {
-  color: var(--text-muted, var(--color-palette-b5a6c19603b5));
-  font-size: var(--font-size-caption);
-  white-space: nowrap;
-}
-
-.mcp-connection-mode.is-active {
-  border-color: transparent;
-}
-
-.mcp-connection-mode.is-unavailable {
-  background: transparent;
-}
-
-.mcp-connection-mode.is-unavailable .mcp-mode-kicker {
-  color: var(--color-palette-b5a6c19603b5);
-}
-
-.mcp-connection-mode button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .mcp-form-heading {
@@ -298,44 +229,6 @@
   min-width: 0;
 }
 
-.mcp-provider-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.mcp-provider-tab {
-  display: grid;
-  gap: 2px;
-  justify-items: center;
-  padding: 10px 8px;
-  border: 0;
-  border-radius: var(--radius-surface);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: center;
-}
-
-.mcp-provider-tab small {
-  opacity: 0.68;
-  font-size: var(--font-size-caption);
-}
-
-.mcp-provider-tab:hover,
-.mcp-provider-tab:focus-visible {
-  background: color-mix(in oklab, var(--color-palette-f2074b6cef37) 6%, transparent);
-}
-
-.mcp-provider-tab.is-selected {
-  background: color-mix(in oklab, var(--accent-primary) 16%, var(--color-palette-b326329c726c));
-  color: var(--accent-primary, var(--color-palette-8940f2c623d0));
-  box-shadow: none;
-}
-
 .mcp-connector-form,
 .mcp-connector-card,
 .mcp-secret-card {
@@ -362,10 +255,6 @@
 .mcp-connector-form label.mcp-tag,
 .mcp-connector-form label.mcp-select-all {
   display: inline-flex;
-}
-
-.mcp-connector-form label.mcp-auth-mode-row {
-  display: grid;
 }
 
 .mcp-connector-form fieldset {
@@ -684,78 +573,6 @@
   border-radius: var(--radius-surface);
 }
 
-.mcp-auth-mode-fieldset {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.mcp-auth-mode-fieldset legend {
-  padding: 0;
-  margin-bottom: 2px;
-}
-
-.mcp-auth-mode-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.mcp-auth-mode-row {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 14px 12px;
-  border: 0;
-  border-radius: var(--radius-surface);
-  background: var(--color-palette-7425a82693ba);
-  cursor: pointer;
-  text-align: center;
-}
-
-.mcp-auth-mode-row.is-selected {
-  background: color-mix(in oklab, var(--accent-primary) 14%, var(--color-palette-7425a82693ba));
-  box-shadow: none;
-}
-
-.mcp-auth-mode-row input[type="radio"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  border: 1.5px solid var(--color-palette-66341b70b395);
-  border-radius: var(--radius-circle);
-  background: transparent;
-  order: -1;
-}
-
-.mcp-auth-mode-row.is-selected input[type="radio"],
-.mcp-auth-mode-row input[type="radio"]:checked {
-  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
-  background:
-    radial-gradient(circle at center, var(--accent-primary, var(--color-palette-a5384157bc1a)) 0 45%, transparent 48%);
-}
-
-.mcp-auth-mode-row span {
-  display: grid;
-  gap: 3px;
-  justify-items: center;
-  text-align: center;
-}
-
-.mcp-auth-mode-row small {
-  opacity: 0.72;
-  font-size: var(--font-size-caption);
-  line-height: 1.3;
-}
-
 .mcp-connector-config-row {
   display: grid;
   gap: 12px;
@@ -868,15 +685,6 @@
     overflow-wrap: anywhere;
   }
 
-  .mcp-connection-mode {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .mcp-provider-tabs,
-  .mcp-auth-mode-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 
@@ -1591,28 +1399,6 @@
   color: var(--color-palette-b5a6c19603b5);
 }
 
-.admin-page .mcp-provider-tabs {
-  gap: 6px;
-  border: 0;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.admin-page .mcp-provider-tab {
-  padding: 10px 8px;
-  border-radius: var(--radius-surface);
-  border-bottom: 0;
-}
-
-.admin-page .mcp-provider-tab strong {
-  font-size: var(--font-size-small);
-}
-
-.admin-page .mcp-provider-tab small {
-  font-size: var(--font-size-micro);
-}
-
 .admin-page .mcp-section-box {
   gap: 14px;
   padding: 16px;
@@ -1646,29 +1432,8 @@
   gap: 8px;
 }
 
-.admin-page .mcp-auth-mode-list {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-}
-
-.admin-page .mcp-auth-mode-row,
 .admin-page .mcp-alias-field input {
   border-radius: var(--radius-surface);
-}
-
-.admin-page .mcp-auth-mode-row {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 14px 12px;
-  text-align: center;
-}
-
-.admin-page .mcp-auth-mode-row span {
-  justify-items: center;
-  text-align: center;
 }
 
 .admin-page .mcp-connector-form fieldset {
