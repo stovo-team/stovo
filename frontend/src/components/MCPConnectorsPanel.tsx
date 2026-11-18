@@ -1,8 +1,9 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
+import type { IntelligenceGrant, IntelligenceGrants } from "../api/intelligence";
 import { useStrings } from "../i18n/LanguageContext";
 import CodexBridgeSetupPanel, { CodexBridgeSetupPrompt } from "./CodexBridgeSetupPanel";
 import { PopupDialog } from "./ui/Popup";
@@ -14,10 +15,12 @@ import {
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
+  MCP_PROVIDERS,
   MCPProviderId,
   createMCPConnector,
   defaultMCPAlias,
   defaultMCPPermissions,
+  formatMCPAlias,
   listMCPConnectors,
   regenerateMCPConnectorToken,
   revokeMCPConnector,
@@ -32,7 +35,13 @@ type SecretReveal = {
   connectorName: string;
   connectorId: string;
   provider: string;
+  alias: string;
+  insightGrants: IntelligenceGrants;
 };
+
+function defaultInsightGrantPreferences(): IntelligenceGrants {
+  return { read: false, process: false, external_transfer: false, export: false, codex: false, reply: false };
+}
 
 async function copyText(value: string) {
   try {
@@ -56,12 +65,6 @@ function chatLabel(chat: Chat, labels: Record<Chat["type"], string>, directFallb
     return other?.displayName ?? directFallback;
   }
   return labels[chat.type];
-}
-
-// A connection without this capability appears healthy in Codex but cannot
-// discover its configured scope. Keep other capabilities opt-in.
-function defaultWorkingMCPPermissions(): MCPPermissions {
-  return { ...defaultMCPPermissions(), "chats.list": true };
 }
 
 function ChatTypeIcon({ type }: { type: Chat["type"] }) {
@@ -146,22 +149,21 @@ export default function MCPConnectorsPanel({
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // MCP transport and permissions are identical for every compatible agent.
-  // Keep a stable backend provider value for legacy records, without making
-  // people choose an artificial agent category during setup.
-  const [provider] = useState<MCPProviderId>("codex");
+  const [provider, setProvider] = useState<MCPProviderId | "">("");
   const [name, setName] = useState("");
   const [maxHistory, setMaxHistory] = useState(50);
-  const [permissions, setPermissions] = useState<MCPPermissions>(defaultWorkingMCPPermissions());
+  const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
+  const [insightGrantPreferences, setInsightGrantPreferences] = useState<IntelligenceGrants>(defaultInsightGrantPreferences());
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
   const [editing, setEditing] = useState<MCPConnector | null>(null);
   const [editName, setEditName] = useState("");
   const [editHistory, setEditHistory] = useState(50);
-  const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultWorkingMCPPermissions());
+  const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
   const [editChatIds, setEditChatIds] = useState<string[]>([]);
   const [secret, setSecret] = useState<SecretReveal | null>(null);
   const [copied, setCopied] = useState<"token" | "prompt" | "url" | "cli" | null>(null);
   const [showCli, setShowCli] = useState(false);
+  const onboardingHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -176,10 +178,8 @@ export default function MCPConnectorsPanel({
     try {
       const chatResult = await authRequest<Chat[]>("/api/chats");
       setChats(chatResult);
-      // The Space shown here is already the active server route. A new
-      // connector starts with its entire current Space selected; the owner can
-      // narrow it before saving.
-      setAllowedChatIds((current) => (current.length ? current : chatResult.map((chat) => chat.id)));
+      // Keep scope empty until the owner explicitly chooses one or more chats.
+      setAllowedChatIds([]);
     } catch {
       setChats([]);
     } finally {
@@ -207,8 +207,16 @@ export default function MCPConnectorsPanel({
     return () => window.clearInterval(interval);
   }, [accessToken, secret, isSecretConnected]);
 
+  useEffect(() => {
+    if (secret) onboardingHeadingRef.current?.focus();
+  }, [secret?.connectorId]);
+
   function togglePermission(key: (typeof MCP_PERMISSION_KEYS)[number]) {
     setPermissions((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  function toggleInsightGrant(grant: IntelligenceGrant) {
+    setInsightGrantPreferences((current) => ({ ...current, [grant]: !current[grant] }));
   }
 
   function toggleChat(chatId: string) {
@@ -219,6 +227,7 @@ export default function MCPConnectorsPanel({
 
   const allChatsSelected = chats.length > 0 && chats.every((chat) => allowedChatIds.includes(chat.id));
   const allPermissionsSelected = MCP_PERMISSION_KEYS.every((key) => permissions[key]);
+  const nicknameAlias = name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 28);
 
   const chatGroups = useMemo(
     () =>
@@ -270,7 +279,7 @@ export default function MCPConnectorsPanel({
     cliCommand?: string;
     claudeCommand?: string;
     connector: MCPConnector;
-  }) {
+  }, requestedInsightGrants = defaultInsightGrantPreferences()) {
     setSecret({
       token: result.token,
       mcpUrl: result.mcpUrl,
@@ -278,7 +287,9 @@ export default function MCPConnectorsPanel({
       cliCommand: result.cliCommand || result.claudeCommand || "",
       connectorName: result.connector.name,
       connectorId: result.connector.id,
-      provider: result.connector.provider || provider
+      provider: result.connector.provider || provider || "codex",
+      alias: result.connector.alias,
+      insightGrants: { ...requestedInsightGrants }
     });
     setShowCli(false);
     setCopied(null);
@@ -301,7 +312,7 @@ export default function MCPConnectorsPanel({
 
       const result = await createMCPConnector(accessToken, {
         name: trimmedName,
-        provider,
+        provider: provider as MCPProviderId,
         alias: generatedAlias,
         authMode: "subscription",
         allowedChatIds,
@@ -309,12 +320,13 @@ export default function MCPConnectorsPanel({
         maxHistoryMessages: maxHistory
       });
       setConnectors((current) => [result.connector, ...current.filter((item) => item.id !== result.connector.id)]);
-      applySecret(result);
+      applySecret(result, insightGrantPreferences);
       setName("");
-      setPermissions(defaultWorkingMCPPermissions());
+      setProvider("");
+      setPermissions(defaultMCPPermissions());
+      setInsightGrantPreferences(defaultInsightGrantPreferences());
       setAllowedChatIds([]);
       setMaxHistory(50);
-      onNotice(copy.connectionCreated);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.createFailed);
     } finally {
@@ -349,7 +361,7 @@ export default function MCPConnectorsPanel({
     try {
       const result = await regenerateMCPConnectorToken(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === result.connector.id ? result.connector : item)));
-      applySecret(result);
+      applySecret(result, secret?.connectorId === connector.id ? secret.insightGrants : defaultInsightGrantPreferences());
       onNotice(copy.tokenRegenerated);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.regenerateFailed);
@@ -409,40 +421,20 @@ export default function MCPConnectorsPanel({
 
   const setupSteps = secret?.provider === "openclaw" ? copy.setupSteps.openclaw
     : secret?.provider === "hermes" ? copy.setupSteps.hermes
-    : secret?.provider === "claude" ? copy.setupSteps.claude
+    : secret?.provider === "claude_code" ? copy.setupSteps.claude
     : copy.setupSteps.codex;
+  const secretProviderName = MCP_PROVIDERS.find((item) => item.id === secret?.provider)?.label ?? secret?.provider ?? "";
 
   return (
     <section className="mcp-connectors-panel">
-      <section className="mcp-connection-modes" aria-label={copy.modesLabel}>
-        <article className="mcp-connection-mode is-active">
-          <div>
-            <span className="mcp-mode-kicker">{copy.availableNow}</span>
-            <h3>{copy.connectStovoToAgent}</h3>
-            <p>
-              {copy.secureConnectionDescription}
-            </p>
-          </div>
-          <small>{copy.connectionSession}</small>
-        </article>
-        <article className="mcp-connection-mode mcp-local-codex-mode">
-          <div>
-            <span className="mcp-mode-kicker">{copy.localCodex}</span>
-            <h3>{strings.codexBridgeSetup.title}</h3>
-            <p>{strings.codexBridgeSetup.intro}</p>
-          </div>
-        </article>
-      </section>
-      <CodexBridgeSetupPrompt />
-      <CodexBridgeSetupPanel />
-
       {secret && (
         <article className="invite-link-card mcp-secret-card">
           <div className="mcp-secret-header">
             <div>
-              <strong>{copy.connectAgentToStovo}</strong>
+              <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(1, 3)}</span>
+              <h2 ref={onboardingHeadingRef} tabIndex={-1}>{copy.onboardingTitle(secret.connectorName)}</h2>
               <p>
-                {copy.connectionFor(secret.connectorName)}
+                {copy.connectionFor(secret.connectorName, secretProviderName, formatMCPAlias(secret.alias))}
               </p>
             </div>
             <span className={`mcp-status-pill ${isSecretConnected ? "is-connected" : "is-waiting"}`}>
@@ -470,12 +462,31 @@ export default function MCPConnectorsPanel({
 
           <div className="mcp-setup-block">
             <strong>{copy.nativeAgentSetup}</strong>
+            <p className="muted-text">{copy.onboardingAgentDescription}</p>
             <ol className="mcp-setup-steps">
               {setupSteps.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>
           </div>
+
+          <section className="mcp-onboarding-step">
+            <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(2, 3)}</span>
+            <h3>{copy.insightPermissionsTitle}</h3>
+            <p className="muted-text">{copy.insightPermissionsOnboarding}</p>
+            <p className="mcp-insight-requested">
+              <strong>{copy.insightPreferences}:</strong>{" "}
+              {Object.entries(secret.insightGrants).filter(([, enabled]) => enabled).map(([grant]) => strings.intelligence.grants[grant as IntelligenceGrant]).join(", ") || copy.none}
+            </p>
+          </section>
+
+          <section className="mcp-onboarding-step mcp-onboarding-local-bridge">
+            <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(3, 3)}</span>
+            <h3>{copy.localBridgeOnboardingTitle}</h3>
+            <p className="muted-text">{copy.localBridgePrerequisites}</p>
+            <CodexBridgeSetupPrompt />
+            <CodexBridgeSetupPanel />
+          </section>
 
           {showCli && <div className="mcp-cli-toggle"><code>{secret.cliCommand}</code></div>}
 
@@ -489,15 +500,16 @@ export default function MCPConnectorsPanel({
               </button>
             )}
             <button type="button" className="secondary-button" onClick={() => setSecret(null)}>
-              {copy.dismiss}
+              {copy.backToAgents}
             </button>
           </div>
         </article>
       )}
 
-      <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
+      {!secret && <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
         <div className="mcp-form-heading">
           <div>
+            <span className="mcp-mode-kicker">{copy.createAgentKicker}</span>
             <h3>{copy.createAgentConnection}</h3>
             <p className="muted-text">
               {copy.boundToSpace(spaceName)}
@@ -506,14 +518,26 @@ export default function MCPConnectorsPanel({
         </div>
 
         <label>
-          {copy.connectionName}
+          {copy.agentNickname}
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={copy.connectionNamePlaceholder}
             required
-            maxLength={120}
+            minLength={2}
+            maxLength={28}
+            pattern="[A-Za-z0-9_-]{2,28}"
+            autoComplete="off"
           />
+          <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
+        </label>
+
+        <label>
+          {copy.providerLabel}
+          <select aria-label={copy.providerLabel} value={provider} onChange={(event) => setProvider(event.target.value as MCPProviderId | "")} required>
+            <option value="" disabled>{copy.chooseProvider}</option>
+            {MCP_PROVIDERS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
         </label>
 
         <label>{copy.maxHistoryMessages}<PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} min={1} max={500} value={maxHistory} onValueChange={(value) => setMaxHistory(Number(value) || 50)} /></label>
@@ -568,6 +592,21 @@ export default function MCPConnectorsPanel({
             })}
           </div>
         </fieldset>
+        <fieldset className="mcp-tag-fieldset mcp-insight-permissions">
+          <legend>{copy.insightPermissionsTitle}</legend>
+          <p className="muted-text">{copy.insightPermissionsCreateHelper}</p>
+          <div className="mcp-option-groups">
+            <div className="mcp-tag-list">
+              {(Object.keys(insightGrantPreferences) as IntelligenceGrant[]).map((grant) => (
+                <label key={grant} className={`mcp-tag${insightGrantPreferences[grant] ? " is-selected" : ""}`}>
+                  <input type="checkbox" checked={insightGrantPreferences[grant]} onChange={() => toggleInsightGrant(grant)} />
+                  <strong>{strings.intelligence.grants[grant]}</strong>
+                </label>
+              ))}
+            </div>
+          </div>
+          <small className="mcp-insight-consent-note">{copy.insightConsentBoundary}</small>
+        </fieldset>
         <fieldset className="mcp-tag-fieldset">
           <legend>
             <span>{copy.permissionsAllOff}</span>
@@ -608,12 +647,12 @@ export default function MCPConnectorsPanel({
             })}
           </div>
         </fieldset>
-        <button type="submit" disabled={isSaving || !name.trim() || !allowedChatIds.length}>
+        <button type="submit" disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}>
           {isSaving ? copy.connecting : copy.createConnection}
         </button>
-      </form>
+      </form>}
 
-      <div className="mcp-connector-list mcp-section-box">
+      {!secret && <div className="mcp-connector-list mcp-section-box">
         <h3>{copy.existingConnections}</h3>
         {isLoading && <p className="muted-text">{copy.loading}</p>}
         {!isLoading && connectors.length === 0 && <p className="muted-text">{copy.noConnections}</p>}
@@ -688,7 +727,7 @@ export default function MCPConnectorsPanel({
             </article>
           );
         })}
-      </div>
+      </div>}
 
       {editing && (
         <PopupDialog className="mcp-edit-modal" ariaLabelledBy="mcp-modal-title" onClose={isSaving ? undefined : () => setEditing(null)} closeOnBackdrop={!isSaving} size="lg">

@@ -5,6 +5,7 @@ import type { FamilyFile } from "../api/files";
 import type { Family } from "../api/family";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
 import { sendMessage } from "../api/chats";
+import { createMCPConnector, defaultMCPPermissions, listMCPConnectors } from "../api/mcpConnectors";
 import { appendCanvasDocumentUpdate, createCanvas, getCanvas, getCanvasDocument, getStorageCanvases, renameCanvas } from "../api/canvas";
 import { deleteFile, downloadFileBlob, getFile, getFiles, uploadFile, updateFilePreferences } from "../api/files";
 import { resetMockFileStore } from "./mockFileStore";
@@ -36,6 +37,20 @@ afterEach(() => {
 });
 
 describe("local mock chat API", () => {
+  it("creates and lists an ephemeral MCP agent using the existing connector contract", async () => {
+    seedMockSession(MOCK_ORIGIN);
+    const created = await createMCPConnector("local-mock-access-token", {
+      name: "Researcher", provider: "codex", alias: "researcher", authMode: "subscription",
+      allowedChatIds: [FIRST_CHAT_ID], permissions: defaultMCPPermissions(), maxHistoryMessages: 50,
+    });
+
+    expect(created.connector).toMatchObject({
+      name: "Researcher", provider: "codex", alias: "researcher", allowedChatIds: [FIRST_CHAT_ID],
+    });
+    expect(created.token).toEqual(expect.any(String));
+    await expect(listMCPConnectors("local-mock-access-token")).resolves.toEqual([created.connector]);
+  });
+
   it("starts without an automatic family chat and saves chat avatar choices", async () => {
     seedMockSession(MOCK_ORIGIN);
     const chats = await request<Chat[]>("/api/chats");

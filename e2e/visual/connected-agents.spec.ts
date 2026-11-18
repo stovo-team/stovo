@@ -1,0 +1,59 @@
+import { expect, test, ready } from "./fixtures";
+import { screenshot, shellScenarios } from "./scenarios";
+
+for (const scenario of shellScenarios) {
+  test(`Connected Agents create and onboarding ${scenario.id} ${scenario.viewport.width}px ${scenario.theme} ${scenario.locale}`, async ({ page }, info) => {
+    await page.setViewportSize(scenario.viewport);
+    await page.emulateMedia({ colorScheme: scenario.theme });
+    await page.addInitScript(({ theme, locale }) => {
+      localStorage.setItem("familyMessenger.appearance", JSON.stringify({ themeMode: theme }));
+      localStorage.setItem("familyMessenger.devicePreferences", JSON.stringify({ language: locale }));
+    }, { theme: scenario.theme, locale: scenario.locale });
+
+    await page.route("**/api/admin/mcp-connectors", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      await route.fulfill({ json: {
+        connector: {
+          id: "visual-connected-agent", name: "Researcher", actorUserId: "local-agent", enabled: true,
+          revoked: false, createdBy: "local-owner", createdAt: "2026-10-19T06:00:00Z", lastUsedAt: null,
+          maxHistoryMessages: 50, permissions: {}, provider: "codex", alias: "researcher",
+          authMode: "subscription", allowedChatIds: ["chat-planning-team"],
+        },
+        token: "visual-private-token", mcpUrl: "https://messenger.example/api/mcp/visual-connected-agent",
+        setupPrompt: "Connect this Codex agent to the selected Stovo chats.",
+        cliCommand: "codex mcp add stovo", claudeCommand: "codex mcp add stovo",
+      } });
+    });
+
+    await page.goto("/app/admin/mcp");
+    await ready(page);
+
+    const pageTitle = scenario.locale === "ru" ? "Подключённые агенты" : "Connected Agents";
+    const nicknameLabel = scenario.locale === "ru" ? "Псевдоним агента" : "Agent nickname";
+    const providerLabel = scenario.locale === "ru" ? "Провайдер агента" : "Agent provider";
+    const insightLabel = scenario.locale === "ru" ? "Разрешения Stovo Insight" : "Stovo Insight permissions";
+    const selectedPermissions = page.locator(".mcp-connector-form input[type='checkbox']:checked");
+
+    await expect(page.getByRole("heading", { level: 1, name: pageTitle })).toBeVisible();
+    await expect(page.getByLabel(nicknameLabel)).toBeVisible();
+    await expect(page.getByLabel(providerLabel)).toBeVisible();
+    await expect(page.getByText(insightLabel)).toBeVisible();
+    await expect(selectedPermissions).toHaveCount(0);
+    await expect(page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" })).toBeDisabled();
+    await screenshot(page, info, { ...scenario, id: `CA-create-${scenario.id}` });
+
+    await page.getByLabel(nicknameLabel).fill("Researcher");
+    await page.getByLabel(providerLabel).selectOption("codex");
+    await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
+    await page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" }).click();
+
+    await expect(page.getByText(scenario.locale === "ru" ? "Настройка: Researcher" : "Set up Researcher")).toBeVisible();
+    await expect(page.getByText(scenario.locale === "ru" ? "ШАГ 3 ИЗ 3" : "STEP 3 OF 3")).toBeVisible();
+    await expect(page.locator(".mcp-local-codex-panel textarea")).toHaveValue(/pair_local_codex\(connection_id, chat_id\)/);
+    await expect(page.locator(".mcp-local-codex-panel button")).toBeVisible();
+    await screenshot(page, info, { ...scenario, id: `CA-onboarding-${scenario.id}` });
+  });
+}

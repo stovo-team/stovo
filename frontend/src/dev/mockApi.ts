@@ -3,6 +3,7 @@ import { mockCanvasResponse } from "./mockCanvas";
 import { updateMockFamilySettings } from "./mockFamilySettings";
 import type { AuthResponse } from "../api/auth";
 import type { Chat, Message, MessageHistoryPage } from "../api/chats";
+import type { MCPConnector, MCPPermissions } from "../api/mcpConnectors";
 import { addMobileLayoutMessages, createMockData, createMockIntelligenceConsentOffer, createMockManifest } from "./mockFixtures";
 import type { MockData } from "./mockFixtures";
 import { getMockUserId, isMockSignedOut } from "./mockBootstrap";
@@ -34,6 +35,7 @@ type GlobalWithMockApi = typeof globalThis & { [MOCK_API_STATE_KEY]?: MockApiIns
 
 const mockGlobal = globalThis as GlobalWithMockApi;
 let mockData: MockData = createMockData();
+let mockMCPConnectors: MCPConnector[] = [];
 let nextLocalMessageId = 1;
 
 resetMockCanvases(mockData.family.id, mockData.users[0]?.id);
@@ -106,6 +108,38 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
   }
   if (method === "GET" && path === "/api/plans") return jsonResponse([]);
   if (method === "GET" && path === "/api/family/roles") return jsonResponse([]);
+  if (path === "/api/admin/mcp-connectors" && method === "GET") return jsonResponse(mockMCPConnectors);
+  if (path === "/api/admin/mcp-connectors" && method === "POST") {
+    const body = await requestBody(input, init);
+    const id = `local-mcp-${mockMCPConnectors.length + 1}`;
+    const provider = typeof body.provider === "string" ? body.provider : "codex";
+    const permissions = body.permissions && typeof body.permissions === "object" ? body.permissions as MCPPermissions : {} as MCPPermissions;
+    const connector: MCPConnector = {
+      id,
+      name: typeof body.name === "string" ? body.name : "Local agent",
+      actorUserId: `agent-${id}`,
+      enabled: true,
+      revoked: false,
+      createdBy: getMockUserId(),
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+      maxHistoryMessages: typeof body.maxHistoryMessages === "number" ? body.maxHistoryMessages : 50,
+      permissions,
+      provider,
+      alias: typeof body.alias === "string" ? body.alias : provider,
+      authMode: typeof body.authMode === "string" ? body.authMode : "subscription",
+      allowedChatIds: Array.isArray(body.allowedChatIds) ? body.allowedChatIds.filter((chatId): chatId is string => typeof chatId === "string") : [],
+    };
+    mockMCPConnectors = [connector, ...mockMCPConnectors];
+    return jsonResponse({
+      connector,
+      token: `local-mock-token-${id}`,
+      mcpUrl: `${url.origin}/api/mcp/${id}`,
+      claudeCommand: `codex mcp add stovo --url ${url.origin}/api/mcp/${id}`,
+      setupPrompt: `Connect ${connector.alias} to the selected Stovo chats at ${url.origin}/api/mcp/${id}.`,
+      cliCommand: `codex mcp add stovo --url ${url.origin}/api/mcp/${id}`,
+    });
+  }
   if (method === "GET" && path === "/api/v1/config/manifest") return jsonResponse(createMockManifest());
   if (method === "GET" && path === "/api/chats") return jsonResponse(mockData.chats);
   const canvasResponse = await handleMockCanvasRequest(
@@ -363,6 +397,7 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
 export function resetMockData(): void {
   mockData = createMockData();
+  mockMCPConnectors = [];
   resetMockCollections();
   resetMockCanvases(mockData.family.id, mockData.users[0]?.id, false);
   nextLocalMessageId = 1;
