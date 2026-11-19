@@ -49,7 +49,9 @@ describe("MCPConnectorsPanel Russian localization", () => {
     expect(container.textContent).toContain("Создать подключение агента");
     expect(container.textContent).toContain("Доступ к чатам в этом Space");
     expect(container.textContent).toContain("Разрешения Stovo Insight");
-    expect(container.textContent).toContain("Эти настройки не выдают доступ");
+    expect(container.textContent).not.toContain("Эти настройки не выдают доступ");
+    expect(container.textContent).not.toContain("Доступ Insight выдаётся только в его авторизованном окне согласия");
+    expect(container.querySelector(".mcp-insight-permissions .mcp-select-all-button")?.textContent).toBe("Выбрать все");
     expect(container.textContent).toContain("Права (изначально выключены)");
     expect(container.textContent).toContain("Просматривать список чатов");
     expect(container.textContent).toContain("Существующие подключения");
@@ -73,7 +75,8 @@ describe("MCPConnectorsPanel Russian localization", () => {
     });
 
     expect(container.textContent).toContain("Псевдоним агента");
-    expect(container.querySelector("select[aria-label='Провайдер агента']")).toBeTruthy();
+    expect(container.querySelectorAll(".mcp-provider-tab")).toHaveLength(4);
+    expect(container.querySelectorAll(".mcp-provider-mark")).toHaveLength(4);
     expect(container.textContent).toContain("Разрешения Stovo Insight");
 
     const chatChoice = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
@@ -86,7 +89,17 @@ describe("MCPConnectorsPanel Russian localization", () => {
     expect(chatChoice?.checked).toBe(false);
     expect(readHistoryChoice?.checked).toBe(false);
     expect(insightReadChoice?.checked).toBe(false);
-    expect(container.textContent).toContain("Доступ Insight выдаётся только в его авторизованном окне согласия");
+    expect(container.textContent).not.toContain("авторизованном окне согласия");
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(".mcp-insight-permissions .mcp-select-all-button")?.click();
+    });
+    expect(Array.from(container.querySelectorAll<HTMLInputElement>(".mcp-insight-permissions input[type='checkbox']")).every((input) => input.checked)).toBe(true);
+    await act(async () => {
+      container.querySelectorAll<HTMLButtonElement>(".mcp-select-all-button")[1]?.click();
+    });
+    const messengerPermissions = container.querySelectorAll(".mcp-tag-fieldset:not(.mcp-insight-permissions)")[1];
+    expect(Array.from(messengerPermissions?.querySelectorAll<HTMLInputElement>("input[type='checkbox']") ?? []).every((input) => input.checked)).toBe(true);
 
     const nicknameInput = Array.from(container.querySelectorAll<HTMLInputElement>("input"))
       .find((input) => input.closest("label")?.textContent?.includes("Псевдоним агента"));
@@ -125,7 +138,8 @@ describe("MCPConnectorsPanel Russian localization", () => {
 
     const nicknameInput = Array.from(container.querySelectorAll<HTMLInputElement>("input"))
       .find((input) => input.closest("label")?.textContent?.includes("Псевдоним агента"));
-    const providerSelect = container.querySelector<HTMLSelectElement>("select[aria-label='Провайдер агента']");
+    const codexProvider = Array.from(container.querySelectorAll<HTMLButtonElement>(".mcp-provider-tab"))
+      .find((button) => button.textContent?.includes("ChatGPT (Codex)"));
     const chatChoice = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
       .find((input) => input.parentElement?.textContent?.includes("Project room"));
     const insightReadChoice = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
@@ -136,10 +150,7 @@ describe("MCPConnectorsPanel Russian localization", () => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(nicknameInput, "Researcher");
         nicknameInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
-      if (providerSelect) {
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(providerSelect, "codex");
-        providerSelect.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      codexProvider?.click();
       chatChoice?.click();
       insightReadChoice?.click();
     });
@@ -158,7 +169,7 @@ describe("MCPConnectorsPanel Russian localization", () => {
     expect(container.textContent).toContain("ШАГ 3 ИЗ 3");
     expect(container.textContent).toContain("Читать историю чата");
     expect(container.textContent).toContain("macOS или Linux, Node.js 22+");
-    expect(container.textContent).toContain("подтвердите каждое разрешение в авторизованном окне согласия Stovo Insight");
+    expect(container.textContent).not.toContain("подтвердите каждое разрешение в авторизованном окне согласия Stovo Insight");
     expect(container.querySelector(".mcp-local-codex-prompt textarea")?.value).toContain("pair_local_codex(connection_id, chat_id)");
     expect(container.querySelector(".mcp-local-codex-prompt textarea")?.value).toContain("stop for my confirmation");
     expect(container.querySelector(".mcp-local-codex-prompt button")?.getAttribute("aria-label")).toBe("Скопировать запрос настройки");
