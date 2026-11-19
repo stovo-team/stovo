@@ -459,7 +459,7 @@ h2 {
   width: 48px;
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 769px) {
   /* A fixed grid child no longer occupies an auto-placement slot. Reserve the
      rail column explicitly so each page surface stays alongside the nav. */
   .app-frame > :not(.app-nav) {
