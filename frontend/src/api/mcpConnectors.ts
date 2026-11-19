@@ -146,10 +146,10 @@ export function mcpUiSetupSteps(provider: string | undefined | null): string[] {
   switch (provider) {
     case "codex":
       return [
-        "Open ChatGPT / Codex → Settings → Connectors / MCP",
-        "Add a custom HTTP MCP server",
-        "Paste the MCP URL and Authorization Bearer token",
-        "Save and connect. The agent will verify available tools and chats"
+        "In Codex, add an MCP server named stovo-messenger",
+        "Choose Streamable HTTP and enter the MCP URL",
+        "Set Authorization: Bearer <token> as an HTTP header (do not add env)",
+        "Save, restart/reload if prompted, then use the setup prompt above to test the connection"
       ];
     case "openclaw":
       return [

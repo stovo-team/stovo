@@ -23,8 +23,8 @@ for (const scenario of shellScenarios) {
           authMode: "subscription", allowedChatIds: ["chat-planning-team"],
         },
         token: "visual-private-token", mcpUrl: "https://messenger.example/api/mcp/visual-connected-agent",
-        setupPrompt: "Connect this Codex agent to the selected Stovo chats.",
-        cliCommand: "codex mcp add stovo", claudeCommand: "codex mcp add stovo",
+        setupPrompt: "Connect to stovo-messenger over Streamable HTTP. Set Authorization: Bearer <token> as an HTTP header; do not add env or configure an unrelated MCP server. To test the connection, call stovo_connection_status. Do not list chats or send messages.",
+        cliCommand: "codex mcp add stovo-messenger", claudeCommand: "codex mcp add stovo-messenger",
       } });
     });
 
@@ -51,9 +51,13 @@ for (const scenario of shellScenarios) {
     await page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" }).click();
 
     await expect(page.getByText(scenario.locale === "ru" ? "Настройка: Researcher" : "Set up Researcher")).toBeVisible();
+    await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toHaveValue(/To test the connection/);
+    await expect(page.locator(".mcp-setup-steps")).toContainText("stovo-messenger");
+    await expect(page.locator(".mcp-setup-steps")).toContainText("Streamable HTTP");
+    await expect(page.locator(".mcp-setup-steps")).toContainText(scenario.locale === "ru" ? "не добавляйте env" : "do not add env");
     await expect(page.getByText(scenario.locale === "ru" ? "ШАГ 3 ИЗ 3" : "STEP 3 OF 3")).toBeVisible();
-    await expect(page.locator(".mcp-local-codex-panel textarea")).toHaveValue(/pair_local_codex\(connection_id, chat_id\)/);
-    await expect(page.locator(".mcp-local-codex-panel button")).toBeVisible();
+    await expect(page.locator(".mcp-local-codex-prompt textarea")).toHaveValue(/pair_local_codex\(connection_id, chat_id\)/);
+    await expect(page.locator(".mcp-local-codex-prompt button")).toBeVisible();
     await screenshot(page, info, { ...scenario, id: `CA-onboarding-${scenario.id}` });
   });
 }

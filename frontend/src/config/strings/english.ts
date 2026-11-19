@@ -1499,7 +1499,7 @@ export const strings = {
       directChatFallback: "Direct chat",
       permissionGroups: { chats: "Chats", messages: "Messages", actions: "Message actions", pins: "Pins", files: "Files" },
       setupSteps: {
-        codex: ["Open ChatGPT / Codex → Settings → Connectors / MCP", "Add a custom HTTP MCP server", "Paste the MCP URL and Authorization Bearer token", "Save and connect. The agent will verify available tools and chats"],
+        codex: ["In Codex, add an MCP server named stovo-messenger", "Choose Streamable HTTP and enter the MCP URL", "Set Authorization: Bearer <token> as an HTTP header (do not add env)", "Save, restart/reload if prompted, then use the setup prompt above to test the connection"],
         openclaw: ["Open OpenClaw → Connectors / MCP", "Add a custom HTTP MCP server", "Paste the MCP URL and Authorization Bearer token", "Save and connect to establish the connection session"],
         hermes: ["Open Hermes → Connectors / MCP", "Add a custom HTTP server", "Paste the MCP URL and Authorization Bearer token", "Save and turn it on to establish the connection"],
         claude: ["Open Claude Code → Settings → MCP", "Add a new server using the MCP URL", "Paste the Authorization Bearer token when prompted", "Save and connect. Claude Code will verify available tools and chats"],
