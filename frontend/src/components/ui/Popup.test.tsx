@@ -98,6 +98,8 @@ describe("shared popup shell styles", () => {
     expect(closeRule).toMatch(/height:\s*34px/);
     expect(closeRule).toMatch(/min-width:\s*34px/);
     expect(closeRule).toMatch(/min-height:\s*34px/);
-    expect(closeRule).toMatch(/flex:\s*0\s+0\s+34px/);
+    expect(closeRule).toMatch(/position:\s*sticky/);
+    expect(closeRule).toMatch(/display:\s*grid/);
+    expect(closeRule).toMatch(/margin-left:\s*auto/);
   });
 });
