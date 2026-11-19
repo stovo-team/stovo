@@ -1945,3 +1945,38 @@
   }
 }
 
+
+@media (max-width: 719px) {
+  .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) > :not(.settings-row-icon) {
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+  }
+
+  .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) > .settings-row-icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .admin-page .admin-panel .appearance-setting-row > .admin-defaults-control {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .admin-member-row--manage {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-member-row--manage .admin-member-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

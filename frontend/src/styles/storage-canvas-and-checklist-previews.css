@@ -84,7 +84,6 @@
 }
 .admin-role-premium-group {
   background: color-mix(in oklab, var(--color-palette-b205591bc0d6) 18%, transparent);
-  border-top: 1px solid var(--color-palette-61a5be105615);
   filter: grayscale(1);
   opacity: .62;
   padding: 0 12px 12px;
@@ -1025,4 +1024,29 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-role-permissions .premium-feature-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .admin-role-premium-group .admin-role-permission-group-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-role-premium-group .admin-role-premium-all {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    align-items: start;
+    gap: 4px 11px;
+  }
+
+  .admin-role-premium-all small {
+    grid-column: 2;
+  }
 }
