@@ -84,10 +84,9 @@ function bytesToBase64(bytes: Uint8Array): string {
 async function forNativeReplica(item: QueuedOutboxMessage): Promise<QueuedOutboxMessage> {
   const attachments = await Promise.all(item.attachments.map(async ({ blob, ...attachment }) => ({
     ...attachment,
-    // Android content URIs are later handed directly to the encrypted
-    // WorkManager transfer staging path. Browser-originated Files retain an
-    // encrypted base64 copy in the native operation instead.
-    dataBase64: attachment.dataBase64 ?? (!attachment.nativeSourceUri && blob ? bytesToBase64(new Uint8Array(await blob.arrayBuffer())) : undefined),
+    // The processor reconstructs the File before staging a native upload, so
+    // gallery files need their bytes as well as their app-private source URI.
+    dataBase64: attachment.dataBase64 ?? (blob ? bytesToBase64(new Uint8Array(await blob.arrayBuffer())) : undefined),
   })));
   return { ...item, attachments };
 }
