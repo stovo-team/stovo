@@ -23,8 +23,8 @@ for (const scenario of shellScenarios) {
           authMode: "subscription", allowedChatIds: ["chat-planning-team"],
         },
         token: "visual-private-token", mcpUrl: "https://messenger.example/api/mcp/visual-connected-agent",
-        setupPrompt: "Connect this Codex agent to the selected Stovo chats.",
-        cliCommand: "codex mcp add stovo", claudeCommand: "codex mcp add stovo",
+        setupPrompt: "Connect to stovo-messenger over Streamable HTTP. Set Authorization: Bearer <token> as an HTTP header; do not add env or configure an unrelated MCP server. To test the connection, call stovo_connection_status. Do not list chats or send messages.",
+        cliCommand: "codex mcp add stovo-messenger", claudeCommand: "codex mcp add stovo-messenger",
       } });
     });
 
@@ -51,9 +51,31 @@ for (const scenario of shellScenarios) {
     await page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" }).click();
 
     await expect(page.getByText(scenario.locale === "ru" ? "Настройка: Researcher" : "Set up Researcher")).toBeVisible();
+    await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toHaveValue(/To test the connection/);
+    await expect(page.locator(".mcp-setup-steps")).toContainText("stovo-messenger");
+    await expect(page.locator(".mcp-setup-steps")).toContainText("Streamable HTTP");
+    await expect(page.locator(".mcp-setup-steps")).toContainText(scenario.locale === "ru" ? "не добавляйте env" : "do not add env");
     await expect(page.getByText(scenario.locale === "ru" ? "ШАГ 3 ИЗ 3" : "STEP 3 OF 3")).toBeVisible();
-    await expect(page.locator(".mcp-local-codex-panel textarea")).toHaveValue(/pair_local_codex\(connection_id, chat_id\)/);
-    await expect(page.locator(".mcp-local-codex-panel button")).toBeVisible();
+    await expect(page.locator(".mcp-local-codex-prompt textarea")).toHaveValue(/pair_local_codex\(connection_id, chat_id\)/);
+    await expect(page.locator(".mcp-local-codex-prompt button")).toBeVisible();
     await screenshot(page, info, { ...scenario, id: `CA-onboarding-${scenario.id}` });
   });
 }
+
+test("Codex setup screenshot", async ({ page }, info) => {
+  const scenario = { id: "Codex-setup", viewport: { width: 1440, height: 900 }, theme: "light" as const, locale: "en" as const };
+  await page.setViewportSize(scenario.viewport);
+  await page.emulateMedia({ colorScheme: scenario.theme });
+  await page.addInitScript(() => {
+    localStorage.setItem("familyMessenger.appearance", JSON.stringify({ themeMode: "light" }));
+    localStorage.setItem("familyMessenger.devicePreferences", JSON.stringify({ language: "en" }));
+  });
+  await page.goto("/app/admin/mcp");
+  await ready(page);
+  await page.getByLabel("Agent nickname").fill("Researcher");
+  await page.getByLabel("Agent provider").selectOption("codex");
+  await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toBeVisible();
+  await screenshot(page, info, scenario);
+});

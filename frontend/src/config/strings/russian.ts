@@ -1525,7 +1525,7 @@ export const strings = {
       directChatFallback: "Личный чат",
       permissionGroups: { chats: "Чаты", messages: "Сообщения", actions: "Действия с сообщениями", pins: "Закреплённое", files: "Файлы" },
       setupSteps: {
-        codex: ["Откройте ChatGPT / Codex → Настройки → Коннекторы / MCP", "Добавьте пользовательский HTTP-сервер MCP", "Вставьте URL MCP и токен Authorization Bearer", "Сохраните и подключитесь. Агент проверит доступные инструменты и чаты"],
+        codex: ["В Codex добавьте MCP-сервер с именем stovo-messenger", "Выберите Streamable HTTP и укажите URL MCP", "Укажите Authorization: Bearer <token> в HTTP-заголовке (не добавляйте env)", "Сохраните настройки, перезапустите или обновите агента, если он попросит, затем проверьте соединение инструкцией выше"],
         openclaw: ["Откройте OpenClaw → Коннекторы / MCP", "Добавьте пользовательский HTTP-сервер MCP", "Вставьте URL MCP и токен Authorization Bearer", "Сохраните и подключитесь, чтобы начать сессию"],
         hermes: ["Откройте Hermes → Коннекторы / MCP", "Добавьте пользовательский HTTP-сервер", "Вставьте URL MCP и токен Authorization Bearer", "Сохраните и включите подключение"],
         claude: ["Откройте Claude Code → Настройки → MCP", "Добавьте сервер, указав URL MCP", "По запросу вставьте токен Authorization Bearer", "Сохраните и подключитесь. Claude Code проверит доступные инструменты и чаты"],

@@ -131,13 +131,15 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
       allowedChatIds: Array.isArray(body.allowedChatIds) ? body.allowedChatIds.filter((chatId): chatId is string => typeof chatId === "string") : [],
     };
     mockMCPConnectors = [connector, ...mockMCPConnectors];
+    const mcpUrl = `${url.origin}/api/mcp/${id}`;
+    const token = `local-mock-token-${id}`;
     return jsonResponse({
       connector,
-      token: `local-mock-token-${id}`,
-      mcpUrl: `${url.origin}/api/mcp/${id}`,
-      claudeCommand: `codex mcp add stovo --url ${url.origin}/api/mcp/${id}`,
-      setupPrompt: `Connect ${connector.alias} to the selected Stovo chats at ${url.origin}/api/mcp/${id}.`,
-      cliCommand: `codex mcp add stovo --url ${url.origin}/api/mcp/${id}`,
+      token,
+      mcpUrl,
+      claudeCommand: `codex mcp add stovo-messenger --url ${mcpUrl} --header "Authorization: Bearer ${token}"`,
+      setupPrompt: `Connect Stovo to your agent via MCP server named "stovo-messenger".\nMCP URL: ${mcpUrl}\nAuthorization: Bearer ${token}\n\nFor Codex CLI, run the provided CLI command; it configures the Authorization header directly. This is a streamable HTTP server: do not add an env field or configure a local stdio command.\n\nConfigure only this Stovo Messenger endpoint. Do not substitute or add unrelated MCP servers.\n\nTo test the connection, first save the server and restart/reload the agent if it requests that. Then send this test prompt: ‘Call stovo_connection_status and tell me whether the connection is ready. Do not list chats or send messages.’`,
+      cliCommand: `codex mcp add stovo-messenger --url ${mcpUrl} --header "Authorization: Bearer ${token}"`,
     });
   }
   if (method === "GET" && path === "/api/v1/config/manifest") return jsonResponse(createMockManifest());

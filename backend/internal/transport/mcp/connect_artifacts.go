@@ -37,6 +37,9 @@ func BuildConnectArtifacts(mcpURL, provider, authMode, alias, connectorName, raw
 	var command string
 	switch provider {
 	case "codex":
+		// Keep the MCP server id stable and descriptive. A connector's display
+		// name (or the agent application's name) should not become its config key.
+		safeName = "stovo-messenger"
 		command = fmt.Sprintf(`codex mcp add %s --url %s --header "Authorization: Bearer %s"`, safeName, mcpURL, rawToken)
 	case "openclaw", "hermes":
 		command = fmt.Sprintf("# Add HTTP MCP server %q\n# URL: %s\n# Header: Authorization: Bearer %s", name, mcpURL, rawToken)
@@ -47,12 +50,12 @@ func BuildConnectArtifacts(mcpURL, provider, authMode, alias, connectorName, raw
 		"Connect Stovo to your agent via MCP server named %q.\n"+
 			"MCP URL: %s\n"+
 			"Authorization: Bearer %s\n\n"+
+			"For Codex CLI, run the provided CLI command; it configures the Authorization header directly. This is a streamable HTTP server: do not add an env field or configure a local stdio command.\n\n"+
+			"Configure only this Stovo Messenger endpoint. Do not substitute or add unrelated MCP servers.\n\n"+
 			"This URL is bound to one Stovo Space; do not use it for another Space.\n\n"+
-			"After successfully connecting to Stovo:\n"+
-			"1. Call stovo_connection_status. If it reports a configuration issue, show its nextAction instead of claiming there are no chats.\n"+
-			"2. If ready, call stovo_list_chats and report the accessible chats.\n"+
-			"3. Work only in those chats—read history or send messages only when authorized or requested by the user.",
-		name, mcpURL, rawToken,
+			"To test the connection, first save the server and restart/reload the agent if it requests that. Then send this test prompt: ‘Call stovo_connection_status and tell me whether the connection is ready. Do not list chats or send messages.’\n\n"+
+			"If status is ready, call stovo_list_chats only when the user asks to see chats. Read history or send messages only when authorized or requested.",
+		safeName, mcpURL, rawToken,
 	)
 	return ConnectArtifacts{URL: mcpURL, CLICommand: command, SetupPrompt: prompt}
 }
