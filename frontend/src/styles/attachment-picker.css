@@ -1014,9 +1014,20 @@
 :root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen { border-radius: var(--radius-panel); }
 :root[data-platform="native"] .attachment-picker-message-box.message-composer,
 :root[data-platform="native"] .attachment-picker-message-box {
-  padding: 4px max(env(safe-area-inset-right, 0px), 12px) max(env(safe-area-inset-bottom, 0px), 12px) max(env(safe-area-inset-left, 0px), 12px);
+  background: transparent;
+  border: 0;
+  padding: 4px max(env(safe-area-inset-right, 0px), 12px) max(env(safe-area-inset-bottom, 0px), 16px) max(env(safe-area-inset-left, 0px), 12px);
   margin: 0;
   width: 100%;
+}
+
+:root[data-platform="native"] .attachment-picker-message-box .message-composer-row {
+  background: var(--surface-raised);
+  border-radius: var(--radius-pill);
+}
+
+:root[data-platform="native"] .attachment-picker-message-box .message-composer-row--multiline {
+  border-radius: var(--radius-panel);
 }
 
 :root[data-platform="native"] .attachment-picker-sheet.tg-style.is-fullscreen .attachment-picker-header {
