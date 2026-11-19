@@ -285,7 +285,7 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
-.privacy-choice-check { color: var(--accent-primary); font-size: var(--font-size-heading); justify-self: end; }
+.privacy-choice { cursor: pointer; }
 
 /* Final AMOLED settings geometry: no grey page canvas, no administration-card chrome. */
 .settings-page > .settings-layout,

@@ -131,13 +131,13 @@ export function PrivacySecuritySettings({
           {(["family", "nobody"] as const).map((value) => {
             const selected = (detail === "profile" ? currentUser?.profileVisibility : currentUser?.lastSeenVisibility) === value;
             return (
-              <button type="button" className={`privacy-choice${selected ? " is-selected" : ""}`} key={value} onClick={() => onUpdatePrivacy(detail === "profile" ? { profileVisibility: value } : { lastSeenVisibility: value })}>
+              <label className={`privacy-choice${selected ? " is-selected" : ""}`} key={value}>
                 <span className="privacy-choice-copy">
                   <strong>{value === "family" ? strings.privacy.everyone : strings.privacy.nobody}</strong>
                   <small>{value === "family" ? strings.privacy.visibleToEveryone : strings.privacy.hiddenFromMembers}</small>
                 </span>
-                {selected && <span className="privacy-choice-check">✓</span>}
-              </button>
+                <input type="checkbox" checked={selected} disabled={isSaving} onChange={() => onUpdatePrivacy(detail === "profile" ? { profileVisibility: value } : { lastSeenVisibility: value })} />
+              </label>
             );
           })}
         </section>
@@ -159,7 +159,7 @@ function PrivacyContactRule({ detail, currentUser, members, isSaving, onUpdatePr
     : [["allow", strings.privacy.everyone, strings.privacy.everyoneCanInvite], ["selected", strings.privacy.selectedPeople, strings.privacy.selectedPeopleInviteHelp], ["request", strings.privacy.inviteRequests, strings.privacy.inviteRequestsHelp], ["nobody", strings.privacy.noOne, strings.privacy.noOneInviteHelp]];
   const selected = currentUser?.invitePermissionUserIds ?? [];
   return <section className="choice-page"><h3>{isDM ? strings.privacy.whoCanMessageYou : strings.privacy.whoCanInviteYou}</h3>
-    {options.map(([option, title, help]) => <button type="button" disabled={isSaving} className={`privacy-choice${value === option ? " is-selected" : ""}`} key={option} onClick={() => onUpdatePrivacy({ [key]: option } as Partial<User>)}><span className="privacy-choice-copy"><strong>{title}</strong><small>{help}</small></span>{value === option && <span className="privacy-choice-check">✓</span>}</button>)}
+    {options.map(([option, title, help]) => <label className={`privacy-choice${value === option ? " is-selected" : ""}`} key={option}><span className="privacy-choice-copy"><strong>{title}</strong><small>{help}</small></span><input type="checkbox" checked={value === option} disabled={isSaving} onChange={() => onUpdatePrivacy({ [key]: option } as Partial<User>)} /></label>)}
     {value === "selected" && <div className="blocked-members-page"><h3>{strings.privacy.allowedPeople}</h3>{members.filter((member) => member.id !== currentUser?.id).map((member) => <label className="settings-row" key={member.id}><span><strong>{member.displayName}</strong><small>@{member.username}</small></span><input type="checkbox" checked={selected.includes(member.id)} disabled={isSaving} onChange={() => onUpdatePrivacy({ invitePermissionUserIds: selected.includes(member.id) ? selected.filter((id) => id !== member.id) : [...selected, member.id] })} /></label>)}</div>}
   </section>;
 }
