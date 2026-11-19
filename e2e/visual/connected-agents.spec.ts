@@ -61,3 +61,21 @@ for (const scenario of shellScenarios) {
     await screenshot(page, info, { ...scenario, id: `CA-onboarding-${scenario.id}` });
   });
 }
+
+test("Codex setup screenshot", async ({ page }, info) => {
+  const scenario = { id: "Codex-setup", viewport: { width: 1440, height: 900 }, theme: "light" as const, locale: "en" as const };
+  await page.setViewportSize(scenario.viewport);
+  await page.emulateMedia({ colorScheme: scenario.theme });
+  await page.addInitScript(() => {
+    localStorage.setItem("familyMessenger.appearance", JSON.stringify({ themeMode: "light" }));
+    localStorage.setItem("familyMessenger.devicePreferences", JSON.stringify({ language: "en" }));
+  });
+  await page.goto("/app/admin/mcp");
+  await ready(page);
+  await page.getByLabel("Agent nickname").fill("Researcher");
+  await page.getByLabel("Agent provider").selectOption("codex");
+  await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toBeVisible();
+  await screenshot(page, info, scenario);
+});
