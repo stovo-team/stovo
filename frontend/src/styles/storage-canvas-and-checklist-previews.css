@@ -1050,3 +1050,20 @@ span.canvas-md-image { background: var(--color-palette-c34f5a2a4d80); border-rad
     grid-column: 2;
   }
 }
+
+:root[data-platform="native"] .admin-role-premium-group .admin-role-permission-group-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+:root[data-platform="native"] .admin-role-premium-group .admin-role-premium-all {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 11px;
+}
+
+:root[data-platform="native"] .admin-role-premium-all small {
+  grid-column: 2;
+}

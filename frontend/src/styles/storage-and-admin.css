@@ -1980,3 +1980,36 @@
     flex-wrap: wrap;
   }
 }
+
+:root[data-platform="native"] .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+}
+
+:root[data-platform="native"] .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) > :not(.settings-row-icon) {
+  grid-column: 2;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 0;
+}
+
+:root[data-platform="native"] .admin-page .appearance-setting-row:not(:has(> input[type="checkbox"])) > .settings-row-icon {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+:root[data-platform="native"] .admin-page .admin-panel .appearance-setting-row > .admin-defaults-control {
+  max-width: 100%;
+  width: 100%;
+}
+
+:root[data-platform="native"] .admin-member-row--manage {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+:root[data-platform="native"] .admin-member-row--manage .admin-member-actions {
+  grid-column: 2;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}

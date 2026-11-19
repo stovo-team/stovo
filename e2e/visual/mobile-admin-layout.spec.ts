@@ -43,3 +43,25 @@ test('mobile role premium labels stay readable', async ({ page }) => {
   expect(dimensions.height).toBeLessThan(30);
   expect((await label.boundingBox())!.width).toBeGreaterThan(25);
 });
+
+test('native layout remains mobile above browser breakpoints', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await page.goto('/app/admin/server-settings');
+  const row = page.locator('.appearance-setting-row').filter({ has: page.locator('.server-settings-select') }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toHaveCSS('display', 'flex');
+  await page.evaluate(() => { document.documentElement.dataset.platform = 'native'; });
+  await expect(row).toHaveCSS('display', 'grid');
+
+  await page.goto('/app/admin/members');
+  await page.evaluate(() => { document.documentElement.dataset.platform = 'native'; });
+  const actions = page.locator('.admin-member-row--manage .admin-member-actions').first();
+  await expect(actions).toHaveCSS('grid-column-start', '2');
+
+  await page.goto('/app/admin/roles');
+  await page.getByRole('button', { name: /create role/i }).click();
+  await page.evaluate(() => { document.documentElement.dataset.platform = 'native'; });
+  const group = page.locator('.admin-role-premium-group').first();
+  await expect(group.locator('.admin-role-permission-group-heading')).toHaveCSS('flex-wrap', 'wrap');
+  await expect(group.locator('.admin-role-premium-all')).toHaveCSS('display', 'grid');
+});
