@@ -10,6 +10,7 @@ import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
 import { PresetNumberControl } from "./ui/PresetNumberControl";
+import { MCPProviderMark } from "./MCPProviderMark";
 import {
   MCP_PERMISSION_KEYS,
   MCPConnector,
@@ -227,6 +228,7 @@ export default function MCPConnectorsPanel({
 
   const allChatsSelected = chats.length > 0 && chats.every((chat) => allowedChatIds.includes(chat.id));
   const allPermissionsSelected = MCP_PERMISSION_KEYS.every((key) => permissions[key]);
+  const allInsightGrantsSelected = Object.values(insightGrantPreferences).every(Boolean);
   const nicknameAlias = name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 28);
 
   const chatGroups = useMemo(
@@ -243,14 +245,31 @@ export default function MCPConnectorsPanel({
     setAllowedChatIds(allChatsSelected ? [] : chats.map((chat) => chat.id));
   }
 
-  function toggleAllPermissions() {
-    const next = !allPermissionsSelected;
+  function selectAllPermissions() {
     setPermissions(
       MCP_PERMISSION_KEYS.reduce((acc, key) => {
-        acc[key] = next;
+        acc[key] = true;
         return acc;
       }, {} as MCPPermissions)
     );
+  }
+
+  function selectAllInsightGrants() {
+    setInsightGrantPreferences((current) =>
+      Object.keys(current).reduce((next, key) => {
+        next[key as IntelligenceGrant] = true;
+        return next;
+      }, {} as IntelligenceGrants)
+    );
+  }
+
+  function resetConnectionDraft() {
+    setName("");
+    setProvider("");
+    setMaxHistory(50);
+    setPermissions(defaultMCPPermissions());
+    setInsightGrantPreferences(defaultInsightGrantPreferences());
+    setAllowedChatIds([]);
   }
 
   function togglePermissionGroup(keys: MCPPermissionKey[]) {
@@ -473,7 +492,6 @@ export default function MCPConnectorsPanel({
           <section className="mcp-onboarding-step">
             <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(2, 3)}</span>
             <h3>{copy.insightPermissionsTitle}</h3>
-            <p className="muted-text">{copy.insightPermissionsOnboarding}</p>
             <p className="mcp-insight-requested">
               <strong>{copy.insightPreferences}:</strong>{" "}
               {Object.entries(secret.insightGrants).filter(([, enabled]) => enabled).map(([grant]) => strings.intelligence.grants[grant as IntelligenceGrant]).join(", ") || copy.none}
@@ -532,15 +550,25 @@ export default function MCPConnectorsPanel({
           <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
         </label>
 
-        <label>
-          {copy.providerLabel}
-          <select aria-label={copy.providerLabel} value={provider} onChange={(event) => setProvider(event.target.value as MCPProviderId | "")} required>
-            <option value="" disabled>{copy.chooseProvider}</option>
-            {MCP_PROVIDERS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
-        </label>
+        <div className="mcp-provider-choice">
+          <span className="mcp-form-label">{copy.providerLabel}</span>
+          <div className="mcp-provider-tabs" role="group" aria-label={copy.providerLabel}>
+            {MCP_PROVIDERS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
+                aria-pressed={provider === item.id}
+                onClick={() => setProvider(item.id)}
+              >
+                <MCPProviderMark provider={item.id} />
+                <strong>{item.label}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <label>{copy.maxHistoryMessages}<PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} min={1} max={500} value={maxHistory} onValueChange={(value) => setMaxHistory(Number(value) || 50)} /></label>
+        <label>{copy.maxHistoryMessages}<PresetNumberControl className="mcp-history-control" ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} min={1} max={500} value={maxHistory} onValueChange={(value) => setMaxHistory(Number(value) || 50)} /></label>
         <fieldset className="mcp-tag-fieldset">
           <legend>
             <span>{copy.chatScope}</span>
@@ -593,8 +621,10 @@ export default function MCPConnectorsPanel({
           </div>
         </fieldset>
         <fieldset className="mcp-tag-fieldset mcp-insight-permissions">
-          <legend>{copy.insightPermissionsTitle}</legend>
-          <p className="muted-text">{copy.insightPermissionsCreateHelper}</p>
+          <legend>
+            <span>{copy.insightPermissionsTitle}</span>
+            <button type="button" className="mcp-select-all-button" onClick={selectAllInsightGrants} disabled={allInsightGrantsSelected}>{copy.selectAll}</button>
+          </legend>
           <div className="mcp-option-groups">
             <div className="mcp-tag-list">
               {(Object.keys(insightGrantPreferences) as IntelligenceGrant[]).map((grant) => (
@@ -605,15 +635,11 @@ export default function MCPConnectorsPanel({
               ))}
             </div>
           </div>
-          <small className="mcp-insight-consent-note">{copy.insightConsentBoundary}</small>
         </fieldset>
         <fieldset className="mcp-tag-fieldset">
           <legend>
             <span>{copy.permissionsAllOff}</span>
-            <label className="mcp-select-all">
-              <input type="checkbox" checked={allPermissionsSelected} onChange={toggleAllPermissions} />
-              <span>{copy.selectAll}</span>
-            </label>
+            <button type="button" className="mcp-select-all-button" onClick={selectAllPermissions} disabled={allPermissionsSelected}>{copy.selectAll}</button>
           </legend>
           <div className="mcp-option-groups">
             {permissionGroups.map((group) => {
@@ -647,9 +673,12 @@ export default function MCPConnectorsPanel({
             })}
           </div>
         </fieldset>
-        <button type="submit" disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}>
-          {isSaving ? copy.connecting : copy.createConnection}
-        </button>
+        <div className="mcp-create-actions">
+          <button type="button" className="mcp-cancel-button" disabled={isSaving} onClick={resetConnectionDraft}>{copy.cancel}</button>
+          <button type="submit" className="mcp-create-button" disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}>
+            {isSaving ? copy.connecting : copy.createConnection}
+          </button>
+        </div>
       </form>}
 
       {!secret && <div className="mcp-connector-list mcp-section-box">
