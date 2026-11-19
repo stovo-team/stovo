@@ -1585,20 +1585,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   flex-shrink: 0;
 }
 
-/* Gallery editor follows the image-first wallpaper editor treatment. */
-.image-editor-backdrop { padding: 0; }
-.image-editor-modal { background: var(--color-palette-dd15e6f7d489); border: 0; border-radius: 0; box-shadow: none; height: 100%; max-height: none; width: 100%; }
-.image-editor-header { background: linear-gradient(180deg, var(--color-palette-71b1e28a20b6), transparent); border: 0; inset: 0 0 auto; padding: max(12px, env(safe-area-inset-top)) 14px 12px; position: absolute; z-index: 4; }
-.image-editor-title h3, .image-editor-title .ms-icon, .image-editor-btn-secondary span { display: none; }
-.image-editor-stage { max-height: none; padding: 0; }
-.image-editor-preview-wrapper, .image-editor-base-img { height: 100%; max-height: none; max-width: 100%; }
-.image-editor-base-img { border-radius: 0; width: 100%; }
-.image-editor-tabs { background: transparent; border: 0; bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px)); gap: 10px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 5; }
-.image-editor-tab { align-items: center; background: var(--color-palette-5c1342314038); border-radius: var(--radius-pill); box-shadow: 0 3px 12px var(--color-palette-0bf61dd701cd); display: inline-flex; height: 44px; justify-content: center; padding: 0; width: 44px; }
-.image-editor-tab.is-active { background: var(--color-palette-21e6a78aeab4); color: var(--color-palette-f2074b6cef37); outline: 2px solid var(--accent-primary, var(--color-palette-3398ce8a6140)); }
-.image-editor-controls { background: var(--color-palette-c48d882bc722); border-radius: var(--radius-surface); bottom: calc(max(40px, calc(env(safe-area-inset-bottom) + 24px)) + 56px); box-shadow: 0 8px 30px var(--color-palette-71b1e28a20b6); left: 22px; max-height: min(42vh, 310px); padding: 12px; position: absolute; right: 22px; z-index: 5; }
-.image-editor-footer { background: linear-gradient(0deg, var(--color-palette-554de51a1e86), transparent); border: 0; bottom: 0; left: 0; padding: 12px 14px max(12px, env(safe-area-inset-bottom)); position: absolute; right: 0; z-index: 4; }
-
 .chat-info-delay-status {
   margin: 10px 2px 0;
   font-size: var(--font-size-small);
@@ -1627,22 +1613,3 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   gap: 8px;
 }
-
-
-/* Image editor: crop directly on the image. */
-.image-editor-header { padding-top: calc(env(safe-area-inset-top) + 16px); }
-.image-editor-modal .image-editor-close-btn { background: #414146; border: 0; border-radius: 50%; color: #fff; flex: 0 0 40px; height: 40px; min-height: 40px; min-width: 40px; padding: 0; width: 40px; }
-.image-editor-stage { padding: 76px 16px 150px; }
-.image-editor-preview-wrapper { height: auto; max-height: 100%; }
-.image-editor-stage.is-cropping .image-editor-preview-wrapper { transform: scale(.9); }
-.image-editor-base-img { height: auto; max-height: calc(100dvh - 226px); width: auto; }
-.image-editor-crop-overlay { border: 1px solid white; border-radius: 0; pointer-events: auto; touch-action: none; cursor: move; background-image: linear-gradient(to right, transparent 33%, #ffffff99 33%, #ffffff99 calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, #ffffff99 66%, #ffffff99 calc(66% + 1px), transparent calc(66% + 1px)), linear-gradient(to bottom, transparent 33%, #ffffff99 33%, #ffffff99 calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, #ffffff99 66%, #ffffff99 calc(66% + 1px), transparent calc(66% + 1px)); }
-.crop-corner { width: 24px; height: 24px; background: transparent; border: 0; }
-.crop-corner--tl { border-left: 3px solid #fff; border-top: 3px solid #fff; }
-.crop-corner--tr { border-right: 3px solid #fff; border-top: 3px solid #fff; }
-.crop-corner--bl { border-left: 3px solid #fff; border-bottom: 3px solid #fff; }
-.crop-corner--br { border-right: 3px solid #fff; border-bottom: 3px solid #fff; }
-.crop-corner--tl, .crop-corner--br { cursor: nwse-resize; }
-.crop-corner--tr, .crop-corner--bl { cursor: nesw-resize; }
-.image-editor-crop-controls { display: flex; flex-direction: row; align-items: center; gap: 10px; }
-.image-editor-rotate { flex: 0 0 44px; }
