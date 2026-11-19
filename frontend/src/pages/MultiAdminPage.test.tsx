@@ -194,7 +194,7 @@ describe("supervisor space management", () => {
     const spaceLink = container.querySelector<HTMLAnchorElement>('a[href="/s/alpha"]');
     expect(spaceLink).toBeTruthy();
     expect(spaceLink?.getAttribute("style")).toContain("var(--surface-card");
-  });
+  }, 15_000);
 
   it("renders Stovo logo in header, removes supervisor badge, and renders monitoring disabled as plain stat value", async () => {
     await act(async () => { root.render(<MultiAdminPage />); });

@@ -12,3 +12,118 @@
   padding: 0;
   width: 34px;
 }
+
+.mcp-connector-form .mcp-history-control {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.5fr) minmax(72px, 96px);
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.mcp-provider-choice {
+  display: grid;
+  gap: 8px;
+}
+
+.mcp-form-label {
+  color: var(--text-primary);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mcp-provider-tab {
+  min-width: 0;
+  min-height: 82px;
+  align-content: center;
+  justify-content: center;
+}
+
+.mcp-provider-tab strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.mcp-provider-mark {
+  width: 26px;
+  height: 26px;
+  color: currentColor;
+}
+
+.mcp-provider-mark.is-claude,
+.mcp-provider-mark.is-openclaw {
+  color: var(--accent-primary, currentColor);
+}
+
+.mcp-connector-form .mcp-history-control select,
+.mcp-connector-form .mcp-history-control input {
+  width: 100%;
+  min-width: 0;
+}
+
+.mcp-connector-form .mcp-tag {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.mcp-connector-form .mcp-tag.is-selected,
+.mcp-connector-form .mcp-tag:focus,
+.mcp-connector-form .mcp-tag:focus-visible {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.mcp-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.mcp-select-all-button {
+  width: auto;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.mcp-select-all-button:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent-primary) 12%, transparent);
+}
+
+.mcp-select-all-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.mcp-connector-form .mcp-create-actions > button {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+  padding-inline: 18px;
+}
+
+.mcp-connector-form .mcp-create-actions > .mcp-create-button {
+  color: var(--color-palette-f2074b6cef37);
+  background: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+}
+
+.mcp-connector-form .mcp-create-actions > .mcp-cancel-button {
+  background: transparent;
+}
+
+@media (max-width: 480px) {
+  .mcp-connector-form .mcp-history-control {
+    grid-template-columns: minmax(120px, 1fr) minmax(72px, 88px);
+    width: 100%;
+  }
+}
