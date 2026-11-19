@@ -44,6 +44,8 @@ describe("CodexBridgeSetupPanel", () => {
     const prompt = page.querySelector<HTMLTextAreaElement>("textarea");
 
     expect(prompt?.value).toContain("pair_local_codex(connection_id, chat_id)");
+    expect(prompt?.value).toContain("read, process, codex, and reply grants");
+    expect(prompt?.value).toContain("does not have external_transfer or export");
     expect(prompt?.value).toContain("never into this chat");
     expect(prompt?.value).toContain("Do not use sudo or edit the system policy automatically");
     expect(page.querySelector(".mcp-local-codex-prompt")?.nextElementSibling?.classList.contains("mcp-local-codex-panel")).toBe(true);
