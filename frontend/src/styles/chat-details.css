@@ -1628,3 +1628,21 @@ button.chat-info-title-edit:active:not(:disabled) {
   gap: 8px;
 }
 
+
+/* Image editor: crop directly on the image. */
+.image-editor-header { padding-top: calc(env(safe-area-inset-top) + 16px); }
+.image-editor-modal .image-editor-close-btn { background: #414146; border: 0; border-radius: 50%; color: #fff; flex: 0 0 40px; height: 40px; min-height: 40px; min-width: 40px; padding: 0; width: 40px; }
+.image-editor-stage { padding: 76px 16px 150px; }
+.image-editor-preview-wrapper { height: auto; max-height: 100%; }
+.image-editor-stage.is-cropping .image-editor-preview-wrapper { transform: scale(.9); }
+.image-editor-base-img { height: auto; max-height: calc(100dvh - 226px); width: auto; }
+.image-editor-crop-overlay { border: 1px solid white; border-radius: 0; pointer-events: auto; touch-action: none; cursor: move; background-image: linear-gradient(to right, transparent 33%, #ffffff99 33%, #ffffff99 calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, #ffffff99 66%, #ffffff99 calc(66% + 1px), transparent calc(66% + 1px)), linear-gradient(to bottom, transparent 33%, #ffffff99 33%, #ffffff99 calc(33% + 1px), transparent calc(33% + 1px), transparent 66%, #ffffff99 66%, #ffffff99 calc(66% + 1px), transparent calc(66% + 1px)); }
+.crop-corner { width: 24px; height: 24px; background: transparent; border: 0; }
+.crop-corner--tl { border-left: 3px solid #fff; border-top: 3px solid #fff; }
+.crop-corner--tr { border-right: 3px solid #fff; border-top: 3px solid #fff; }
+.crop-corner--bl { border-left: 3px solid #fff; border-bottom: 3px solid #fff; }
+.crop-corner--br { border-right: 3px solid #fff; border-bottom: 3px solid #fff; }
+.crop-corner--tl, .crop-corner--br { cursor: nwse-resize; }
+.crop-corner--tr, .crop-corner--bl { cursor: nesw-resize; }
+.image-editor-crop-controls { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.image-editor-rotate { flex: 0 0 44px; }
