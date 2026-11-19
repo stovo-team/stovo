@@ -36,9 +36,10 @@
 .popup-dialog h2 { font-size: var(--font-size-heading-small); font-weight: var(--font-weight-semibold); line-height: var(--line-height-heading); text-align: left; }
 
 .popup-close {
-  position: absolute;
+  position: sticky;
   top: 14px;
-  right: 14px;
+  margin-left: auto;
+  margin-bottom: -34px;
   z-index: 1;
   display: inline-grid;
   box-sizing: border-box;
