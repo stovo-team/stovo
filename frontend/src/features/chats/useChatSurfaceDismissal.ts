@@ -277,6 +277,7 @@ export function useChatSurfaceDismissal({
 
     void (async () => {
       listener = await App.addListener("backButton", ({ canGoBack }) => {
+        if (isAttachmentSheetOpen) return;
         if (hasGalleryPreview && closeGalleryPreview) {
           closeGalleryPreview();
           return;

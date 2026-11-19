@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2 } from "lucide-react";
+import { Crop as CropIcon, Pencil, RotateCw, Sliders, Undo2 } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
@@ -28,7 +28,8 @@ interface ImageEditorModalProps {
 
 const COLOR_PRESETS = DESIGN_COLOR_VALUES.imageEditor.presetColors;
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
-  const copy = useStrings().imageEditor;
+  const strings = useStrings();
+  const copy = strings.imageEditor;
   const penSizes = [
     { label: copy.fine, width: 2 },
     { label: copy.medium, width: 4 },
@@ -44,6 +45,9 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
   // Crop
   const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 100, height: 100 });
+  const [previewUrl, setPreviewUrl] = useState(pending.previewUrl);
+  const [dirty, setDirty] = useState(false);
+  const cropDragRef = useRef<{ x: number; y: number; crop: CropRect; corner: string } | null>(null);
   const [selectedRatio, setSelectedRatio] = useState<string>("free");
 
   // Drawing
@@ -61,26 +65,54 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
   // Load image element
   useEffect(() => {
-    if (!pending.previewUrl) return;
+    if (!previewUrl) return;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => setImgElement(img);
-    img.src = pending.previewUrl;
-  }, [pending.previewUrl]);
+    img.src = previewUrl;
+  }, [previewUrl]);
 
-  // Reset function
-  const handleReset = () => {
-    setBrightness(100);
-    setContrast(100);
-    setGamma(1.0);
-    setCrop({ x: 0, y: 0, width: 100, height: 100 });
+  const rotateImage = () => {
+    if (!imgElement) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = imgElement.naturalHeight || imgElement.height;
+    canvas.height = imgElement.naturalWidth || imgElement.width;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.translate(canvas.width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(imgElement, 0, 0);
+    setPreviewUrl(canvas.toDataURL("image/png"));
+    setCrop({ x: 100 - crop.y - crop.height, y: crop.x, width: crop.height, height: crop.width });
+    setStrokes((items) => items.map((stroke) => ({ ...stroke, points: stroke.points.map(({ x, y }) => ({ x: 1 - y, y: x })) })));
     setSelectedRatio("free");
-    setStrokes([]);
+    setDirty(true);
+  };
+
+  const moveCrop = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = cropDragRef.current;
+    const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
+    if (!drag || !bounds || !bounds.width || !bounds.height) return;
+    const dx = (event.clientX - drag.x) / bounds.width * 100;
+    const dy = (event.clientY - drag.y) / bounds.height * 100;
+    const { crop: initial, corner } = drag;
+    if (corner === "move") {
+      setCrop({ ...initial, x: Math.max(0, Math.min(100 - initial.width, initial.x + dx)), y: Math.max(0, Math.min(100 - initial.height, initial.y + dy)) });
+    } else {
+      const left = corner.includes("l") ? Math.max(0, Math.min(initial.x + initial.width - 10, initial.x + dx)) : initial.x;
+      const right = corner.includes("r") ? Math.min(100, Math.max(initial.x + 10, initial.x + initial.width + dx)) : initial.x + initial.width;
+      const top = corner.includes("t") ? Math.max(0, Math.min(initial.y + initial.height - 10, initial.y + dy)) : initial.y;
+      const bottom = corner.includes("b") ? Math.min(100, Math.max(initial.y + 10, initial.y + initial.height + dy)) : initial.y + initial.height;
+      setCrop({ x: left, y: top, width: right - left, height: bottom - top });
+      setSelectedRatio("free");
+    }
+    setDirty(true);
   };
 
   // Aspect ratio handlers
   const applyAspectRatio = (ratio: string) => {
     setSelectedRatio(ratio);
+    setDirty(true);
     if (ratio === "free") {
       setCrop({ x: 0, y: 0, width: 100, height: 100 });
       return;
@@ -92,6 +124,8 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     if (ratio === "1:1") targetAspect = 1.0;
     else if (ratio === "4:3") targetAspect = 4 / 3;
     else if (ratio === "16:9") targetAspect = 16 / 9;
+    else if (ratio === "3:4") targetAspect = 3 / 4;
+    else if (ratio === "9:16") targetAspect = 9 / 16;
 
     let newWidth = 100;
     let newHeight = 100;
@@ -117,6 +151,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
 
+    setDirty(true);
     setIsDrawing(true);
     const newStroke = { color: drawColor, width: drawWidth, points: [{ x, y }] };
     currentStrokeRef.current = newStroke;
@@ -170,7 +205,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
 
   // Save changes & process canvas export
   const handleSave = useCallback(async () => {
-    if (!imgElement) return;
+    if (!imgElement || isProcessing) return;
     setIsProcessing(true);
 
     try {
@@ -259,7 +294,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
     } finally {
       setIsProcessing(false);
     }
-  }, [brightness, contrast, crop, gamma, imgElement, onSave, pending.file, strokes]);
+  }, [brightness, contrast, crop, gamma, imgElement, isProcessing, onSave, pending.file, strokes]);
 
   return createPortal(
     <PopupBackdrop className="image-editor-backdrop">
@@ -271,30 +306,21 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             <h3>{copy.title}</h3>
           </div>
           <div className="image-editor-header-actions">
-            <button
-              type="button"
-              className="image-editor-btn-secondary"
-              onClick={handleReset}
-              title={copy.resetAll}
-            >
-              <RotateCcw size={16} />
-              <span>{copy.reset}</span>
-            </button>
-            <PopupCloseButton className="image-editor-close-btn" onClick={onClose} ariaLabel={copy.close} />
+            <PopupCloseButton className="image-editor-close-btn" onClick={() => { if (dirty && imgElement) void handleSave(); else onClose(); }} ariaLabel={copy.close} />
           </div>
         </header>
 
         {/* Stage / Preview */}
-        <div className="image-editor-stage" ref={previewContainerRef}>
-          {pending.previewUrl ? (
+        <div className={`image-editor-stage${activeTab === "crop" ? " is-cropping" : ""}`} ref={previewContainerRef}>
+          {previewUrl ? (
             <div className="image-editor-preview-wrapper">
               <img
-                src={pending.previewUrl}
+                src={previewUrl}
                 alt={copy.preview}
                 className="image-editor-base-img"
                 style={{
                   filter: buildPhotoFilter({ brightness, contrast, gamma }),
-                  clipPath: `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
+                  clipPath: activeTab === "crop" ? undefined : `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
                 }}
               />
               {/* Drawing canvas overlay */}
@@ -304,7 +330,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                 height={imgElement?.naturalHeight || 600}
                 className={`image-editor-draw-canvas${activeTab === "draw" ? " is-active" : ""}`}
                 style={{
-                  clipPath: `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
+                  clipPath: activeTab === "crop" ? undefined : `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
                 }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -315,6 +341,13 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               {activeTab === "crop" && (
                 <div
                   className="image-editor-crop-overlay"
+                  onPointerDown={(event) => {
+                    cropDragRef.current = { x: event.clientX, y: event.clientY, crop, corner: (event.target as HTMLElement).dataset.corner || "move" };
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={moveCrop}
+                  onPointerUp={() => { cropDragRef.current = null; }}
+                  onPointerCancel={() => { cropDragRef.current = null; }}
                   style={{
                     left: `${crop.x}%`,
                     top: `${crop.y}%`,
@@ -322,10 +355,10 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                     height: `${crop.height}%`
                   }}
                 >
-                  <div className="crop-corner crop-corner--tl" />
-                  <div className="crop-corner crop-corner--tr" />
-                  <div className="crop-corner crop-corner--bl" />
-                  <div className="crop-corner crop-corner--br" />
+                  <div className="crop-corner crop-corner--tl" data-corner="tl" />
+                  <div className="crop-corner crop-corner--tr" data-corner="tr" />
+                  <div className="crop-corner crop-corner--bl" data-corner="bl" />
+                  <div className="crop-corner crop-corner--br" data-corner="br" />
                 </div>
               )}
             </div>
@@ -376,7 +409,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                   min="50"
                   max="150"
                   value={brightness}
-                  onChange={(e) => setBrightness(Number(e.target.value))}
+                  onChange={(e) => { setDirty(true); setBrightness(Number(e.target.value)); }}
                 />
               </div>
 
@@ -390,7 +423,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                   min="50"
                   max="150"
                   value={contrast}
-                  onChange={(e) => setContrast(Number(e.target.value))}
+                  onChange={(e) => { setDirty(true); setContrast(Number(e.target.value)); }}
                 />
               </div>
 
@@ -405,7 +438,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                   max="2.2"
                   step="0.05"
                   value={gamma}
-                  onChange={(e) => setGamma(Number(e.target.value))}
+                  onChange={(e) => { setDirty(true); setGamma(Number(e.target.value)); }}
                 />
               </div>
             </div>
@@ -415,7 +448,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             <div className="image-editor-crop-controls">
               <div className="crop-ratios">
                 <span className="control-section-label">{copy.aspectRatio}</span>
-                {["free", "1:1", "4:3", "16:9"].map((r) => (
+                {["free", "1:1", "4:3", "3:4", "16:9", "9:16"].map((r) => (
                   <button
                     key={r}
                     type="button"
@@ -427,63 +460,9 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                 ))}
               </div>
 
-              <div className="crop-sliders">
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.xOffset}</span>
-                    <strong>{Math.round(crop.x)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={100 - crop.width}
-                    value={crop.x}
-                    onChange={(e) => setCrop({ ...crop, x: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.yOffset}</span>
-                    <strong>{Math.round(crop.y)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={100 - crop.height}
-                    value={crop.y}
-                    onChange={(e) => setCrop({ ...crop, y: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.width}</span>
-                    <strong>{Math.round(crop.width)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="20"
-                    max={100 - crop.x}
-                    value={crop.width}
-                    onChange={(e) => setCrop({ ...crop, width: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="image-editor-control-item">
-                  <div className="control-label">
-                    <span>{copy.height}</span>
-                    <strong>{Math.round(crop.height)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="20"
-                    max={100 - crop.y}
-                    value={crop.height}
-                    onChange={(e) => setCrop({ ...crop, height: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
+              <button type="button" className="image-editor-tab image-editor-rotate" onClick={rotateImage} aria-label={strings.avatarEditor.rotate} title={strings.avatarEditor.rotate}>
+                <RotateCw size={18} />
+              </button>
             </div>
           )}
 
@@ -549,21 +528,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           )}
         </div>}
 
-        {/* Footer Actions */}
-        <footer className="image-editor-footer">
-          <button type="button" className="image-editor-btn-cancel" onClick={onClose}>
-            {copy.cancel}
-          </button>
-          <button
-            type="button"
-            className="image-editor-btn-save"
-            disabled={isProcessing}
-            onClick={() => void handleSave()}
-          >
-            <Check size={18} />
-            <span>{isProcessing ? copy.saving : copy.done}</span>
-          </button>
-        </footer>
+
       </div>
     </PopupBackdrop>,
     document.body

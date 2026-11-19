@@ -157,6 +157,10 @@ describe("ImageEditorModal", () => {
     });
 
     expect(document.body.textContent).toContain("Соотношение сторон:");
+    expect(document.querySelector(".image-editor-crop-overlay")).not.toBeNull();
+    expect(document.querySelector(".image-editor-crop-controls input[type=range]")).toBeNull();
+    expect(document.querySelector(".image-editor-rotate")).not.toBeNull();
+    expect(document.querySelector(".image-editor-footer")).toBeNull();
 
     // Click Draw tab
     const drawTab = document.querySelector<HTMLButtonElement>('[aria-label="Рисовать на изображении"]');
@@ -171,4 +175,32 @@ describe("ImageEditorModal", () => {
     expect(document.body.textContent).toContain("Тонкое");
     expect(document.body.textContent).toContain("Размер кисти");
   });
+  it("exports the selected square crop with the expected pixel coordinates", async () => {
+    const image = { naturalWidth: 400, naturalHeight: 200, width: 400, height: 200, onload: null as null | (() => void), crossOrigin: "", src: "" };
+    vi.stubGlobal("Image", vi.fn(function () { return image; }));
+    const drawImage = vi.fn();
+    const context = { clearRect: vi.fn(), drawImage, filter: "none" };
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    const toBlob = vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((callback) => callback(new Blob(["cropped"], { type: "image/png" })));
+    const onSave = vi.fn();
+    try {
+      act(() => root?.render(<ImageEditorModal pending={{ localId: "crop", file: new File(["original"], "photo.png", { type: "image/png" }), previewUrl: "blob:photo" }} onClose={vi.fn()} onSave={onSave} />));
+      act(() => image.onload?.());
+      act(() => document.querySelector<HTMLButtonElement>('[aria-label="Обрезать изображение"]')?.click());
+      const square = Array.from(document.querySelectorAll<HTMLButtonElement>(".crop-ratio-btn")).find((button) => button.textContent === "1:1");
+      act(() => square?.click());
+      const overlay = document.querySelector<HTMLElement>(".image-editor-crop-overlay");
+      expect(overlay?.style.left).toBe("25%");
+      expect(overlay?.style.width).toBe("50%");
+      await act(async () => { document.querySelector<HTMLButtonElement>(".image-editor-close-btn")?.click(); });
+      expect(drawImage).toHaveBeenCalledWith(image, 100, 0, 200, 200, 0, 0, 200, 200);
+      expect(onSave).toHaveBeenCalledOnce();
+      expect(onSave.mock.calls[0][0]).toMatchObject({ name: "photo.png", type: "image/png" });
+    } finally {
+      getContext.mockRestore();
+      toBlob.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
 });

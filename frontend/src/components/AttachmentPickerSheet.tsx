@@ -205,6 +205,10 @@ export default function AttachmentPickerSheet({
     let listener: { remove: () => Promise<void> } | null = null;
     void (async () => {
       listener = await App.addListener("backButton", () => {
+        if (editingAttachment) {
+          setEditingAttachment(null);
+          return;
+        }
         if (previewMediaItem) {
           setPreviewMediaItem(null);
           return;
@@ -219,7 +223,7 @@ export default function AttachmentPickerSheet({
       disposed = true;
       void listener?.remove();
     };
-  }, [open, previewMediaItem, closeSheet, setPreviewMediaItem]);
+  }, [open, editingAttachment, previewMediaItem, closeSheet, setPreviewMediaItem]);
 
   useEffect(() => {
     if (!open) {
