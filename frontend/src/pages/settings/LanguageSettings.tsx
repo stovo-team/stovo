@@ -21,10 +21,10 @@ export function LanguageSettings({ strings, language, systemLanguage, onChange }
         {options.map((option) => {
           const isSelected = language === option.value;
           return (
-            <button type="button" className={`privacy-choice${isSelected ? " is-selected" : ""}`} key={option.value} onClick={() => onChange(option.value)}>
+            <label className={`privacy-choice${isSelected ? " is-selected" : ""}`} key={option.value}>
               <span className="privacy-choice-copy"><strong>{option.label}</strong><small>{option.subtext}</small></span>
-              {isSelected && <span className="privacy-choice-check">✓</span>}
-            </button>
+              <input type="checkbox" checked={isSelected} onChange={() => onChange(option.value)} />
+            </label>
           );
         })}
       </section>
