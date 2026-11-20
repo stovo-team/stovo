@@ -46,7 +46,7 @@ for (const scenario of shellScenarios) {
     await screenshot(page, info, { ...scenario, id: `CA-create-${scenario.id}` });
 
     await page.getByLabel(nicknameLabel).fill("Researcher");
-    await page.getByLabel(providerLabel).selectOption("codex");
+    await page.locator(".mcp-provider-tab").filter({ hasText: "Codex" }).click();
     await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
     await page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" }).click();
 
@@ -73,9 +73,10 @@ test("Codex setup screenshot", async ({ page }, info) => {
   await page.goto("/app/admin/mcp");
   await ready(page);
   await page.getByLabel("Agent nickname").fill("Researcher");
-  await page.getByLabel("Agent provider").selectOption("codex");
+  await page.locator(".mcp-provider-tab").filter({ hasText: "Codex" }).click();
   await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
   await page.getByRole("button", { name: "Create connection" }).click();
   await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toBeVisible();
   await screenshot(page, info, scenario);
 });
+

@@ -1462,7 +1462,7 @@ export const strings = {
       commandCopied: "Команда скопирована",
       copyCliCommand: "Скопировать команду CLI",
       dismiss: "Закрыть",
-      backToAgents: "Готово — вернуться к агентам",
+      backToAgents: "Готово",
       onboardingStep: (step: number, total: number) => `ШАГ ${step} ИЗ ${total}`,
       onboardingTitle: (name: string) => `Настройка: ${name}`,
       onboardingAgentDescription: "Выполните шаги ниже в выбранном приложении. Сохраните сгенерированный токен в тайне: он показан только здесь.",

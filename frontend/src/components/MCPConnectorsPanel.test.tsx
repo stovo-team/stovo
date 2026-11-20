@@ -182,5 +182,10 @@ describe("MCPConnectorsPanel Russian localization", () => {
     expect(container.querySelector("form")).toBeNull();
     expect(container.querySelector(".mcp-connector-list")).toBeNull();
     expect(document.activeElement).toBe(container.querySelector(".mcp-secret-header h2"));
+
+    const doneButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".public-access-actions button"))
+      .find((button) => button.textContent?.trim() === "Готово");
+    expect(doneButton).toBeTruthy();
+    expect(container.textContent).not.toContain("вернуться к агентам");
   });
 });
