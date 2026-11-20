@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Crop as CropIcon, Pencil, RotateCw, Sliders, Undo2 } from "lucide-react";
+import { Check, Crop as CropIcon, Pencil, RotateCw, Sliders, Undo2 } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
@@ -24,10 +24,12 @@ interface ImageEditorModalProps {
   pending: PendingLocalAttachment;
   onSave: (updatedFile: File) => void;
   onClose: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 const COLOR_PRESETS = DESIGN_COLOR_VALUES.imageEditor.presetColors;
-export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
+export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggleSelect }: ImageEditorModalProps) {
   const strings = useStrings();
   const copy = strings.imageEditor;
   const penSizes = [
@@ -301,10 +303,22 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       <div className="image-editor-modal" role="dialog" aria-modal="true" aria-label={copy.editImage}>
         {/* Header */}
         <header className="image-editor-header">
-          <div className="image-editor-title">
-            <span className="ms-icon" aria-hidden="true">edit</span>
-            <h3>{copy.title}</h3>
-          </div>
+          {onToggleSelect ? (
+            <button
+              type="button"
+              className={`media-tile-checkbox image-editor-select-btn ${isSelected ? "checked" : ""}`}
+              onClick={onToggleSelect}
+              aria-label={isSelected ? (strings.attachments.picker?.deselectItem?.(pending.file.name) ?? `Deselect ${pending.file.name}`) : (strings.attachments.picker?.selectItem?.(pending.file.name) ?? `Select ${pending.file.name}`)}
+              aria-pressed={isSelected}
+            >
+              {isSelected && <Check size={14} strokeWidth={3} />}
+            </button>
+          ) : (
+            <div className="image-editor-title">
+              <span className="ms-icon" aria-hidden="true">edit</span>
+              <h3>{copy.title}</h3>
+            </div>
+          )}
           <div className="image-editor-header-actions">
             <PopupCloseButton className="image-editor-close-btn" onClick={() => { if (dirty && imgElement) void handleSave(); else onClose(); }} ariaLabel={copy.close} />
           </div>

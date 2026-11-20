@@ -87,6 +87,7 @@ export default function AttachmentPickerSheet({
   }, [open, initialTab]);
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
+  const [editingMediaItemId, setEditingMediaItemId] = useState<string | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
   const setPreviewMediaItem = useCallback(
     (item: NativeMediaItem | null) => {
@@ -172,6 +173,8 @@ export default function AttachmentPickerSheet({
     setActiveTab(initialTab);
     clearSelection();
     setPreviewMediaItem(null);
+    setEditingAttachment(null);
+    setEditingMediaItemId(null);
     setIsSending(false);
     setIsEmojiOpen(false);
     setIsFullScreen(false);
@@ -207,6 +210,7 @@ export default function AttachmentPickerSheet({
       listener = await App.addListener("backButton", () => {
         if (editingAttachment) {
           setEditingAttachment(null);
+          setEditingMediaItemId(null);
           return;
         }
         if (previewMediaItem) {
@@ -428,6 +432,7 @@ export default function AttachmentPickerSheet({
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
+      setEditingMediaItemId(item.id);
       setEditingAttachment({
         localId: `gallery-edit:${item.id}`,
         file: new File([blob], item.name, { type: item.mimeType || blob.type || "image/jpeg" }),
@@ -780,10 +785,16 @@ export default function AttachmentPickerSheet({
       {editingAttachment && (
         <ImageEditorModal
           pending={editingAttachment}
-          onClose={() => setEditingAttachment(null)}
+          isSelected={editingMediaItemId ? selectedItemIds.includes(editingMediaItemId) : false}
+          onToggleSelect={editingMediaItemId ? () => toggleSelection(editingMediaItemId) : undefined}
+          onClose={() => {
+            setEditingAttachment(null);
+            setEditingMediaItemId(null);
+          }}
           onSave={(editedFile) => {
             onSelectFiles?.([editedFile]);
             setEditingAttachment(null);
+            setEditingMediaItemId(null);
           }}
         />
       )}

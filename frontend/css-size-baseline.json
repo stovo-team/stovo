@@ -38,6 +38,10 @@
       "maxLines": 1630,
       "reason": "Allow the new-chat dialog safe-area spacing and compact contact-row layout changes."
     },
+    "secondary-settings.css": {
+      "maxLines": 1740,
+      "reason": "Allow full-screen mobile sizing rules for chat details panel."
+    },
     "storage-and-admin.css": {
       "maxLines": 2107,
       "reason": "Allow all-storage avatar state styling for the source list and its minimized layout."

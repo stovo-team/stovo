@@ -8,6 +8,7 @@ vi.mock("../i18n/LanguageContext", () => ({ useStrings: () => getAppStrings("ru"
 import { PendingAttachmentCard } from "../features/chats/composer/PendingAttachmentCard";
 import { ImageEditorModal } from "./ImageEditorModal";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import { readCssSource } from "../test/cssSource";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -203,4 +204,54 @@ describe("ImageEditorModal", () => {
     }
   });
 
+  it("renders selection button in header when onToggleSelect is provided", () => {
+    const onToggleSelect = vi.fn();
+    const pending: PendingLocalAttachment = {
+      localId: "local:789",
+      file: new File(["dummy"], "photo.png", { type: "image/png" }),
+      previewUrl: "blob:http://localhost/photo"
+    };
+
+    act(() => {
+      root?.render(
+        <ImageEditorModal
+          pending={pending}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          isSelected={false}
+          onToggleSelect={onToggleSelect}
+        />
+      );
+    });
+
+    const selectBtn = document.querySelector<HTMLButtonElement>(".image-editor-select-btn");
+    expect(selectBtn).not.toBeNull();
+    expect(selectBtn?.classList.contains("checked")).toBe(false);
+
+    act(() => {
+      selectBtn?.click();
+    });
+    expect(onToggleSelect).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root?.render(
+        <ImageEditorModal
+          pending={pending}
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          isSelected={true}
+          onToggleSelect={onToggleSelect}
+        />
+      );
+    });
+
+    expect(selectBtn?.classList.contains("checked")).toBe(true);
+  });
+
+  it("styles crop ratios in a single scrollable row without wrapping", () => {
+    const styles = readCssSource("src/styles.css");
+    const cropRatiosMatch = styles.match(/\.crop-ratios\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(cropRatiosMatch).toContain("flex-wrap: nowrap;");
+    expect(cropRatiosMatch).toContain("overflow-x: auto;");
+  });
 });
