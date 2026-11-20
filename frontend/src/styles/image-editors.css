@@ -286,14 +286,23 @@
 .crop-ratios {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  flex: 1;
+  padding: 2px 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .control-section-label {
   font-size: var(--font-size-small);
   color: var(--text-secondary, var(--color-palette-cc68d0a3a0c5));
   font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .crop-ratio-btn {
@@ -306,6 +315,8 @@
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .crop-ratio-btn:hover {
@@ -1449,5 +1460,7 @@
 .crop-corner--br { border-right: 3px solid #fff; border-bottom: 3px solid #fff; }
 .crop-corner--tl, .crop-corner--br { cursor: nwse-resize; }
 .crop-corner--tr, .crop-corner--bl { cursor: nesw-resize; }
-.image-editor-crop-controls { display: flex; flex-direction: row; align-items: center; gap: 10px; }
-.image-editor-rotate { flex: 0 0 44px; }
+.image-editor-crop-controls { display: flex; flex-direction: row; align-items: center; gap: 10px; width: 100%; min-width: 0; max-width: 100%; }
+.image-editor-rotate { flex: 0 0 44px; flex-shrink: 0; }
+.image-editor-header .image-editor-select-btn.media-tile-checkbox { flex: 0 0 32px; height: 32px; max-height: 32px; max-width: 32px; min-height: 32px; min-width: 32px; position: relative; right: auto; top: auto; width: 32px; cursor: pointer; z-index: 2; }
+

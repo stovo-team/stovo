@@ -85,4 +85,13 @@ describe("chat details popup sizing", () => {
   it("reserves space in Details content while a minimized call is present", () => {
     expect(styles).toMatch(/\.chat-info-body\.has-minimized-call\s*\{[^}]*padding-top:\s*var\(--minimized-call-slot-height/);
   });
+
+  it("renders chat details panel full-screen on mobile screens up to 768px", () => {
+    const mobileRule = mediaRuleContaining(".chat-info-screen.chat-details-panel", 768);
+    expect(mobileRule).toContain("inset: 0;");
+    expect(mobileRule).toContain("width: 100%;");
+    expect(mobileRule).toContain("height: 100%;");
+    expect(mobileRule).toContain("border-radius: 0;");
+    expect(mobileRule).toContain("box-shadow: none;");
+  });
 });

@@ -91,6 +91,8 @@ describe("AttachmentPickerSheet Android gallery", () => {
   it("opens the editor directly on photo thumbnail click and toggles selection on top-right checkbox click", () => {
     expect(attachmentSheetSource).toContain("ImageEditorModal");
     expect(attachmentSheetSource).toContain("onPreview={(item) => void openPhotoEditor(item)}");
+    expect(attachmentSheetSource).toContain("isSelected={editingMediaItemId ? selectedItemIds.includes(editingMediaItemId) : false}");
+    expect(attachmentSheetSource).toContain("onToggleSelect={editingMediaItemId ? () => toggleSelection(editingMediaItemId) : undefined}");
     expect(mediaGridSource).toContain("media-tile-thumb-btn");
     expect(mediaGridSource).toContain("media-tile-checkbox");
     expect(mediaGridSource).toContain("onToggle(item.id)");
