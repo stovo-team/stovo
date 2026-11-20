@@ -1433,7 +1433,7 @@ export const strings = {
       commandCopied: "Command copied",
       copyCliCommand: "Copy CLI command",
       dismiss: "Dismiss",
-      backToAgents: "Done — back to Connected Agents",
+      backToAgents: "Done",
       onboardingStep: (step: number, total: number) => `STEP ${step} OF ${total}`,
       onboardingTitle: (name: string) => `Set up ${name}`,
       onboardingAgentDescription: "Use the steps below in the provider you selected. Keep the generated token private; it is shown only here.",

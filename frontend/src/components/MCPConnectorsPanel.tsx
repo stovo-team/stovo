@@ -5,7 +5,7 @@ import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import type { IntelligenceGrant, IntelligenceGrants } from "../api/intelligence";
 import { useStrings } from "../i18n/LanguageContext";
-import CodexBridgeSetupPanel, { CodexBridgeSetupPrompt } from "./CodexBridgeSetupPanel";
+import { codexBridgeSetupPrompt } from "./CodexBridgeSetupPanel";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
@@ -443,6 +443,21 @@ export default function MCPConnectorsPanel({
     : secret?.provider === "claude_code" ? copy.setupSteps.claude
     : copy.setupSteps.codex;
   const secretProviderName = MCP_PROVIDERS.find((item) => item.id === secret?.provider)?.label ?? secret?.provider ?? "";
+  const selectedInsightGrants = secret
+    ? (Object.entries(secret.insightGrants)
+        .filter(([, enabled]) => enabled)
+        .map(([grant]) => strings.intelligence.grants[grant as IntelligenceGrant])
+        .join(", ") || copy.none)
+    : copy.none;
+  const unifiedSetupPrompt = secret
+    ? [
+        secret.setupPrompt.trim(),
+        `${copy.insightPermissionsTitle} (${copy.insightPreferences}): ${selectedInsightGrants}`,
+        codexBridgeSetupPrompt.trim()
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : "";
 
   return (
     <section className="mcp-connectors-panel">
@@ -450,7 +465,6 @@ export default function MCPConnectorsPanel({
         <article className="invite-link-card mcp-secret-card">
           <div className="mcp-secret-header">
             <div>
-              <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(1, 3)}</span>
               <h2 ref={onboardingHeadingRef} tabIndex={-1}>{copy.onboardingTitle(secret.connectorName)}</h2>
               <p>
                 {copy.connectionFor(secret.connectorName, secretProviderName, formatMCPAlias(secret.alias))}
@@ -472,8 +486,8 @@ export default function MCPConnectorsPanel({
           </div>
 
           <div className="mcp-copy-field">
-            <div className="mcp-copy-field-label"><span>{copy.setupPrompt}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", secret.setupPrompt)} aria-label={copy.copySetupPrompt}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? copy.copied : copy.copy}</button></div>
-            <textarea className="mcp-setup-prompt" readOnly rows={5} value={secret.setupPrompt} />
+            <div className="mcp-copy-field-label"><span>{copy.setupPrompt}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", unifiedSetupPrompt)} aria-label={copy.copySetupPrompt}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? copy.copied : copy.copy}</button></div>
+            <textarea className="mcp-setup-prompt" readOnly rows={5} value={unifiedSetupPrompt} />
           </div>
 
           <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>{copy.mcpUrl}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("url", secret.mcpUrl)} aria-label={copy.copyMcpUrl}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "url" ? copy.copied : copy.copy}</button></div><code>{secret.mcpUrl}</code></div>
@@ -488,23 +502,6 @@ export default function MCPConnectorsPanel({
               ))}
             </ol>
           </div>
-
-          <section className="mcp-onboarding-step">
-            <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(2, 3)}</span>
-            <h3>{copy.insightPermissionsTitle}</h3>
-            <p className="mcp-insight-requested">
-              <strong>{copy.insightPreferences}:</strong>{" "}
-              {Object.entries(secret.insightGrants).filter(([, enabled]) => enabled).map(([grant]) => strings.intelligence.grants[grant as IntelligenceGrant]).join(", ") || copy.none}
-            </p>
-          </section>
-
-          <section className="mcp-onboarding-step mcp-onboarding-local-bridge">
-            <span className="mcp-onboarding-eyebrow">{copy.onboardingStep(3, 3)}</span>
-            <h3>{copy.localBridgeOnboardingTitle}</h3>
-            <p className="muted-text">{copy.localBridgePrerequisites}</p>
-            <CodexBridgeSetupPrompt />
-            <CodexBridgeSetupPanel />
-          </section>
 
           {showCli && <div className="mcp-cli-toggle"><code>{secret.cliCommand}</code></div>}
 

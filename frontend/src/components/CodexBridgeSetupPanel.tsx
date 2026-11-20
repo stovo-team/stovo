@@ -3,7 +3,7 @@ import { Check, Copy, ShieldCheck, Terminal } from "lucide-react";
 import { useStrings } from "../i18n/LanguageContext";
 import "./CodexBridgeSetupPanel.css";
 
-const setupPrompt = `Help me set up the Local Stovo Codex Bridge on this computer. Guide me one step at a time and stop for my confirmation before every command that changes files, installs software, uses sudo, or contacts an account. First explain the exact command and its effect. Never run publish or deployment commands.
+export const codexBridgeSetupPrompt = `Help me set up the Local Stovo Codex Bridge on this computer. Guide me one step at a time and stop for my confirmation before every command that changes files, installs software, uses sudo, or contacts an account. First explain the exact command and its effect. Never run publish or deployment commands.
 
 Use only the source at https://github.com/stovo-team/stovo-messenger, specifically backend/codex-bridge. This is source-based software; there is no signed or published companion installer. Do not trust or run a downloaded binary. Inspect the README, package scripts, and source before running anything. If the checkout does not contain the documented bridge, stop.
 
@@ -47,7 +47,7 @@ export function CodexBridgeSetupPrompt() {
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(setupPrompt);
+      await navigator.clipboard.writeText(codexBridgeSetupPrompt);
       setCopied(true);
       setCopyFailed(false);
       window.setTimeout(() => setCopied(false), 2500);
@@ -66,7 +66,7 @@ export function CodexBridgeSetupPrompt() {
             {copied ? <Check size={16} /> : <Copy size={16} />}
           </button>
         </div>
-        <textarea className="mcp-setup-prompt" aria-label={strings.promptLabel} readOnly rows={5} value={setupPrompt} onFocus={(event) => event.currentTarget.select()} />
+        <textarea className="mcp-setup-prompt" aria-label={strings.promptLabel} readOnly rows={5} value={codexBridgeSetupPrompt} onFocus={(event) => event.currentTarget.select()} />
         {copyFailed && <p className="mcp-local-codex-copy-error" role="status">{strings.copyError}</p>}
       </div>
     </section>

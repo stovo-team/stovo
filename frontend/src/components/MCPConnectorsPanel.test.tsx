@@ -165,22 +165,27 @@ describe("MCPConnectorsPanel Russian localization", () => {
       permissions: expect.objectContaining({ "messages.read": false, "chats.list": false }),
     }));
     expect(createMCPConnector).not.toHaveBeenCalledWith("test-token", expect.objectContaining({ insightGrants: expect.anything() }));
-    expect(container.textContent).toContain("ШАГ 1 ИЗ 3");
-    expect(container.textContent).toContain("ШАГ 2 ИЗ 3");
-    expect(container.textContent).toContain("ШАГ 3 ИЗ 3");
+    expect(container.textContent).not.toContain("ШАГ 1 ИЗ 3");
+    expect(container.textContent).not.toContain("ШАГ 2 ИЗ 3");
+    expect(container.textContent).not.toContain("ШАГ 3 ИЗ 3");
     expect(container.textContent).toContain("stovo-messenger");
     expect(container.textContent).toContain("Streamable HTTP");
     expect(container.textContent).toContain("не добавляйте env");
-    expect(container.textContent).toContain("Читать историю чата");
-    expect(container.textContent).toContain("macOS или Linux, Node.js 22+");
     expect(container.textContent).not.toContain("подтвердите каждое разрешение в авторизованном окне согласия Stovo Insight");
-    expect(container.querySelector(".mcp-local-codex-prompt textarea")?.value).toContain("pair_local_codex(connection_id, chat_id)");
-    expect(container.querySelector(".mcp-local-codex-prompt textarea")?.value).toContain("stop for my confirmation");
-    expect(container.querySelector(".mcp-setup-prompt")?.value).toContain("To test the connection, call stovo_connection_status");
-    expect(container.querySelector(".mcp-local-codex-prompt button")?.getAttribute("aria-label")).toBe("Скопировать запрос настройки");
-    expect(container.querySelector(".mcp-local-codex-panel details")).toBeTruthy();
+    expect(container.querySelectorAll(".mcp-setup-prompt")).toHaveLength(1);
+    expect(container.querySelector(".mcp-local-codex-prompt")).toBeNull();
+    const promptValue = container.querySelector<HTMLTextAreaElement>(".mcp-setup-prompt")?.value ?? "";
+    expect(promptValue).toContain("To test the connection, call stovo_connection_status");
+    expect(promptValue).toContain("Читать историю чата");
+    expect(promptValue).toContain("pair_local_codex(connection_id, chat_id)");
+    expect(promptValue).toContain("stop for my confirmation");
     expect(container.querySelector("form")).toBeNull();
     expect(container.querySelector(".mcp-connector-list")).toBeNull();
     expect(document.activeElement).toBe(container.querySelector(".mcp-secret-header h2"));
+
+    const doneButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".public-access-actions button"))
+      .find((button) => button.textContent?.trim() === "Готово");
+    expect(doneButton).toBeTruthy();
+    expect(container.textContent).not.toContain("вернуться к агентам");
   });
 });
