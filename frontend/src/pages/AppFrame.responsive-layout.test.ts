@@ -13,6 +13,8 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
   const tabletLayout = tabletLayouts.at(-1);
   let navGridColumn: string | undefined;
   let navWidth: string | undefined;
+  let navPosition: string | undefined;
+  let navLeft: string | undefined;
   let frameRailWidth: string | undefined;
   let navStateCircleSize: string | undefined;
   let navPadding: string | undefined;
@@ -59,6 +61,12 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
       navWidth = rule.nodes?.find(
         node => node.type === "decl" && node.prop === "width"
       )?.value ?? navWidth;
+      navPosition = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "position"
+      )?.value ?? navPosition;
+      navLeft = rule.nodes?.find(
+        node => node.type === "decl" && node.prop === "left"
+      )?.value ?? navLeft;
       navStateCircleSize = rule.nodes?.find(
         node => node.type === "decl" && node.prop === "--app-nav-state-circle-size"
       )?.value ?? navStateCircleSize;
@@ -177,6 +185,8 @@ it("keeps app pages beside the nav rail and chat list plain at tablet widths", (
 
   expect(navGridColumn).toBe("1");
   expect(navWidth).toBe("var(--nav-rail-width)");
+  expect(navPosition).toBe("fixed");
+  expect(navLeft).toBe("var(--float-outer-gap)");
   expect(frameRailWidth).toBe("70px");
   expect(navStateCircleSize).toBe("56px");
   expect(navPadding).toBe("6px");

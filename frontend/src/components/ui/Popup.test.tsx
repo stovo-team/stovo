@@ -97,9 +97,9 @@ describe("shared popup shell styles", () => {
     expect(closeRule).toMatch(/width:\s*34px/);
     expect(closeRule).toMatch(/height:\s*34px/);
     expect(closeRule).toMatch(/min-width:\s*34px/);
-    expect(closeRule).toMatch(/min-height:\s*34px/);
-    expect(closeRule).toMatch(/position:\s*sticky/);
-    expect(closeRule).toMatch(/display:\s*grid/);
-    expect(closeRule).toMatch(/margin-left:\s*auto/);
+    expect(closeRule).toMatch(/position:\s*absolute/);
+    expect(closeRule).toMatch(/top:\s*14px/);
+    expect(closeRule).toMatch(/right:\s*14px/);
+    expect(closeRule).not.toMatch(/margin-bottom:/);
   });
 });
