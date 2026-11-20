@@ -93,4 +93,29 @@ describe("MCP connector settings button", () => {
     expect(adminSelectedTag["border-color"]).toBe("var(--text-secondary)");
     expect(checkbox["border-radius"]).toBe("var(--radius-small)");
   });
+
+  it("defines gaps between provider tabs and an active/selected state", () => {
+    const root = postcss.parse(stylesheet);
+    const declarationsFor = (targetSelector: string) => {
+      const declarations: Record<string, string> = {};
+      root.walkRules((rule) => {
+        const selectors = rule.selector.split(",").map((s) => s.trim());
+        if (selectors.includes(targetSelector)) {
+          rule.walkDecls((declaration) => {
+            declarations[declaration.prop] = declaration.value;
+          });
+        }
+      });
+      return declarations;
+    };
+
+    const tabs = declarationsFor(".mcp-provider-tabs");
+    expect(tabs.display).toBe("grid");
+    expect(tabs.gap).toBeDefined();
+    expect(Number.parseInt(tabs.gap || "0", 10)).toBeGreaterThan(0);
+
+    const selectedTab = declarationsFor(".mcp-provider-tab.is-selected");
+    expect(selectedTab["border-color"]).toBeDefined();
+    expect(selectedTab.background).toBeDefined();
+  });
 });

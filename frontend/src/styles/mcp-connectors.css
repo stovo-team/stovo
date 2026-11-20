@@ -32,11 +32,49 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.mcp-provider-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
 .mcp-provider-tab {
   min-width: 0;
   min-height: 82px;
-  align-content: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background var(--motion-route-duration-fast, 140ms) ease,
+    border-color var(--motion-route-duration-fast, 140ms) ease,
+    box-shadow var(--motion-route-duration-fast, 140ms) ease;
+}
+
+.mcp-provider-tab:hover:not(:disabled):not(.is-selected) {
+  background: var(--surface-hover, var(--surface-card));
+  border-color: var(--accent-border-soft, var(--border-default));
+}
+
+.mcp-provider-tab.is-selected,
+.mcp-provider-tab[aria-pressed="true"],
+.mcp-provider-tab:active {
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  background: color-mix(in oklab, var(--accent-primary, var(--color-palette-a5384157bc1a)) 14%, var(--surface-card));
+  box-shadow: 0 0 0 1px var(--accent-primary, var(--color-palette-a5384157bc1a));
+}
+
+.mcp-provider-tab:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline-offset: 2px;
 }
 
 .mcp-provider-tab strong {
@@ -47,12 +85,20 @@
 .mcp-provider-mark {
   width: 26px;
   height: 26px;
-  color: currentColor;
+  flex-shrink: 0;
+  display: block;
 }
 
-.mcp-provider-mark.is-claude,
-.mcp-provider-mark.is-openclaw {
-  color: var(--accent-primary, currentColor);
+.mcp-provider-mark.is-claude {
+  color: var(--color-palette-189a10aa4447);
+}
+
+.mcp-provider-mark.is-codex {
+  color: var(--color-palette-115e018f6107);
+}
+
+.mcp-provider-mark.is-hermes {
+  color: var(--color-palette-b035e56d5fc6);
 }
 
 .mcp-connector-form .mcp-history-control select,
@@ -121,9 +167,22 @@
   background: transparent;
 }
 
+@media (max-width: 680px) {
+  .mcp-provider-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 480px) {
   .mcp-connector-form .mcp-history-control {
     grid-template-columns: minmax(120px, 1fr) minmax(72px, 88px);
     width: 100%;
   }
 }
+
+@media (max-width: 380px) {
+  .mcp-provider-tabs {
+    grid-template-columns: 1fr;
+  }
+}
+
