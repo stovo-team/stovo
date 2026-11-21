@@ -1,5 +1,10 @@
 # Local Stovo Codex Bridge
 
+> [!NOTE]
+> The bridge codebase has been extracted into a standalone public repository:
+> **https://github.com/stovo-team/stovo-connector**
+> For new installations, CLI/npx usage, and updates, use the standalone repository or run via `npx @stovo-team/stovo-connector`.
+
 The bridge runs on your computer. Stovo Insight uses the Messenger connection you already linked to create a short-lived, chat-scoped pairing credential. The local bridge makes outbound HTTPS calls to Insight, runs the local Codex app-server, and sends response revisions through the same linked Messenger account. It does not sign in to Messenger directly and does not create a second Messenger identity.
 
 ## Requirements

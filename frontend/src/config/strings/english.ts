@@ -25,7 +25,7 @@ export const strings = {
     promptLabel: "Prompt for your local Codex",
     stepsTitle: "What happens next",
     stepOne: "Codex checks your computer for Node.js 22+, Codex CLI, and a workspace you choose.",
-    stepTwo: "It downloads the companion source from the Stovo Messenger repository and prepares a private local configuration.",
+    stepTwo: "It downloads the companion source from the Stovo Connector repository and prepares a private local configuration.",
     stepThree: "Confirm the selected Messenger chat and local workspace before pairing.",
     stepFour: "You paste the five minute, one time pairing code into the local terminal. The companion stores its credential in a private file and starts locally.",
     safetyTitle: "You stay in control",
