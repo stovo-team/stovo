@@ -240,7 +240,11 @@ async function handleMockRequest(url: URL, method: string, input: FetchInput, in
 
   const downloadMatch = path.match(/^\/api\/files\/([^/]+)\/download$/);
   if (method === "GET" && downloadMatch) {
-    const [file, blob] = await Promise.all([getMockFile(downloadMatch[1]), downloadMockFile(downloadMatch[1])]);
+    let [file, blob] = await Promise.all([getMockFile(downloadMatch[1]), downloadMockFile(downloadMatch[1])]);
+    if (!file) {
+      await seedMockPreviewFiles(mockData.family.id, getMockUserId());
+      [file, blob] = await Promise.all([getMockFile(downloadMatch[1]), downloadMockFile(downloadMatch[1])]);
+    }
     return file && blob ? await blobResponse(blob, file.mimeType, file.originalName) : errorResponse(404, "Mock file not found.");
   }
 

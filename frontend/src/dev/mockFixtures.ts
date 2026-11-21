@@ -1,5 +1,6 @@
 import type { User } from "../api/auth";
 import type { Chat, ChatMember, Message, MessageHistoryPage, PinnedMessage } from "../api/chats";
+import type { FamilyFile } from "../api/files";
 import type { Family } from "../api/family";
 import type { ServerManifest } from "../config/profileManifest";
 import {
@@ -168,6 +169,7 @@ function message(options: {
   createdAt: string;
   statuses?: Message["statuses"];
   reactions?: Message["reactions"];
+  attachments?: FamilyFile[];
 }): Message {
   return {
     id: options.id,
@@ -191,7 +193,7 @@ function message(options: {
     forwardedFrom: null,
     statuses: options.statuses ?? [{ userId: options.senderId, status: "sent", createdAt: options.createdAt }],
     reactions: options.reactions ?? [],
-    attachments: [],
+    attachments: options.attachments ?? [],
   };
 }
 
@@ -229,6 +231,46 @@ const messages: Record<string, Message[]> = {
       statuses: [
         { userId: demoMaya.id, status: "sent", createdAt: "2026-10-09T08:30:00.000Z" },
         { userId: demoOwner.id, status: "delivered", createdAt: "2026-10-09T08:30:05.000Z" },
+      ],
+    }),
+    message({
+      id: "msg-planning-media-assets",
+      chatId: PLANNING_CHAT_ID,
+      senderId: demoAlex.id,
+      senderDisplayName: demoAlex.displayName,
+      content: "Here are the project preview assets.",
+      createdAt: "2026-10-09T08:35:00.000Z",
+      statuses: [
+        { userId: demoAlex.id, status: "sent", createdAt: "2026-10-09T08:35:00.000Z" },
+        { userId: demoOwner.id, status: "read", createdAt: "2026-10-09T08:36:00.000Z" },
+      ],
+      attachments: [
+        {
+          id: "mock-storage-preview-photo",
+          familyId: family.id,
+          uploadedBy: demoAlex.id,
+          chatId: PLANNING_CHAT_ID,
+          chatTitle: "Planning Team",
+          chatType: "group",
+          originalName: "Storage preview photo.svg",
+          mimeType: "image/svg+xml",
+          sizeBytes: 1200,
+          createdAt: "2026-10-09T08:35:00.000Z",
+          isFavorite: false,
+        },
+        {
+          id: "mock-storage-preview-video",
+          familyId: family.id,
+          uploadedBy: demoAlex.id,
+          chatId: PLANNING_CHAT_ID,
+          chatTitle: "Planning Team",
+          chatType: "group",
+          originalName: "Storage preview video.webm",
+          mimeType: "video/webm",
+          sizeBytes: 3848,
+          createdAt: "2026-10-09T08:35:00.000Z",
+          isFavorite: false,
+        },
       ],
     }),
   ],

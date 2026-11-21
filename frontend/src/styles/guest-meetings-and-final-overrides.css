@@ -2505,10 +2505,6 @@ button.minimized-call-button--end:active:not(:disabled) {
     grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   }
 
-  .messenger-shell .chat-layout.details-open {
-    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(240px, 280px);
-  }
-
   .messenger-shell.has-active-chat .chat-detail-header--floating {
     gap: 8px;
     min-height: 48px;

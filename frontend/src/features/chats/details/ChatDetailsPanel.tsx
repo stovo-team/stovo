@@ -69,11 +69,16 @@ export function SharedContentThumb({
       >
         {isVideo && previewUrl && !videoPreviewFailed ? (
           <video
-            src={previewUrl}
+            src={previewUrl ? `${previewUrl}#t=0.001` : undefined}
             aria-hidden="true"
             muted
             playsInline
             preload="metadata"
+            onLoadedMetadata={(event) => {
+              if (event.currentTarget.currentTime === 0) {
+                event.currentTarget.currentTime = 0.001;
+              }
+            }}
             onError={() => setVideoPreviewFailed(true)}
           />
         ) : isVideo ? <Video aria-hidden="true" size={20} /> : isAudio ? <Music aria-hidden="true" size={20} /> : <FileText aria-hidden="true" size={20} />}
