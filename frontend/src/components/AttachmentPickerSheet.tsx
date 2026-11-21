@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import CspSafeEmojiPicker, { EmojiClickData, Theme } from "./CspSafeEmojiPicker";
-import { AudioLines, BarChart2, CheckSquare, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
+import { AudioLines, BarChart2, CheckSquare, FileText, Image as ImageIcon, Music, Smile, StickyNote } from "lucide-react";
+import { SendMessageIcon } from "../features/chats/composer/SendMessageIcon";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
@@ -628,24 +629,6 @@ export default function AttachmentPickerSheet({
         {activeTab !== "poll" && activeTab !== "checklist" && (
           <div className="attachment-picker-message-box message-composer">
             <div className={`message-composer-row${isMultiline ? " message-composer-row--multiline" : ""}`}>
-              <button
-                type="button"
-                className="file-picker"
-                aria-label={strings.attachments.attachFiles}
-                title={strings.attachments.attachFiles}
-                disabled={isSending || isSendingMessage}
-                onClick={() => {
-                  if (activeTab !== "file") {
-                    setActiveTab("file");
-                  } else {
-                    onPick("file");
-                    closeSheet();
-                  }
-                }}
-              >
-                <Paperclip aria-hidden="true" size={22} />
-              </button>
-
               <div className="emoji-picker-shell" ref={emojiPickerRef}>
                 <button
                   type="button"
@@ -711,9 +694,7 @@ export default function AttachmentPickerSheet({
                   }}
                   onClick={() => void handleSendSelected()}
                 >
-                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                    send
-                  </span>
+                  <SendMessageIcon />
                   {(isSending || isSendingMessage) && <span className="visually-hidden">{strings.attachments.sending}</span>}
                 </button>
               </div>
