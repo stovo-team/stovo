@@ -1,4 +1,5 @@
-import { apiRequest } from "./client";
+import { apiRequest, ApiError, type ApiRequestOptions } from "./client";
+import { refreshSession } from "./auth";
 
 export const MCP_PERMISSION_KEYS = [
   "chats.list",
@@ -175,12 +176,43 @@ export function mcpUiSetupSteps(provider: string | undefined | null): string[] {
   }
 }
 
-export function listMCPConnectors(accessToken: string) {
-  return apiRequest<MCPConnector[]>("/api/admin/mcp-connectors", { accessToken });
+export type MCPApiCaller = string | (<T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>);
+
+async function requestWithTokenOrCaller<T>(
+  caller: MCPApiCaller,
+  endpoint: string,
+  options: ApiRequestOptions = {}
+): Promise<T> {
+  if (typeof caller === "function") {
+    return caller<T>(endpoint, options);
+  }
+  try {
+    return await apiRequest<T>(endpoint, {
+      ...options,
+      accessToken: caller
+    });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      try {
+        const refreshed = await refreshSession();
+        return await apiRequest<T>(endpoint, {
+          ...options,
+          accessToken: refreshed.accessToken
+        });
+      } catch {
+        throw err;
+      }
+    }
+    throw err;
+  }
+}
+
+export function listMCPConnectors(caller: MCPApiCaller) {
+  return requestWithTokenOrCaller<MCPConnector[]>(caller, "/api/admin/mcp-connectors");
 }
 
 export function createMCPConnector(
-  accessToken: string,
+  caller: MCPApiCaller,
   body: {
     name: string;
     provider: MCPProviderId;
@@ -191,8 +223,7 @@ export function createMCPConnector(
     maxHistoryMessages: number;
   }
 ) {
-  return apiRequest<MCPConnectorCreateResponse>("/api/admin/mcp-connectors", {
-    accessToken,
+  return requestWithTokenOrCaller<MCPConnectorCreateResponse>(caller, "/api/admin/mcp-connectors", {
     method: "POST",
     body: {
       ...body,
@@ -203,7 +234,7 @@ export function createMCPConnector(
 }
 
 export function updateMCPConnector(
-  accessToken: string,
+  caller: MCPApiCaller,
   connectorId: string,
   body: {
     name?: string;
@@ -215,27 +246,24 @@ export function updateMCPConnector(
     enabled?: boolean;
   }
 ) {
-  return apiRequest<MCPConnector>(`/api/admin/mcp-connectors/${connectorId}`, {
-    accessToken,
+  return requestWithTokenOrCaller<MCPConnector>(caller, `/api/admin/mcp-connectors/${connectorId}`, {
     method: "PATCH",
     body
   });
 }
 
-export function regenerateMCPConnectorToken(accessToken: string, connectorId: string) {
-  return apiRequest<MCPConnectorTokenResponse>(`/api/admin/mcp-connectors/${connectorId}/regenerate-token`, {
-    accessToken,
+export function regenerateMCPConnectorToken(caller: MCPApiCaller, connectorId: string) {
+  return requestWithTokenOrCaller<MCPConnectorTokenResponse>(caller, `/api/admin/mcp-connectors/${connectorId}/regenerate-token`, {
     method: "POST"
   });
 }
 
-export function revokeMCPConnector(accessToken: string, connectorId: string) {
-  return apiRequest<MCPConnector>(`/api/admin/mcp-connectors/${connectorId}/revoke`, {
-    accessToken,
+export function revokeMCPConnector(caller: MCPApiCaller, connectorId: string) {
+  return requestWithTokenOrCaller<MCPConnector>(caller, `/api/admin/mcp-connectors/${connectorId}/revoke`, {
     method: "POST"
   });
 }
 
-export function listMCPConnectorAudit(accessToken: string, connectorId: string) {
-  return apiRequest<MCPAuditEvent[]>(`/api/admin/mcp-connectors/${connectorId}/audit`, { accessToken });
+export function listMCPConnectorAudit(caller: MCPApiCaller, connectorId: string) {
+  return requestWithTokenOrCaller<MCPAuditEvent[]>(caller, `/api/admin/mcp-connectors/${connectorId}/audit`);
 }
