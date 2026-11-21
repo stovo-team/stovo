@@ -13,6 +13,8 @@ import { PresetNumberControl } from "./ui/PresetNumberControl";
 import { MCPProviderMark } from "./MCPProviderMark";
 import {
   MCP_PERMISSION_KEYS,
+  MCP_AUTH_MODES,
+  MCPAuthMode,
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
@@ -156,8 +158,10 @@ export default function MCPConnectorsPanel({
   const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
   const [insightGrantPreferences, setInsightGrantPreferences] = useState<IntelligenceGrants>(defaultInsightGrantPreferences());
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
+  const [authMode, setAuthMode] = useState<MCPAuthMode>("subscription");
   const [editing, setEditing] = useState<MCPConnector | null>(null);
   const [editName, setEditName] = useState("");
+  const [editAuthMode, setEditAuthMode] = useState<MCPAuthMode>("subscription");
   const [editHistory, setEditHistory] = useState(50);
   const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
   const [editChatIds, setEditChatIds] = useState<string[]>([]);
@@ -170,7 +174,7 @@ export default function MCPConnectorsPanel({
     setIsLoading(true);
     onError(null);
     try {
-      const connectorResult = await listMCPConnectors(accessToken);
+      const connectorResult = await listMCPConnectors(authRequest || accessToken);
       setConnectors(connectorResult);
     } catch {
       setConnectors([]);
@@ -199,14 +203,14 @@ export default function MCPConnectorsPanel({
     if (!secret || isSecretConnected) return;
     const interval = window.setInterval(async () => {
       try {
-        const fresh = await listMCPConnectors(accessToken);
+        const fresh = await listMCPConnectors(authRequest || accessToken);
         setConnectors(fresh);
       } catch {
         // silent polling
       }
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [accessToken, secret, isSecretConnected]);
+  }, [accessToken, authRequest, secret, isSecretConnected]);
 
   useEffect(() => {
     if (secret) onboardingHeadingRef.current?.focus();
@@ -333,7 +337,7 @@ export default function MCPConnectorsPanel({
         name: trimmedName,
         provider: provider as MCPProviderId,
         alias: generatedAlias,
-        authMode: "subscription",
+        authMode,
         allowedChatIds,
         permissions,
         maxHistoryMessages: maxHistory
@@ -342,6 +346,7 @@ export default function MCPConnectorsPanel({
       applySecret(result, insightGrantPreferences);
       setName("");
       setProvider("");
+      setAuthMode("subscription");
       setPermissions(defaultMCPPermissions());
       setInsightGrantPreferences(defaultInsightGrantPreferences());
       setAllowedChatIds([]);
@@ -366,7 +371,7 @@ export default function MCPConnectorsPanel({
   async function handleToggleEnabled(connector: MCPConnector) {
     onError(null);
     try {
-      const updated = await updateMCPConnector(accessToken, connector.id, { enabled: !connector.enabled });
+      const updated = await updateMCPConnector(authRequest || accessToken, connector.id, { enabled: !connector.enabled });
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       // Success notice removed per user request
     } catch (err) {
@@ -378,7 +383,7 @@ export default function MCPConnectorsPanel({
     onError(null);
     onNotice(null);
     try {
-      const result = await regenerateMCPConnectorToken(accessToken, connector.id);
+      const result = await regenerateMCPConnectorToken(authRequest || accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === result.connector.id ? result.connector : item)));
       applySecret(result, secret?.connectorId === connector.id ? secret.insightGrants : defaultInsightGrantPreferences());
       onNotice(copy.tokenRegenerated);
@@ -391,10 +396,10 @@ export default function MCPConnectorsPanel({
     if (!window.confirm(copy.revokeConfirmation(connector.name))) return;
     onError(null);
     try {
-      const updated = await revokeMCPConnector(accessToken, connector.id);
+      const updated = await revokeMCPConnector(authRequest || accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       if (secret?.connectorId === connector.id) setSecret(null);
-      onNotice(copy.connectionRevoked);
+      // Revoked notice removed per user request
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.revokeFailed);
     }
@@ -403,6 +408,7 @@ export default function MCPConnectorsPanel({
   function beginEdit(connector: MCPConnector) {
     setEditing(connector);
     setEditName(connector.name);
+    setEditAuthMode(connector.authMode === "api" ? "api" : "subscription");
     setEditHistory(connector.maxHistoryMessages);
     setEditPermissions({ ...connector.permissions });
     setEditChatIds([...connector.allowedChatIds]);
@@ -422,8 +428,9 @@ export default function MCPConnectorsPanel({
     setIsSaving(true);
     onError(null);
     try {
-      const updated = await updateMCPConnector(accessToken, editing.id, {
+      const updated = await updateMCPConnector(authRequest || accessToken, editing.id, {
         name: editName.trim(),
+        authMode: editAuthMode,
         maxHistoryMessages: editHistory,
         permissions: editPermissions,
         allowedChatIds: editChatIds
@@ -541,7 +548,7 @@ export default function MCPConnectorsPanel({
             required
             minLength={2}
             maxLength={28}
-            pattern="[A-Za-z0-9_-]{2,28}"
+            pattern="([A-Za-z0-9_]|-){2,28}"
             autoComplete="off"
           />
           <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
@@ -556,10 +563,35 @@ export default function MCPConnectorsPanel({
                 type="button"
                 className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
                 aria-pressed={provider === item.id}
-                onClick={() => setProvider(item.id)}
+                onClick={() => {
+                  setProvider(item.id);
+                  if (item.id === "openclaw" || item.id === "hermes") {
+                    setAuthMode("api");
+                  } else {
+                    setAuthMode("subscription");
+                  }
+                }}
               >
                 <MCPProviderMark provider={item.id} />
                 <strong>{item.label}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mcp-provider-choice mcp-authmode-choice">
+          <span className="mcp-form-label">{copy.authModeLabel}</span>
+          <div className="mcp-authmode-tabs" role="group" aria-label={copy.authModeLabel}>
+            {MCP_AUTH_MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`mcp-authmode-tab${authMode === item.id ? " is-selected" : ""}`}
+                aria-pressed={authMode === item.id}
+                onClick={() => setAuthMode(item.id)}
+              >
+                <strong>{item.id === "subscription" ? copy.authModeSubscription : copy.authModeApiKey}</strong>
+                <small>{item.id === "subscription" ? copy.authModeSubscriptionDesc : copy.authModeApiKeyDesc}</small>
               </button>
             ))}
           </div>
@@ -765,6 +797,18 @@ export default function MCPConnectorsPanel({
             </header>
             <form className="mcp-connector-form" onSubmit={saveEdit}>
               <PopupField label={copy.connectionName} value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} />
+              <label className="popup-field">
+                <span className="popup-field__label">{copy.authModeLabel}</span>
+                <select
+                  className="popup-field__input"
+                  value={editAuthMode}
+                  onChange={(event) => setEditAuthMode(event.target.value as MCPAuthMode)}
+                  disabled={isSaving}
+                >
+                  <option value="subscription">{copy.authModeSubscription}</option>
+                  <option value="api">{copy.authModeApiKey}</option>
+                </select>
+              </label>
               <label className="popup-field"><span className="popup-field__label">{copy.maxHistoryMessages}</span><PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} inputClassName="popup-field__input" min={1} max={500} value={editHistory} disabled={isSaving} onValueChange={(value) => setEditHistory(Number(value) || 50)} /></label>
               <fieldset className="mcp-tag-fieldset"><legend>{copy.chatScope}</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong></label>)}</div></fieldset>
               <fieldset className="mcp-tag-fieldset"><legend>{copy.permissions}</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{permissionLabels[key]}</strong></label>)}</div></fieldset>

@@ -7,6 +7,7 @@ import type { ChecklistCard } from "../../../api/checklist";
 import { prefetchFiles } from "../../../api/files";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { applyMessagePreviewToChat, isSuppressedUserError, sortPinsByPosition } from "../shared/chatPresentation";
+import { showToast } from "../../../components/ToastViewport";
 import {
   markMessageDelivered,
   markMessagesReadThrough,
@@ -233,7 +234,9 @@ export function useChatRealtime({
           }
         }
         const message = payload.message ?? "Realtime connection error";
-        if (!isSuppressedUserError(message)) {
+        if (message === "Authentication required") {
+          showToast(message, "error");
+        } else if (!isSuppressedUserError(message)) {
           onError(message);
         }
       };

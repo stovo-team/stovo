@@ -39,7 +39,15 @@
   width: 100%;
 }
 
-.mcp-provider-tab {
+.mcp-authmode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.mcp-provider-tab,
+.mcp-authmode-tab {
   min-width: 0;
   min-height: 82px;
   display: flex;
@@ -59,25 +67,31 @@
     box-shadow var(--motion-route-duration-fast, 140ms) ease;
 }
 
-.mcp-provider-tab:hover:not(:disabled):not(.is-selected) {
+.mcp-provider-tab:hover:not(:disabled):not(.is-selected),
+.mcp-authmode-tab:hover:not(:disabled):not(.is-selected) {
   background: var(--surface-hover, var(--surface-card));
   border-color: var(--accent-border-soft, var(--border-default));
 }
 
 .mcp-provider-tab.is-selected,
 .mcp-provider-tab[aria-pressed="true"],
-.mcp-provider-tab:active {
+.mcp-provider-tab:active,
+.mcp-authmode-tab.is-selected,
+.mcp-authmode-tab[aria-pressed="true"],
+.mcp-authmode-tab:active {
   border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
   background: color-mix(in oklab, var(--accent-primary, var(--color-palette-a5384157bc1a)) 14%, var(--surface-card));
   box-shadow: 0 0 0 1px var(--accent-primary, var(--color-palette-a5384157bc1a));
 }
 
-.mcp-provider-tab:focus-visible {
+.mcp-provider-tab:focus-visible,
+.mcp-authmode-tab:focus-visible {
   outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
   outline-offset: 2px;
 }
 
-.mcp-provider-tab strong {
+.mcp-provider-tab strong,
+.mcp-authmode-tab strong {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -181,7 +195,8 @@
 }
 
 @media (max-width: 380px) {
-  .mcp-provider-tabs {
+  .mcp-provider-tabs,
+  .mcp-authmode-tabs {
     grid-template-columns: 1fr;
   }
 }

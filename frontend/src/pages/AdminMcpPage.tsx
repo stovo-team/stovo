@@ -17,6 +17,7 @@ export default function AdminMcpPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => { if (notice) showToast(notice); }, [notice]);
+  useEffect(() => { if (error) showToast(error, "error"); }, [error]);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_integrations") === true;
   const prefix = getClusterPrefix();
 
@@ -46,7 +47,6 @@ export default function AdminMcpPage() {
         </div>
 
         {!canViewAdmin && <p className="error-text">{copy.adminAccessRequired}</p>}
-        {error && <p className="error-text">{error}</p>}
 
         {canViewAdmin && accessToken && (
           <section className="mcp-connectors-admin-section admin-panel">
