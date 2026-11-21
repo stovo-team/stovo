@@ -29,6 +29,8 @@ vi.mock("../i18n/LanguageContext", () => ({
         encryption: "Encryption",
         premium: "Premium",
         mcp: "MCP connectors",
+        insight: "Stovo Insight",
+        insightDesc: "Knowledge base and sync",
         roles: "Roles",
         rolesDesc: "Permissions and member roles",
         plugins: "Plugin store",
@@ -103,6 +105,7 @@ describe("AdminPage defaults navigation", () => {
       "/app/admin/roles",
       "/app/admin/appearance",
       "/app/admin/mcp",
+      "/app/admin/insight",
       "true",
       "/app/admin/plugins"
     ]);
@@ -116,7 +119,8 @@ describe("AdminPage defaults navigation", () => {
     expect(tabs.map((tab) => tab.getAttribute("href"))).toEqual([
       "/app/admin/members",
       "/app/admin/roles",
-      "/app/admin/mcp"
+      "/app/admin/mcp",
+      "/app/admin/insight"
     ]);
   });
 });
