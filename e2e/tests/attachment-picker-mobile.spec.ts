@@ -25,6 +25,7 @@ test("native attachment composer remains distinct and rounded above the navigati
     const rowStyle = getComputedStyle(element);
     const container = element.parentElement!;
     const sheet = element.closest(".attachment-picker-sheet")!;
+    const body = sheet.querySelector(".attachment-picker-body")!;
     return {
       inset: element.getBoundingClientRect().left - sheet.getBoundingClientRect().left,
       bottomPadding: parseFloat(getComputedStyle(container).paddingBottom),
@@ -32,10 +33,15 @@ test("native attachment composer remains distinct and rounded above the navigati
       rowHeight: element.getBoundingClientRect().height,
       rowBackground: rowStyle.backgroundColor,
       sheetBackground: getComputedStyle(sheet).backgroundColor,
+      bodyBottom: body.getBoundingClientRect().bottom,
+      composerTop: container.getBoundingClientRect().top,
     };
   });
   expect(geometry.inset).toBeGreaterThanOrEqual(12);
   expect(geometry.bottomPadding).toBeGreaterThanOrEqual(16);
   expect(geometry.radius).toBeGreaterThanOrEqual(geometry.rowHeight / 2);
   expect(geometry.rowBackground).not.toBe(geometry.sheetBackground);
+  expect(geometry.bodyBottom).toBeGreaterThanOrEqual(geometry.composerTop);
+  await expect(composer.locator(".file-picker")).toHaveCount(0);
+  await expect(sheet.locator(".attachment-picker-message-send .composer-send-icon")).toBeVisible();
 });

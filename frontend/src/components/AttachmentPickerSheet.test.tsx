@@ -28,10 +28,9 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");
   });
 
-  it("shows the full message composer element with smile, file attachment, enlarge, and send buttons", () => {
+  it("shows the full message composer element with smile, enlarge, and send buttons", () => {
     expect(attachmentSheetSource).toContain("attachment-picker-message-box");
     expect(attachmentSheetSource).toContain("message-composer-row");
-    expect(attachmentSheetSource).toContain("file-picker");
     expect(attachmentSheetSource).toContain("emoji-picker-shell");
     expect(attachmentSheetSource).toContain("EmojiPicker");
     expect(attachmentSheetSource).toContain("MessageEnlargeButton");
@@ -164,5 +163,18 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(mediaPickerSource).toContain("BACKGROUND_BATCH_SIZE = 24");
     expect(mediaPickerSource).toContain("listNativeMedia(category, { limit: INITIAL_BATCH_SIZE })");
     expect(mediaPickerSource).toContain("offset += BACKGROUND_BATCH_SIZE");
+  });
+
+  it("positions native mobile composer over the photos body rather than in a separate grey band", () => {
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.attachment-picker-sheet\.tg-style\s*\{[^}]*grid-template-areas:[^}]*"body"/);
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.attachment-picker-message-box[\s\S]*?grid-area:\s*body;/);
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.attachment-picker-message-box[\s\S]*?align-self:\s*end;/);
+    expect(styles).toMatch(/:root\[data-platform="native"\] \.attachment-picker-sheet\.tg-style \.attachment-picker-body\s*\{[^}]*padding-bottom:/);
+  });
+
+  it("uses arrow up send icon and omits redundant file picker icon in the gallery composer", () => {
+    expect(attachmentSheetSource).toContain("SendMessageIcon");
+    expect(attachmentSheetSource).not.toContain('<span className="ms-icon ms-icon--20" aria-hidden={true}>\n                    send\n                  </span>');
+    expect(attachmentSheetSource).not.toMatch(/<button[^>]*className="file-picker"[^>]*>[\s\S]*?<\/button>\s*<div[^>]*className="emoji-picker-shell"/);
   });
 });
