@@ -219,4 +219,15 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-senders-picker {");
     expect(styles).toContain(".chat-info-sender-item {");
   });
+
+  it("ensures the details backdrop sits above the floating header and composer but below the details panel", () => {
+    const backdropRule = styles.match(/\.chat-layout\.details-open::before\s*\{([^}]*)\}/)?.[1] ?? "";
+    const backdropZ = parseInt(backdropRule.match(/z-index:\s*(\d+);/)?.[1] ?? "0", 10);
+    expect(backdropZ).toBeGreaterThanOrEqual(20);
+    expect(backdropZ).toBeLessThan(240);
+  });
+
+  it("does not shrink the chat layout to 3 columns when chat details is open on desktop/tablet", () => {
+    expect(styles).not.toMatch(/\.messenger-shell\s+\.chat-layout\.details-open\s*\{[^}]*grid-template-columns:[^;]*minmax\([^;]*minmax\([^;]*minmax\(/);
+  });
 });

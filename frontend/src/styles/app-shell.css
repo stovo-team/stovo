@@ -1693,7 +1693,7 @@ h2 {
   inset: 0;
   pointer-events: none;
   position: absolute;
-  z-index: 5;
+  z-index: 20;
 }
 
 .chat-layout.voice-call-expanded,

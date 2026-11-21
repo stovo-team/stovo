@@ -202,7 +202,7 @@ describe("Chat details shared content", () => {
 
     const video = container.querySelector("video") as HTMLVideoElement;
     expect(video).not.toBeNull();
-    expect(video.getAttribute("src")).toBe("blob:chat-video-preview");
+    expect(video.getAttribute("src")).toBe("blob:chat-video-preview#t=0.001");
 
     act(() => video.dispatchEvent(new Event("error")));
     expect(container.querySelector("video")).toBeNull();
