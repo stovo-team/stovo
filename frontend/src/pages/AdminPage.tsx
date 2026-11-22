@@ -44,6 +44,12 @@ export default function AdminPage() {
       title: strings.admin.hub.mcp,
       description: strings.admin.hub.mcpDesc,
     }] : []),
+    ...(can("manage_integrations") || can("manage_server") ? [{
+      to: "/app/admin/insight",
+      icon: "insights",
+      title: strings.admin.hub.insight,
+      description: strings.admin.hub.insightDesc,
+    }] : []),
     ...(can("manage_server") ? [{
       to: "/app/admin/encryption",
       icon: "encrypted",

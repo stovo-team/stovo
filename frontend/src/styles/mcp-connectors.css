@@ -201,3 +201,119 @@
   }
 }
 
+.mcp-toggle-card {
+  padding: 14px 16px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+}
+
+.mcp-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mcp-toggle-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mcp-toggle-title {
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.stovo-insight-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.insight-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.insight-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.insight-status-heading h3 {
+  margin: 4px 0 2px;
+  color: var(--text-primary);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+}
+
+.insight-status-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.insight-connection-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--surface-hover, var(--surface-card));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.insight-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-small);
+}
+
+.insight-meta-label {
+  color: var(--text-secondary);
+}
+
+.insight-sync-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-surface);
+}
+
+.insight-sync-label-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insight-sync-label-group strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.insight-actions-row {
+  margin-top: 8px;
+}
+
+.insight-connect-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+

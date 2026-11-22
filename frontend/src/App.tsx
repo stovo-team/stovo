@@ -14,6 +14,7 @@ import { NativeAppOrchestrators } from "./native/NativeAppOrchestrators";
 import AdminPage from "./pages/AdminPage";
 import AdminAppearancePage from "./pages/AdminAppearancePage";
 import AdminEncryptionPage from "./pages/AdminEncryptionPage";
+import AdminInsightPage from "./pages/AdminInsightPage";
 import AdminMcpPage from "./pages/AdminMcpPage";
 import AdminMembersPage from "./pages/AdminMembersPage";
 import AdminRolesPage from "./pages/AdminRolesPage";
@@ -191,6 +192,14 @@ function ClusterRoutes() {
         element={
           <RequireAuth>
             <AdminMcpPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin/insight"
+        element={
+          <RequireAuth>
+            <AdminInsightPage />
           </RequireAuth>
         }
       />

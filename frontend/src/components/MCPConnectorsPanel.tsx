@@ -3,9 +3,7 @@ import { Settings } from "lucide-react";
 
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
-import type { IntelligenceGrant, IntelligenceGrants } from "../api/intelligence";
 import { useStrings } from "../i18n/LanguageContext";
-import { codexBridgeSetupPrompt } from "./CodexBridgeSetupPanel";
 import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
@@ -13,16 +11,14 @@ import { PresetNumberControl } from "./ui/PresetNumberControl";
 import { MCPProviderMark } from "./MCPProviderMark";
 import {
   MCP_PERMISSION_KEYS,
-  MCP_AUTH_MODES,
-  MCPAuthMode,
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
   MCP_PROVIDERS,
   MCPProviderId,
+  MCPAuthMode,
   createMCPConnector,
   defaultMCPAlias,
-  defaultMCPPermissions,
   formatMCPAlias,
   listMCPConnectors,
   regenerateMCPConnectorToken,
@@ -39,11 +35,26 @@ type SecretReveal = {
   connectorId: string;
   provider: string;
   alias: string;
-  insightGrants: IntelligenceGrants;
+  allowInsightSearch: boolean;
+  stovoConnectorCommand: string;
+  insightMcpCommand: string;
 };
 
-function defaultInsightGrantPreferences(): IntelligenceGrants {
-  return { read: false, process: false, external_transfer: false, export: false, codex: false, reply: false };
+function defaultFullPermissions(): MCPPermissions {
+  return {
+    "chats.list": true,
+    "messages.read": true,
+    "messages.search": true,
+    "messages.send": true,
+    "messages.edit": true,
+    "messages.delete": true,
+    "messages.react": true,
+    "messages.forward": true,
+    "messages.pin": true,
+    "messages.unpin": true,
+    "files.list": true,
+    "files.download": true
+  };
 }
 
 async function copyText(value: string) {
@@ -111,6 +122,50 @@ function ChatTypeIcon({ type }: { type: Chat["type"] }) {
   );
 }
 
+export function buildUnifiedSetupPrompt({
+  alias,
+  provider,
+  mcpUrl,
+  token,
+  allowInsightSearch
+}: {
+  alias: string;
+  provider: string;
+  mcpUrl: string;
+  token: string;
+  allowInsightSearch: boolean;
+}): { prompt: string; connectorCommand: string; insightCommand: string } {
+  const formattedAlias = formatMCPAlias(alias) || `@${alias}`;
+  const connectorCommand = `stovo-connector --agent ${formattedAlias} --url ${mcpUrl} --token ${token}`;
+  const insightMcpUrl = mcpUrl.replace(/\/mcp\/?$/, "") + "/api/v2/intelligence/mcp";
+  const insightCommand = `codex mcp add insight --url ${insightMcpUrl} --header "Authorization: Bearer ${token}"`;
+
+  const sections: string[] = [
+    `Connect Stovo Messenger agent "${formattedAlias}" (${provider}).`,
+    `1. Start the stovo-connector for this agent:\n${connectorCommand}`
+  ];
+
+  if (allowInsightSearch) {
+    sections.push(`2. Add Stovo Insight MCP server for knowledge base search:\n${insightCommand}`);
+  }
+
+  sections.push(
+    `Agent instructions:\n` +
+      `- You are connected to Stovo Messenger as ${formattedAlias}.\n` +
+      `- Monitor and reply in your allowed chats when mentioned as ${formattedAlias} or directly addressed.\n` +
+      (allowInsightSearch
+        ? `- Search Stovo Insight using the insight MCP server when users ask questions requiring knowledge base facts.\n`
+        : "") +
+      `- Operate strictly within the allowed chats and permissions configured in Stovo Space.`
+  );
+
+  return {
+    prompt: sections.join("\n\n"),
+    connectorCommand,
+    insightCommand
+  };
+}
+
 export default function MCPConnectorsPanel({
   accessToken,
   authRequest,
@@ -141,32 +196,24 @@ export default function MCPConnectorsPanel({
     "files.list": copy.permissionLabels.listFiles,
     "files.download": copy.permissionLabels.downloadFiles,
   };
-  const permissionGroups: Array<{ id: string; label: string; keys: MCPPermissionKey[] }> = [
-    { id: "chats", label: copy.permissionGroups.chats, keys: ["chats.list"] },
-    { id: "messages", label: copy.permissionGroups.messages, keys: ["messages.read", "messages.search", "messages.send"] },
-    { id: "actions", label: copy.permissionGroups.actions, keys: ["messages.edit", "messages.delete", "messages.react", "messages.forward"] },
-    { id: "pins", label: copy.permissionGroups.pins, keys: ["messages.pin", "messages.unpin"] },
-    { id: "files", label: copy.permissionGroups.files, keys: ["files.list", "files.download"] },
-  ];
+
   const [connectors, setConnectors] = useState<MCPConnector[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [provider, setProvider] = useState<MCPProviderId | "">("");
   const [name, setName] = useState("");
-  const [maxHistory, setMaxHistory] = useState(50);
-  const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
-  const [insightGrantPreferences, setInsightGrantPreferences] = useState<IntelligenceGrants>(defaultInsightGrantPreferences());
-  const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
   const [authMode, setAuthMode] = useState<MCPAuthMode>("subscription");
+  const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
+  const [allowInsightSearch, setAllowInsightSearch] = useState(true);
   const [editing, setEditing] = useState<MCPConnector | null>(null);
   const [editName, setEditName] = useState("");
   const [editAuthMode, setEditAuthMode] = useState<MCPAuthMode>("subscription");
   const [editHistory, setEditHistory] = useState(50);
-  const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
+  const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultFullPermissions());
   const [editChatIds, setEditChatIds] = useState<string[]>([]);
   const [secret, setSecret] = useState<SecretReveal | null>(null);
-  const [copied, setCopied] = useState<"token" | "prompt" | "url" | "cli" | null>(null);
+  const [copied, setCopied] = useState<"token" | "prompt" | "url" | "cli" | "connector" | "insight" | null>(null);
   const [showCli, setShowCli] = useState(false);
   const onboardingHeadingRef = useRef<HTMLHeadingElement>(null);
 
@@ -174,7 +221,7 @@ export default function MCPConnectorsPanel({
     setIsLoading(true);
     onError(null);
     try {
-      const connectorResult = await listMCPConnectors(authRequest || accessToken);
+      const connectorResult = await listMCPConnectors(accessToken);
       setConnectors(connectorResult);
     } catch {
       setConnectors([]);
@@ -183,7 +230,6 @@ export default function MCPConnectorsPanel({
     try {
       const chatResult = await authRequest<Chat[]>("/api/chats");
       setChats(chatResult);
-      // Keep scope empty until the owner explicitly chooses one or more chats.
       setAllowedChatIds([]);
     } catch {
       setChats([]);
@@ -203,26 +249,18 @@ export default function MCPConnectorsPanel({
     if (!secret || isSecretConnected) return;
     const interval = window.setInterval(async () => {
       try {
-        const fresh = await listMCPConnectors(authRequest || accessToken);
+        const fresh = await listMCPConnectors(accessToken);
         setConnectors(fresh);
       } catch {
         // silent polling
       }
     }, 3000);
     return () => window.clearInterval(interval);
-  }, [accessToken, authRequest, secret, isSecretConnected]);
+  }, [accessToken, secret, isSecretConnected]);
 
   useEffect(() => {
     if (secret) onboardingHeadingRef.current?.focus();
   }, [secret?.connectorId]);
-
-  function togglePermission(key: (typeof MCP_PERMISSION_KEYS)[number]) {
-    setPermissions((current) => ({ ...current, [key]: !current[key] }));
-  }
-
-  function toggleInsightGrant(grant: IntelligenceGrant) {
-    setInsightGrantPreferences((current) => ({ ...current, [grant]: !current[grant] }));
-  }
 
   function toggleChat(chatId: string) {
     setAllowedChatIds((current) =>
@@ -231,8 +269,6 @@ export default function MCPConnectorsPanel({
   }
 
   const allChatsSelected = chats.length > 0 && chats.every((chat) => allowedChatIds.includes(chat.id));
-  const allPermissionsSelected = MCP_PERMISSION_KEYS.every((key) => permissions[key]);
-  const allInsightGrantsSelected = Object.values(insightGrantPreferences).every(Boolean);
   const nicknameAlias = name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 28);
 
   const chatGroups = useMemo(
@@ -249,40 +285,12 @@ export default function MCPConnectorsPanel({
     setAllowedChatIds(allChatsSelected ? [] : chats.map((chat) => chat.id));
   }
 
-  function selectAllPermissions() {
-    setPermissions(
-      MCP_PERMISSION_KEYS.reduce((acc, key) => {
-        acc[key] = true;
-        return acc;
-      }, {} as MCPPermissions)
-    );
-  }
-
-  function selectAllInsightGrants() {
-    setInsightGrantPreferences((current) =>
-      Object.keys(current).reduce((next, key) => {
-        next[key as IntelligenceGrant] = true;
-        return next;
-      }, {} as IntelligenceGrants)
-    );
-  }
-
   function resetConnectionDraft() {
     setName("");
     setProvider("");
-    setMaxHistory(50);
-    setPermissions(defaultMCPPermissions());
-    setInsightGrantPreferences(defaultInsightGrantPreferences());
+    setAuthMode("subscription");
     setAllowedChatIds([]);
-  }
-
-  function togglePermissionGroup(keys: MCPPermissionKey[]) {
-    const allSelected = keys.every((key) => permissions[key]);
-    setPermissions((current) => {
-      const next = { ...current };
-      for (const key of keys) next[key] = !allSelected;
-      return next;
-    });
+    setAllowInsightSearch(true);
   }
 
   function toggleChatGroup(groupChats: Chat[]) {
@@ -295,24 +303,37 @@ export default function MCPConnectorsPanel({
     });
   }
 
-  function applySecret(result: {
-    token: string;
-    mcpUrl: string;
-    setupPrompt?: string;
-    cliCommand?: string;
-    claudeCommand?: string;
-    connector: MCPConnector;
-  }, requestedInsightGrants = defaultInsightGrantPreferences()) {
+  function applySecret(
+    result: {
+      token: string;
+      mcpUrl: string;
+      setupPrompt?: string;
+      cliCommand?: string;
+      claudeCommand?: string;
+      connector: MCPConnector;
+    },
+    insightSearchAllowed: boolean
+  ) {
+    const promptDetails = buildUnifiedSetupPrompt({
+      alias: result.connector.alias,
+      provider: result.connector.provider || provider || "codex",
+      mcpUrl: result.mcpUrl,
+      token: result.token,
+      allowInsightSearch: insightSearchAllowed
+    });
+
     setSecret({
       token: result.token,
       mcpUrl: result.mcpUrl,
-      setupPrompt: result.setupPrompt || result.claudeCommand || "",
-      cliCommand: result.cliCommand || result.claudeCommand || "",
+      setupPrompt: promptDetails.prompt,
+      cliCommand: result.cliCommand || result.claudeCommand || promptDetails.connectorCommand,
       connectorName: result.connector.name,
       connectorId: result.connector.id,
       provider: result.connector.provider || provider || "codex",
       alias: result.connector.alias,
-      insightGrants: { ...requestedInsightGrants }
+      allowInsightSearch: insightSearchAllowed,
+      stovoConnectorCommand: promptDetails.connectorCommand,
+      insightMcpCommand: promptDetails.insightCommand
     });
     setShowCli(false);
     setCopied(null);
@@ -339,18 +360,16 @@ export default function MCPConnectorsPanel({
         alias: generatedAlias,
         authMode,
         allowedChatIds,
-        permissions,
-        maxHistoryMessages: maxHistory
+        permissions: defaultFullPermissions(),
+        maxHistoryMessages: 50
       });
       setConnectors((current) => [result.connector, ...current.filter((item) => item.id !== result.connector.id)]);
-      applySecret(result, insightGrantPreferences);
+      applySecret(result, allowInsightSearch);
       setName("");
       setProvider("");
       setAuthMode("subscription");
-      setPermissions(defaultMCPPermissions());
-      setInsightGrantPreferences(defaultInsightGrantPreferences());
       setAllowedChatIds([]);
-      setMaxHistory(50);
+      setAllowInsightSearch(true);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.createFailed);
     } finally {
@@ -358,7 +377,7 @@ export default function MCPConnectorsPanel({
     }
   }
 
-  async function handleCopy(kind: "token" | "prompt" | "url" | "cli", value: string) {
+  async function handleCopy(kind: "token" | "prompt" | "url" | "cli" | "connector" | "insight", value: string) {
     const ok = await copyText(value);
     if (!ok) {
       onError(copy.copyFailed);
@@ -371,9 +390,8 @@ export default function MCPConnectorsPanel({
   async function handleToggleEnabled(connector: MCPConnector) {
     onError(null);
     try {
-      const updated = await updateMCPConnector(authRequest || accessToken, connector.id, { enabled: !connector.enabled });
+      const updated = await updateMCPConnector(accessToken, connector.id, { enabled: !connector.enabled });
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      // Success notice removed per user request
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.updateFailed);
     }
@@ -383,9 +401,9 @@ export default function MCPConnectorsPanel({
     onError(null);
     onNotice(null);
     try {
-      const result = await regenerateMCPConnectorToken(authRequest || accessToken, connector.id);
+      const result = await regenerateMCPConnectorToken(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === result.connector.id ? result.connector : item)));
-      applySecret(result, secret?.connectorId === connector.id ? secret.insightGrants : defaultInsightGrantPreferences());
+      applySecret(result, secret?.allowInsightSearch ?? true);
       onNotice(copy.tokenRegenerated);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.regenerateFailed);
@@ -396,10 +414,10 @@ export default function MCPConnectorsPanel({
     if (!window.confirm(copy.revokeConfirmation(connector.name))) return;
     onError(null);
     try {
-      const updated = await revokeMCPConnector(authRequest || accessToken, connector.id);
+      const updated = await revokeMCPConnector(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       if (secret?.connectorId === connector.id) setSecret(null);
-      // Revoked notice removed per user request
+      onNotice(copy.connectionRevoked);
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : copy.revokeFailed);
     }
@@ -415,7 +433,7 @@ export default function MCPConnectorsPanel({
   }
 
   function toggleEditChat(chatId: string) {
-    setEditChatIds((current) => current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId]);
+    setEditChatIds((current) => (current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId]));
   }
 
   function toggleEditPermission(key: MCPPermissionKey) {
@@ -428,14 +446,14 @@ export default function MCPConnectorsPanel({
     setIsSaving(true);
     onError(null);
     try {
-      const updated = await updateMCPConnector(authRequest || accessToken, editing.id, {
+      const updated = await updateMCPConnector(accessToken, editing.id, {
         name: editName.trim(),
         authMode: editAuthMode,
         maxHistoryMessages: editHistory,
         permissions: editPermissions,
         allowedChatIds: editChatIds
       });
-      setConnectors((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       setEditing(null);
       onNotice(copy.settingsUpdated);
     } catch (err) {
@@ -445,26 +463,16 @@ export default function MCPConnectorsPanel({
     }
   }
 
-  const setupSteps = secret?.provider === "openclaw" ? copy.setupSteps.openclaw
-    : secret?.provider === "hermes" ? copy.setupSteps.hermes
-    : secret?.provider === "claude_code" ? copy.setupSteps.claude
-    : copy.setupSteps.codex;
-  const secretProviderName = MCP_PROVIDERS.find((item) => item.id === secret?.provider)?.label ?? secret?.provider ?? "";
-  const selectedInsightGrants = secret
-    ? (Object.entries(secret.insightGrants)
-        .filter(([, enabled]) => enabled)
-        .map(([grant]) => strings.intelligence.grants[grant as IntelligenceGrant])
-        .join(", ") || copy.none)
-    : copy.none;
-  const unifiedSetupPrompt = secret
-    ? [
-        secret.setupPrompt.trim(),
-        `${copy.insightPermissionsTitle} (${copy.insightPreferences}): ${selectedInsightGrants}`,
-        codexBridgeSetupPrompt.trim()
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-    : "";
+  const setupSteps =
+    secret?.provider === "openclaw"
+      ? copy.setupSteps.openclaw
+      : secret?.provider === "hermes"
+      ? copy.setupSteps.hermes
+      : secret?.provider === "claude_code"
+      ? copy.setupSteps.claude
+      : copy.setupSteps.codex;
+  const secretProviderName =
+    MCP_PROVIDERS.find((item) => item.id === secret?.provider)?.label ?? secret?.provider ?? "";
 
   return (
     <section className="mcp-connectors-panel">
@@ -472,7 +480,9 @@ export default function MCPConnectorsPanel({
         <article className="invite-link-card mcp-secret-card">
           <div className="mcp-secret-header">
             <div>
-              <h2 ref={onboardingHeadingRef} tabIndex={-1}>{copy.onboardingTitle(secret.connectorName)}</h2>
+              <h2 ref={onboardingHeadingRef} tabIndex={-1}>
+                {copy.onboardingTitle(secret.connectorName)}
+              </h2>
               <p>
                 {copy.connectionFor(secret.connectorName, secretProviderName, formatMCPAlias(secret.alias))}
               </p>
@@ -486,19 +496,101 @@ export default function MCPConnectorsPanel({
             <span className={`mcp-status-dot ${isSecretConnected ? "is-connected" : "is-waiting"}`} />
             <div>
               <strong>{isSecretConnected ? copy.connectedSuccessfully : copy.waitingForAgent}</strong>
-              <p>
-                {isSecretConnected ? copy.connectedDescription : copy.waitingDescription}
-              </p>
+              <p>{isSecretConnected ? copy.connectedDescription : copy.waitingDescription}</p>
             </div>
           </div>
 
           <div className="mcp-copy-field">
-            <div className="mcp-copy-field-label"><span>{copy.setupPrompt}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", unifiedSetupPrompt)} aria-label={copy.copySetupPrompt}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? copy.copied : copy.copy}</button></div>
-            <textarea className="mcp-setup-prompt" readOnly rows={5} value={unifiedSetupPrompt} />
+            <div className="mcp-copy-field-label">
+              <span>{copy.setupPrompt}</span>
+              <button
+                type="button"
+                className="mcp-inline-copy"
+                onClick={() => void handleCopy("prompt", secret.setupPrompt)}
+                aria-label={copy.copySetupPrompt}
+              >
+                <span className="ms-icon ms-icon--18" aria-hidden>
+                  content_copy
+                </span>
+                {copied === "prompt" ? copy.copied : copy.copy}
+              </button>
+            </div>
+            <textarea className="mcp-setup-prompt" readOnly rows={6} value={secret.setupPrompt} />
           </div>
 
-          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>{copy.mcpUrl}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("url", secret.mcpUrl)} aria-label={copy.copyMcpUrl}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "url" ? copy.copied : copy.copy}</button></div><code>{secret.mcpUrl}</code></div>
-          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>{copy.bearerToken}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("token", secret.token)} aria-label={copy.copyBearerToken}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "token" ? copy.copied : copy.copy}</button></div><code>{secret.token}</code></div>
+          <div className="mcp-copy-field">
+            <div className="mcp-copy-field-label">
+              <span>{copy.stovoConnectorCommand}</span>
+              <button
+                type="button"
+                className="mcp-inline-copy"
+                onClick={() => void handleCopy("connector", secret.stovoConnectorCommand)}
+                aria-label={copy.copyConnectorCommand}
+              >
+                <span className="ms-icon ms-icon--18" aria-hidden>
+                  content_copy
+                </span>
+                {copied === "connector" ? copy.copied : copy.copy}
+              </button>
+            </div>
+            <code>{secret.stovoConnectorCommand}</code>
+          </div>
+
+          {secret.allowInsightSearch && (
+            <div className="mcp-copy-field">
+              <div className="mcp-copy-field-label">
+                <span>{copy.insightMcpCommand}</span>
+                <button
+                  type="button"
+                  className="mcp-inline-copy"
+                  onClick={() => void handleCopy("insight", secret.insightMcpCommand)}
+                  aria-label={copy.copyInsightMcpCommand}
+                >
+                  <span className="ms-icon ms-icon--18" aria-hidden>
+                    content_copy
+                  </span>
+                  {copied === "insight" ? copy.copied : copy.copy}
+                </button>
+              </div>
+              <code>{secret.insightMcpCommand}</code>
+            </div>
+          )}
+
+          <div className="mcp-copy-field">
+            <div className="mcp-copy-field-label">
+              <span>{copy.mcpUrl}</span>
+              <button
+                type="button"
+                className="mcp-inline-copy"
+                onClick={() => void handleCopy("url", secret.mcpUrl)}
+                aria-label={copy.copyMcpUrl}
+              >
+                <span className="ms-icon ms-icon--18" aria-hidden>
+                  content_copy
+                </span>
+                {copied === "url" ? copy.copied : copy.copy}
+              </button>
+            </div>
+            <code>{secret.mcpUrl}</code>
+          </div>
+
+          <div className="mcp-copy-field">
+            <div className="mcp-copy-field-label">
+              <span>{copy.bearerToken}</span>
+              <button
+                type="button"
+                className="mcp-inline-copy"
+                onClick={() => void handleCopy("token", secret.token)}
+                aria-label={copy.copyBearerToken}
+              >
+                <span className="ms-icon ms-icon--18" aria-hidden>
+                  content_copy
+                </span>
+                {copied === "token" ? copy.copied : copy.copy}
+              </button>
+            </div>
+            <code>{secret.token}</code>
+          </div>
 
           <div className="mcp-setup-block">
             <strong>{copy.nativeAgentSetup}</strong>
@@ -510,7 +602,11 @@ export default function MCPConnectorsPanel({
             </ol>
           </div>
 
-          {showCli && <div className="mcp-cli-toggle"><code>{secret.cliCommand}</code></div>}
+          {showCli && (
+            <div className="mcp-cli-toggle">
+              <code>{secret.cliCommand}</code>
+            </div>
+          )}
 
           <div className="public-access-actions">
             <button type="button" className="secondary-button" onClick={() => setShowCli((current) => !current)}>
@@ -528,292 +624,309 @@ export default function MCPConnectorsPanel({
         </article>
       )}
 
-      {!secret && <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
-        <div className="mcp-form-heading">
-          <div>
-            <span className="mcp-mode-kicker">{copy.createAgentKicker}</span>
-            <h3>{copy.createAgentConnection}</h3>
-            <p className="muted-text">
-              {copy.boundToSpace(spaceName)}
-            </p>
+      {!secret && (
+        <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
+          <div className="mcp-form-heading">
+            <div>
+              <span className="mcp-mode-kicker">{copy.createAgentKicker}</span>
+              <h3>{copy.createAgentConnection}</h3>
+              <p className="muted-text">{copy.boundToSpace(spaceName)}</p>
+            </div>
           </div>
-        </div>
 
-        <label>
-          {copy.agentNickname}
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={copy.connectionNamePlaceholder}
-            required
-            minLength={2}
-            maxLength={28}
-            pattern="([A-Za-z0-9_]|-){2,28}"
-            autoComplete="off"
-          />
-          <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
-        </label>
+          <label>
+            {copy.agentNickname}
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={copy.connectionNamePlaceholder}
+              required
+              minLength={2}
+              maxLength={28}
+              pattern="[A-Za-z0-9_-]{2,28}"
+              autoComplete="off"
+            />
+            <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
+          </label>
 
-        <div className="mcp-provider-choice">
-          <span className="mcp-form-label">{copy.providerLabel}</span>
-          <div className="mcp-provider-tabs" role="group" aria-label={copy.providerLabel}>
-            {MCP_PROVIDERS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
-                aria-pressed={provider === item.id}
-                onClick={() => {
-                  setProvider(item.id);
-                  if (item.id === "openclaw" || item.id === "hermes") {
-                    setAuthMode("api");
-                  } else {
-                    setAuthMode("subscription");
-                  }
-                }}
-              >
-                <MCPProviderMark provider={item.id} />
-                <strong>{item.label}</strong>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mcp-provider-choice mcp-authmode-choice">
-          <span className="mcp-form-label">{copy.authModeLabel}</span>
-          <div className="mcp-authmode-tabs" role="group" aria-label={copy.authModeLabel}>
-            {MCP_AUTH_MODES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`mcp-authmode-tab${authMode === item.id ? " is-selected" : ""}`}
-                aria-pressed={authMode === item.id}
-                onClick={() => setAuthMode(item.id)}
-              >
-                <strong>{item.id === "subscription" ? copy.authModeSubscription : copy.authModeApiKey}</strong>
-                <small>{item.id === "subscription" ? copy.authModeSubscriptionDesc : copy.authModeApiKeyDesc}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <label>{copy.maxHistoryMessages}<PresetNumberControl className="mcp-history-control" ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} min={1} max={500} value={maxHistory} onValueChange={(value) => setMaxHistory(Number(value) || 50)} /></label>
-        <fieldset className="mcp-tag-fieldset">
-          <legend>
-            <span>{copy.chatScope}</span>
-            <label className="mcp-select-all">
-              <input
-                type="checkbox"
-                checked={allChatsSelected}
-                disabled={chats.length === 0}
-                onChange={toggleAllChats}
-              />
-              <span>{copy.selectAll}</span>
-            </label>
-          </legend>
-          {chats.length === 0 && <span className="muted-text">{copy.noChatsAvailable}</span>}
-          <div className="mcp-option-groups">
-            {chatGroups.map((group) => {
-              const groupSelected =
-                group.chats.length > 0 && group.chats.every((chat) => allowedChatIds.includes(chat.id));
-              return (
-                <div key={group.id} className="mcp-option-group">
-                  <div className="mcp-option-group-header">
-                    <span className="mcp-option-group-title">
-                      <ChatTypeIcon type={group.id} />
-                      {group.label}
-                    </span>
-                    <label className="mcp-select-all">
-                      <input
-                        type="checkbox"
-                        checked={groupSelected}
-                        onChange={() => toggleChatGroup(group.chats)}
-                      />
-                      <span>{copy.all}</span>
-                    </label>
-                  </div>
-                  <div className="mcp-tag-list">
-                    {group.chats.map((chat) => {
-                      const selected = allowedChatIds.includes(chat.id);
-                      return (
-                        <label key={chat.id} className={`mcp-tag${selected ? " is-selected" : ""}`}>
-                          <input type="checkbox" checked={selected} onChange={() => toggleChat(chat.id)} />
-                          <ChatTypeIcon type={chat.type} />
-                          <strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </fieldset>
-        <fieldset className="mcp-tag-fieldset mcp-insight-permissions">
-          <legend>
-            <span>{copy.insightPermissionsTitle}</span>
-            <button type="button" className="mcp-select-all-button" onClick={selectAllInsightGrants} disabled={allInsightGrantsSelected}>{copy.selectAll}</button>
-          </legend>
-          <div className="mcp-option-groups">
-            <div className="mcp-tag-list">
-              {(Object.keys(insightGrantPreferences) as IntelligenceGrant[]).map((grant) => (
-                <label key={grant} className={`mcp-tag${insightGrantPreferences[grant] ? " is-selected" : ""}`}>
-                  <input type="checkbox" checked={insightGrantPreferences[grant]} onChange={() => toggleInsightGrant(grant)} />
-                  <strong>{strings.intelligence.grants[grant]}</strong>
-                </label>
+          <div className="mcp-provider-choice">
+            <span className="mcp-form-label">{copy.providerLabel}</span>
+            <div className="mcp-provider-tabs" role="group" aria-label={copy.providerLabel}>
+              {MCP_PROVIDERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
+                  aria-pressed={provider === item.id}
+                  onClick={() => {
+                    setProvider(item.id);
+                    if (item.id === "openclaw" || item.id === "hermes") {
+                      setAuthMode("api");
+                    } else {
+                      setAuthMode("subscription");
+                    }
+                  }}
+                >
+                  <MCPProviderMark provider={item.id} />
+                  <strong>{item.label}</strong>
+                </button>
               ))}
             </div>
           </div>
-        </fieldset>
-        <fieldset className="mcp-tag-fieldset">
-          <legend>
-            <span>{copy.permissionsAllOff}</span>
-            <button type="button" className="mcp-select-all-button" onClick={selectAllPermissions} disabled={allPermissionsSelected}>{copy.selectAll}</button>
-          </legend>
-          <div className="mcp-option-groups">
-            {permissionGroups.map((group) => {
-              const groupSelected = group.keys.every((key) => permissions[key]);
-              return (
-                <div key={group.id} className="mcp-option-group">
-                  <div className="mcp-option-group-header">
-                    <span className="mcp-option-group-title">{group.label}</span>
-                    <label className="mcp-select-all">
-                      <input
-                        type="checkbox"
-                        checked={groupSelected}
-                        onChange={() => togglePermissionGroup(group.keys)}
-                      />
-                      <span>{copy.all}</span>
-                    </label>
-                  </div>
-                  <div className="mcp-tag-list">
-                    {group.keys.map((key) => {
-                      const selected = permissions[key];
-                      return (
-                        <label key={key} className={`mcp-tag${selected ? " is-selected" : ""}`}>
-                          <input type="checkbox" checked={selected} onChange={() => togglePermission(key)} />
-                          <strong>{permissionLabels[key]}</strong>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </fieldset>
-        <div className="mcp-create-actions">
-          <button type="button" className="mcp-cancel-button" disabled={isSaving} onClick={resetConnectionDraft}>{copy.cancel}</button>
-          <button type="submit" className="mcp-create-button" disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}>
-            {isSaving ? copy.connecting : copy.createConnection}
-          </button>
-        </div>
-      </form>}
 
-      {!secret && <div className="mcp-connector-list mcp-section-box">
-        <h3>{copy.existingConnections}</h3>
-        {isLoading && <p className="muted-text">{copy.loading}</p>}
-        {!isLoading && connectors.length === 0 && <p className="muted-text">{copy.noConnections}</p>}
-        {connectors.map((connector) => {
-          const isConnected = Boolean(connector.lastUsedAt);
-          return (
-            <article key={connector.id} className={`mcp-connector-card${connector.revoked ? " is-revoked" : ""}`}>
-              <div className="public-access-header">
-                <div>
-                  <div className="mcp-card-title-row">
-                    <strong>{connector.name}</strong>
-                    <span
-                      className={`mcp-status-pill ${
-                        connector.revoked
-                          ? "is-revoked"
-                          : !connector.enabled
-                          ? "is-disabled"
-                          : isConnected
-                          ? "is-connected"
-                          : "is-waiting"
-                      }`}
-                    >
-                      {connector.revoked
-                          ? copy.revoked
-                        : !connector.enabled
-                          ? copy.disabled
-                        : isConnected
-                          ? copy.connected
-                        : copy.waitingForConnection}
-                    </span>
+          <fieldset className="mcp-tag-fieldset">
+            <legend>
+              <span>{copy.chatScope}</span>
+              <label className="mcp-select-all">
+                <input
+                  type="checkbox"
+                  checked={allChatsSelected}
+                  disabled={chats.length === 0}
+                  onChange={toggleAllChats}
+                />
+                <span>{copy.selectAll}</span>
+              </label>
+            </legend>
+            {chats.length === 0 && <span className="muted-text">{copy.noChatsAvailable}</span>}
+            <div className="mcp-option-groups">
+              {chatGroups.map((group) => {
+                const groupSelected =
+                  group.chats.length > 0 && group.chats.every((chat) => allowedChatIds.includes(chat.id));
+                return (
+                  <div key={group.id} className="mcp-option-group">
+                    <div className="mcp-option-group-header">
+                      <span className="mcp-option-group-title">
+                        <ChatTypeIcon type={group.id} />
+                        {group.label}
+                      </span>
+                      <label className="mcp-select-all">
+                        <input
+                          type="checkbox"
+                          checked={groupSelected}
+                          onChange={() => toggleChatGroup(group.chats)}
+                        />
+                        <span>{copy.all}</span>
+                      </label>
+                    </div>
+                    <div className="mcp-tag-list">
+                      {group.chats.map((chat) => {
+                        const selected = allowedChatIds.includes(chat.id);
+                        return (
+                          <label key={chat.id} className={`mcp-tag${selected ? " is-selected" : ""}`}>
+                            <input type="checkbox" checked={selected} onChange={() => toggleChat(chat.id)} />
+                            <ChatTypeIcon type={chat.type} />
+                            <strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <small>
-                    {copy.allowedChats(connector.allowedChatIds.length)} · {copy.historyLimit}{" "}
-                    {connector.maxHistoryMessages}
-                    {connector.lastUsedAt &&
-                      ` · ${copy.active} ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
-                  </small>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <div className="mcp-toggle-card">
+            <label className="mcp-toggle-row">
+              <input
+                type="checkbox"
+                checked={allowInsightSearch}
+                onChange={(event) => setAllowInsightSearch(event.target.checked)}
+              />
+              <span className="mcp-toggle-content">
+                <strong className="mcp-toggle-title">{copy.allowInsightSearch}</strong>
+                <small className="muted-text">{copy.allowInsightSearchDesc}</small>
+              </span>
+            </label>
+          </div>
+
+          <div className="mcp-create-actions">
+            <button type="button" className="mcp-cancel-button" disabled={isSaving} onClick={resetConnectionDraft}>
+              {copy.cancel}
+            </button>
+            <button
+              type="submit"
+              className="mcp-create-button"
+              disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}
+            >
+              {isSaving ? copy.connecting : copy.createConnection}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!secret && (
+        <div className="mcp-connector-list mcp-section-box">
+          <h3>{copy.existingConnections}</h3>
+          {isLoading && <p className="muted-text">{copy.loading}</p>}
+          {!isLoading && connectors.length === 0 && <p className="muted-text">{copy.noConnections}</p>}
+          {connectors.map((connector) => {
+            const isConnected = Boolean(connector.lastUsedAt);
+            return (
+              <article key={connector.id} className={`mcp-connector-card${connector.revoked ? " is-revoked" : ""}`}>
+                <div className="public-access-header">
+                  <div>
+                    <div className="mcp-card-title-row">
+                      <strong>{connector.name}</strong>
+                      <span
+                        className={`mcp-status-pill ${
+                          connector.revoked
+                            ? "is-revoked"
+                            : !connector.enabled
+                            ? "is-disabled"
+                            : isConnected
+                            ? "is-connected"
+                            : "is-waiting"
+                        }`}
+                      >
+                        {connector.revoked
+                          ? copy.revoked
+                          : !connector.enabled
+                          ? copy.disabled
+                          : isConnected
+                          ? copy.connected
+                          : copy.waitingForConnection}
+                      </span>
+                    </div>
+                    <small>
+                      {copy.allowedChats(connector.allowedChatIds.length)} · {copy.historyLimit}{" "}
+                      {connector.maxHistoryMessages}
+                      {connector.lastUsedAt &&
+                        ` · ${copy.active} ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
+                    </small>
+                  </div>
                 </div>
-              </div>
-              <p className="muted-text">
-                {copy.permissions}:{" "}
-                {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).map((key) => permissionLabels[key]).join(", ") || copy.none}
-              </p>
-              {!connector.permissions["chats.list"] && !connector.revoked && (
-                <p className="error-text">{copy.chatDiscoveryOff}</p>
-              )}
-              {!connector.allowedChatIds.length && !connector.revoked && (
-                <p className="error-text">{copy.noChatsInScope}</p>
-              )}
-              {!connector.revoked && (
-                <div className="public-access-actions">
-                  <button
-                    type="button"
-                    className="icon-button mcp-icon-button"
-                    onClick={() => beginEdit(connector)}
-                    title={copy.configure}
-                    aria-label={copy.configureConnection}
-                  >
-                    <Settings size={16} />
-                  </button>
-                  <button type="button" onClick={() => void handleToggleEnabled(connector)}>
-                    {connector.enabled ? copy.disable : copy.enable}
-                  </button>
-                  <button type="button" onClick={() => void handleRegenerate(connector)}>
-                    {copy.regenerateToken}
-                  </button>
-                  <button type="button" className="danger-button" onClick={() => void handleRevoke(connector)}>
-                    {copy.revoke}
-                  </button>
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>}
+                <p className="muted-text">
+                  {copy.permissions}:{" "}
+                  {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key])
+                    .map((key) => permissionLabels[key])
+                    .join(", ") || copy.none}
+                </p>
+                {!connector.permissions["chats.list"] && !connector.revoked && (
+                  <p className="error-text">{copy.chatDiscoveryOff}</p>
+                )}
+                {!connector.allowedChatIds.length && !connector.revoked && (
+                  <p className="error-text">{copy.noChatsInScope}</p>
+                )}
+                {!connector.revoked && (
+                  <div className="public-access-actions">
+                    <button
+                      type="button"
+                      className="icon-button mcp-icon-button"
+                      onClick={() => beginEdit(connector)}
+                      title={copy.configure}
+                      aria-label={copy.configureConnection}
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button type="button" onClick={() => void handleToggleEnabled(connector)}>
+                      {connector.enabled ? copy.disable : copy.enable}
+                    </button>
+                    <button type="button" onClick={() => void handleRegenerate(connector)}>
+                      {copy.regenerateToken}
+                    </button>
+                    <button type="button" className="danger-button" onClick={() => void handleRevoke(connector)}>
+                      {copy.revoke}
+                    </button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       {editing && (
-        <PopupDialog className="mcp-edit-modal" ariaLabelledBy="mcp-modal-title" onClose={isSaving ? undefined : () => setEditing(null)} closeOnBackdrop={!isSaving} size="lg">
-            <header className="modal-header">
-              <div>
-                <h3 id="mcp-modal-title">{copy.configureNamed(editing.name)}</h3>
-                <p className="muted-text">{copy.changesApplyNextCall}</p>
+        <PopupDialog
+          className="mcp-edit-modal"
+          ariaLabelledBy="mcp-modal-title"
+          onClose={isSaving ? undefined : () => setEditing(null)}
+          closeOnBackdrop={!isSaving}
+          size="lg"
+        >
+          <header className="modal-header">
+            <div>
+              <h3 id="mcp-modal-title">{copy.configureNamed(editing.name)}</h3>
+              <p className="muted-text">{copy.changesApplyNextCall}</p>
+            </div>
+          </header>
+          <form className="mcp-connector-form" onSubmit={saveEdit}>
+            <PopupField
+              label={copy.connectionName}
+              value={editName}
+              maxLength={120}
+              onChange={(event) => setEditName(event.target.value)}
+              required
+              disabled={isSaving}
+            />
+            <label className="popup-field">
+              <span className="popup-field__label">{copy.authModeLabel}</span>
+              <select
+                className="popup-field__input"
+                value={editAuthMode}
+                onChange={(event) => setEditAuthMode(event.target.value as MCPAuthMode)}
+                disabled={isSaving}
+              >
+                <option value="subscription">{copy.authModeSubscription}</option>
+                <option value="api">{copy.authModeApiKey}</option>
+              </select>
+            </label>
+            <label className="popup-field">
+              <span className="popup-field__label">{copy.maxHistoryMessages}</span>
+              <PresetNumberControl
+                ariaLabel={copy.maxHistoryMessages}
+                customLabel={strings.chats?.details?.custom ?? "Custom"}
+                presets={[10, 25, 50, 100, 200, 500]}
+                inputClassName="popup-field__input"
+                min={1}
+                max={500}
+                value={editHistory}
+                disabled={isSaving}
+                onValueChange={(value) => setEditHistory(Number(value) || 50)}
+              />
+            </label>
+            <fieldset className="mcp-tag-fieldset">
+              <legend>{copy.chatScope}</legend>
+              <div className="mcp-tag-list">
+                {chats.map((chat) => (
+                  <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={editChatIds.includes(chat.id)}
+                      onChange={() => toggleEditChat(chat.id)}
+                      disabled={isSaving}
+                    />
+                    <ChatTypeIcon type={chat.type} />
+                    <strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong>
+                  </label>
+                ))}
               </div>
-            </header>
-            <form className="mcp-connector-form" onSubmit={saveEdit}>
-              <PopupField label={copy.connectionName} value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} />
-              <label className="popup-field">
-                <span className="popup-field__label">{copy.authModeLabel}</span>
-                <select
-                  className="popup-field__input"
-                  value={editAuthMode}
-                  onChange={(event) => setEditAuthMode(event.target.value as MCPAuthMode)}
-                  disabled={isSaving}
-                >
-                  <option value="subscription">{copy.authModeSubscription}</option>
-                  <option value="api">{copy.authModeApiKey}</option>
-                </select>
-              </label>
-              <label className="popup-field"><span className="popup-field__label">{copy.maxHistoryMessages}</span><PresetNumberControl ariaLabel={copy.maxHistoryMessages} customLabel={strings.chats?.details?.custom ?? "Custom"} presets={[10, 25, 50, 100, 200, 500]} inputClassName="popup-field__input" min={1} max={500} value={editHistory} disabled={isSaving} onValueChange={(value) => setEditHistory(Number(value) || 50)} /></label>
-              <fieldset className="mcp-tag-fieldset"><legend>{copy.chatScope}</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong></label>)}</div></fieldset>
-              <fieldset className="mcp-tag-fieldset"><legend>{copy.permissions}</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{permissionLabels[key]}</strong></label>)}</div></fieldset>
-              <div className="public-access-actions"><PopupButton type="submit" variant="primary" disabled={isSaving || !editName.trim()}>{isSaving ? copy.saving : copy.saveSettings}</PopupButton><PopupButton type="button" variant="secondary" disabled={isSaving} onClick={() => setEditing(null)}>{copy.cancel}</PopupButton></div>
-            </form>
+            </fieldset>
+            <fieldset className="mcp-tag-fieldset">
+              <legend>{copy.permissions}</legend>
+              <div className="mcp-tag-list">
+                {MCP_PERMISSION_KEYS.map((key) => (
+                  <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={editPermissions[key]}
+                      onChange={() => toggleEditPermission(key)}
+                      disabled={isSaving}
+                    />
+                    <strong>{permissionLabels[key]}</strong>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="public-access-actions">
+              <PopupButton type="submit" variant="primary" disabled={isSaving || !editName.trim()}>
+                {isSaving ? copy.saving : copy.saveSettings}
+              </PopupButton>
+              <PopupButton type="button" variant="secondary" disabled={isSaving} onClick={() => setEditing(null)}>
+                {copy.cancel}
+              </PopupButton>
+            </div>
+          </form>
         </PopupDialog>
       )}
     </section>
