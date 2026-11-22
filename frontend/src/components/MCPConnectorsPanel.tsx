@@ -16,6 +16,7 @@ import {
   MCPPermissions,
   MCP_PROVIDERS,
   MCPProviderId,
+  MCPAuthMode,
   createMCPConnector,
   defaultMCPAlias,
   formatMCPAlias,
@@ -202,10 +203,12 @@ export default function MCPConnectorsPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [provider, setProvider] = useState<MCPProviderId | "">("");
   const [name, setName] = useState("");
+  const [authMode, setAuthMode] = useState<MCPAuthMode>("subscription");
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
   const [allowInsightSearch, setAllowInsightSearch] = useState(true);
   const [editing, setEditing] = useState<MCPConnector | null>(null);
   const [editName, setEditName] = useState("");
+  const [editAuthMode, setEditAuthMode] = useState<MCPAuthMode>("subscription");
   const [editHistory, setEditHistory] = useState(50);
   const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultFullPermissions());
   const [editChatIds, setEditChatIds] = useState<string[]>([]);
@@ -285,6 +288,7 @@ export default function MCPConnectorsPanel({
   function resetConnectionDraft() {
     setName("");
     setProvider("");
+    setAuthMode("subscription");
     setAllowedChatIds([]);
     setAllowInsightSearch(true);
   }
@@ -354,7 +358,7 @@ export default function MCPConnectorsPanel({
         name: trimmedName,
         provider: provider as MCPProviderId,
         alias: generatedAlias,
-        authMode: "subscription",
+        authMode,
         allowedChatIds,
         permissions: defaultFullPermissions(),
         maxHistoryMessages: 50
@@ -363,6 +367,7 @@ export default function MCPConnectorsPanel({
       applySecret(result, allowInsightSearch);
       setName("");
       setProvider("");
+      setAuthMode("subscription");
       setAllowedChatIds([]);
       setAllowInsightSearch(true);
     } catch (err) {
@@ -421,6 +426,7 @@ export default function MCPConnectorsPanel({
   function beginEdit(connector: MCPConnector) {
     setEditing(connector);
     setEditName(connector.name);
+    setEditAuthMode(connector.authMode === "api" ? "api" : "subscription");
     setEditHistory(connector.maxHistoryMessages);
     setEditPermissions({ ...connector.permissions });
     setEditChatIds([...connector.allowedChatIds]);
@@ -442,6 +448,7 @@ export default function MCPConnectorsPanel({
     try {
       const updated = await updateMCPConnector(accessToken, editing.id, {
         name: editName.trim(),
+        authMode: editAuthMode,
         maxHistoryMessages: editHistory,
         permissions: editPermissions,
         allowedChatIds: editChatIds
@@ -651,7 +658,14 @@ export default function MCPConnectorsPanel({
                   type="button"
                   className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
                   aria-pressed={provider === item.id}
-                  onClick={() => setProvider(item.id)}
+                  onClick={() => {
+                    setProvider(item.id);
+                    if (item.id === "openclaw" || item.id === "hermes") {
+                      setAuthMode("api");
+                    } else {
+                      setAuthMode("subscription");
+                    }
+                  }}
                 >
                   <MCPProviderMark provider={item.id} />
                   <strong>{item.label}</strong>
@@ -845,6 +859,18 @@ export default function MCPConnectorsPanel({
               required
               disabled={isSaving}
             />
+            <label className="popup-field">
+              <span className="popup-field__label">{copy.authModeLabel}</span>
+              <select
+                className="popup-field__input"
+                value={editAuthMode}
+                onChange={(event) => setEditAuthMode(event.target.value as MCPAuthMode)}
+                disabled={isSaving}
+              >
+                <option value="subscription">{copy.authModeSubscription}</option>
+                <option value="api">{copy.authModeApiKey}</option>
+              </select>
+            </label>
             <label className="popup-field">
               <span className="popup-field__label">{copy.maxHistoryMessages}</span>
               <PresetNumberControl

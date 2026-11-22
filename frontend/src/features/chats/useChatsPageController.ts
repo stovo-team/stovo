@@ -33,6 +33,7 @@ import { useCallSession } from "./calling/useCallSession";
 import { isMobileCallViewport } from "./shared/callLifecycle";
 import type { SharedContentTab } from "./shared/types";
 import { canPostToChannel, computeSharedContentItems, displayChatName, isSuppressedUserError } from "./shared/chatPresentation";
+import { showToast } from "../../components/ToastViewport";
 import { loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadRecentChatHistoryFromLocalStorage, saveLastActiveChatId } from "../../chatHistoryCache";
 import { getClusterPath } from "../../api/client";
 
@@ -406,6 +407,12 @@ export function useChatsPageController({
     callAudioPopupRef: callSession.callAudioPopupRef,
     isNewChatOpen, newChatScreen, setNewChatScreen, setNewChatMemberSearch, closeNewChatScreen
   });
+
+  useEffect(() => {
+    if (error === "Authentication required") {
+      showToast(error, "error");
+    }
+  }, [error]);
 
   const visibleError = error && !isSuppressedUserError(error) ? error : null;
   // The native app needs a docked picker so Android can reserve keyboard-sized

@@ -27,15 +27,15 @@ frontend/src/components/AttachmentPickerSheet.tsx	786
 frontend/src/components/AudioPlayer.tsx	601
 frontend/src/components/DocumentAttachmentPreview.tsx	640
 frontend/src/components/ImageEditorModal.tsx	550
-frontend/src/components/MCPConnectorsPanel.tsx	908
+frontend/src/components/MCPConnectorsPanel.tsx	934
 frontend/src/components/MessageEnlargeModal.tsx	658
 frontend/src/components/QuickSwitcherModal.tsx	489
 frontend/src/components/RealStovoDemo.tsx	1285
 frontend/src/components/RichCanvasPreview.tsx	796
 frontend/src/components/StovoFeaturePreviews.tsx	697
 frontend/src/components/VideoPlayer.tsx	513
-frontend/src/config/strings/english.ts	1946
-frontend/src/config/strings/russian.ts	1980
+frontend/src/config/strings/english.ts	1951
+frontend/src/config/strings/russian.ts	1985
 frontend/src/dev/mockApi.ts	483
 frontend/src/dev/mockFixtures.ts	423
 frontend/src/features/chats/calling/DesktopCallControls.tsx	525
@@ -54,7 +54,7 @@ frontend/src/features/chats/outbox/messageOutboxStore.ts	402
 frontend/src/features/chats/shared/messagePresentation.ts	473
 frontend/src/features/chats/sidebar/ChatList.tsx	837
 frontend/src/features/chats/sidebar/useChatDataLoader.ts	609
-frontend/src/features/chats/useChatsPageController.ts	433
+frontend/src/features/chats/useChatsPageController.ts	440
 frontend/src/messageMarkdown.tsx	726
 frontend/src/pages/ChatsPage.tsx	449
 frontend/src/pages/ChecklistPage.tsx	770
