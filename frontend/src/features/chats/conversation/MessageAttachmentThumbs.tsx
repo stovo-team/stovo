@@ -13,6 +13,7 @@ import { audioPlaybackSession, type AudioDescriptor } from "../../../audioPlayba
 import { buildAudioSourceFactory } from "../shared/audioSourceFactory";
 import { isImageAttachment } from "../shared/messagePresentation";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { sanitizeUrl } from "../../../utils/sanitizeUrl";
 
 export function ComposerContextThumb({
   accessToken,
@@ -26,7 +27,7 @@ export function ComposerContextThumb({
     return null;
   }
   if (previewUrl) {
-    return <img className="reply-composer-thumb" src={previewUrl} alt="" />;
+    return <img className="reply-composer-thumb" src={sanitizeUrl(previewUrl)} alt="" />;
   }
   return (
     <span className="reply-composer-thumb reply-composer-thumb--placeholder" aria-hidden="true" />
@@ -71,7 +72,7 @@ export function MessageImageAttachment({
       onClick={() => void openOrDownload()}
     >
       {previewUrl ? (
-        <img src={previewUrl} alt="" />
+        <img src={sanitizeUrl(previewUrl)} alt="" />
       ) : (
         <span className="message-photo-placeholder" aria-hidden="true">
           <Image size={28} />{isDownloading ? ` ${copy.downloading}` : ` ${copy.download}`}
@@ -187,7 +188,7 @@ export function AttachmentCard({
           }}
         >
           {previewUrl ? (
-            <img src={previewUrl} alt={file.originalName} />
+            <img src={sanitizeUrl(previewUrl)} alt={file.originalName} />
           ) : (
             <span className="attachment-file-icon">
               <Image aria-hidden="true" size={24} />

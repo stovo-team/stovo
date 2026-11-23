@@ -158,7 +158,7 @@ test('architecture guide includes a connected Mermaid service flow with verified
     ['LiveKit', /LiveKit/i],
     ['Coturn', /Coturn/i],
   ]) assert.match(architecture, pattern, `architecture flow must identify ${name}`);
-  assert.ok((architecture.match(/-->|-\.->|==>/g) || []).length >= 6, 'architecture flow must show service connections');
+  assert.ok((architecture.match(/-{2}>|-\.->|==>/g) || []).length >= 6, 'architecture flow must show service connections');
 
   const requiredEdges = [
     ['Team', 'Caddy'],
@@ -174,7 +174,7 @@ test('architecture guide includes a connected Mermaid service flow with verified
   for (const [from, to] of requiredEdges) {
     // Mermaid's labeled dotted arrows use `-. label .->`, so match the source
     // arrow marker while preserving direction instead of requiring one spelling.
-    const edge = new RegExp(`\\b${from}\\b[^\\n]*?(?:-->|-\\.|==>)[^\\n]*?\\b${to}\\b`);
+    const edge = new RegExp(`\\b${from}\\b[^\\n]*?(?:-{2}>|-\\.|==>)[^\\n]*?\\b${to}\\b`);
     assert.match(architecture, edge, `architecture must show ${from} to ${to}`);
   }
 
