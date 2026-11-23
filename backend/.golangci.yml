@@ -7,3 +7,62 @@ linters:
   default: standard
   exclusions:
     generated: strict
+    rules:
+      - linters:
+          - gosec
+          - noctx
+          - bodyclose
+          - errorlint
+          - forbidigo
+        path: _test\.go
+      - linters:
+          - forbidigo
+          - noctx
+          - sqlclosecheck
+          - gosec
+          - bodyclose
+        path: cmd/
+      - linters:
+          - gosec
+        text: 'G101|G112|G117|G118|G120|G124|G201|G202|G204|G301|G302|G304|G306|G404|G602|G701|G702|G703|G704|G705|G706|G710'
+      - linters:
+          - noctx
+        path: internal/(orchestrator|app)
+      - linters:
+          - errorlint
+        text: 'comparing with == will fail'
+      - linters:
+          - errorlint
+        path: internal/(adapters/fileuploads|app|bootstrap|repository|transcription|transport/http)
+      - linters:
+          - forbidigo
+        path: internal/repository/store\.go
+  enable:
+    - gosec
+    - depguard
+    - bodyclose
+    - sqlclosecheck
+    - noctx
+    - errorlint
+    - forbidigo
+  settings:
+    depguard:
+      rules:
+        clean-architecture-boundaries:
+          files:
+            - "**/internal/domain/**"
+            - "**/internal/ports/**"
+            - "**/internal/features/**"
+          deny:
+            - pkg: "stovo-messenger/backend/internal/adapters"
+              desc: "domain, ports, and features must not import adapters"
+            - pkg: "stovo-messenger/backend/internal/repository"
+              desc: "domain, ports, and features must not import repository"
+            - pkg: "stovo-messenger/backend/internal/transport"
+              desc: "domain, ports, and features must not import transport"
+            - pkg: "stovo-messenger/backend/internal/bootstrap"
+              desc: "domain, ports, and features must not import bootstrap"
+    forbidigo:
+      forbid:
+        - pattern: '^(panic)$'
+          msg: 'do not use panic in production packages'
