@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,37 @@ import (
 
 	"stovo-messenger/backend/internal/config"
 )
+
+var (
+	validSlugRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+	validHostRegex = regexp.MustCompile(`^[a-zA-Z0-9.-]+(:[0-9]{1,5})?$`)
+)
+
+func validateSlug(slug string) error {
+	if !validSlugRegex.MatchString(slug) {
+		return errors.New("invalid server slug")
+	}
+	return nil
+}
+
+func sanitizeDBName(slug string) (string, error) {
+	if err := validateSlug(slug); err != nil {
+		return "", err
+	}
+	safeName := strings.ReplaceAll("stovo_db_"+slug, `"`, `""`)
+	return `"` + safeName + `"`, nil
+}
+
+func sanitizeHost(hostHeader, publicHost string) string {
+	if publicHost = strings.TrimSpace(publicHost); publicHost != "" && validHostRegex.MatchString(publicHost) {
+		return publicHost
+	}
+	host := strings.TrimSpace(hostHeader)
+	if host != "" && validHostRegex.MatchString(host) {
+		return host
+	}
+	return "localhost"
+}
 
 type NavTabsConfig struct {
 	Chats    bool `json:"chats"`
@@ -167,8 +199,13 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// Create PostgreSQL database and schema for the server
-	dbName := "stovo_db_" + req.Slug
-	if _, err := o.masterDB.Exec(`CREATE DATABASE ` + dbName); err != nil {
+	dbIdent, err := sanitizeDBName(req.Slug)
+	if err != nil {
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to sanitize server database identifier"})
+		return
+	}
+	if _, err := o.masterDB.Exec(`CREATE DATABASE ` + dbIdent); err != nil {
 		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create server database"})
 		return
@@ -197,8 +234,8 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	// startBackendContainer also does this for existing tenants whenever the
 	// orchestrator reconciles them after a deploy or restart.
 	if err := o.startBackendContainer(req.Slug); err != nil {
-		log.Printf("[orchestrator] failed to initialize server %s: %v", dbName, err)
-		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbName)
+		log.Printf("[orchestrator] failed to initialize server %s: %v", req.Slug, err)
+		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbIdent)
 		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to initialize server database"})
 		return
@@ -214,13 +251,7 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		"exp":    time.Now().Add(48 * time.Hour).Unix(),
 	})
 	signedInvite, _ := inviteJWT.SignedString(secret)
-	host := r.Host
-	if host == "" {
-		host = os.Getenv("PUBLIC_HOST")
-	}
-	if host == "" {
-		host = "localhost"
-	}
+	host := sanitizeHost(r.Host, os.Getenv("PUBLIC_HOST"))
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
@@ -355,13 +386,21 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 // handleDeleteServer tears down a server.
 func (o *Orchestrator) handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id") // treat id param as slug for simplicity
+	if err := validateSlug(slug); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid slug"})
+		return
+	}
+	dbIdent, err := sanitizeDBName(slug)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid slug"})
+		return
+	}
 	// Stop and remove backend container
 	_ = o.stopAndRemoveContainer(slug)
 	// Drop database
-	dbName := "stovo_db_" + slug
-	_, _ = o.masterDB.Exec(`DROP DATABASE IF EXISTS ` + dbName)
+	_, _ = o.masterDB.Exec(`DROP DATABASE IF EXISTS ` + dbIdent)
 	// Delete record
-	_, err := o.masterDB.Exec(`DELETE FROM servers WHERE slug=$1`, slug)
+	_, err = o.masterDB.Exec(`DELETE FROM servers WHERE slug=$1`, slug)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -394,13 +433,7 @@ func (o *Orchestrator) handleCreateInviteToken(w http.ResponseWriter, r *http.Re
 		"exp":    time.Now().Add(48 * time.Hour).Unix(),
 	})
 	signedInvite, _ := inviteJWT.SignedString(secret)
-	host := r.Host
-	if host == "" {
-		host = os.Getenv("PUBLIC_HOST")
-	}
-	if host == "" {
-		host = "localhost"
-	}
+	host := sanitizeHost(r.Host, os.Getenv("PUBLIC_HOST"))
 	scheme := "http"
 	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
 		scheme = "https"
@@ -444,6 +477,11 @@ func parseEnvSlice(env []string) map[string]string {
 
 func (o *Orchestrator) getServerColumn(slug, col, fallback string) string {
 	if o.masterDB == nil {
+		return fallback
+	}
+	switch col {
+	case "nav_tabs", "chat_types", "require_setup_invite", "name":
+	default:
 		return fallback
 	}
 	var val string

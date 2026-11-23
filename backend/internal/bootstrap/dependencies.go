@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/url"
 	"strings"
 	"time"
 
@@ -237,18 +236,18 @@ func openDatabase(cfg config.Config) (*sql.DB, error) {
 
 		candidates := cfg.LocalFallbackCandidates()
 		var lastFallbackErr error
-		for _, fallbackURL := range candidates {
+		for idx, fallbackURL := range candidates {
 			if fallbackURL == primaryURL {
 				continue
 			}
-			log.Printf("[database] trying fallback database: %s", sanitizeDBURL(fallbackURL))
+			log.Printf("[database] trying fallback database candidate %d", idx+1)
 			fallbackDB, fallbackErr := connectDB(fallbackURL, cfg)
 			if fallbackErr == nil {
-				log.Printf("[database] successfully connected to fallback database: %s", sanitizeDBURL(fallbackURL))
+				log.Printf("[database] successfully connected to fallback database candidate %d", idx+1)
 				return fallbackDB, nil
 			}
 			lastFallbackErr = fallbackErr
-			log.Printf("[database] fallback candidate (%s) failed: %v", sanitizeDBURL(fallbackURL), fallbackErr)
+			log.Printf("[database] fallback candidate %d failed: %v", idx+1, fallbackErr)
 		}
 
 		return nil, fmt.Errorf("primary database failed (%w) AND all local fallbacks failed (last error: %v)", err, lastFallbackErr)
@@ -274,14 +273,6 @@ func connectDB(dbURL string, cfg config.Config) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-func sanitizeDBURL(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return raw
-	}
-	return u.Redacted()
 }
 
 func openRedis(cfg config.Config) (*redis.Client, error) {

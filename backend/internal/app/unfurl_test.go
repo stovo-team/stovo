@@ -57,6 +57,11 @@ func TestSSRFProtection(t *testing.T) {
 		"http://[::1]/status",
 		"ftp://example.com/file",
 		"file:///etc/passwd",
+		"http://admin:secret@example.com/unfurl",
+		"http://example.com:22/ssh",
+		"http://internal.service.local/api",
+		"http://meta.cluster.internal/",
+		"http://corp.lan/data",
 	}
 
 	for _, rawURL := range blockedURLs {
