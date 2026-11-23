@@ -1,0 +1,19 @@
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+  - repo: local
+    hooks:
+      - id: test-integrity
+        name: Check test integrity (anti-weakening)
+        entry: node scripts/check-test-integrity.mjs
+        language: node
+        files: '.*(_test\.go|\.test\.(ts|tsx))$'
+        pass_filenames: false
+      - id: go-arch-lint
+        name: Go Clean Architecture boundary check
+        entry: bash -c "cd backend && go test -run TestArchitectureLayerBoundaries ./internal"
+        language: system
+        files: '^backend/.*\.go$'
+        pass_filenames: false

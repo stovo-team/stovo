@@ -1,11 +1,32 @@
 ## Problem and behavior
 
-Describe the concrete trigger and resulting behavior. Link the approved contract and existing issue when applicable.
+Describe the concrete trigger, user impact, and resulting behavior.
+- Link approved SDD contract / specification:
+- Related issue (if any):
+- PR stack index (target <= 300 LOC, strict <= 400 LOC):
 
-## Evidence
+## Architecture and Call Trace
 
-List actual commands/results, acceptance coverage, independent QA and limitations. For visual changes include usable before/after artifact links, viewport, theme, locale and interaction shown. Documentation-only changes explain visual evidence is not applicable.
+Describe the affected layers, flows, and callers. Include a Mermaid diagram illustrating component interactions when applicable.
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Core
+    participant Adapter
+    Caller->>Core: Invocation
+    Core->>Adapter: Operation
+```
+
+## Evidence & TDD Verification
+
+Detail the TDD Red-Green cycle and automated verification:
+- Observable tests added before implementation (confirming Red failure):
+- Implementation changes making tests pass (Green):
+- Exact commands and results:
+- Acceptance coverage & independent QA:
+- Visual evidence (before/after screenshot links reproduced on mock server): Not applicable / Attached below.
 
 ## Risks and manual review
 
-Explain material risks and a short reproducible review scenario. Keep this PR one coherent delivery. Publication authorization does not grant merge or deployment authorization.
+Explain material risks, security considerations (tenant isolation, replay protection), and a short reproducible manual review scenario.
