@@ -167,6 +167,11 @@ jobs:
         shell: bash
         working-directory: frontend
         run: npm run check:css-size
+      - name: Dependency audit check
+        if: matrix.shard == 1
+        shell: bash
+        working-directory: frontend
+        run: npm run audit
       - name: Test
         shell: bash
         working-directory: frontend

@@ -183,6 +183,10 @@ jobs:
         if: matrix.shard == 1
         working-directory: frontend
         run: npm run check:css-size
+      - name: Dependency audit check
+        if: matrix.shard == 1
+        working-directory: frontend
+        run: npm run audit
       - name: Test
         working-directory: frontend
         run: npm test -- --shard=${{ matrix.shard }}/2 --reporter=default --reporter=json --outputFile=frontend-test-timings-${{ matrix.shard }}.json
