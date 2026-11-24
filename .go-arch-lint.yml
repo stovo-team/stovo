@@ -1,0 +1,30 @@
+version: 3
+workdir: backend
+exclude:
+  - vendor
+  - ent
+components:
+  domain:
+    in: internal/domain/**
+  ports:
+    in: internal/ports/**
+  features:
+    in: internal/features/**
+  adapters:
+    in: internal/adapters/**
+  repository:
+    in: internal/repository/**
+  transport:
+    in: internal/transport/**
+  bootstrap:
+    in: internal/bootstrap/**
+deps:
+  domain:
+    mayUse: []
+  ports:
+    mayUse:
+      - domain
+  features:
+    mayUse:
+      - domain
+      - ports
