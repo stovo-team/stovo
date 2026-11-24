@@ -70,3 +70,23 @@ func TestServiceAllowsStartingGroupCallWithOnlyCaller(t *testing.T) {
 		t.Fatalf("PrepareStart() = %#v, want an active call with only the caller", call)
 	}
 }
+
+func TestServiceRejectsExcessiveCallInvitees(t *testing.T) {
+	members := []string{"caller"}
+	invitees := make([]string, 1001)
+	for i := range invitees {
+		id := string(rune('a' + (i % 26))) + string(rune('0' + (i % 10))) + string(rune('A' + (i % 26))) + "-" + string(rune('z' - (i % 26))) + "-" + string(rune('0' + (i % 10))) + "-" + string(rune(i))
+		invitees[i] = id
+		members = append(members, id)
+	}
+	service := NewService(chatReaderStub{chat: domain.CallChat{
+		ID: "chat", Type: domain.ChatTypeGroup, Members: members,
+	}}, nil, nil)
+
+	_, err := service.PrepareStart(context.Background(), StartInput{
+		ChatID: "chat", CallerUserID: "caller", CallType: "audio", InviteUserIDs: invitees,
+	})
+	if err == nil {
+		t.Fatal("PrepareStart() expected error for > 1000 invitees, got nil")
+	}
+}

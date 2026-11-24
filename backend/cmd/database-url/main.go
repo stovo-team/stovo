@@ -6,9 +6,8 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -33,7 +32,7 @@ func main() {
 			defer func() { _ = db.Close() }()
 			pingErr := db.PingContext(ctx)
 			if pingErr == nil {
-				fmt.Print(primaryURL)
+				_, _ = os.Stdout.WriteString(primaryURL)
 				return
 			}
 			log.Printf("[database-url] WARNING: external database is unreachable (%v), switching to local fallback", pingErr)
@@ -53,8 +52,8 @@ func main() {
 				if fdb.PingContext(fctx) == nil {
 					_ = fdb.Close()
 					fcancel()
-					log.Printf("[database-url] using verified local fallback: %s", redact(fallbackURL))
-					fmt.Print(fallbackURL)
+					log.Println("[database-url] using verified local fallback")
+					_, _ = os.Stdout.WriteString(fallbackURL)
 					return
 				}
 				_ = fdb.Close()
@@ -64,19 +63,11 @@ func main() {
 
 		// If no local candidate responded yet (e.g. starting up), still output local fallback URL
 		if len(candidates) > 0 {
-			log.Printf("[database-url] WARNING: using local fallback URL: %s", redact(candidates[0]))
-			fmt.Print(candidates[0])
+			log.Println("[database-url] WARNING: using local fallback URL")
+			_, _ = os.Stdout.WriteString(candidates[0])
 			return
 		}
 	}
 
-	fmt.Print(primaryURL)
-}
-
-func redact(raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return raw
-	}
-	return u.Redacted()
+	_, _ = os.Stdout.WriteString(primaryURL)
 }

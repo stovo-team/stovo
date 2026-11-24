@@ -155,6 +155,10 @@ func (s *Service) PrepareStart(ctx context.Context, input StartInput) (domain.Ca
 	if err := s.validateAvailability(ctx, chat.ID, append([]string{input.CallerUserID}, invitees...)); err != nil {
 		return domain.CallInitiation{}, err
 	}
+	const maxCallInvitees = 1000
+	if len(invitees) > maxCallInvitees {
+		return domain.CallInitiation{}, errors.New("exceeded maximum number of call invitees")
+	}
 	participants := make([]domain.CallParticipant, 0, len(invitees)+1)
 	participants = append(participants, domain.CallParticipant{UserID: input.CallerUserID, Role: domain.ParticipantHost})
 	for _, userID := range invitees {

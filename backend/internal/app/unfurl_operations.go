@@ -63,12 +63,18 @@ func validateAndCheckSSRF(targetURL string) (*url.URL, error) {
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return nil, errors.New("invalid protocol")
 	}
-	hostname := parsed.Hostname()
+	if parsed.User != nil {
+		return nil, errors.New("userinfo not allowed in URL")
+	}
+	if port := parsed.Port(); port != "" && port != "80" && port != "443" && port != "8080" && port != "8443" {
+		return nil, errors.New("port not allowed")
+	}
+	hostname := strings.ToLower(parsed.Hostname())
 	if hostname == "" {
 		return nil, errors.New("empty host")
 	}
-	if strings.EqualFold(hostname, "localhost") {
-		return nil, errors.New("localhost blocked")
+	if hostname == "localhost" || strings.HasSuffix(hostname, ".local") || strings.HasSuffix(hostname, ".internal") || strings.HasSuffix(hostname, ".lan") || strings.HasSuffix(hostname, ".corp") {
+		return nil, errors.New("localhost or internal host blocked")
 	}
 
 	ip := net.ParseIP(hostname)
@@ -285,8 +291,15 @@ func (s *Server) handleUnfurl(w http.ResponseWriter, r *http.Request, _ userPubl
 		}
 	}
 
+	safeURL := &url.URL{
+		Scheme:   parsedURL.Scheme,
+		Host:     parsedURL.Host,
+		Path:     parsedURL.Path,
+		RawQuery: parsedURL.RawQuery,
+	}
+
 	client := createSafeHTTPClient()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedURL.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, safeURL.String(), nil)
 	if err != nil {
 		http.Error(w, "Could not build request", http.StatusInternalServerError)
 		return
