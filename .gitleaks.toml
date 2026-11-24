@@ -1,0 +1,14 @@
+title = "Stovo Messenger Secret Scanning Rules"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlists for test fixtures and mock secrets"
+paths = [
+  '''(?i)test''',
+  '''(?i)mock''',
+  '''(?i)fixture''',
+  '''frontend/src/dev/''',
+  '''docs/'''
+]
