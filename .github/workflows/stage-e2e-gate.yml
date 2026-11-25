@@ -13,6 +13,9 @@ concurrency:
   group: stage-e2e-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy-stage:
     name: Deploy stage stack

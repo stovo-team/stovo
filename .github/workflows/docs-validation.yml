@@ -27,6 +27,9 @@ on:
       - 'deploy/compose/**'
       - '.env.example'
 
+permissions:
+  contents: read
+
 jobs:
   docs-and-deployment:
     runs-on: ubuntu-24.04

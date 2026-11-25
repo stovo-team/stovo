@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 
 import type { FamilyFile } from "../api/files";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 import { avatarInitials } from "../utils/avatarInitials";
 import { colorForAvatarId, defaultAvatarSymbol, isKnownAvatarColorId, isKnownAvatarSymbolId } from "./avatarIdentity";
 import type { AvatarEntityKind } from "./avatarIdentity";
@@ -41,7 +42,7 @@ export function EntityAvatar({
 
   return (
     <span className={`avatar entity-avatar${className ? ` ${className}` : ""}`} data-avatar-color={resolvedColor} data-avatar-kind={entityKind} style={avatarStyle}>
-      {showPhoto ? <img src={previewUrl ?? undefined} alt="" draggable={false} onError={() => setImageBroken(true)} /> : Icon ? <Icon aria-hidden className="entity-avatar__symbol" /> : <span className="avatar-initials">{avatarInitials(label ?? undefined)}</span>}
+      {showPhoto ? <img src={sanitizeUrl(previewUrl) || undefined} alt="" draggable={false} onError={() => setImageBroken(true)} /> : Icon ? <Icon aria-hidden className="entity-avatar__symbol" /> : <span className="avatar-initials">{avatarInitials(label ?? undefined)}</span>}
     </span>
   );
 }

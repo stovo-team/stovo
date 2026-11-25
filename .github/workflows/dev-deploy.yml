@@ -9,6 +9,9 @@ concurrency:
   group: deploy-dev
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy-dev:
     runs-on: [self-hosted, tests]
