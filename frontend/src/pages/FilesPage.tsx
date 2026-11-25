@@ -56,6 +56,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import { SidebarCollapseButton } from "../components/ui/SidebarCollapseButton";
 import { useResizableSidebar } from "../hooks/useResizableSidebar";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 import { storagePreviewVideoStyle } from "../components/video-player/storagePreviewStyle";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
@@ -230,8 +231,8 @@ function StorageTile({
         </small>
       )}
       {fileKind(file) === "videos" && videoPreviewUrl ? (
-        <video muted preload="metadata" src={videoPreviewUrl} />
-      ) : previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon aria-hidden="true" size={42} /><b>{fileTypeLabel(file)}</b></div>}
+        <video muted preload="metadata" src={sanitizeUrl(videoPreviewUrl)} />
+      ) : previewUrl ? <img src={sanitizeUrl(previewUrl)} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon aria-hidden="true" size={42} /><b>{fileTypeLabel(file)}</b></div>}
       <span>
         <strong>{file.originalName}</strong>
         <small>{formatFileSize(file.sizeBytes)}</small>

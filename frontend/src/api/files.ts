@@ -3,6 +3,7 @@ import { getCachedFileBlob, prefetchFileBlobs, seedMediaBlobCache } from "../med
 import { enqueueBackgroundUpload, enqueueBrowserBackgroundUpload, getBackgroundUploadStatus } from "../native/backgroundUploadPlugin";
 import { nativeSourceUriForFile } from "../native/mediaLibraryPlugin";
 import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 
 export interface FamilyFile {
   id: string;
@@ -337,7 +338,7 @@ export async function saveFileToDisk(accessToken: string, file: FamilyFile) {
   const blob = await downloadFileBlob(accessToken, file.id);
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.href = objectUrl;
+  link.href = sanitizeUrl(objectUrl);
   link.download = file.originalName;
   document.body.appendChild(link);
   link.click();

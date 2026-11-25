@@ -22,6 +22,7 @@ import { useStrings } from "../i18n/LanguageContext";
 import { type FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 import {
   sameVideoIdentity,
   videoPlaybackSession,
@@ -326,7 +327,7 @@ export function VideoPlayer({
   const videoNode = (
     <video
       ref={videoRef}
-      src={sourceUrl ?? undefined}
+      src={sanitizeUrl(sourceUrl) || undefined}
       preload="metadata"
       playsInline
       controls={false}

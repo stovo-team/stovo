@@ -19,6 +19,7 @@ import { User } from "../../../api/auth";
 import { Chat } from "../../../api/chats";
 import { FamilyFile } from "../../../api/files";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
+import { sanitizeUrl } from "../../../utils/sanitizeUrl";
 import {
   canUpdateMediaVisibility,
   chatAvatarFallbackKind,
@@ -69,7 +70,7 @@ export function SharedContentThumb({
       >
         {isVideo && previewUrl && !videoPreviewFailed ? (
           <video
-            src={previewUrl ? `${previewUrl}#t=0.001` : undefined}
+            src={previewUrl ? `${sanitizeUrl(previewUrl)}#t=0.001` : undefined}
             aria-hidden="true"
             muted
             playsInline
@@ -95,11 +96,11 @@ export function SharedContentThumb({
       disabled={!previewUrl}
       onClick={() => {
         if (previewUrl) {
-          onOpenImage(file, previewUrl);
+          onOpenImage(file, sanitizeUrl(previewUrl));
         }
       }}
     >
-      {previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <Image aria-hidden="true" size={20} />}
+      {previewUrl ? <img src={sanitizeUrl(previewUrl)} alt={file.originalName} /> : <Image aria-hidden="true" size={20} />}
     </button>
   );
 }

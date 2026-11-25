@@ -21,6 +21,7 @@ import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { EntityAvatar } from "./EntityAvatar";
 import { SymbolColorControls } from "./SymbolColorControls";
 import { AVATAR_SYMBOL_COMPONENTS } from "./avatarSymbols";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 
 const iconFor = (file: FamilyFile) => storageFileKind(file) === "audio" ? Music2 : storageFileKind(file) === "photos" || storageFileKind(file) === "videos" ? Image : FileText;
 const extensionLabel = (file: FamilyFile) => {
@@ -73,7 +74,7 @@ function Cover({ collection, token, file }: { collection: StorageCollection; tok
   const url = useFilePreviewUrl(token, file, Boolean(file));
   const preference = loadCoverPreferences()[collection.id];
   const Icon = preference ? coverIconOptions.find((option) => option.value === preference.icon)?.Icon ?? Folder : collection.displayKind === "music-album" ? Music2 : collection.displayKind === "album" ? Image : Folder;
-  return <span className={`storage-collection-cover storage-collection-cover--${collection.displayKind}`} style={preference && !url ? { backgroundColor: preference.color } : undefined}>{url ? <img src={url} alt="" /> : <Icon size={25} />}</span>;
+  return <span className={`storage-collection-cover storage-collection-cover--${collection.displayKind}`} style={preference && !url ? { backgroundColor: preference.color } : undefined}>{url ? <img src={sanitizeUrl(url)} alt="" /> : <Icon size={25} />}</span>;
 }
 function matches(collection: StorageCollection, filter: string) {
   if (filter === "all" || filter === "favorites") return true;
@@ -87,12 +88,12 @@ function AddFromStorage({ files, token, onAdd, onClose }: { files: FamilyFile[];
   const visible = files.filter((file) => file.originalName.toLowerCase().includes(query.toLowerCase()));
   return <PopupDialog className="storage-file-picker-popover storage-page" ariaLabel={copy.selectFromStorage} onClose={onClose} size="xl"><header><div><h3>{copy.storage}</h3><p>{copy.selectFilesHelp}</p></div></header><PopupField label={copy.searchStorage} labelHidden autoFocus value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} /><div className="storage-grid storage-picker-grid">{visible.map((file) => <StoragePickerTile key={file.id} token={token} file={file} active={picked.includes(file.id)} onClick={() => setPicked((all) => all.includes(file.id) ? all.filter((id) => id !== file.id) : [...all, file.id])} />)}</div><footer><PopupButton variant="secondary" onClick={onClose}>{copy.cancel}</PopupButton><PopupButton variant="primary" disabled={!picked.length} onClick={() => onAdd(picked)}>{copy.addFiles(picked.length)}</PopupButton></footer></PopupDialog>;
 }
-function StoragePickerTile({ file, token, active, onClick }: { file: FamilyFile; token: string; active: boolean; onClick: () => void }) { const preview = useFilePreviewUrl(token, file, storageFileKind(file) === "photos"); const Icon = iconFor(file); return <button type="button" className={`storage-tile ${storageFileKind(file)}${active ? " selected" : ""}`} data-file-type={extensionLabel(file)} onClick={onClick}>{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span></button>; }
+function StoragePickerTile({ file, token, active, onClick }: { file: FamilyFile; token: string; active: boolean; onClick: () => void }) { const preview = useFilePreviewUrl(token, file, storageFileKind(file) === "photos"); const Icon = iconFor(file); return <button type="button" className={`storage-tile ${storageFileKind(file)}${active ? " selected" : ""}`} data-file-type={extensionLabel(file)} onClick={onClick}>{preview ? <img src={sanitizeUrl(preview)} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span></button>; }
 function CollectionFileCard({ file, token, editable, onRemove, onOpen }: { file: FamilyFile; token: string; editable: boolean; onRemove: () => void; onOpen: () => void }) {
   const copy = useStrings().files.collections;
   const preview = useFilePreviewUrl(token, file, storageFileKind(file) === "photos");
   const Icon = iconFor(file);
-  return <article className={`storage-tile collection-file-tile ${storageFileKind(file)}`} data-file-type={extensionLabel(file)}><button type="button" className="collection-file-open" aria-label={file.originalName} onClick={onOpen} />{preview ? <img src={preview} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span>{editable && <button type="button" aria-label={copy.removeFile(file.originalName)} title={copy.removeFile(file.originalName)} onClick={onRemove}><X size={14} /></button>}</article>;
+  return <article className={`storage-tile collection-file-tile ${storageFileKind(file)}`} data-file-type={extensionLabel(file)}><button type="button" className="collection-file-open" aria-label={file.originalName} onClick={onOpen} />{preview ? <img src={sanitizeUrl(preview)} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon size={42} /><b>{extensionLabel(file)}</b></div>}<span><strong>{file.originalName}</strong><small>{formatFileSize(file.sizeBytes)}</small></span>{editable && <button type="button" aria-label={copy.removeFile(file.originalName)} title={copy.removeFile(file.originalName)} onClick={onRemove}><X size={14} /></button>}</article>;
 }
 
 export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage, groupByChat = false, groupFallbackLabel, onPreviewFile }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void; groupByChat?: boolean; groupFallbackLabel?: string; onPreviewFile?: (file: FamilyFile) => void }) {
