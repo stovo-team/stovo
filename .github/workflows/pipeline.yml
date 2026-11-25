@@ -52,7 +52,7 @@ jobs:
       frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           filter: blob:none
@@ -112,7 +112,7 @@ jobs:
           if (Test-Path frontend\node_modules) {
             Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
           }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Ensure Git Bash is available on Windows
         if: runner.os == 'Windows'
         shell: powershell
@@ -157,7 +157,7 @@ jobs:
           if (Test-Path frontend\node_modules) {
             Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
           }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Ensure Git Bash is available on Windows
         if: runner.os == 'Windows'
         shell: powershell
@@ -191,7 +191,7 @@ jobs:
         working-directory: frontend
         run: npm test -- --shard=${{ matrix.shard }}/2 --reporter=default --reporter=json --outputFile=frontend-test-timings-${{ matrix.shard }}.json
       - name: Upload frontend test timing report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         continue-on-error: true
         with:
@@ -232,7 +232,7 @@ jobs:
         shell: bash
         working-directory: backend
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Detect available shell
@@ -278,7 +278,7 @@ jobs:
         run: bash ../.github/workflows/backend-test-shards.sh
       - name: Upload backend coverage shard 0
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-0
@@ -288,7 +288,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend coverage shard 1
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-1
@@ -296,7 +296,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend coverage shard 2
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-2
@@ -304,7 +304,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend test events shard 0
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-0
@@ -312,7 +312,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload backend test events shard 1
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-1
@@ -320,7 +320,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload backend test events shard 2
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-2
@@ -405,13 +405,13 @@ jobs:
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
           cache: false
       - name: Cache golangci-lint binary
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/golangci-lint/v2.14.0
           key: golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0
@@ -483,7 +483,7 @@ jobs:
         shell: bash
         working-directory: backend
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Detect available shell
         shell: powershell
         run: |
@@ -564,7 +564,7 @@ jobs:
             touch coverage.out
           fi
       - name: Upload merged backend coverage profile
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage
@@ -1097,7 +1097,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Detect available shell
         shell: powershell
