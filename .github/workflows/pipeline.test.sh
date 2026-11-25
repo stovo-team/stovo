@@ -436,6 +436,14 @@ for required in 'Ensure Git Bash is available on Windows' 'shell: bash'; do
   fi
 done
 
+trusted_pr_backend_lint=$(sed -n '/^  backend_lint:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in 'Ensure Git Bash is available on Windows' "if: runner.os == 'Windows'"; do
+  if ! grep -Fq "$required" <<< "$trusted_pr_backend_lint"; then
+    echo "Trusted PR backend lint must ensure Git Bash is available on Windows ($required)." >&2
+    exit 1
+  fi
+done
+
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
   echo "Missing pinned golangci-lint configuration at $lint_config" >&2
