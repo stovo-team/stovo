@@ -115,7 +115,7 @@ describe("Storage file preview", () => {
     expect(host.querySelector(".storage-preview-backdrop")).not.toBeNull();
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Full screen"]')?.click());
     expect(parseFloat(image.style.width)).toBeGreaterThan(regularWidth);
-    expect(host.querySelector('[aria-label="Full screen"] .lucide-minimize2')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Full screen"] .lucide-minimize-2, [aria-label="Full screen"] .lucide-minimize2')).not.toBeNull();
   });
   it("places all file controls inside the preview and opens metadata in its own popup", async () => {
     const host = await renderPage([file("photo-1", "Family photo.jpg", "chat-family", "Family chat")]);

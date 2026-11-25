@@ -9,6 +9,9 @@ concurrency:
   group: caddy-https-watchdog
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   verify-and-recover:
     runs-on: [self-hosted, Windows]

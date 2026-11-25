@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { downloadFileBlob, FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 
 export default function useFilePreviewUrl(
   accessToken: string | null,
@@ -77,5 +78,5 @@ export default function useFilePreviewUrl(
     };
   }, [accessToken, allowVideoPreview, enabled, file?.id, file?.mimeType]);
 
-  return previewUrl;
+  return previewUrl ? sanitizeUrl(previewUrl) : null;
 }

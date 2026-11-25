@@ -28,6 +28,7 @@ import { formatComposerSelection, type FormattingKind } from "../composerFormatt
 import { ImageEditorModal } from "./ImageEditorModal";
 import { PendingAttachmentCard } from "../features/chats/composer/PendingAttachmentCard";
 import { PopupBackdrop, PopupCloseButton } from "./ui/Popup";
+import { sanitizeUrl } from "../utils/sanitizeUrl";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { useStrings } from "../i18n/LanguageContext";
 
@@ -487,7 +488,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     if (segment.type === "media") {
                       return (
                         <div key={segment.key} className="inline-media-prerender-card">
-                          <img src={segment.url} alt={segment.alt || copy.inlineMedia} />
+                          <img src={sanitizeUrl(segment.url)} alt={segment.alt || copy.inlineMedia} />
                           <button
                             type="button"
                             className="inline-media-prerender-remove"

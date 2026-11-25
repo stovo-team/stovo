@@ -436,6 +436,14 @@ for required in 'Ensure Git Bash is available on Windows' 'shell: bash'; do
   fi
 done
 
+trusted_pr_backend_lint=$(sed -n '/^  backend_lint:/,/^  backend-ci:/p' "$trusted_pr_workflow")
+for required in 'Ensure Git Bash is available on Windows' "if: runner.os == 'Windows'"; do
+  if ! grep -Fq "$required" <<< "$trusted_pr_backend_lint"; then
+    echo "Trusted PR backend lint must ensure Git Bash is available on Windows ($required)." >&2
+    exit 1
+  fi
+done
+
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
   echo "Missing pinned golangci-lint configuration at $lint_config" >&2
@@ -475,7 +483,11 @@ for required in 'version: v2.14.0' 'install-mode: none' 'skip-cache: true' 'GOLA
 done
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   workflow_backend_contract=$(sed -n '/^  backend_lint:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830' 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
+  if ! grep -Eq 'uses: actions/cache@(0057852bfaa89a56745cba8c7296529d2fc39830|55cc8345863c7cc4c66a329aec7e433d2d1c52a9)' <<< "$workflow_backend_contract"; then
+    echo "Backend CI in $workflow must use the pinned actions/cache action." >&2
+    exit 1
+  fi
+  for required in 'golangci-lint-${{ runner.os }}-${{ runner.arch }}-v2.14.0' 'golangci-lint-$version-windows-amd64.zip' 'Expand-Archive -LiteralPath $archivePath' 'golangci-lint.exe' 'Add-Content -Path $env:GITHUB_PATH' 'install-mode: none' 'skip-cache: true' 'GOLANGCI_LINT_CACHE'; do
     if ! grep -Fq "$required" <<< "$workflow_backend_contract"; then
       echo "Backend CI in $workflow must download and cache a named Windows golangci-lint archive before invoking the action ($required)." >&2
       exit 1
