@@ -4,6 +4,14 @@
 > * 🔴 **PROBLEM** ➔ **[Core issue in bold]:** Short 1-sentence description of what was broken or triggered.
 > * 🟢 **SOLUTION** ➔ **[Key change in bold]:** Short 1-sentence description of what was changed or added.
 > * 🛡️ **IMPACT** ➔ **[Risk level in bold]:** Short 1-sentence description of runtime impact and blast radius.
+>
+> <details>
+> <summary>🇷🇺 <b>По-русски (нажмите, чтобы развернуть карточку)</b></summary>
+>
+> * 🔴 **ПРОБЛЕМА** ➔ **[Суть жирным]:** Краткое описание проблемы на русском.
+> * 🟢 **РЕШЕНИЕ** ➔ **[Суть жирным]:** Краткое описание решения на русском.
+> * 🛡️ **ВЛИЯНИЕ** ➔ **[Уровень риска жирным]:** Оценка рисков на русском.
+> </details>
 
 | Area / Component | Change Summary | Production Risk |
 | :--- | :--- | :---: |
@@ -18,12 +26,18 @@ Describe the concrete trigger, user impact, and resulting behavior in detail.
 - Related issue (if any):
 - PR stack index (target <= 300 LOC, strict <= 400 LOC):
 
+<details>
+<summary>🇷🇺 <b>Описание на русском (по желанию)</b></summary>
+
+Подробное описание проблемы, поведения и изменений на русском языке.
+</details>
+
 ## Architecture and Call Trace
 
 Describe the affected layers, flows, and callers.
 
 **Mandatory visual diagram (choose one):**
-- **Flowchart (`flowchart LR` or `flowchart TD`)**: For bug fixes, configs, Docker, migrations, pipelines. Always use `-->|label|` for arrow text (never `-- "text" -->`), and `<br/>` for multiline text inside `["labels"]`.
+- **Horizontal Flowchart (`flowchart LR`)**: Default for bug fixes, configs, Docker, migrations, pipelines. Flowcharts must be horizontal (`LR`) to optimize vertical screen real estate. Always use `-->|label|` for arrow text (never `-- "text" -->`), and `<br/>` for multiline text inside `["labels"]`.
 - **Sequence diagram (`sequenceDiagram`)**: For multi-component features, API requests, state machines.
 
 ```mermaid
