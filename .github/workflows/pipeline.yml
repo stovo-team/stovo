@@ -191,7 +191,7 @@ jobs:
         working-directory: frontend
         run: npm test -- --shard=${{ matrix.shard }}/2 --reporter=default --reporter=json --outputFile=frontend-test-timings-${{ matrix.shard }}.json
       - name: Upload frontend test timing report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         continue-on-error: true
         with:
@@ -278,7 +278,7 @@ jobs:
         run: bash ../.github/workflows/backend-test-shards.sh
       - name: Upload backend coverage shard 0
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-0
@@ -288,7 +288,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend coverage shard 1
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-1
@@ -296,7 +296,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend coverage shard 2
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage-shard-2
@@ -304,7 +304,7 @@ jobs:
           if-no-files-found: error
       - name: Upload backend test events shard 0
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-0
@@ -312,7 +312,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload backend test events shard 1
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-1
@@ -320,7 +320,7 @@ jobs:
           if-no-files-found: warn
       - name: Upload backend test events shard 2
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-test-events-2
@@ -564,7 +564,7 @@ jobs:
             touch coverage.out
           fi
       - name: Upload merged backend coverage profile
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true
         with:
           name: backend-coverage
