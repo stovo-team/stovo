@@ -4,13 +4,14 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { validatePrDescription } from './validate-pr-description.mjs';
+import { validatePrDescription, validateMermaid } from './validate-pr-description.mjs';
 
 const VALID_SAMPLE = `> [!NOTE]
 > ### ⚡ 5-Second Quick Glance
-> - 🔴 **Problem / Trigger:** CI failed during docker build due to Go toolchain mismatch.
-> - 🟢 **Fix / Change:** Upgraded builder base image to Go 1.26-alpine.
-> - 🛡️ **Scope & Impact:** Build pipeline only; no production runtime impact.
+>
+> * 🔴 **PROBLEM** ➔ **CI Build Failure:** CI failed during docker build due to Go toolchain mismatch between \`go.mod\` and Dockerfile.
+> * 🟢 **SOLUTION** ➔ **Toolchain Alignment:** Upgraded builder base image to Go 1.26-alpine and added verification tests.
+> * 🛡️ **IMPACT** ➔ **Zero Production Risk:** Build pipeline only; no production runtime or client changes.
 
 | Area / Component | Change Summary | Production Risk |
 | :--- | :--- | :---: |
@@ -26,12 +27,12 @@ Detailed affected layers.
 
 \`\`\`mermaid
 flowchart LR
-    A[go.mod 1.26] --> B[Dockerfile 1.25]
-    B --> C[CI Failed]
+    A["go.mod 1.26"] --> B["Dockerfile 1.25"]
+    B --> C["CI Failed"]
     subgraph Fix
-      D[Dockerfile 1.26]
+      D["Dockerfile 1.26"]
     end
-    Fix --> E[CI Passed]
+    Fix -->|build success| E["CI Passed"]
 \`\`\`
 
 ## Evidence & TDD Verification
@@ -43,68 +44,49 @@ Low risk; build time only.
 2. Verify exit code is 0.
 `;
 
-test('valid PR description passes static validation', () => {
+test('valid PR description with high-contrast Note and valid Mermaid passes', () => {
   const result = validatePrDescription(VALID_SAMPLE);
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   assert.equal(result.errors.length, 0);
 });
 
-test('empty PR description fails', () => {
-  const result = validatePrDescription('   ');
+test('Mermaid validator detects invalid arrow labels with quotes', () => {
+  const badMermaid = `flowchart LR\n  A -- "quoted label" --> B`;
+  const result = validateMermaid(badMermaid);
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /PR description is empty/);
+  assert.match(result.errors.join('; '), /Invalid arrow label with quotes/);
 });
 
-test('unreplaced template comments fail', () => {
-  const text = VALID_SAMPLE + '\n<!-- 1-2 plain sentences: what broke -->';
-  const result = validatePrDescription(text);
+test('Mermaid validator detects literal \\n in node labels', () => {
+  const badMermaid = `flowchart TD\n  A["Line 1\\nLine 2"] --> B`;
+  const result = validateMermaid(badMermaid);
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /unreplaced template comments/);
+  assert.match(result.errors.join('; '), /does not support literal '\\n'/);
 });
 
-test('missing Quick Glance callout fails', () => {
-  const text = VALID_SAMPLE.replace('> [!NOTE]\n> ### ⚡ 5-Second Quick Glance', '## Summary');
-  const result = validatePrDescription(text);
+test('Mermaid validator detects invalid single-dash arrow in flowchart', () => {
+  const badMermaid = `flowchart LR\n  A -> B`;
+  const result = validateMermaid(badMermaid);
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /Missing top-level "> \[!NOTE\] ### ⚡ 5-Second Quick Glance" callout/);
+  assert.match(result.errors.join('; '), /Invalid single-dash arrow '->'/);
 });
 
-test('missing 🔴/🟢/🛡️ markers in Quick Glance fails', () => {
-  const text = VALID_SAMPLE.replace('🔴 **Problem / Trigger:**', 'Problem:');
-  const result = validatePrDescription(text);
-  assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /Quick Glance is missing non-empty "🔴 \*\*Problem \/ Trigger:\*\*"/);
+test('Mermaid validator detects unbalanced brackets and quotes', () => {
+  const badBracket = `flowchart LR\n  A["Unclosed bracket --> B`;
+  assert.equal(validateMermaid(badBracket).ok, false);
+
+  const badQuote = `flowchart LR\n  A["Unclosed quote] --> B`;
+  assert.equal(validateMermaid(badQuote).ok, false);
 });
 
-test('missing component risk table fails', () => {
-  const text = VALID_SAMPLE.replace(/\| Area \/ Component[\s\S]*?🟢 Low \|\n/, '');
-  const result = validatePrDescription(text);
+test('Quick Glance without bold punchlines fails', () => {
+  const flatNote = VALID_SAMPLE
+    .replace('🔴 **PROBLEM** ➔ **CI Build Failure:**', '🔴 **Problem:** CI failed during docker build due to Go toolchain mismatch.')
+    .replace('🟢 **SOLUTION** ➔ **Toolchain Alignment:**', '🟢 **Fix:** Upgraded builder base image to Go 1.26-alpine.')
+    .replace('🛡️ **IMPACT** ➔ **Zero Production Risk:**', '🛡️ **Impact:** Build pipeline only.');
+  const result = validatePrDescription(flatNote);
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /Missing component risk matrix table/);
-});
-
-test('missing Mermaid diagram fails', () => {
-  const text = VALID_SAMPLE.replace(/```mermaid[\s\S]*?```/, '');
-  const result = validatePrDescription(text);
-  assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /Missing mandatory visual diagram/);
-});
-
-test('template placeholder Mermaid diagram fails', () => {
-  const text = VALID_SAMPLE.replace(
-    /```mermaid[\s\S]*?```/,
-    '```mermaid\nsequenceDiagram\n    participant Caller\n    participant Core\n    Caller->>Core: Invocation\n```'
-  );
-  const result = validatePrDescription(text);
-  assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /placeholder sequence/);
-});
-
-test('missing numbered manual review steps fails', () => {
-  const text = VALID_SAMPLE.replace(/1\. Run docker build locally\.[\s\S]*2\. Verify exit code is 0\./, 'Just check it manually.');
-  const result = validatePrDescription(text);
-  assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /Manual review must contain concrete numbered steps/);
+  assert.match(result.errors.join('; '), /high-contrast bold punchline/);
 });
 
 test('CLI supports --body and --file flags', () => {

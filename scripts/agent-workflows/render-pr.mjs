@@ -5,9 +5,9 @@ export function renderPr(p){
  const lines=[
   '> [!NOTE]',
   '> ### ⚡ 5-Second Quick Glance',
-  `> - 🔴 **Problem / Trigger:** ${clean(p.quickGlance?.problem??p.problem)}`,
-  `> - 🟢 **Fix / Change:** ${clean(p.quickGlance?.fix??p.behavior)}`,
-  `> - 🛡️ **Scope & Impact:** ${clean(p.quickGlance?.impact??(p.risks?.[0]??'Low risk; see details below.'))}`,
+  `> * 🔴 **PROBLEM** ➔ **${clean(p.quickGlance?.problemLead??'Core Issue')}:** ${clean(p.quickGlance?.problem??p.problem)}`,
+  `> * 🟢 **SOLUTION** ➔ **${clean(p.quickGlance?.fixLead??'Key Change')}:** ${clean(p.quickGlance?.fix??p.behavior)}`,
+  `> * 🛡️ **IMPACT** ➔ **${clean(p.quickGlance?.impactLead??'Risk Assessment')}:** ${clean(p.quickGlance?.impact??(p.risks?.[0]??'Low risk; see details below.'))}`,
   ''
  ];
  if(Array.isArray(p.scopeMatrix)&&p.scopeMatrix.length){

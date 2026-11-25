@@ -1,8 +1,9 @@
 > [!NOTE]
 > ### ⚡ 5-Second Quick Glance
-> - 🔴 **Problem / Trigger:** <!-- 1-2 plain sentences: what broke or what triggered this work? -->
-> - 🟢 **Fix / Change:** <!-- 1-2 plain sentences: what was changed or added? -->
-> - 🛡️ **Scope & Impact:** <!-- 1 sentence: runtime impact, blast radius, risk level -->
+>
+> * 🔴 **PROBLEM** ➔ **[Core issue in bold]:** Short 1-sentence description of what was broken or triggered.
+> * 🟢 **SOLUTION** ➔ **[Key change in bold]:** Short 1-sentence description of what was changed or added.
+> * 🛡️ **IMPACT** ➔ **[Risk level in bold]:** Short 1-sentence description of runtime impact and blast radius.
 
 | Area / Component | Change Summary | Production Risk |
 | :--- | :--- | :---: |
@@ -22,7 +23,7 @@ Describe the concrete trigger, user impact, and resulting behavior in detail.
 Describe the affected layers, flows, and callers.
 
 **Mandatory visual diagram (choose one):**
-- **Flowchart (`flowchart LR`)**: For bug fixes, configs, Docker, migrations, pipelines (e.g. `Problem -> Root Cause -> Fix -> Outcome`).
+- **Flowchart (`flowchart LR` or `flowchart TD`)**: For bug fixes, configs, Docker, migrations, pipelines. Always use `-->|label|` for arrow text (never `-- "text" -->`), and `<br/>` for multiline text inside `["labels"]`.
 - **Sequence diagram (`sequenceDiagram`)**: For multi-component features, API requests, state machines.
 
 ```mermaid
