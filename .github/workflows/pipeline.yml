@@ -52,7 +52,7 @@ jobs:
       frontend: ${{ !inputs.backend_deploy_only && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true') }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           filter: blob:none
@@ -112,7 +112,7 @@ jobs:
           if (Test-Path frontend\node_modules) {
             Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
           }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Ensure Git Bash is available on Windows
         if: runner.os == 'Windows'
         shell: powershell
@@ -157,7 +157,7 @@ jobs:
           if (Test-Path frontend\node_modules) {
             Remove-Item -LiteralPath frontend\node_modules -Recurse -Force -ErrorAction SilentlyContinue
           }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Ensure Git Bash is available on Windows
         if: runner.os == 'Windows'
         shell: powershell
@@ -232,7 +232,7 @@ jobs:
         shell: bash
         working-directory: backend
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Detect available shell
@@ -405,7 +405,7 @@ jobs:
     runs-on: [self-hosted, tests, Windows]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: backend/go.mod
@@ -483,7 +483,7 @@ jobs:
         shell: bash
         working-directory: backend
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Detect available shell
         shell: powershell
         run: |
@@ -1097,7 +1097,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Detect available shell
         shell: powershell
