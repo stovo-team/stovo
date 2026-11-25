@@ -2,7 +2,7 @@
 
 FROM arigaio/atlas:1.3.2 AS atlas
 
-FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine3.21 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
