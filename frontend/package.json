@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:i18n": "node ../scripts/check-ui-localization.cjs --check",
+    "audit": "npm audit --audit-level=high",
     "lint": "node ../scripts/check-solid.cjs frontend",
     "lint:all": "node ../scripts/check-solid.cjs all",
     "baseline:update": "node ../scripts/check-solid.cjs --update",

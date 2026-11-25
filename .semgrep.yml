@@ -1,0 +1,41 @@
+rules:
+  - id: go-raw-sql-concat
+    message: "Avoid raw SQL string concatenation; use parameterized queries to prevent SQL injection."
+    languages: [go]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: $DB.Query(fmt.Sprintf(...), ...)
+          - pattern: $DB.Exec(fmt.Sprintf(...), ...)
+          - pattern: $DB.QueryRow(fmt.Sprintf(...), ...)
+          - pattern: $DB.Query($X + $Y, ...)
+          - pattern: $DB.Exec($X + $Y, ...)
+
+  - id: go-exec-subprocess
+    message: "Subprocess execution via exec.Command must be strictly bounded with context and validated inputs."
+    languages: [go]
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: exec.Command($CMD, ...)
+          - pattern: exec.CommandContext($CTX, $CMD, ...)
+
+  - id: go-tenant-scope-missing
+    message: "Multi-tenant queries must enforce family_id or tenant scope."
+    languages: [go]
+    severity: WARNING
+    patterns:
+      - pattern: $DB.QueryRow("SELECT ... FROM ... WHERE id = $1", ...)
+
+  - id: ts-dangerously-set-inner-html
+    message: "Avoid dangerouslySetInnerHTML to prevent XSS. Use DOMPurify when sanitizing and rendering HTML."
+    languages: [typescript, javascript]
+    severity: ERROR
+    pattern: |
+      <$TAG dangerouslySetInnerHTML={{__html: ...}} />
+
+  - id: ts-no-eval
+    message: "Use of eval() is strictly forbidden."
+    languages: [typescript, javascript]
+    severity: ERROR
+    pattern: eval(...)
