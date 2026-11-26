@@ -787,6 +787,16 @@
 .settings-page.settings-appearance-view .appearance-wallpaper-tile { aspect-ratio: unset !important; border-radius: 8px !important; flex: 0 0 56px !important; height: 38px !important; min-height: 38px !important; padding: 0 !important; }
 .settings-page.settings-appearance-view .appearance-mode-cards { align-items: center !important; display: flex !important; gap: 8px !important; justify-self: end !important; margin-left: auto !important; }
 .gradient-constructor-controls .color-picker__popover { left: 0; right: auto; }
-.settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline { align-items: center; gap: 12px; grid-template-columns: auto minmax(0, 1fr); }
-.settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .appearance-section-label { margin: 0; }
+@media (min-width: 721px) {
+  .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline { align-items: center; gap: 12px; grid-template-columns: auto minmax(0, 1fr); }
+  .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .appearance-section-label { margin: 0; }
+}
+@media (max-width: 720px) {
+  .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline { align-items: stretch; gap: 8px; grid-template-columns: 1fr; }
+  .settings-page.settings-appearance-view .appearance-presets-grid { display: grid !important; gap: 8px !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; justify-content: stretch !important; width: 100% !important; }
+  .settings-page.settings-appearance-view .appearance-presets-grid > .color-picker { display: flex; height: 100%; width: 100%; }
+  .settings-page.settings-appearance-view .appearance-preset-card { box-sizing: border-box !important; min-height: 60px !important; width: 100% !important; }
+  .settings-page.settings-appearance-view .appearance-wallpaper-grid { justify-content: flex-start !important; overflow-x: auto !important; scrollbar-width: none !important; width: 100% !important; }
+  .settings-page.settings-appearance-view .appearance-wallpaper-grid::-webkit-scrollbar { display: none; }
+}
 .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .appearance-wallpaper-upload-row, .settings-page.settings-appearance-view .appearance-section-card.appearance-section-card--inline > .error-text { grid-column: 1 / -1; }
