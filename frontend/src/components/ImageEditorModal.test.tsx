@@ -193,7 +193,7 @@ describe("ImageEditorModal", () => {
       const overlay = document.querySelector<HTMLElement>(".image-editor-crop-overlay");
       expect(overlay?.style.left).toBe("25%");
       expect(overlay?.style.width).toBe("50%");
-      await act(async () => { document.querySelector<HTMLButtonElement>(".image-editor-close-btn")?.click(); });
+      await act(async () => { document.querySelector<HTMLButtonElement>(".image-editor-btn-save")?.click(); });
       expect(drawImage).toHaveBeenCalledWith(image, 100, 0, 200, 200, 0, 0, 200, 200);
       expect(onSave).toHaveBeenCalledOnce();
       expect(onSave.mock.calls[0][0]).toMatchObject({ name: "photo.png", type: "image/png" });
@@ -202,6 +202,66 @@ describe("ImageEditorModal", () => {
       toBlob.mockRestore();
       vi.unstubAllGlobals();
     }
+  });
+
+  it("close button cancels and does not save changes even when dirty", async () => {
+    const image = { naturalWidth: 400, naturalHeight: 200, width: 400, height: 200, onload: null as null | (() => void), crossOrigin: "", src: "" };
+    vi.stubGlobal("Image", vi.fn(function () { return image; }));
+    const onClose = vi.fn();
+    const onSave = vi.fn();
+    try {
+      act(() => root?.render(<ImageEditorModal pending={{ localId: "crop", file: new File(["original"], "photo.png", { type: "image/png" }), previewUrl: "blob:photo" }} onClose={onClose} onSave={onSave} />));
+      act(() => image.onload?.());
+      act(() => document.querySelector<HTMLButtonElement>('[aria-label="Обрезать изображение"]')?.click());
+      const square = Array.from(document.querySelectorAll<HTMLButtonElement>(".crop-ratio-btn")).find((button) => button.textContent === "1:1");
+      act(() => square?.click());
+      // dirty is now true, so save button appears
+      expect(document.querySelector(".image-editor-btn-save")).not.toBeNull();
+      // click close button
+      act(() => { document.querySelector<HTMLButtonElement>(".image-editor-close-btn")?.click(); });
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(onSave).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("provides eraser and clear actions in drawing mode", () => {
+    const pending: PendingLocalAttachment = {
+      localId: "local:draw-tools",
+      file: new File(["dummy"], "photo.png", { type: "image/png" }),
+      previewUrl: "blob:http://localhost/photo"
+    };
+
+    act(() => {
+      root?.render(<ImageEditorModal pending={pending} onClose={vi.fn()} onSave={vi.fn()} />);
+    });
+
+    const drawTab = document.querySelector<HTMLButtonElement>('[aria-label="Рисовать на изображении"]');
+    act(() => {
+      drawTab?.click();
+    });
+
+    const options = Array.from(document.querySelectorAll<HTMLButtonElement>(".draw-tool-option"));
+    expect(options.length).toBe(2);
+    expect(options[0].textContent).toContain("Перо");
+    expect(options[1].textContent).toContain("Ластик");
+
+    // Initially pen is active and palette is visible
+    expect(document.querySelector(".color-palette")).not.toBeNull();
+
+    // Switch to eraser
+    act(() => {
+      options[1].click();
+    });
+    expect(options[1].classList.contains("is-active")).toBe(true);
+    // Color palette should be hidden in eraser mode
+    expect(document.querySelector(".color-palette")).toBeNull();
+
+    // Clear button exists
+    const clearBtn = document.querySelector<HTMLButtonElement>(".draw-clear-btn");
+    expect(clearBtn).not.toBeNull();
+    expect(clearBtn?.disabled).toBe(true);
   });
 
   it("renders selection button in header when onToggleSelect is provided", () => {
@@ -253,5 +313,14 @@ describe("ImageEditorModal", () => {
     const cropRatiosMatch = styles.match(/\.crop-ratios\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(cropRatiosMatch).toContain("flex-wrap: nowrap;");
     expect(cropRatiosMatch).toContain("overflow-x: auto;");
+  });
+
+  it("styles header with safe-area padding and 24px checkbox size", () => {
+    const styles = readCssSource("src/styles.css");
+    expect(styles).toContain(".image-editor-header { padding-top: max(calc(env(safe-area-inset-top, 0px) + 24px), 52px); }");
+
+    const checkboxMatch = styles.match(/\.image-editor-header\s+\.image-editor-select-btn\.media-tile-checkbox\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(checkboxMatch).toContain("width: 24px;");
+    expect(checkboxMatch).toContain("height: 24px;");
   });
 });

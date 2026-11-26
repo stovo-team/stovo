@@ -1446,9 +1446,10 @@
 .image-editor-footer { background: linear-gradient(0deg, var(--color-palette-554de51a1e86), transparent); border: 0; bottom: 0; left: 0; padding: 12px 14px max(12px, env(safe-area-inset-bottom)); position: absolute; right: 0; z-index: 4; }
 
 /* Image editor: crop directly on the image. */
-.image-editor-header { padding-top: calc(env(safe-area-inset-top) + 16px); }
-.image-editor-modal .image-editor-close-btn { background: #414146; border: 0; border-radius: 50%; color: #fff; flex: 0 0 40px; height: 40px; min-height: 40px; min-width: 40px; padding: 0; width: 40px; }
-.image-editor-stage { padding: 76px 16px 150px; }
+.image-editor-header { padding-top: max(calc(env(safe-area-inset-top, 0px) + 24px), 52px); }
+.image-editor-modal .image-editor-close-btn { background: #414146; border: 0; border-radius: 50%; color: #fff; flex: 0 0 40px; height: 40px; min-height: 40px; min-width: 40px; padding: 0; width: 40px; position: relative; top: auto; right: auto; }
+.image-editor-header .image-editor-btn-save { height: 36px; padding: 0 14px; font-size: var(--font-size-small); border-radius: var(--radius-pill); gap: 6px; }
+.image-editor-stage { padding: max(calc(env(safe-area-inset-top, 0px) + 76px), 104px) 16px 150px; }
 .image-editor-preview-wrapper { height: auto; max-height: 100%; }
 .image-editor-stage.is-cropping .image-editor-preview-wrapper { transform: scale(.9); }
 .image-editor-base-img { height: auto; max-height: calc(100dvh - 226px); width: auto; }
@@ -1462,5 +1463,10 @@
 .crop-corner--tr, .crop-corner--bl { cursor: nesw-resize; }
 .image-editor-crop-controls { display: flex; flex-direction: row; align-items: center; gap: 10px; width: 100%; min-width: 0; max-width: 100%; }
 .image-editor-rotate { flex: 0 0 44px; flex-shrink: 0; }
-.image-editor-header .image-editor-select-btn.media-tile-checkbox { flex: 0 0 32px; height: 32px; max-height: 32px; max-width: 32px; min-height: 32px; min-width: 32px; position: relative; right: auto; top: auto; width: 32px; cursor: pointer; z-index: 2; }
+.image-editor-header .image-editor-select-btn.media-tile-checkbox { flex: 0 0 24px; height: 24px; max-height: 24px; max-width: 24px; min-height: 24px; min-width: 24px; position: relative; right: auto; top: auto; width: 24px; cursor: pointer; z-index: 2; }
+.draw-tool-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.draw-tool-option { align-items: center; background: var(--color-palette-c34f5a2a4d80); border: 1px solid transparent; border-radius: var(--radius-pill); color: var(--text-secondary, var(--color-palette-cc68d0a3a0c5)); cursor: pointer; display: inline-flex; font-size: var(--font-size-caption); gap: 6px; min-height: 32px; padding: 6px 12px; }
+.draw-tool-option.is-active { background: color-mix(in oklab, var(--accent-primary, var(--color-palette-3398ce8a6140)) 28%, transparent); border-color: var(--accent-primary, var(--color-palette-3398ce8a6140)); color: var(--text-primary, var(--color-palette-f2074b6cef37)); }
+.draw-actions { display: flex; align-items: center; gap: 8px; }
+
 

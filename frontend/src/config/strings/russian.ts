@@ -1840,6 +1840,7 @@ export const strings = {
     contrast: "Контрастность", gamma: "Гамма", aspectRatio: "Соотношение сторон:", xOffset: "Смещение по X", yOffset: "Смещение по Y", width: "Ширина", height: "Высота",
     color: "Цвет:", selectColor: (hex: string) => `Выбрать цвет ${hex}`, penSize: "Размер пера", pen: "Перо:", brushSize: "Размер кисти",
     fine: "Тонкое", medium: "Среднее", bold: "Толстое", undoStroke: "Отменить штрих", cancel: "Отмена", saving: "Сохранение…", done: "Готово",
+    eraser: "Ластик", clearDrawing: "Очистить", mode: "Режим", penMode: "Перо",
   },
   wallpaperEditor: {
     title: "Редактирование фона чата",
