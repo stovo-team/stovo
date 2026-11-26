@@ -19,9 +19,9 @@ type: workflow
 - Group a pull request around one coherent section of work. Keep each PR focused. Split larger work into coherent PRs; do not hide changes in baselines or exclusions.
 - Use a clear, descriptive commit message. Pull request titles must use one of these exact prefixes: `Feature:`, `Fix:`, `CritFix:`, `Test:`, `Docs:`. Match the primary commit message, replacing its square-bracket category with the corresponding colon prefix (for example, `[Docs] clarify workflow` becomes `Docs: clarify workflow`).
 - Write pull request titles, descriptions, and comments in English. Do not assign or request reviewers by default. Add an appropriate label to every pull request. Link issues and projects only when they exist; do not invent associations.
-- Explain the logical change, why it is needed, and relevant verification in the description.
-
-### Stacked pull requests (PR stacks)
+- Explain the logical change, why it is needed, and relevant verification in the description. Format the description using progressive disclosure per [.github/PULL_REQUEST_TEMPLATE.md](../../.github/PULL_REQUEST_TEMPLATE.md):
+  - **Tier 1 (5-Second Quick Glance)**: Top-level `> [!NOTE]` callout with 🔴 Problem / Trigger, 🟢 Fix / Change, 🛡️ Scope & Impact, a compact component risk table, and a mandatory visual Mermaid diagram (`flowchart LR` for bug fixes/infra/configs or `sequenceDiagram` for features/logic).
+  - **Tier 2 (Deep Dive)**: Full sections for detailed problem & behavior, architecture/call trace, TDD Red-Green verification, test commands, visual evidence, security/isolation risks, and a reproducible 3-step manual review script.
 
 When a task, feature, or refactoring requires substantial code changes (targeting near or below 300–400 lines, and strictly capped at a large change), or when changes naturally span multiple architectural boundaries, partition the work into a logical stack of pull requests.
 
