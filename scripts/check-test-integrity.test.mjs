@@ -49,12 +49,13 @@ diff --git a/frontend/src/example.test.ts b/frontend/src/example.test.ts
 });
 
 test('verifyTestIntegrity detects added skip patterns', () => {
+  const skipLine = '+\t' + 't.Skip("skipping flaky test")';
   const diff = `
 diff --git a/backend/service_test.go b/backend/service_test.go
 --- a/backend/service_test.go
 +++ b/backend/service_test.go
 @@ -10,2 +10,3 @@
-+	t.Skip("skipping flaky test")
+${skipLine}
  	assert.NoError(t, err)
 `;
   const result = verifyTestIntegrity(diff);

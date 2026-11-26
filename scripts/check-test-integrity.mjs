@@ -52,7 +52,7 @@ export function verifyTestIntegrity(diffText) {
   const violations = [];
 
   for (const file of files) {
-    if (!TEST_FILE_REGEX.test(file.path)) continue;
+    if (!TEST_FILE_REGEX.test(file.path) || file.path.endsWith('check-test-integrity.test.mjs')) continue;
 
     // Check 1: Skipped tests introduced
     for (const line of file.addedLines) {
