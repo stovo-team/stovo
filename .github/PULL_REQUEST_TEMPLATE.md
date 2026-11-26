@@ -55,14 +55,14 @@ Detail automated verification and visual evidence:
 <!-- 
   REQUIREMENTS:
   - FRONTEND PR: Mandatory real screenshot images (Before and After) under mock server.
-    Embed real markdown images: ![Before](url) and ![After](url) or <img>.
+    Embed real markdown images: `![Before](url)` and `![After](url)` or `<img>`.
   - BACKEND PR: Visual screenshots are N/A; automated test outputs are required.
 -->
 
 ### Visual Evidence (Frontend)
 | Before (defect / prior) | After (fixed / current) |
 | :---: | :---: |
-| <!-- ![Before](url) --> | <!-- ![After](url) --> |
+| <!-- `![Before](url)` --> | <!-- `![After](url)` --> |
 
 ## Risks and manual review
 
