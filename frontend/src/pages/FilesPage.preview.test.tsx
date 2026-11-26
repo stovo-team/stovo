@@ -240,5 +240,27 @@ describe("Storage file preview", () => {
     expect(titleH2?.textContent).toBe(longName);
     expect(titleH2?.getAttribute("title")).toBe(longName);
   });
+
+  it("does not enlarge or open ImageLightbox on mobile viewports", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn((query: string) => ({
+        matches: query.includes("max-width: 1024px"),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+
+    const host = await renderPage([file("photo-1", "Family photo.jpg", "chat-family", "Family chat")]);
+    await act(async () => host.querySelector<HTMLButtonElement>("[data-storage-file-id]")?.click());
+
+    expect(host.querySelector(".storage-preview-dialog")).not.toBeNull();
+    expect(host.querySelector('[data-testid="image-lightbox"]')).toBeNull();
+
+    const previewImg = host.querySelector<HTMLImageElement>(".storage-preview-media > img");
+    expect(previewImg).not.toBeNull();
+    await act(async () => previewImg?.click());
+    expect(host.querySelector('[data-testid="image-lightbox"]')).toBeNull();
+  });
 });
 

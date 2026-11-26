@@ -101,5 +101,13 @@ describe("storage mobile fullscreen preview layout and metadata containment", ()
     expect(styles).not.toMatch(/\.storage-mobile-detail-header\s*\{[^}]*margin:\s*-[0-9]+px/);
     expect(styles).not.toMatch(/\.storage-mobile-detail-header\s*\{[^}]*top:\s*-[0-9]+px/);
   });
+
+  it("aligns control buttons on the same row with the close button and hides fullscreen expansion on mobile", () => {
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-fullscreen-btn\s*\{[^}]*display:\s*none\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-actions\s*\{[^}]*position:\s*absolute\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-actions\s*\{[^}]*right:\s*68px\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog\s+\.popup-close\s*\{[^}]*width:\s*44px\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog\s+\.storage-mobile-detail-header\s*\{[^}]*padding:\s*0\s+172px/);
+  });
 });
 

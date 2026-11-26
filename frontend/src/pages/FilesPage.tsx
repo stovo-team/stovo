@@ -837,11 +837,13 @@ export default function FilesPage() {
                   {accessToken && <button type="button" aria-label={strings.files.download} title={strings.files.download} onClick={() => void saveFileToDisk(accessToken, selectedFile)}><Download aria-hidden="true" size={20} /></button>}
                   <button
                     type="button"
+                    className="storage-preview-fullscreen-btn"
                     aria-label={strings.files.fullScreen}
                     aria-pressed={isPreviewExpanded}
                     title={strings.files.fullScreen}
                     onClick={() => {
-                      if (fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
                         setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
                       }
                       setIsPreviewExpanded((expanded) => !expanded);
@@ -872,22 +874,24 @@ export default function FilesPage() {
                     key={selectedFile.id}
                     src={selectedFilePreviewUrl}
                     alt={selectedFile.originalName}
-                    role={fileKind(selectedFile) === "photos" ? "button" : undefined}
-                    tabIndex={fileKind(selectedFile) === "photos" ? 0 : undefined}
+                    role={typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? "button" : undefined}
+                    tabIndex={typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? 0 : undefined}
                     onClick={() => {
-                      if (fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
                         setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
                       }
                     }}
                     onKeyDown={(event) => {
-                      if (fileKind(selectedFile) === "photos" && selectedFilePreviewUrl && (event.key === "Enter" || event.key === " ")) {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl && (event.key === "Enter" || event.key === " ")) {
                         event.preventDefault();
                         setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
                       }
                     }}
                     style={{
                       ...storagePreviewVideoStyle(previewImageSize.fileId === selectedFile.id ? previewImageSize.width : 16, previewImageSize.fileId === selectedFile.id ? previewImageSize.height : 9, window.innerWidth, window.innerHeight, isPreviewExpanded),
-                      cursor: fileKind(selectedFile) === "photos" ? "pointer" : undefined,
+                      cursor: typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? "pointer" : undefined,
                     }}
                     onLoad={(event) => setPreviewImageSize({ fileId: selectedFile.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
                   />
