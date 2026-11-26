@@ -179,28 +179,34 @@ export function validatePrDescription(body, options = {}) {
   }
 
   // Determine scope: frontend vs backend
-  let isFrontend = options.frontend === true || options.frontend === 'true' || options.scope === 'frontend';
-  let isBackend = options.backend === true || options.backend === 'true' || options.scope === 'backend';
+  const hasExplicitFrontend = options.frontend !== undefined;
+  const hasExplicitBackend = options.backend !== undefined;
+  const hasExplicitScope = options.scope !== undefined;
 
-  if (!isFrontend && !isBackend) {
-    if (options.scope === 'fullstack') {
+  let isFrontend = false;
+  let isBackend = false;
+
+  if (hasExplicitScope) {
+    if (options.scope === 'frontend') isFrontend = true;
+    else if (options.scope === 'backend') isBackend = true;
+    else if (options.scope === 'fullstack') { isFrontend = true; isBackend = true; }
+  } else if (hasExplicitFrontend || hasExplicitBackend) {
+    isFrontend = options.frontend === true || options.frontend === 'true';
+    isBackend = options.backend === true || options.backend === 'true';
+  } else {
+    // Auto-detect from table / text if table rows explicitly reference frontend or backend
+    const tableMatch = text.match(/\|[^\n]+\|[^\n]+\|\s*\n\s*\|(?:\s*:?-+:?\s*\|)+\s*\n([\s\S]*?)(?:\n\s*\n|---|\n##)/m);
+    const tableRows = tableMatch ? tableMatch[1] : '';
+    const hasFrontendRef = /\bfrontend\/(?:src|public|index\.html)\b/i.test(tableRows);
+    const hasBackendRef = /\bbackend\/(?:cmd|internal|pkg|api)\b|\bdeploy\/(?:compose|migrations)\b/i.test(tableRows);
+
+    if (hasFrontendRef && !hasBackendRef) {
+      isFrontend = true;
+    } else if (hasBackendRef && !hasFrontendRef) {
+      isBackend = true;
+    } else if (hasFrontendRef && hasBackendRef) {
       isFrontend = true;
       isBackend = true;
-    } else {
-      // Auto-detect from table / text if table rows explicitly reference frontend or backend
-      const tableMatch = text.match(/\|[^\n]+\|[^\n]+\|\s*\n\s*\|(?:\s*:?-+:?\s*\|)+\s*\n([\s\S]*?)(?:\n\s*\n|---|\n##)/m);
-      const tableRows = tableMatch ? tableMatch[1] : '';
-      const hasFrontendRef = /\b(?:frontend|ui|components?|styles?|css|modal|dialog|button|page|view)\b/i.test(tableRows);
-      const hasBackendRef = /\b(?:backend|api|server|database|db|migration|redis|postgres|pipeline|docker)\b/i.test(tableRows);
-
-      if (hasFrontendRef && !hasBackendRef) {
-        isFrontend = true;
-      } else if (hasBackendRef && !hasFrontendRef) {
-        isBackend = true;
-      } else if (hasFrontendRef && hasBackendRef) {
-        isFrontend = true;
-        isBackend = true;
-      }
     }
   }
 
