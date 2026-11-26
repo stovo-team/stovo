@@ -39,6 +39,7 @@ jobs:
 
   pipeline-contract:
     name: Pipeline Contract
+    needs: changes
     if: github.event.pull_request.draft == false
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","Windows","tests"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 10
@@ -74,11 +75,11 @@ jobs:
         shell: bash
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
-        run: node scripts/agent-workflows/validate-pr-description.mjs --body "$PR_BODY"
+        run: node scripts/agent-workflows/validate-pr-description.mjs --body "$PR_BODY" --frontend "${{ needs.changes.outputs.frontend }}" --backend "${{ needs.changes.outputs.backend }}"
   frontend_dependencies:
     name: Prepare frontend dependencies
-    needs: changes
-    if: ${{ !cancelled() && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.frontend == 'true' }}
+    needs: [changes, pipeline-contract]
+    if: ${{ !cancelled() && needs.pipeline-contract.result == 'success' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.frontend == 'true' }}
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","e2e"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 20
     env:
@@ -218,9 +219,11 @@ jobs:
 
   backend_test_shards:
     name: Backend CI test shards
-    needs: changes
+    needs: [changes, pipeline-contract, backend_lint]
     if: >-
       !cancelled() &&
+      needs.pipeline-contract.result == 'success' &&
+      needs.backend_lint.result == 'success' &&
       github.event.pull_request.draft == false &&
       needs.changes.outputs.backend == 'true'
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
@@ -348,8 +351,8 @@ jobs:
 
   backend_lint:
     name: Backend Go lint
-    needs: changes
-    if: ${{ !cancelled() && github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true' }}
+    needs: [changes, pipeline-contract]
+    if: ${{ !cancelled() && needs.pipeline-contract.result == 'success' && github.event.pull_request.draft == false && needs.changes.outputs.backend == 'true' }}
     runs-on: ${{ github.event.pull_request.head.repo.full_name == github.repository && fromJSON('["self-hosted","tests","Windows"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 15
     steps:

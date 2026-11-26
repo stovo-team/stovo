@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { validatePrDescription, validateMermaid } from './validate-pr-description.mjs';
+import { validatePrDescription, validateMermaid, extractVisualEvidence } from './validate-pr-description.mjs';
 
 const VALID_SAMPLE = `> [!NOTE]
 > ### ⚡ 5-Second Quick Glance
@@ -44,10 +44,75 @@ Low risk; build time only.
 2. Verify exit code is 0.
 `;
 
+const VALID_FRONTEND_SAMPLE = `> [!NOTE]
+> ### ⚡ 5-Second Quick Glance
+>
+> * 🔴 **PROBLEM** ➔ **Button Overflow:** Chat action button text overflowed viewport on mobile screen sizes.
+> * 🟢 **SOLUTION** ➔ **Responsive Flex:** Applied responsive layout tokens and min-width constraints.
+> * 🛡️ **IMPACT** ➔ **Low Risk:** Mobile chat layout styling only.
+
+| Area / Component | Change Summary | Production Risk |
+| :--- | :--- | :---: |
+| frontend/src/components/ChatButton.tsx | Responsive width style | 🟢 Low |
+
+---
+
+## Problem and behavior
+Button overflow on screen widths below 380px.
+
+## Visual Evidence & Architecture
+UI component visual hierarchy.
+
+## Evidence & TDD Verification
+- npm test passed.
+- Visual evidence (before/after screenshots on mock server):
+| Before | After |
+| :---: | :---: |
+| ![Before](https://raw.githubusercontent.com/stovo-team/stovo/evidence/before.png) | ![After](https://raw.githubusercontent.com/stovo-team/stovo/evidence/after.png) |
+
+## Risks and manual review
+1. Open mobile viewport 375px.
+2. Observe button fits without scrollbar.
+`;
+
 test('valid PR description with high-contrast Note and valid Mermaid passes', () => {
   const result = validatePrDescription(VALID_SAMPLE);
   assert.equal(result.ok, true, JSON.stringify(result.errors));
   assert.equal(result.errors.length, 0);
+});
+
+test('frontend PR with visual screenshot evidence passes without Mermaid', () => {
+  const result = validatePrDescription(VALID_FRONTEND_SAMPLE, { scope: 'frontend' });
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+  assert.equal(result.scope, 'frontend');
+});
+
+test('frontend PR without visual screenshots fails static validation', () => {
+  const noScreenshots = VALID_FRONTEND_SAMPLE.replace(/!\[.*?\]\(.*?\)/g, '');
+  const result = validatePrDescription(noScreenshots, { scope: 'frontend' });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('; '), /Frontend PR requires real visual screenshot evidence/);
+});
+
+test('backend PR without Mermaid fails static validation', () => {
+  const noMermaid = VALID_SAMPLE.replace(/```mermaid[\s\S]*?```/, '');
+  const result = validatePrDescription(noMermaid, { scope: 'backend' });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join('; '), /Backend PR requires an architecture visual diagram/);
+});
+
+test('extractVisualEvidence extracts markdown and html images ignoring placeholders', () => {
+  const text = `
+    <!-- comment ![ignore](foo.png) -->
+    ![before](https://example.com/b.png)
+    <img src="https://example.com/a.png" width="400"/>
+    ![fake](placeholder)
+    ![empty]()
+  `;
+  const res = extractVisualEvidence(text);
+  assert.equal(res.length, 2);
+  assert.equal(res[0].url, 'https://example.com/b.png');
+  assert.equal(res[1].url, 'https://example.com/a.png');
 });
 
 test('Mermaid validator detects invalid arrow labels with quotes', () => {
