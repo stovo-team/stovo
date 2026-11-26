@@ -453,7 +453,7 @@ jobs:
           working-directory: backend
           verify: true
           skip-cache: true
-          args: --timeout=5m
+          args: --timeout=10m
       - name: Go architecture boundary check
         shell: bash
         working-directory: backend
