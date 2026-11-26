@@ -2099,41 +2099,11 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-page .storage-metadata-action:hover { background: var(--surface-raised); }
 .storage-page .storage-metadata-action.storage-delete-icon { color: var(--danger); }
 .storage-page .storage-metadata-action svg { flex: 0 0 17px; }
-.storage-page .storage-metadata-information-dialog {
-  border-radius: var(--radius-panel, 20px) !important;
-  box-sizing: border-box !important;
-  display: grid;
-  gap: 16px;
-  margin: auto !important;
-  max-width: min(360px, calc(100vw - 32px)) !important;
-  padding: 20px !important;
-  position: relative !important;
-  width: min(360px, calc(100vw - 32px)) !important;
-  z-index: 1050 !important;
-}
+.storage-page .storage-metadata-information-dialog { border-radius: var(--radius-panel, 20px) !important; box-sizing: border-box !important; display: grid; gap: 16px; margin: auto !important; max-width: min(360px, calc(100vw - 32px)) !important; padding: 20px !important; position: relative !important; width: min(360px, calc(100vw - 32px)) !important; z-index: 1050 !important; }
 .storage-page .storage-metadata-information-dialog h2 { margin: 0; padding-right: 40px; }
-.storage-page .storage-metadata-information-dialog .file-detail-list {
-  background: var(--surface-raised, rgba(255, 255, 255, 0.04)) !important;
-  border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-card, 16px) !important;
-  box-shadow: none !important;
-  display: grid !important;
-  gap: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-}
-.storage-page .storage-metadata-information-dialog .file-detail-list > div {
-  border: 0 !important;
-  border-bottom: 1px solid var(--border-default) !important;
-  box-sizing: border-box !important;
-  display: grid !important;
-  gap: 2px !important;
-  padding: 10px 14px !important;
-}
-.storage-page .storage-metadata-information-dialog .file-detail-list > div:last-child {
-  border-bottom: 0 !important;
-}
+.storage-page .storage-metadata-information-dialog .file-detail-list { background: var(--surface-raised, rgba(255, 255, 255, 0.04)) !important; border: 1px solid var(--border-default) !important; border-radius: var(--radius-card, 16px) !important; box-shadow: none !important; display: grid !important; gap: 0 !important; margin: 0 !important; overflow: hidden !important; padding: 0 !important; }
+.storage-page .storage-metadata-information-dialog .file-detail-list > div { border: 0 !important; border-bottom: 1px solid var(--border-default) !important; box-sizing: border-box !important; display: grid !important; gap: 2px !important; padding: 10px 14px !important; }
+.storage-page .storage-metadata-information-dialog .file-detail-list > div:last-child { border-bottom: 0 !important; }
 .storage-page .storage-metadata-information-dialog .file-detail-list dt { color: var(--text-secondary); font-size: var(--font-size-caption); font-weight: var(--font-weight-semibold); }
 .storage-page .storage-metadata-information-dialog .file-detail-list dd { color: var(--text-primary); font-size: var(--font-size-small); margin: 0; overflow-wrap: anywhere; }
 .storage-page .storage-search-tools { align-items: flex-start; display: flex; gap: 8px; max-width: none; min-width: 0; width: 100%; }
@@ -2162,79 +2132,13 @@ button.minimized-call-button--end:active:not(:disabled) {
 .storage-page .storage-group-heading { color: var(--text-secondary); font-size: var(--font-size-small); font-weight: var(--font-weight-semibold); margin: 0; }
 
 @media (max-width: 1024px) {
-  .storage-page.has-storage-selection > .app-nav {
-    display: none !important;
-  }
-
-  .storage-page .storage-preview-backdrop {
-    background: var(--background-primary, #0d1117) !important;
-    inset: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    place-items: stretch !important;
-    z-index: 1000 !important;
-  }
-
-  .storage-page .storage-preview-dialog,
-  .storage-page .storage-preview-dialog.is-expanded {
-    background: var(--background-primary, #0d1117) !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    box-sizing: border-box !important;
-    display: grid !important;
-    gap: 8px !important;
-    grid-template-rows: auto minmax(0, 1fr) !important;
-    height: 100dvh !important;
-    inset: 0 !important;
-    margin: 0 !important;
-    max-height: 100dvh !important;
-    max-width: 100vw !important;
-    min-height: 100dvh !important;
-    overflow: hidden !important;
-    padding: max(16px, env(safe-area-inset-top, 16px)) 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px !important;
-    position: fixed !important;
-    width: 100vw !important;
-  }
-
-  .storage-page .storage-preview-dialog .storage-preview,
-  .storage-page .storage-preview-dialog .storage-preview-frame {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    max-width: 100% !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-  }
-
-  .storage-page .storage-preview-dialog .storage-preview-media {
-    align-items: center !important;
-    display: flex !important;
-    flex: 1 1 auto !important;
-    height: 100% !important;
-    justify-content: center !important;
-    max-height: 100% !important;
-    max-width: 100% !important;
-    min-height: 0 !important;
-    position: relative !important;
-    width: 100% !important;
-  }
-
-  .storage-page .storage-preview-dialog .storage-preview-media > img {
-    height: auto !important;
-    max-height: 100% !important;
-    max-width: 100% !important;
-    object-fit: contain !important;
-    width: auto !important;
-  }
-
-  .storage-page .storage-preview-dialog .storage-preview-media > .video-player {
-    max-height: 100% !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
+  .storage-page.has-storage-selection > .app-nav { display: none !important; }
+  .storage-page .storage-preview-backdrop { background: var(--background-primary, #0d1117) !important; inset: 0 !important; margin: 0 !important; padding: 0 !important; place-items: stretch !important; z-index: 1000 !important; }
+  .storage-page .storage-preview-dialog, .storage-page .storage-preview-dialog.is-expanded { background: var(--background-primary, #0d1117) !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; box-sizing: border-box !important; display: grid !important; gap: 8px !important; grid-template-rows: auto minmax(0, 1fr) !important; height: 100dvh !important; inset: 0 !important; margin: 0 !important; max-height: 100dvh !important; max-width: 100vw !important; min-height: 100dvh !important; overflow: hidden !important; padding: max(16px, env(safe-area-inset-top, 16px)) 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px !important; position: fixed !important; width: 100vw !important; }
+  .storage-page .storage-preview-dialog .storage-preview, .storage-page .storage-preview-dialog .storage-preview-frame { display: flex !important; flex-direction: column !important; height: 100% !important; max-height: 100% !important; max-width: 100% !important; min-height: 0 !important; padding: 0 !important; width: 100% !important; }
+  .storage-page .storage-preview-dialog .storage-preview-media { align-items: center !important; display: flex !important; flex: 1 1 auto !important; height: 100% !important; justify-content: center !important; max-height: 100% !important; max-width: 100% !important; min-height: 0 !important; position: relative !important; width: 100% !important; }
+  .storage-page .storage-preview-dialog .storage-preview-media > img { height: auto !important; max-height: 100% !important; max-width: 100% !important; object-fit: contain !important; width: auto !important; }
+  .storage-page .storage-preview-dialog .storage-preview-media > .video-player { max-height: 100% !important; max-width: 100% !important; width: 100% !important; }
 }
 
 .storage-page .storage-layout { position: relative; }
