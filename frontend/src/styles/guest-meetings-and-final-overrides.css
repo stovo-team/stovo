@@ -1473,11 +1473,8 @@
   }
 
   .app-frame:not(.has-active-chat) {
-    box-sizing: border-box;
-    max-width: 100vw;
-    min-width: 0;
-    overflow-x: clip;
-    width: 100%;
+    box-sizing: border-box; max-width: 100vw; min-width: 0;
+    overflow-x: clip; width: 100%;
   }
 
   .app-frame:not(.has-active-chat) > .app-nav {
@@ -1485,10 +1482,11 @@
     left: max(var(--nav-pill-inset-x), env(safe-area-inset-left));
     position: fixed !important;
     right: max(var(--nav-pill-inset-x), env(safe-area-inset-right));
-    top: auto;
-    width: auto;
-    z-index: 100;
+    top: auto; width: auto; z-index: 100;
   }
+
+  .app-frame:not(.has-active-chat) > .app-nav .app-nav-links { display: flex; flex: 1; gap: 0; min-width: 0; }
+  .app-frame:not(.has-active-chat) > .app-nav .app-nav-links > a { flex: 1; min-width: 0; }
 
   .settings-page > .settings-layout,
   .admin-page > .admin-surface {

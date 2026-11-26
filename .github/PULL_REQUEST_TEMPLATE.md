@@ -15,16 +15,15 @@
 
 | Area / Component | Change Summary | Production Risk |
 | :--- | :--- | :---: |
-| <!-- e.g. backend/Dockerfile --> | <!-- e.g. Upgrade Go builder to 1.26-alpine --> | 🟢 Low (Build-only) |
+| <!-- e.g. frontend/src/components/ChatButton.tsx or backend/internal/service.go --> | <!-- Summary of change --> | 🟢 Low |
 
 ---
 
 ## Problem and behavior
 
 Describe the concrete trigger, user impact, and resulting behavior in detail.
-- Link approved SDD contract / specification:
-- Related issue (if any):
-- PR stack index (target <= 300 LOC, strict <= 400 LOC):
+- Link related issue / task (if any):
+- PR stack index (target <= 300 LOC):
 
 <details>
 <summary>🇷🇺 <b>Описание на русском (по желанию)</b></summary>
@@ -34,33 +33,40 @@ Describe the concrete trigger, user impact, and resulting behavior in detail.
 
 ## Architecture and Call Trace
 
-Describe the affected layers, flows, and callers.
+Describe the affected layers, flows, or UI components.
 
-**Mandatory visual diagram (choose one):**
-- **Horizontal Flowchart (`flowchart LR`)**: Default for bug fixes, configs, Docker, migrations, pipelines. Flowcharts must be horizontal (`LR`) to optimize vertical screen real estate. Always use `-->|label|` for arrow text (never `-- "text" -->`), and `<br/>` for multiline text inside `["labels"]`.
-- **Sequence diagram (`sequenceDiagram`)**: For multi-component features, API requests, state machines.
+<!-- 
+  REQUIREMENTS:
+  - BACKEND PR: Mandatory Mermaid visual diagram (flowchart LR or sequenceDiagram).
+  - FRONTEND PR: Mermaid is optional; describe UI structure or provide diagram if helpful.
+-->
 
 ```mermaid
-sequenceDiagram
-    participant Caller
-    participant Core
-    participant Adapter
-    Caller->>Core: Invocation
-    Core->>Adapter: Operation
+flowchart LR
+    Caller --> Service --> Adapter
 ```
 
 ## Evidence & TDD Verification
 
-Detail the TDD Red-Green cycle and automated verification:
-- Observable tests added before implementation (confirming Red failure):
-- Implementation changes making tests pass (Green):
-- Exact commands and results:
-- Acceptance coverage & independent QA:
-- Visual evidence (before/after screenshot links reproduced on mock server): Not applicable / Attached below.
+Detail automated verification and visual evidence:
+- Tests added or verified (Red-Green TDD cycle):
+- Exact commands and results (e.g. npm test, go test, scripts/pre-pr.sh):
+
+<!-- 
+  REQUIREMENTS:
+  - FRONTEND PR: Mandatory real screenshot images (Before and After) under mock server.
+    Embed real markdown images: ![Before](url) and ![After](url) or <img>.
+  - BACKEND PR: Visual screenshots are N/A; automated test outputs are required.
+-->
+
+### Visual Evidence (Frontend)
+| Before (defect / prior) | After (fixed / current) |
+| :---: | :---: |
+| <!-- ![Before](url) --> | <!-- ![After](url) --> |
 
 ## Risks and manual review
 
-Explain material risks, security considerations (tenant isolation, replay protection), and a short reproducible manual review scenario:
+Explain material risks and provide 1-2-3 reproducible manual verification steps:
 1. <!-- Step 1: Open ... -->
 2. <!-- Step 2: Perform action ... -->
 3. <!-- Step 3: Observe expected result ... -->
