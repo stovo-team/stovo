@@ -2,19 +2,12 @@
 
 <!-- okf:generated:start -->
 Changed files:
-- `.github/PULL_REQUEST_TEMPLATE.md`
-- `.github/dependabot.yml`
-- `.github/workflows/codeql.yml`
-- `.github/workflows/security.yml`
-- `.gitleaks.toml`
-- `.okf/application/overview.md`
-- `.okf/architecture/index.md`
-- `.okf/changes/current.md`
-- `.okf/index.md`
-- `.okf/manifest.yaml`
-- `.okf/operations/development.md`
-- `.okf/workflows/index.md`
-- `.pre-commit-config.yaml`
-- `.semgrep.yml`
-- `AGENTS.md`
+- `frontend/src/components/ImageEditorModal.tsx`
+- `frontend/src/components/ImageEditorModal.test.tsx`
+- `frontend/src/components/AttachmentPickerSheet.tsx`
+- `frontend/src/config/strings/english.ts`
+- `frontend/src/config/strings/russian.ts`
+- `frontend/src/design-system/palette.ts`
+- `frontend/src/styles/attachment-picker.css`
+- `frontend/src/styles/image-editors.css`
 <!-- okf:generated:end -->

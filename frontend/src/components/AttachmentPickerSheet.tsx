@@ -773,6 +773,9 @@ export default function AttachmentPickerSheet({
             setEditingMediaItemId(null);
           }}
           onSave={(editedFile) => {
+            if (editingMediaItemId && selectedItemIds.includes(editingMediaItemId)) {
+              toggleSelection(editingMediaItemId);
+            }
             onSelectFiles?.([editedFile]);
             setEditingAttachment(null);
             setEditingMediaItemId(null);
