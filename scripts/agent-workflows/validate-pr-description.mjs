@@ -99,7 +99,29 @@ export function validateMermaid(diagram) {
   };
 }
 
-export function validatePrDescription(body) {
+export function extractVisualEvidence(text) {
+  const clean = String(text ?? '').replace(/<!--[\s\S]*?-->/g, '');
+  const markdownImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const htmlImgRegex = /<img\s+[^>]*src=["']([^"']+)["']/gi;
+  const matches = [];
+  let m;
+  while ((m = markdownImgRegex.exec(clean)) !== null) {
+    const alt = m[1].trim();
+    const url = m[2].trim();
+    if (url && !/^(?:\(prior\)|placeholder|none|n\/a|\s*)$/i.test(url)) {
+      matches.push({ alt, url });
+    }
+  }
+  while ((m = htmlImgRegex.exec(clean)) !== null) {
+    const url = m[1].trim();
+    if (url && !/^(?:\(prior\)|placeholder|none|n\/a|\s*)$/i.test(url)) {
+      matches.push({ alt: '', url });
+    }
+  }
+  return matches;
+}
+
+export function validatePrDescription(body, options = {}) {
   const errors = [];
   const text = String(body ?? '').trim();
   if (!text) {
@@ -113,17 +135,15 @@ export function validatePrDescription(body) {
 
   // 2. Check 5-Second Quick Glance callout
   const hasNoteCallout = />\s*\[!NOTE\]/i.test(text);
-  const hasQuickGlanceHeader = /###\s*⚡?\s*(?:5-Second\s+)?Quick Glance/i.test(text);
-  if (!hasNoteCallout || !hasQuickGlanceHeader) {
-    errors.push('Missing top-level "> [!NOTE] ### ⚡ 5-Second Quick Glance" callout');
+  if (!hasNoteCallout) {
+    errors.push('Missing top-level "> [!NOTE]" 5-Second Quick Glance callout');
   }
 
   // Check 🔴 Problem
-  const problemMatch = text.match(/🔴\s*\*\*(?:PROBLEM|Problem|Trigger)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
+  const problemMatch = text.match(/🔴\s*\*\*(?:PROBLEM|Problem|Trigger|ПРОБЛЕМА|Проблема)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
   if (!problemMatch || !problemMatch[1].replace(/<!--.*?-->/g, '').trim()) {
-    errors.push('Quick Glance is missing non-empty "🔴 **PROBLEM / Trigger:**" summary');
+    errors.push('Quick Glance is missing non-empty "🔴 **PROBLEM / ПРОБЛЕМА:**" summary');
   } else {
-    // Check for bold contrast / punchline formatting (e.g. **Punchline:** or bold phrase)
     const content = problemMatch[1].trim();
     if (!/\*\*[^*]+\*\*/.test(content) && !/➔/.test(problemMatch[0])) {
       errors.push('Quick Glance Problem line must include high-contrast bold punchline (e.g. "🔴 **PROBLEM** ➔ **[Core issue in bold]:** details")');
@@ -131,9 +151,9 @@ export function validatePrDescription(body) {
   }
 
   // Check 🟢 Fix / Solution
-  const fixMatch = text.match(/🟢\s*\*\*(?:SOLUTION|Solution|Fix|Change)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
+  const fixMatch = text.match(/🟢\s*\*\*(?:SOLUTION|Solution|Fix|Change|РЕШЕНИЕ|Решение)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
   if (!fixMatch || !fixMatch[1].replace(/<!--.*?-->/g, '').trim()) {
-    errors.push('Quick Glance is missing non-empty "🟢 **SOLUTION / Fix:**" summary');
+    errors.push('Quick Glance is missing non-empty "🟢 **SOLUTION / РЕШЕНИЕ:**" summary');
   } else {
     const content = fixMatch[1].trim();
     if (!/\*\*[^*]+\*\*/.test(content) && !/➔/.test(fixMatch[0])) {
@@ -142,9 +162,9 @@ export function validatePrDescription(body) {
   }
 
   // Check 🛡️ Scope & Impact
-  const impactMatch = text.match(/(?:🛡️|🛡)\s*\*\*(?:IMPACT|Impact|Scope)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
+  const impactMatch = text.match(/(?:🛡️|🛡)\s*\*\*(?:IMPACT|Impact|Scope|Risk|ВЛИЯНИЕ|Влияние|РИСК|Риск)[^*]*\*\*:?\s*(?:➔\s*)?([^\n\r]+)/i);
   if (!impactMatch || !impactMatch[1].replace(/<!--.*?-->/g, '').trim()) {
-    errors.push('Quick Glance is missing non-empty "🛡️ **IMPACT / Scope:**" summary');
+    errors.push('Quick Glance is missing non-empty "🛡️ **IMPACT / РИСК:**" summary');
   } else {
     const content = impactMatch[1].trim();
     if (!/\*\*[^*]+\*\*/.test(content) && !/➔/.test(impactMatch[0])) {
@@ -158,11 +178,35 @@ export function validatePrDescription(body) {
     errors.push('Missing component risk matrix table (| Area / Component | Change Summary | Production Risk |)');
   }
 
-  // 4. Check Mandatory Mermaid diagram
+  // Determine scope: frontend vs backend
+  let isFrontend = options.frontend === true || options.frontend === 'true' || options.scope === 'frontend';
+  let isBackend = options.backend === true || options.backend === 'true' || options.scope === 'backend';
+
+  if (!isFrontend && !isBackend) {
+    if (options.scope === 'fullstack') {
+      isFrontend = true;
+      isBackend = true;
+    } else {
+      // Auto-detect from table / text if table rows explicitly reference frontend or backend
+      const tableMatch = text.match(/\|[^\n]+\|[^\n]+\|\s*\n\s*\|(?:\s*:?-+:?\s*\|)+\s*\n([\s\S]*?)(?:\n\s*\n|---|\n##)/m);
+      const tableRows = tableMatch ? tableMatch[1] : '';
+      const hasFrontendRef = /\b(?:frontend|ui|components?|styles?|css|modal|dialog|button|page|view)\b/i.test(tableRows);
+      const hasBackendRef = /\b(?:backend|api|server|database|db|migration|redis|postgres|pipeline|docker)\b/i.test(tableRows);
+
+      if (hasFrontendRef && !hasBackendRef) {
+        isFrontend = true;
+      } else if (hasBackendRef && !hasFrontendRef) {
+        isBackend = true;
+      } else if (hasFrontendRef && hasBackendRef) {
+        isFrontend = true;
+        isBackend = true;
+      }
+    }
+  }
+
+  // 4. Validate Mermaid diagram and Visual Evidence
   const mermaidMatch = text.match(/```mermaid\s*\n([\s\S]*?)\n```/);
-  if (!mermaidMatch) {
-    errors.push('Missing mandatory visual diagram (```mermaid ... ```)');
-  } else {
+  if (mermaidMatch) {
     const diagramCode = mermaidMatch[1].trim();
     const mermaidResult = validateMermaid(diagramCode);
     if (!mermaidResult.ok) {
@@ -170,17 +214,44 @@ export function validatePrDescription(body) {
     }
   }
 
-  // 5. Check Deep-Dive sections
-  if (!/##\s*Problem and behavior/i.test(text)) {
+  const screenshots = extractVisualEvidence(text);
+
+  if (isFrontend && !isBackend) {
+    // Pure frontend: visual screenshot evidence is mandatory; Mermaid is optional!
+    if (screenshots.length === 0) {
+      errors.push('Frontend PR requires real visual screenshot evidence: embed image links (![alt](url) or <img>) showing before/after behavior');
+    }
+  } else if (isBackend && !isFrontend) {
+    // Pure backend: Mermaid diagram is mandatory; visual screenshot evidence is optional
+    if (!mermaidMatch) {
+      errors.push('Backend PR requires an architecture visual diagram (```mermaid ... ```)');
+    }
+  } else if (isFrontend && isBackend) {
+    // Fullstack: both are required!
+    if (!mermaidMatch) {
+      errors.push('Fullstack PR requires an architecture visual diagram (```mermaid ... ```)');
+    }
+    if (screenshots.length === 0) {
+      errors.push('Fullstack PR requires visual screenshot evidence for frontend changes: embed image links (![alt](url) or <img>)');
+    }
+  } else {
+    // Unspecified scope: require at least one (Mermaid diagram OR visual screenshot evidence)
+    if (!mermaidMatch && screenshots.length === 0) {
+      errors.push('Missing visual evidence: PR must include either a Mermaid diagram (```mermaid ... ```) for backend/logic, or visual screenshot evidence (![alt](url)) for frontend');
+    }
+  }
+
+  // 5. Check Deep-Dive sections (supporting both standard and simplified bilingual headers)
+  if (!/##\s*(?:\d+\.\s*)?(?:Problem and behavior|Problem|Описание проблемы|Описание)/i.test(text)) {
     errors.push('Missing "## Problem and behavior" deep-dive section');
   }
-  if (!/##\s*(?:Architecture and Call Trace|Architecture)/i.test(text)) {
-    errors.push('Missing "## Architecture and Call Trace" section');
+  if (!/##\s*(?:\d+\.\s*)?(?:Architecture and Call Trace|Architecture|Visual Evidence|Visual Evidence & Architecture|Архитектура)/i.test(text)) {
+    errors.push('Missing "## Architecture and Call Trace" or "## Visual Evidence" section');
   }
-  if (!/##\s*(?:Evidence & TDD Verification|Evidence)/i.test(text)) {
+  if (!/##\s*(?:\d+\.\s*)?(?:Evidence & TDD Verification|Evidence|Verification & TDD|Verification|Верификация|Тестирование)/i.test(text)) {
     errors.push('Missing "## Evidence & TDD Verification" section');
   }
-  if (!/##\s*(?:Risks and manual review|Manual review)/i.test(text)) {
+  if (!/##\s*(?:\d+\.\s*)?(?:Risks and manual review|Manual review|Risks|Ручная проверка)/i.test(text)) {
     errors.push('Missing "## Risks and manual review" section');
   } else {
     if (!/^\s*1\.\s+\S+/m.test(text)) {
@@ -190,7 +261,8 @@ export function validatePrDescription(body) {
 
   return {
     ok: errors.length === 0,
-    errors
+    errors,
+    scope: isFrontend && isBackend ? 'fullstack' : isFrontend ? 'frontend' : isBackend ? 'backend' : 'general'
   };
 }
 
@@ -208,7 +280,11 @@ main(import.meta.url, async args => {
   if (!body) {
     throw new Error('Provide PR body text via --body, --file <path>, or --pr <number>');
   }
-  const result = validatePrDescription(body);
+  const result = validatePrDescription(body, {
+    frontend: o.frontend,
+    backend: o.backend,
+    scope: o.scope
+  });
   if (!result.ok) {
     console.error('PR description static validation failed:');
     for (const err of result.errors) {
