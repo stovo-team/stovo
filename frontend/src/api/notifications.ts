@@ -51,6 +51,8 @@ export async function fetchNotificationTopic(
   });
 }
 
+let tokenRefreshSubscription: { remove: () => Promise<void> } | null = null;
+
 export async function registerDevicePushToken(
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>,
   token: string
@@ -65,6 +67,14 @@ export async function registerDevicePushToken(
 export async function unregisterDevicePushToken(
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>
 ): Promise<void> {
+  if (tokenRefreshSubscription) {
+    try {
+      await tokenRefreshSubscription.remove();
+    } catch {
+      // Best effort on logout
+    }
+    tokenRefreshSubscription = null;
+  }
   try {
     await authRequest("/api/notifications/device-token", {
       method: "DELETE"
@@ -198,6 +208,22 @@ export async function bootstrapNotifications(
     }
   } catch {
     // Plugin getPushToken not available or error; continue to legacy topic fallback
+  }
+
+  // Subscribe to native token refreshes so newly minted or rotated tokens are registered
+  try {
+    if (tokenRefreshSubscription) {
+      await tokenRefreshSubscription.remove();
+      tokenRefreshSubscription = null;
+    }
+    tokenRefreshSubscription = await NtfyPlugin.addListener("tokenRefresh", ({ token }) => {
+      const cleanToken = typeof token === "string" ? token.trim() : "";
+      if (cleanToken) {
+        void registerDevicePushToken(authRequest, cleanToken).catch(() => undefined);
+      }
+    });
+  } catch {
+    // Plugin addListener not available or unsupported
   }
 
   // Keep the independent ntfy identity registered even when Firebase is available.
