@@ -30,7 +30,13 @@ vi.mock("../components/DocumentAttachmentPreview", () => ({
   DocumentAttachmentPreview: ({ file }: { file: FamilyFile }) => <div className="document-preview-card">{file.originalName}</div>,
   detectDocumentPreviewKind: (file: FamilyFile) => file.originalName.endsWith(".md") ? "text" : "unsupported",
 }));
-vi.mock("../components/ImageLightbox", () => ({ default: () => null }));
+vi.mock("../components/ImageLightbox", () => ({
+  default: ({ title, imageUrl, onClose }: { title: string; imageUrl: string; onClose?: () => void }) => (
+    <div data-testid="image-lightbox" data-title={title} data-url={imageUrl}>
+      <button type="button" data-testid="image-lightbox-close" onClick={onClose}>Close</button>
+    </div>
+  ),
+}));
 vi.mock("../components/VideoPlayer", () => ({ VideoPlayer: ({ fullViewRequest }: { fullViewRequest?: number }) => <div className="video-player" data-full-view-request={fullViewRequest} /> }));
 vi.mock("../components/StorageCollections", () => ({ StorageCollections: () => null }));
 vi.mock("../components/StorageCanvases", () => ({ StorageCanvases: () => null }));
@@ -198,4 +204,41 @@ describe("Storage file preview", () => {
     expect(collapse?.getAttribute("aria-label")).toBe("Collapse chat list");
     expect(collapse?.parentElement?.classList.contains("storage-source-sidebar")).toBe(true);
   });
+
+  it("shows photo full screen in ImageLightbox when clicking Full screen button or preview image", async () => {
+    const host = await renderPage([file("photo-1", "Family photo.jpg", "chat-family", "Family chat")]);
+    await act(async () => host.querySelector<HTMLButtonElement>("[data-storage-file-id]")?.click());
+
+    expect(host.querySelector('[data-testid="image-lightbox"]')).toBeNull();
+
+    const fullScreen = host.querySelector<HTMLButtonElement>('[aria-label="Full screen"]');
+    expect(fullScreen).not.toBeNull();
+    await act(async () => fullScreen?.click());
+
+    expect(host.querySelector('[data-testid="image-lightbox"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="image-lightbox"]')?.getAttribute("data-title")).toBe("Family photo.jpg");
+
+    // Close lightbox and test clicking the image directly
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[data-testid="image-lightbox-close"]')?.click();
+    });
+    expect(host.querySelector('[data-testid="image-lightbox"]')).toBeNull();
+
+    const previewImg = host.querySelector<HTMLImageElement>(".storage-preview-media > img");
+    expect(previewImg).not.toBeNull();
+    await act(async () => previewImg?.click());
+    expect(host.querySelector('[data-testid="image-lightbox"]')).not.toBeNull();
+  });
+
+  it("truncates long titles with title attribute in the mobile detail header", async () => {
+    const longName = "Very_Long_Document_Name_That_Exceeds_Normal_Screen_Width_And_Needs_Ellipsis.pdf";
+    const host = await renderPage([file("doc-long", longName, "chat-family", "Family chat")]);
+    await act(async () => host.querySelector<HTMLButtonElement>("[data-storage-file-id]")?.click());
+
+    const titleH2 = host.querySelector(".storage-mobile-detail-header h2");
+    expect(titleH2).not.toBeNull();
+    expect(titleH2?.textContent).toBe(longName);
+    expect(titleH2?.getAttribute("title")).toBe(longName);
+  });
 });
+
