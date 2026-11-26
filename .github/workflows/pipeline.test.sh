@@ -177,9 +177,14 @@ awk '
 
 for workflow in .github/workflows/pipeline.yml .github/workflows/trusted-pr-tests.yml; do
   shard_contract=$(sed -n '/^  backend_test_shards:/,/^  [[:alnum:]_-][[:alnum:]_-]*:/p' "$workflow")
-  for required in 'needs: changes' 'Run three isolated backend test shards concurrently' 'bash ../.github/workflows/backend-test-shards.sh' 'BACKEND_TEST_SHARD_ZERO_LOAD:' 'BACKEND_TEST_WITH_COVERAGE:' 'backend-test-events-0' 'backend-test-events-1' 'backend-test-events-2' 'if: always()' 'Stop shared backend test containers'; do
+  for required in 'Run three isolated backend test shards concurrently' 'bash ../.github/workflows/backend-test-shards.sh' 'BACKEND_TEST_SHARD_ZERO_LOAD:' 'BACKEND_TEST_WITH_COVERAGE:' 'backend-test-events-0' 'backend-test-events-1' 'backend-test-events-2' 'if: always()' 'Stop shared backend test containers'; do
     if ! grep -Fq -- "$required" <<< "$shard_contract"; then echo "Backend workflow $workflow must start, run and clean up the shards in one job ($required)." >&2; exit 1; fi
   done
+  if [[ "$workflow" == .github/workflows/pipeline.yml ]]; then
+    if ! grep -Fq -- 'needs: changes' <<< "$shard_contract"; then echo "Pipeline backend shards must depend on changes." >&2; exit 1; fi
+  else
+    if ! grep -Fq -- 'needs: [changes, pipeline-contract, backend_lint]' <<< "$shard_contract"; then echo "Trusted PR backend shards must depend on pipeline-contract and backend_lint." >&2; exit 1; fi
+  fi
   if grep -Eq '^    strategy:|matrix\.shard|backend_test_services_cleanup:' <<< "$shard_contract"; then echo "Backend workflow $workflow must keep shards on the same runner without a job matrix or separate cleanup job." >&2; exit 1; fi
   for required in 'select -shard "$shard" -shards 3 -timings cmd/test-shard/test-durations.json' 'TEST_DATABASE_URL="postgres://family_user:family_password@127.0.0.1:${POSTGRES_PORT}/family_messenger_test_shard_${shard}?sslmode=disable"' 'TEST_REDIS_URL="redis://127.0.0.1:${REDIS_PORT}/${shard}"' 'go test -json' '-shard-zero-load "$BACKEND_TEST_SHARD_ZERO_LOAD"'; do
     if ! grep -Fq -- "$required" .github/workflows/backend-test-shards.sh; then echo "Backend shard runner must retain isolated and observable execution ($required)." >&2; exit 1; fi
