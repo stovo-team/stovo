@@ -1176,9 +1176,19 @@
     > .app-nav:not(.app-nav--active-variant-b):not(.app-nav--active-variant-c)
     a.active
     > span:not(.ms-icon) {
+    box-sizing: border-box;
     color: var(--stovo-primary) !important;
+    display: block;
     font-size: var(--font-size-caption);
     font-weight: var(--font-weight-bold);
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    padding-inline: 2px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
   }
 
   .app-frame > .app-nav a {
@@ -1230,14 +1240,17 @@
     display: flex;
     flex: 1;
     gap: 0;
+    min-width: 0;
   }
 
   .app-frame > .app-nav .app-nav-links > a {
     flex: 1;
+    min-width: 0;
   }
 
   .app-frame > .app-nav a {
     min-height: 56px;
+    min-width: 0;
   }
 
   .compose-fab {
