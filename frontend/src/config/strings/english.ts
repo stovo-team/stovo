@@ -1799,6 +1799,7 @@ export const strings = {
     contrast: "Contrast", gamma: "Gamma", aspectRatio: "Aspect Ratio:", xOffset: "X Offset", yOffset: "Y Offset", width: "Width", height: "Height",
     color: "Color:", selectColor: (hex: string) => `Select color ${hex}`, penSize: "Pen size", pen: "Pen:", brushSize: "Brush Size",
     fine: "Fine", medium: "Medium", bold: "Bold", undoStroke: "Undo Stroke", cancel: "Cancel", saving: "Saving…", done: "Done & Apply",
+    eraser: "Eraser", clearDrawing: "Clear", mode: "Mode", penMode: "Pen",
   },
   wallpaperEditor: {
     title: "Edit chat background",

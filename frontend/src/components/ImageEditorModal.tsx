@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crop as CropIcon, Pencil, RotateCw, Sliders, Undo2 } from "lucide-react";
+import { Check, Crop as CropIcon, Eraser, Pencil, RotateCw, Sliders, Trash2, Undo2 } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import { DESIGN_COLOR_VALUES } from "../design-system/palette";
 import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
@@ -11,6 +11,7 @@ interface Stroke {
   color: string;
   width: number;
   points: { x: number; y: number }[]; // normalized [0..1]
+  isEraser?: boolean;
 }
 
 interface CropRect {
@@ -53,11 +54,12 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
   const [selectedRatio, setSelectedRatio] = useState<string>("free");
 
   // Drawing
+  const [drawTool, setDrawTool] = useState<"pen" | "eraser">("pen");
   const [drawColor, setDrawColor] = useState<string>(DESIGN_COLOR_VALUES.imageEditor.defaultStroke);
   const [drawWidth, setDrawWidth] = useState<number>(4);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const currentStrokeRef = useRef<{ color: string; width: number; points: { x: number; y: number }[] } | null>(null);
+  const currentStrokeRef = useRef<Stroke | null>(null);
 
   // Image reference & state
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
@@ -155,7 +157,12 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
 
     setDirty(true);
     setIsDrawing(true);
-    const newStroke = { color: drawColor, width: drawWidth, points: [{ x, y }] };
+    const newStroke: Stroke = {
+      color: drawTool === "eraser" ? "transparent" : drawColor,
+      width: drawWidth,
+      points: [{ x, y }],
+      isEraser: drawTool === "eraser"
+    };
     currentStrokeRef.current = newStroke;
     setStrokes((prev) => [...prev, newStroke]);
   };
@@ -188,8 +195,15 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
 
     strokes.forEach((stroke) => {
       if (stroke.points.length < 1) return;
+      ctx.save();
+      if (stroke.isEraser) {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = DESIGN_COLOR_VALUES.imageEditor.eraserStroke;
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = stroke.color;
+      }
       ctx.beginPath();
-      ctx.strokeStyle = stroke.color;
       ctx.lineWidth = (stroke.width / 100) * canvas.width;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -202,6 +216,7 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
         ctx.lineTo(p.x * canvas.width, p.y * canvas.height);
       }
       ctx.stroke();
+      ctx.restore();
     });
   }, [strokes, imgElement]);
 
@@ -212,7 +227,7 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
 
     try {
       // Source image dimensions
-      const origW = imgElement.naturalWidth || imgElement.width;
+      const origW = imgElement.naturalWidth || imgElement.height;
       const origH = imgElement.naturalHeight || imgElement.height;
 
       // Calculate crop rect in pixels
@@ -249,34 +264,49 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
         ctx.putImageData(imgData, 0, 0);
       }
 
-      // Step 3: Draw annotation strokes mapped to cropped space
-      strokes.forEach((stroke) => {
-        if (stroke.points.length < 1) return;
-        ctx.beginPath();
-        ctx.strokeStyle = stroke.color;
-        // Stroke width relative to uncropped canvas width
-        ctx.lineWidth = (stroke.width / 100) * origW;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
+      // Step 3: Draw annotation strokes onto transparent canvas, then composite onto base image
+      const strokeCanvas = document.createElement("canvas");
+      strokeCanvas.width = cropW;
+      strokeCanvas.height = cropH;
+      const strokeCtx = strokeCanvas.getContext("2d");
+      if (strokeCtx) {
+        strokes.forEach((stroke) => {
+          if (stroke.points.length < 1) return;
+          strokeCtx.save();
+          if (stroke.isEraser) {
+            strokeCtx.globalCompositeOperation = "destination-out";
+            strokeCtx.strokeStyle = DESIGN_COLOR_VALUES.imageEditor.eraserStroke;
+          } else {
+            strokeCtx.globalCompositeOperation = "source-over";
+            strokeCtx.strokeStyle = stroke.color;
+          }
+          strokeCtx.beginPath();
+          // Stroke width relative to uncropped canvas width
+          strokeCtx.lineWidth = (stroke.width / 100) * origW;
+          strokeCtx.lineCap = "round";
+          strokeCtx.lineJoin = "round";
 
-        const mapPoint = (pt: { x: number; y: number }) => {
-          const px = pt.x * origW;
-          const py = pt.y * origH;
-          return {
-            x: px - cropX,
-            y: py - cropY
+          const mapPoint = (pt: { x: number; y: number }) => {
+            const px = pt.x * origW;
+            const py = pt.y * origH;
+            return {
+              x: px - cropX,
+              y: py - cropY
+            };
           };
-        };
 
-        const p0 = mapPoint(stroke.points[0]);
-        ctx.moveTo(p0.x, p0.y);
+          const p0 = mapPoint(stroke.points[0]);
+          strokeCtx.moveTo(p0.x, p0.y);
 
-        for (let i = 1; i < stroke.points.length; i++) {
-          const p = mapPoint(stroke.points[i]);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.stroke();
-      });
+          for (let i = 1; i < stroke.points.length; i++) {
+            const p = mapPoint(stroke.points[i]);
+            strokeCtx.lineTo(p.x, p.y);
+          }
+          strokeCtx.stroke();
+          strokeCtx.restore();
+        });
+        ctx.drawImage(strokeCanvas, 0, 0);
+      }
 
       // Step 4: Export blob & create File
       const mimeType = pending.file.type || "image/png";
@@ -320,7 +350,19 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
             </div>
           )}
           <div className="image-editor-header-actions">
-            <PopupCloseButton className="image-editor-close-btn" onClick={() => { if (dirty && imgElement) void handleSave(); else onClose(); }} ariaLabel={copy.close} />
+            {dirty && (
+              <button
+                type="button"
+                className="image-editor-btn-save"
+                disabled={isProcessing}
+                onClick={() => void handleSave()}
+                aria-label={copy.done}
+              >
+                <Check size={18} />
+                <span>{isProcessing ? copy.saving : copy.done}</span>
+              </button>
+            )}
+            <PopupCloseButton className="image-editor-close-btn" onClick={onClose} ariaLabel={copy.close} />
           </div>
         </header>
 
@@ -482,25 +524,48 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
 
           {editorFeatures.drawing && activeTab === "draw" && (
             <div className="image-editor-draw-controls">
-              <div className="draw-colors">
-                <span className="control-section-label">{copy.color}</span>
-                <div className="color-palette">
-                  {COLOR_PRESETS.map((hex) => (
-                    <button
-                      key={hex}
-                      type="button"
-                      className={`color-swatch${drawColor === hex ? " is-active" : ""}`}
-                      style={{ backgroundColor: hex }}
-                      onClick={() => setDrawColor(hex)}
-                      aria-label={copy.selectColor(hex)}
-                    />
-                  ))}
-                </div>
+              <div className="draw-tool-selector" role="group" aria-label={copy.mode}>
+                <button
+                  type="button"
+                  className={`draw-tool-option${drawTool === "pen" ? " is-active" : ""}`}
+                  onClick={() => setDrawTool("pen")}
+                  aria-pressed={drawTool === "pen"}
+                >
+                  <Pencil size={15} />
+                  <span>{copy.penMode}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`draw-tool-option${drawTool === "eraser" ? " is-active" : ""}`}
+                  onClick={() => setDrawTool("eraser")}
+                  aria-pressed={drawTool === "eraser"}
+                >
+                  <Eraser size={15} />
+                  <span>{copy.eraser}</span>
+                </button>
               </div>
+
+              {drawTool === "pen" && (
+                <div className="draw-colors">
+                  <span className="control-section-label">{copy.color}</span>
+                  <div className="color-palette">
+                    {COLOR_PRESETS.map((hex) => (
+                      <button
+                        key={hex}
+                        type="button"
+                        className={`color-swatch${drawColor === hex ? " is-active" : ""}`}
+                        style={{ backgroundColor: hex }}
+                        onClick={() => setDrawColor(hex)}
+                        aria-label={copy.selectColor(hex)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="draw-settings">
                 <div className="draw-pen-selector" role="group" aria-label={copy.penSize}>
-                  <span className="control-section-label">{copy.pen}</span>
+                  <span className="control-section-label">{drawTool === "eraser" ? copy.eraser : copy.pen}</span>
                   {penSizes.map((pen) => (
                     <button
                       key={pen.label}
@@ -528,15 +593,28 @@ export function ImageEditorModal({ pending, onSave, onClose, isSelected, onToggl
                   />
                 </div>
 
-                <button
-                  type="button"
-                  className="image-editor-btn-secondary draw-undo-btn"
-                  disabled={strokes.length === 0}
-                  onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-                >
-                  <Undo2 size={16} />
-                  <span>{copy.undoStroke}</span>
-                </button>
+                <div className="draw-actions">
+                  <button
+                    type="button"
+                    className="image-editor-btn-secondary draw-undo-btn"
+                    disabled={strokes.length === 0}
+                    onClick={() => setStrokes((prev) => prev.slice(0, -1))}
+                  >
+                    <Undo2 size={16} />
+                    <span>{copy.undoStroke}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="image-editor-btn-secondary draw-clear-btn"
+                    disabled={strokes.length === 0}
+                    onClick={() => { setStrokes([]); setDirty(true); }}
+                    aria-label={copy.clearDrawing}
+                    title={copy.clearDrawing}
+                  >
+                    <Trash2 size={16} />
+                    <span>{copy.clearDrawing}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

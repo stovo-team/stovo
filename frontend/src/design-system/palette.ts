@@ -26,6 +26,7 @@ export const DESIGN_COLOR_VALUES = {
   imageEditor: {
     presetColors: ["#ffffff", "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#000000"],
     defaultStroke: "#ef4444",
+    eraserStroke: "#000000",
   },
   storageCollections: {
     defaultCover: "#24364b",
