@@ -69,6 +69,12 @@ jobs:
       - name: Verify pipeline workflow contract
         shell: bash
         run: bash .github/workflows/pipeline.test.sh
+      - name: Validate PR description progressive disclosure structure
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/agent-workflows/validate-pr-description.mjs --body "$PR_BODY"
   frontend_dependencies:
     name: Prepare frontend dependencies
     needs: changes
