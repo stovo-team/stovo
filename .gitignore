@@ -67,6 +67,8 @@ features.db
 !/scripts/check-solid.cjs
 !/scripts/check-solid-boundaries.ps1
 !/scripts/check-test-integrity*
+!/scripts/pre-pr.sh
+!/scripts/install-hooks.sh
 !/scripts/gitops/
 /docker-compose.test.ps1
 
