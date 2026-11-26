@@ -63,12 +63,45 @@ test("renders appearance menu presets in equal-sized grid and title on top witho
   const wallpaperGrid = page.locator(".appearance-wallpaper-grid");
   const wallpaperCard = page.locator(".appearance-section-card").filter({ has: wallpaperGrid });
   const wallpaperLabel = wallpaperCard.locator(".appearance-section-label");
-  const firstTile = wallpaperGrid.locator(".appearance-wallpaper-tile").first();
+  const wallpaperTiles = wallpaperGrid.locator(".appearance-wallpaper-tile");
+  const firstTile = wallpaperTiles.first();
   const wallpaperLabelBox = await wallpaperLabel.boundingBox();
   const firstTileBox = await firstTile.boundingBox();
   expect(wallpaperLabelBox).not.toBeNull();
   expect(firstTileBox).not.toBeNull();
   expect(wallpaperLabelBox!.y + wallpaperLabelBox!.height).toBeLessThanOrEqual(firstTileBox!.y);
+
+  // Wallpaper grid must fit in width without horizontal overflow
+  const gridMetrics = await wallpaperGrid.evaluate((el) => ({
+    clientWidth: el.clientWidth,
+    scrollWidth: el.scrollWidth,
+    overflowX: window.getComputedStyle(el).overflowX,
+    overflowY: window.getComputedStyle(el).overflowY
+  }));
+  expect(gridMetrics.scrollWidth).toBeLessThanOrEqual(gridMetrics.clientWidth);
+  expect(gridMetrics.overflowX).toBe("visible");
+  expect(gridMetrics.overflowY).toBe("visible");
+
+  // All 5 wallpaper tiles must be visible and fit within the grid
+  expect(await wallpaperTiles.count()).toBe(5);
+  const cardBox = await wallpaperCard.boundingBox();
+  expect(cardBox).not.toBeNull();
+  for (let i = 0; i < 5; i++) {
+    const tileBox = await wallpaperTiles.nth(i).boundingBox();
+    expect(tileBox).not.toBeNull();
+    expect(tileBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
+    expect(tileBox!.x + tileBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+  }
+
+  // Custom tile label ("Загрузить") must fit inside the 5th tile bounds
+  const customSpan = wallpaperTiles.nth(4).locator("span");
+  if (await customSpan.isVisible()) {
+    const spanBox = await customSpan.boundingBox();
+    const lastTileBox = await wallpaperTiles.nth(4).boundingBox();
+    expect(spanBox).not.toBeNull();
+    expect(lastTileBox).not.toBeNull();
+    expect(spanBox!.width).toBeLessThanOrEqual(lastTileBox!.width);
+  }
 
   // Capture after screenshot
   const screenshot = testInfo.outputPath("01-mobile-appearance-presets-after.png");

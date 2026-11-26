@@ -30,12 +30,21 @@ describe("Appearance mobile layout", () => {
     );
   });
 
-  it("aligns wallpaper thumbnails to the start on mobile to prevent overlapping titles", () => {
+  it("arranges wallpaper thumbnails in a 5-column grid with visible overflow and unclipped active borders on mobile", () => {
     const mobileBlockMatch = styles.match(/@media\s*\([^)]*max-width:\s*720px[^)]*\)\s*\{([\s\S]*?)(?=@media|$)/g);
     const combinedMobileBlocks = mobileBlockMatch?.join("\n") ?? "";
 
     expect(combinedMobileBlocks).toMatch(
-      /\.settings-page\.settings-appearance-view\s+\.appearance-wallpaper-grid\s*\{[^}]*justify-content:\s*flex-start/
+      /\.settings-page\.settings-appearance-view\s+\.appearance-wallpaper-grid\s*\{[^}]*display:\s*grid/
+    );
+    expect(combinedMobileBlocks).toMatch(
+      /\.settings-page\.settings-appearance-view\s+\.appearance-wallpaper-grid\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/
+    );
+    expect(combinedMobileBlocks).toMatch(
+      /\.settings-page\.settings-appearance-view\s+\.appearance-wallpaper-grid\s*\{[^}]*overflow:\s*visible/
+    );
+    expect(combinedMobileBlocks).toMatch(
+      /\.settings-page\.settings-appearance-view\s+\.appearance-wallpaper-tile\s*\{[^}]*width:\s*100%/
     );
   });
 });
