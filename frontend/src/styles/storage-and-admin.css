@@ -1798,10 +1798,12 @@
   display: flex;
   flex: 1;
   gap: 0;
+  min-width: 0;
 }
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-nav-links > a {
   flex: 1;
+  min-width: 0;
 }
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a {
@@ -1810,6 +1812,7 @@
   max-height: none;
   max-width: none;
   min-height: 56px;
+  min-width: 0;
 }
 
 :root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-brand,
