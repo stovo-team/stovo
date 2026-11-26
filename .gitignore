@@ -66,6 +66,7 @@ features.db
 !/scripts/update-solid-baselines.sh
 !/scripts/check-solid.cjs
 !/scripts/check-solid-boundaries.ps1
+!/scripts/check-test-integrity*
 !/scripts/gitops/
 /docker-compose.test.ps1
 
