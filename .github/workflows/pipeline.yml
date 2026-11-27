@@ -122,7 +122,7 @@ jobs:
           $gitBash = Join-Path $gitRoot 'bin\bash.exe'
           if (-not (Test-Path $gitBash)) { throw "Git for Windows Bash was not found at '$gitBash'." }
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Prepare frontend dependencies in the local runner cache
@@ -167,7 +167,7 @@ jobs:
           $gitBash = Join-Path $gitRoot 'bin\bash.exe'
           if (-not (Test-Path $gitBash)) { throw "Git for Windows Bash was not found at '$gitBash'." }
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gitBash -Parent)
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - name: Report runner capacity
