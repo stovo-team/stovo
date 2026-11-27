@@ -2,8 +2,13 @@
 
 <!-- okf:generated:start -->
 Changed files:
-- `frontend/src/pages/FilesPage.tsx`
-- `frontend/src/pages/FilesPage.preview.test.tsx`
-- `frontend/src/pages/FilesPage.storage-preview.test.ts`
-- `frontend/src/styles/guest-meetings-and-final-overrides.css`
+- `.github/dependabot.yml`
+- `.github/workflows/agent-evidence.yml`
+- `.github/workflows/caddy-watchdog.yml`
+- `.github/workflows/codeql.yml`
+- `.github/workflows/docs-validation.yml`
+- `.github/workflows/gitops-release.yml`
+- `.github/workflows/pipeline.yml`
+- `.github/workflows/stage-e2e-gate.yml`
+- `.github/workflows/trusted-pr-tests.yml`
 <!-- okf:generated:end -->
