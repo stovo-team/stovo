@@ -27,7 +27,7 @@
     "@simplewebauthn/browser": "14.0.0",
     "@vitejs/plugin-react": "^6.0.5",
     "docx-preview": "^0.4.1",
-    "dompurify": "^3.4.17",
+    "dompurify": "^3.5.0",
     "emoji-picker-react": "^5.1.4",
     "livekit-client": "^2.25.0",
     "lucide-react": "^1.77.0",
