@@ -2,8 +2,7 @@
 
 <!-- okf:generated:start -->
 Changed files:
-- `frontend/src/pages/FilesPage.tsx`
-- `frontend/src/pages/FilesPage.preview.test.tsx`
-- `frontend/src/pages/FilesPage.storage-preview.test.ts`
-- `frontend/src/styles/guest-meetings-and-final-overrides.css`
+- `frontend/src/styles/appearance-editor.css`
+- `frontend/src/pages/settings/AppearanceMobileLayout.test.ts`
+- `e2e/visual/appearance-mobile.spec.ts`
 <!-- okf:generated:end -->
