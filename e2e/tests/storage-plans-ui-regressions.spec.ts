@@ -89,3 +89,42 @@ test('guest meeting title field is slightly narrower than its popup row', async 
   expect(widths.field - widths.input).toBeGreaterThanOrEqual(12);
   expect(widths.field - widths.input).toBeLessThanOrEqual(20);
 });
+
+test('Storage mobile source dropdown displays chat name and file count on one line with compact height', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.addInitScript(() => {
+    localStorage.setItem('familyMessenger.appearance', JSON.stringify({ themeMode: 'dark' }));
+    localStorage.setItem('familyMessenger.devicePreferences', JSON.stringify({ language: 'ru' }));
+  });
+  await page.goto('/app/files');
+
+  const trigger = page.locator('.storage-mobile-source-trigger');
+  await expect(trigger).toBeVisible();
+
+  const copy = trigger.locator('.storage-mobile-source-copy');
+  await expect(copy.locator('.storage-mobile-source-divider')).toHaveText('•');
+
+  const geometry = await trigger.evaluate((element) => {
+    const triggerRect = element.getBoundingClientRect();
+    const strongRect = element.querySelector('strong')!.getBoundingClientRect();
+    const smallRect = element.querySelector('small')!.getBoundingClientRect();
+    const dividerRect = element.querySelector('.storage-mobile-source-divider')!.getBoundingClientRect();
+    return {
+      triggerHeight: triggerRect.height,
+      strongTop: strongRect.top,
+      smallTop: smallRect.top,
+      dividerTop: dividerRect.top,
+      dividerLeft: dividerRect.left,
+      strongRight: strongRect.right,
+      smallLeft: smallRect.left,
+    };
+  });
+
+  expect(geometry.triggerHeight).toBeLessThanOrEqual(44);
+  expect(Math.abs(geometry.strongTop - geometry.smallTop)).toBeLessThanOrEqual(5);
+  expect(Math.abs(geometry.strongTop - geometry.dividerTop)).toBeLessThanOrEqual(5);
+  expect(geometry.dividerLeft).toBeGreaterThanOrEqual(geometry.strongRight);
+  expect(geometry.smallLeft).toBeGreaterThanOrEqual(geometry.dividerLeft);
+});
+
