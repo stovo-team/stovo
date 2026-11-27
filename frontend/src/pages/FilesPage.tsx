@@ -835,7 +835,22 @@ export default function FilesPage() {
               <div className="storage-preview-media">
                 <div className="storage-preview-actions">
                   {accessToken && <button type="button" aria-label={strings.files.download} title={strings.files.download} onClick={() => void saveFileToDisk(accessToken, selectedFile)}><Download aria-hidden="true" size={20} /></button>}
-                  <button type="button" aria-label={strings.files.fullScreen} aria-pressed={isPreviewExpanded} title={strings.files.fullScreen} onClick={() => setIsPreviewExpanded((expanded) => !expanded)}>{isPreviewExpanded ? <Minimize2 aria-hidden="true" size={20} /> : <Maximize2 aria-hidden="true" size={20} />}</button>
+                  <button
+                    type="button"
+                    className="storage-preview-fullscreen-btn"
+                    aria-label={strings.files.fullScreen}
+                    aria-pressed={isPreviewExpanded}
+                    title={strings.files.fullScreen}
+                    onClick={() => {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
+                        setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
+                      }
+                      setIsPreviewExpanded((expanded) => !expanded);
+                    }}
+                  >
+                    {isPreviewExpanded ? <Minimize2 aria-hidden="true" size={20} /> : <Maximize2 aria-hidden="true" size={20} />}
+                  </button>
                   <div className="storage-popover-anchor storage-metadata-anchor">
                     <button type="button" aria-label={strings.files.moreActions} aria-expanded={isMetadataMenuOpen} title={strings.files.moreActions} onClick={() => setIsMetadataMenuOpen((open) => !open)}><MoreVertical aria-hidden="true" size={20} /></button>
                     {isMetadataMenuOpen && (
@@ -855,9 +870,31 @@ export default function FilesPage() {
                 ) : selectedDocumentKind !== "unsupported" && accessToken ? (
                   <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} inlinePreview hideActions />
                 ) : selectedFilePreviewUrl ? (
-                  <img key={selectedFile.id} src={selectedFilePreviewUrl} alt={selectedFile.originalName}
-                    style={storagePreviewVideoStyle(previewImageSize.fileId === selectedFile.id ? previewImageSize.width : 16, previewImageSize.fileId === selectedFile.id ? previewImageSize.height : 9, window.innerWidth, window.innerHeight, isPreviewExpanded)}
-                    onLoad={(event) => setPreviewImageSize({ fileId: selectedFile.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
+                  <img
+                    key={selectedFile.id}
+                    src={selectedFilePreviewUrl}
+                    alt={selectedFile.originalName}
+                    role={typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? "button" : undefined}
+                    tabIndex={typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? 0 : undefined}
+                    onClick={() => {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl) {
+                        setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      const isMobileViewport = typeof window !== "undefined" && window.matchMedia?.("(max-width: 1024px)").matches;
+                      if (!isMobileViewport && fileKind(selectedFile) === "photos" && selectedFilePreviewUrl && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl });
+                      }
+                    }}
+                    style={{
+                      ...storagePreviewVideoStyle(previewImageSize.fileId === selectedFile.id ? previewImageSize.width : 16, previewImageSize.fileId === selectedFile.id ? previewImageSize.height : 9, window.innerWidth, window.innerHeight, isPreviewExpanded),
+                      cursor: typeof window !== "undefined" && !window.matchMedia?.("(max-width: 1024px)").matches && fileKind(selectedFile) === "photos" ? "pointer" : undefined,
+                    }}
+                    onLoad={(event) => setPreviewImageSize({ fileId: selectedFile.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })}
+                  />
                 ) : (
                   (() => {
                     const Icon = fileIcon(selectedFile);
