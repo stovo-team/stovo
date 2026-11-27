@@ -79,3 +79,35 @@ describe("storage video preview sizing", () => {
     expect(rule(".storage-page .storage-preview-media:has(.document-preview-card--inline[data-preview-kind=\"text\"])")).toContain("background: transparent;");
   });
 });
+
+describe("storage mobile fullscreen preview layout and metadata containment", () => {
+  it("hides app-nav when storage selection is active on mobile", () => {
+    expect(styles).toMatch(/\.storage-page\.has-storage-selection\s*>\s*\.app-nav\s*\{[^}]*display:\s*none\s*!important/);
+  });
+
+  it("opens storage preview as a full screen on mobile without floating card borders or backdrop padding", () => {
+    expect(styles).toMatch(/@media[^{]*\((?:max-width:\s*1024px|max-width:\s*700px)\)[\s\S]*?\.storage-page\s+\.storage-preview-backdrop\s*\{[^}]*padding:\s*0/);
+    expect(styles).toMatch(/@media[^{]*\((?:max-width:\s*1024px|max-width:\s*700px)\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog[^{]*\{[^}]*width:\s*100vw/);
+    expect(styles).toMatch(/@media[^{]*\((?:max-width:\s*1024px|max-width:\s*700px)\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog[^{]*\{[^}]*border-radius:\s*0/);
+  });
+
+  it("contains metadata dialog and formats detail list cleanly with dividers and padding", () => {
+    expect(styles).toMatch(/\.storage-page\s+\.storage-metadata-information-dialog\s*\{[^}]*max-width:\s*min\(360px,\s*calc\(100vw\s*-\s*32px\)\)/);
+    expect(styles).toMatch(/\.storage-page\s+\.storage-metadata-information-dialog\s+\.file-detail-list\s*\{[^}]*border-radius:/);
+    expect(styles).toMatch(/\.storage-page\s+\.storage-metadata-information-dialog\s+\.file-detail-list\s*>\s*div\s*\{[^}]*padding:\s*10px\s+14px/);
+  });
+
+  it("ensures mobile detail header has no negative margins or top displacement", () => {
+    expect(styles).not.toMatch(/\.storage-mobile-detail-header\s*\{[^}]*margin:\s*-[0-9]+px/);
+    expect(styles).not.toMatch(/\.storage-mobile-detail-header\s*\{[^}]*top:\s*-[0-9]+px/);
+  });
+
+  it("aligns control buttons on the same row with the close button and hides fullscreen expansion on mobile", () => {
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-fullscreen-btn\s*\{[^}]*display:\s*none\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-actions\s*\{[^}]*position:\s*absolute\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-actions\s*\{[^}]*right:\s*68px\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog\s+\.popup-close\s*\{[^}]*width:\s*44px\s*!important/);
+    expect(styles).toMatch(/@media[^{]*\(max-width:\s*1024px\)[\s\S]*?\.storage-page\s+\.storage-preview-dialog\s+\.storage-mobile-detail-header\s*\{[^}]*padding:\s*0\s+172px/);
+  });
+});
+
