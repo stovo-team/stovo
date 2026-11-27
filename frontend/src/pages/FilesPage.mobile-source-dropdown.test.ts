@@ -53,4 +53,26 @@ describe("Storage mobile source dropdown", () => {
       /\.storage-mobile-source-menu button \{[\s\S]*?border-radius:\s*var\(--radius-panel\)/
     );
   });
+
+  it("renders chat name and file count on a single line with dot divider and compact dropdown height", () => {
+    expect(page).toMatch(
+      /className="storage-mobile-source-copy"[\s\S]*?<strong[\s\S]*?<span[^>]*class(?:Name)?="[^"]*storage-mobile-source-divider[^"]*"[^>]*>•<\/span>[\s\S]*?<small>/
+    );
+    expect(page).toMatch(
+      /className="storage-mobile-source-option-copy"[\s\S]*?<strong[\s\S]*?<span[^>]*class(?:Name)?="[^"]*storage-mobile-source-divider[^"]*"[^>]*>•<\/span>[\s\S]*?<small>/
+    );
+    expect(styles).toMatch(
+      /@media \(max-width:\s*1024px\)[\s\S]*\.storage-mobile-source-trigger[\s\S]*min-height:\s*42px/
+    );
+    expect(styles).toMatch(
+      /@media \(max-width:\s*1024px\)[\s\S]*\.storage-mobile-source-menu button[\s\S]*min-height:\s*42px/
+    );
+    expect(styles).toMatch(
+      /\.storage-mobile-source-copy[^{]*\{[^}]*display:\s*flex/
+    );
+    expect(styles).toMatch(
+      /\.storage-mobile-source-copy[^{]*\{[^}]*align-items:\s*center/
+    );
+  });
 });
+

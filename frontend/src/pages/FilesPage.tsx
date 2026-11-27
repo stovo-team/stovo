@@ -615,8 +615,7 @@ export default function FilesPage() {
               onClick={() => setIsSourceMenuOpen((isOpen) => !isOpen)}
             >
               <span className="storage-mobile-source-copy">
-                <strong>{selectedSource?.label ?? strings.files.allChats}</strong>
-                <small>{selectedSource?.fileCount ?? files.length} files</small>
+                <strong>{selectedSource?.label ?? strings.files.allChats}</strong><span className="storage-mobile-source-divider" aria-hidden="true">•</span><small>{selectedSource?.fileCount ?? files.length} files</small>
               </span>
               <ChevronDown aria-hidden="true" size={20} />
             </button>
@@ -633,7 +632,7 @@ export default function FilesPage() {
                   }}
                 >
                   <span className="storage-source-avatar storage-source-avatar--all" aria-hidden="true"><MessageCircle size={19} /></span>
-                  <span><strong>{strings.files.allChats}</strong><small>{files.length} files</small></span>
+                  <span className="storage-mobile-source-option-copy"><strong>{strings.files.allChats}</strong><span className="storage-mobile-source-divider" aria-hidden="true">•</span><small>{files.length} files</small></span>
                 </button>
                 {sourceGroups.map((group) => (
                   <section className="storage-mobile-source-group" key={group.label}>
@@ -663,7 +662,7 @@ export default function FilesPage() {
                             colorId={source.avatarColorId}
                           />
                         </span>
-                        <span><strong>{source.label}</strong><small>{source.fileCount} files</small></span>
+                        <span className="storage-mobile-source-option-copy"><strong>{source.label}</strong><span className="storage-mobile-source-divider" aria-hidden="true">•</span><small>{source.fileCount} files</small></span>
                       </button>
                     ))}
                   </section>
