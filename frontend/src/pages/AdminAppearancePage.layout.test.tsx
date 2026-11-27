@@ -31,7 +31,7 @@ it("applies the saved layout to the already mounted chat workspace", async () =>
   expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { minimizedChatLayout: true } });
   expect(container.querySelector("output")?.textContent).toBe("Compact chats");
   expect(container.textContent).not.toContain("Saved");
-  expect(mocks.showToast).toHaveBeenCalledWith("Saved");
+  expect(mocks.showToast).not.toHaveBeenCalled();
 });
 it("does not apply a failed save to cached chats", async () => {
   mocks.authRequest.mockImplementation((_path, options) => options?.method === "PATCH" ? Promise.reject(new Error("offline")) : Promise.resolve(initial));

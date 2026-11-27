@@ -255,7 +255,7 @@ describe("KeyboardShortcutsSettings", () => {
     expect(document.body.textContent).not.toContain("Quick Switcher");
   });
 
-  it("updates shortcuts and announces resetAllShortcutBindings in the toast viewport", async () => {
+  it("updates shortcuts and resets to default quietly without positive toasts", async () => {
     await act(async () => {
       root?.render(<><ToastViewport /><KeyboardShortcutsSettings /></>);
     });
@@ -282,10 +282,9 @@ describe("KeyboardShortcutsSettings", () => {
       resetAllShortcutBindings();
     });
 
-    // Should be reset to default and announced through the shared status toast.
+    // Should be reset to default quietly without positive toasts.
     expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
-    expect(Array.from(document.querySelectorAll('.app-toast[role="status"]'))
-      .some((toast) => toast.textContent?.includes("Reset all to defaults"))).toBe(true);
+    expect(document.querySelector('.app-toast')).toBeNull();
   });
 
   it("renders reset button when showResetAll prop is true", async () => {

@@ -66,6 +66,7 @@ export const strings = {
     },
   },
   accessibility: {
+    notifications: "Уведомления",
     dismissNotification: "Закрыть уведомление",
   },
 

@@ -50,6 +50,7 @@ export const strings = {
     unreadMessages: (count: number) => `${count} unread messages`,
   },
   accessibility: {
+    notifications: "Notifications",
     dismissNotification: "Dismiss notification",
   },
 
