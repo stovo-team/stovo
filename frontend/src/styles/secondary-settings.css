@@ -1088,20 +1088,24 @@
     box-sizing: border-box;
     display: flex;
     gap: 12px;
-    justify-content: space-between;
-    margin: -16px -16px 0;
-    max-width: calc(100% + 32px);
-    min-height: 56px;
+    justify-content: flex-start;
+    margin: 0;
+    max-width: 100%;
+    min-height: 44px;
     min-width: 0;
-    padding: 12px 16px 8px;
-    position: sticky;
-    top: -16px;
-    width: calc(100% + 32px);
+    padding: 0 48px 0 0;
+    position: relative;
+    top: 0;
+    width: 100%;
     z-index: 2;
   }
 
+  .storage-mobile-detail-header h2,
   .storage-mobile-detail-header strong {
-    font-size: var(--font-size-body);
+    font-size: var(--font-size-title-3);
+    font-weight: var(--font-weight-semibold);
+    margin: 0;
+    max-width: 100%;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
