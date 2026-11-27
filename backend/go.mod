@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	entgo.io/ent v0.14.6
 	firebase.google.com/go/v4 v4.21.0
-	github.com/alicebob/miniredis/v2 v2.38.0
+	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/doquangtan/socketio/v4 v4.1.8
 	github.com/go-chi/chi/v5 v5.5.0
