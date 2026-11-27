@@ -8,14 +8,12 @@ import { PopupDialog } from "./ui/Popup";
 import { PopupButton } from "./ui/PopupButton";
 import { PopupField } from "./ui/PopupField";
 import { PresetNumberControl } from "./ui/PresetNumberControl";
-import { MCPProviderMark } from "./MCPProviderMark";
 import {
   MCP_PERMISSION_KEYS,
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
   MCP_PROVIDERS,
-  MCPProviderId,
   MCPAuthMode,
   createMCPConnector,
   defaultMCPAlias,
@@ -130,7 +128,7 @@ export function buildUnifiedSetupPrompt({
   allowInsightSearch
 }: {
   alias: string;
-  provider: string;
+  provider?: string;
   mcpUrl: string;
   token: string;
   allowInsightSearch: boolean;
@@ -141,7 +139,9 @@ export function buildUnifiedSetupPrompt({
   const insightCommand = `codex mcp add insight --url ${insightMcpUrl} --header "Authorization: Bearer ${token}"`;
 
   const sections: string[] = [
-    `Connect Stovo Messenger agent "${formattedAlias}" (${provider}).`,
+    provider
+      ? `Connect Stovo Messenger agent "${formattedAlias}" (${provider}).`
+      : `Connect Stovo Messenger agent "${formattedAlias}".`,
     `1. Start the stovo-connector for this agent:\n${connectorCommand}`
   ];
 
@@ -201,7 +201,6 @@ export default function MCPConnectorsPanel({
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [provider, setProvider] = useState<MCPProviderId | "">("");
   const [name, setName] = useState("");
   const [authMode, setAuthMode] = useState<MCPAuthMode>("subscription");
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
@@ -287,7 +286,6 @@ export default function MCPConnectorsPanel({
 
   function resetConnectionDraft() {
     setName("");
-    setProvider("");
     setAuthMode("subscription");
     setAllowedChatIds([]);
     setAllowInsightSearch(true);
@@ -316,7 +314,7 @@ export default function MCPConnectorsPanel({
   ) {
     const promptDetails = buildUnifiedSetupPrompt({
       alias: result.connector.alias,
-      provider: result.connector.provider || provider || "codex",
+      provider: result.connector.provider,
       mcpUrl: result.mcpUrl,
       token: result.token,
       allowInsightSearch: insightSearchAllowed
@@ -329,7 +327,7 @@ export default function MCPConnectorsPanel({
       cliCommand: result.cliCommand || result.claudeCommand || promptDetails.connectorCommand,
       connectorName: result.connector.name,
       connectorId: result.connector.id,
-      provider: result.connector.provider || provider || "codex",
+      provider: result.connector.provider || "claude_code",
       alias: result.connector.alias,
       allowInsightSearch: insightSearchAllowed,
       stovoConnectorCommand: promptDetails.connectorCommand,
@@ -352,11 +350,10 @@ export default function MCPConnectorsPanel({
           .replace(/[^a-z0-9_-]/g, "-")
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "")
-          .slice(0, 28) || defaultMCPAlias(provider);
+          .slice(0, 28) || "agent";
 
       const result = await createMCPConnector(accessToken, {
         name: trimmedName,
-        provider: provider as MCPProviderId,
         alias: generatedAlias,
         authMode,
         allowedChatIds,
@@ -366,7 +363,6 @@ export default function MCPConnectorsPanel({
       setConnectors((current) => [result.connector, ...current.filter((item) => item.id !== result.connector.id)]);
       applySecret(result, allowInsightSearch);
       setName("");
-      setProvider("");
       setAuthMode("subscription");
       setAllowedChatIds([]);
       setAllowInsightSearch(true);
@@ -649,31 +645,6 @@ export default function MCPConnectorsPanel({
             <small className="muted-text">{copy.nicknameHelper(formatMCPAlias(nicknameAlias || "nickname"))}</small>
           </label>
 
-          <div className="mcp-provider-choice">
-            <span className="mcp-form-label">{copy.providerLabel}</span>
-            <div className="mcp-provider-tabs" role="group" aria-label={copy.providerLabel}>
-              {MCP_PROVIDERS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`mcp-provider-tab${provider === item.id ? " is-selected" : ""}`}
-                  aria-pressed={provider === item.id}
-                  onClick={() => {
-                    setProvider(item.id);
-                    if (item.id === "openclaw" || item.id === "hermes") {
-                      setAuthMode("api");
-                    } else {
-                      setAuthMode("subscription");
-                    }
-                  }}
-                >
-                  <MCPProviderMark provider={item.id} />
-                  <strong>{item.label}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <fieldset className="mcp-tag-fieldset">
             <legend>
               <span>{copy.chatScope}</span>
@@ -747,7 +718,7 @@ export default function MCPConnectorsPanel({
             <button
               type="submit"
               className="mcp-create-button"
-              disabled={isSaving || !name.trim() || !provider || !allowedChatIds.length}
+              disabled={isSaving || !name.trim() || !allowedChatIds.length}
             >
               {isSaving ? copy.connecting : copy.createConnection}
             </button>

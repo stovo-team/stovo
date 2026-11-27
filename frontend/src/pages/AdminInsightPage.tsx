@@ -89,7 +89,6 @@ export default function AdminInsightPage() {
           <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} />
           <div>
             <h1>{copy.title}</h1>
-            <p className="muted-text">{copy.description}</p>
           </div>
         </div>
 

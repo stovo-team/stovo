@@ -72,8 +72,10 @@ describe("MCPConnectorsPanel Russian localization and setup prompt", () => {
     });
 
     expect(container.textContent).toContain("Псевдоним агента");
-    expect(container.querySelectorAll(".mcp-provider-tab")).toHaveLength(4);
-    expect(container.querySelectorAll(".mcp-provider-mark")).toHaveLength(4);
+    expect(container.textContent).not.toContain("Провайдер агента");
+    expect(container.querySelector(".mcp-provider-choice")).toBeNull();
+    expect(container.querySelectorAll(".mcp-provider-tab")).toHaveLength(0);
+    expect(container.querySelectorAll(".mcp-provider-mark")).toHaveLength(0);
 
     const chatChoice = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
       .find((input) => input.parentElement?.textContent?.includes("Project room"));
@@ -119,8 +121,6 @@ describe("MCPConnectorsPanel Russian localization and setup prompt", () => {
 
     const nicknameInput = Array.from(container.querySelectorAll<HTMLInputElement>("input"))
       .find((input) => input.closest("label")?.textContent?.includes("Псевдоним агента"));
-    const codexProvider = Array.from(container.querySelectorAll<HTMLButtonElement>(".mcp-provider-tab"))
-      .find((button) => button.textContent?.includes("ChatGPT (Codex)"));
     const chatChoice = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
       .find((input) => input.parentElement?.textContent?.includes("Project room"));
 
@@ -129,7 +129,6 @@ describe("MCPConnectorsPanel Russian localization and setup prompt", () => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(nicknameInput, "Researcher");
         nicknameInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
-      codexProvider?.click();
       chatChoice?.click();
     });
 
@@ -138,7 +137,7 @@ describe("MCPConnectorsPanel Russian localization and setup prompt", () => {
     });
 
     expect(createMCPConnector).toHaveBeenCalledWith("test-token", expect.objectContaining({
-      name: "Researcher", provider: "codex", alias: "researcher", allowedChatIds: ["chat-one"],
+      name: "Researcher", alias: "researcher", allowedChatIds: ["chat-one"],
     }));
 
     expect(container.querySelectorAll(".mcp-setup-prompt")).toHaveLength(1);

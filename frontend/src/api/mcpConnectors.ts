@@ -215,7 +215,7 @@ export function createMCPConnector(
   caller: MCPApiCaller,
   body: {
     name: string;
-    provider: MCPProviderId;
+    provider?: MCPProviderId | string;
     alias?: string;
     authMode?: MCPAuthMode;
     allowedChatIds: string[];
@@ -223,11 +223,13 @@ export function createMCPConnector(
     maxHistoryMessages: number;
   }
 ) {
+  const provider = (body.provider || "claude_code") as MCPProviderId;
   return requestWithTokenOrCaller<MCPConnectorCreateResponse>(caller, "/api/admin/mcp-connectors", {
     method: "POST",
     body: {
       ...body,
-      alias: body.alias || defaultMCPAlias(body.provider),
+      provider,
+      alias: body.alias || defaultMCPAlias(provider),
       authMode: body.authMode || "subscription"
     }
   });
