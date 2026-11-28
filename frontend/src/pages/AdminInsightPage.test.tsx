@@ -58,6 +58,14 @@ describe("AdminInsightPage", () => {
     });
   }
 
+  it("renders clean header without subtitle paragraph", async () => {
+    mocks.loadIntelligenceConnections.mockResolvedValueOnce({ connections: [] });
+    await renderPage();
+
+    const header = container?.querySelector(".admin-detail-header");
+    expect(header?.querySelector("p")).toBeNull();
+  });
+
   it("renders not connected state when no active space connection exists", async () => {
     mocks.loadIntelligenceConnections.mockResolvedValueOnce({ connections: [] });
     await renderPage();

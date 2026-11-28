@@ -33,20 +33,19 @@ for (const scenario of shellScenarios) {
 
     const pageTitle = scenario.locale === "ru" ? "Подключённые агенты" : "Connected Agents";
     const nicknameLabel = scenario.locale === "ru" ? "Псевдоним агента" : "Agent nickname";
-    const providerLabel = scenario.locale === "ru" ? "Провайдер агента" : "Agent provider";
     const insightLabel = scenario.locale === "ru" ? "Разрешения Stovo Insight" : "Stovo Insight permissions";
     const selectedPermissions = page.locator(".mcp-connector-form input[type='checkbox']:checked");
 
     await expect(page.getByRole("heading", { level: 1, name: pageTitle })).toBeVisible();
     await expect(page.getByLabel(nicknameLabel)).toBeVisible();
-    await expect(page.getByLabel(providerLabel)).toBeVisible();
+    await expect(page.locator(".mcp-provider-choice")).toHaveCount(0);
+    await expect(page.locator(".mcp-provider-tab")).toHaveCount(0);
     await expect(page.getByText(insightLabel)).toBeVisible();
     await expect(selectedPermissions).toHaveCount(0);
     await expect(page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" })).toBeDisabled();
     await screenshot(page, info, { ...scenario, id: `CA-create-${scenario.id}` });
 
     await page.getByLabel(nicknameLabel).fill("Researcher");
-    await page.locator(".mcp-provider-tab").filter({ hasText: "Codex" }).click();
     await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
     await page.getByRole("button", { name: scenario.locale === "ru" ? "Создать подключение" : "Create connection" }).click();
 
@@ -74,7 +73,6 @@ test("Codex setup screenshot", async ({ page }, info) => {
   await page.goto("/app/admin/mcp");
   await ready(page);
   await page.getByLabel("Agent nickname").fill("Researcher");
-  await page.locator(".mcp-provider-tab").filter({ hasText: "Codex" }).click();
   await page.locator(".mcp-tag").filter({ hasText: "Planning Team" }).locator("input").check();
   await page.getByRole("button", { name: "Create connection" }).click();
   await expect(page.locator(".mcp-secret-card .mcp-setup-prompt").first()).toBeVisible();
