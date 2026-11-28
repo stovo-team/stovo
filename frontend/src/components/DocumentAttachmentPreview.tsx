@@ -261,8 +261,19 @@ function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }
           standardFontDataUrl: pdfJsAssetUrl("standard_fonts/"),
         });
         const doc = await loadingTask.promise;
+        const destroyDoc = async () => {
+          const docWithDestroy = doc as unknown as {
+            destroy?: () => Promise<void>;
+            loadingTask?: { destroy: () => Promise<void> };
+          };
+          if (typeof docWithDestroy.destroy === "function") {
+            await docWithDestroy.destroy();
+          } else if (typeof docWithDestroy.loadingTask?.destroy === "function") {
+            await docWithDestroy.loadingTask.destroy();
+          }
+        };
         if (cancelled) {
-          await doc.destroy();
+          await destroyDoc();
           return;
         }
         setPageCount(doc.numPages);
@@ -300,7 +311,7 @@ function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }
           canvas.style.height = `${baseCssHeight * currentZoom}px`;
           const context = canvas.getContext("2d");
           if (!context) continue;
-          await page.render({ canvasContext: context, viewport }).promise;
+          await page.render({ canvas, canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
           if (!cancelled) host.appendChild(canvas);
         }
         if (!cancelled && doc.numPages > maxPages) {
@@ -309,7 +320,7 @@ function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }
           note.textContent = copy.pdfTruncated(maxPages, doc.numPages);
           host.appendChild(note);
         }
-        await doc.destroy();
+        await destroyDoc();
       } catch (err) {
         console.error("Failed to render PDF preview:", err);
         if (!cancelled) setError(copy.pdfUnavailable);
