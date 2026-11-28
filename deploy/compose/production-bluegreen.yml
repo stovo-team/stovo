@@ -196,7 +196,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: pgsty/silo:latest
     # Console UI is unused in-compose; keep API only. Cap Go heap so MinIO does
     # not treat the host's free RAM as its budget (defaults to ~75% of cgroup).
     command: server /data --address ":9000" --quiet
@@ -204,12 +204,12 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       MINIO_BROWSER: "off"
-      MINIO_MEMLIMIT: ${MINIO_MEMLIMIT:-256MiB}
+      MINIO_MEMLIMIT: ${MINIO_MEMLIMIT:-128MiB}
     volumes:
       - minio-data:/data
     expose:
       - "9000"
-    mem_limit: ${MINIO_CONTAINER_MEM_LIMIT:-384m}
+    mem_limit: ${MINIO_CONTAINER_MEM_LIMIT:-256m}
     healthcheck:
       # Live probe is cheaper than `mc ready` and does not need an mc alias.
       test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
