@@ -208,18 +208,64 @@
   border-radius: var(--radius-surface);
 }
 
+.mcp-connector-form label.mcp-toggle-row,
 .mcp-toggle-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   cursor: pointer;
   user-select: none;
+  text-align: left;
+}
+
+.mcp-toggle-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--color-palette-66341b70b395);
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.mcp-toggle-row input[type="checkbox"]:checked {
+  border-color: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  background: var(--accent-primary, var(--color-palette-a5384157bc1a));
+  box-shadow: none;
+}
+
+.mcp-toggle-row input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid var(--color-palette-f2074b6cef37);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.mcp-toggle-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-primary, var(--color-palette-a5384157bc1a));
+  outline-offset: 2px;
+}
+
+.mcp-toggle-row input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .mcp-toggle-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
 }
 
 .mcp-toggle-title {
