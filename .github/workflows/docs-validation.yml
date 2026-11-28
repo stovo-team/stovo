@@ -144,7 +144,7 @@ jobs:
       - name: Validate docs, Compose, and Helm chart
         run: node --test .github/docs-validation.test.mjs
       - name: Validate OKF repository knowledge
-        uses: left-try/okf-agent@502cdd463273183577d6da0dbdd93aa2d83b0da6 # v0.3.2 (with action extraction fix)
+        uses: left-try/okf-agent@502cdd49a6cbf5e34d029921be1aa3a799513eb1 # v0.3.2 (with action extraction fix)
         with:
           command: validate
           args: .
