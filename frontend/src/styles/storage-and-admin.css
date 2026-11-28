@@ -253,8 +253,9 @@
 }
 
 .mcp-connector-form label.mcp-tag,
-.mcp-connector-form label.mcp-select-all {
-  display: inline-flex;
+.mcp-connector-form label.mcp-select-all,
+.mcp-connector-form label.mcp-toggle-row {
+  display: flex;
 }
 
 .mcp-connector-form fieldset {

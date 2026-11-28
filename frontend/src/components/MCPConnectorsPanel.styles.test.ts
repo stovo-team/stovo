@@ -7,6 +7,7 @@ const stylesheet = [
   readCssSource(resolve(process.cwd(), "src/design-system/tokens.css")),
   readCssSource(resolve(process.cwd(), "src/styles.css")),
   readCssSource(resolve(process.cwd(), "src/styles/storage-and-admin.css")),
+  readCssSource(resolve(process.cwd(), "src/styles/mcp-connectors.css")),
 ].join("\n");
 
 let styleElement: HTMLStyleElement | null = null;
@@ -117,5 +118,39 @@ describe("MCP connector settings button", () => {
     const selectedTab = declarationsFor(".mcp-provider-tab.is-selected");
     expect(selectedTab["border-color"]).toBeDefined();
     expect(selectedTab.background).toBeDefined();
+  });
+
+  it("keeps the Stovo Insight toggle row display flex and aligns checkbox to the start", () => {
+    styleElement = document.createElement("style");
+    styleElement.textContent = stylesheet;
+    document.head.appendChild(styleElement);
+
+    const form = document.createElement("form");
+    form.className = "mcp-connector-form mcp-section-box";
+    form.innerHTML = `
+      <div class="mcp-toggle-card">
+        <label class="mcp-toggle-row">
+          <input type="checkbox" checked />
+          <span class="mcp-toggle-content">
+            <strong class="mcp-toggle-title">Allow search in Stovo Insight</strong>
+            <small class="muted-text">Allow this agent to search the knowledge base</small>
+          </span>
+        </label>
+      </div>
+    `;
+    document.body.appendChild(form);
+
+    const toggleRow = form.querySelector<HTMLElement>(".mcp-toggle-row");
+    expect(toggleRow).toBeTruthy();
+    const rowStyle = getComputedStyle(toggleRow!);
+    expect(rowStyle.display).toBe("flex");
+    expect(rowStyle.alignItems).toBe("flex-start");
+
+    const checkbox = form.querySelector<HTMLInputElement>(".mcp-toggle-row input[type='checkbox']");
+    expect(checkbox).toBeTruthy();
+    const checkboxStyle = getComputedStyle(checkbox!);
+    expect(checkboxStyle.width).toBe("18px");
+    expect(checkboxStyle.height).toBe("18px");
+    expect(checkboxStyle.flexShrink).toBe("0");
   });
 });
