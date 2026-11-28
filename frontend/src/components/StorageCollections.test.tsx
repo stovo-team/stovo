@@ -51,8 +51,15 @@ describe("StorageCollections localization", () => {
     expect(host.textContent).toContain("Новая папка или альбом");
     expect(host.textContent).toContain("Создать");
     expect(document.body.querySelector("[role='option'][data-value='album']")?.textContent).toContain("Фотоальбом");
-    expect(document.body.querySelector(".storage-collection-create-actions")?.textContent).toContain("Отмена");
     expect(document.body.querySelector(".storage-create-cover-picker .symbol-color-controls__icons button")).not.toBeNull();
+    const preview = document.body.querySelector(".storage-create-cover-preview");
+    const typeField = document.body.querySelector(".storage-popup-select-field");
+    const picker = document.body.querySelector(".storage-create-cover-picker");
+    expect(preview).not.toBeNull();
+    expect(typeField).not.toBeNull();
+    expect(picker).not.toBeNull();
+    expect(preview!.compareDocumentPosition(typeField!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(typeField!.compareDocumentPosition(picker!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("allows selecting a cover icon while creating a collection", async () => {

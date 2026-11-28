@@ -217,7 +217,66 @@
 .popup-select__empty { padding: 12px; color: var(--text-secondary); font-size: var(--font-size-small); }
 .popup-select__footer { display: grid; gap: 8px; padding: 8px 4px 4px; }
 
-@media (max-width: 600px) {
-  .popup-backdrop { padding: 16px; }
-  .popup-dialog { max-height: calc(100vh - 32px); }
+@media (max-width: 768px), (pointer: coarse) and (max-width: 1024px) {
+  .popup-backdrop {
+    align-items: stretch;
+    justify-items: stretch;
+    padding: 0;
+    place-items: stretch;
+  }
+
+  .popup-dialog,
+  .popup-dialog--sm,
+  .popup-dialog--md,
+  .popup-dialog--lg,
+  .popup-dialog--xl,
+  .popup-dialog--full {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100%;
+    max-height: none;
+    max-width: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-width: 0;
+    padding: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)) max(16px, env(safe-area-inset-right, 0px)) max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px)) max(16px, env(safe-area-inset-left, 0px));
+    width: 100%;
+  }
+
+  .popup-close {
+    top: max(14px, env(safe-area-inset-top, 0px));
+    right: max(14px, env(safe-area-inset-right, 0px));
+  }
+}
+
+:root[data-platform="native"] .popup-backdrop {
+  align-items: stretch;
+  justify-items: stretch;
+  padding: 0;
+  place-items: stretch;
+}
+
+:root[data-platform="native"] .popup-dialog,
+:root[data-platform="native"] .popup-dialog--sm,
+:root[data-platform="native"] .popup-dialog--md,
+:root[data-platform="native"] .popup-dialog--lg,
+:root[data-platform="native"] .popup-dialog--xl,
+:root[data-platform="native"] .popup-dialog--full {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+  max-height: none;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
+  padding: max(20px, calc(env(safe-area-inset-top, 0px) + 12px)) max(16px, env(safe-area-inset-right, 0px)) max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px)) max(16px, env(safe-area-inset-left, 0px));
+  width: 100%;
+}
+
+:root[data-platform="native"] .popup-close {
+  top: max(14px, env(safe-area-inset-top, 0px));
+  right: max(14px, env(safe-area-inset-right, 0px));
 }

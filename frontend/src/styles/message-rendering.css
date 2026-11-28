@@ -668,17 +668,10 @@
     padding-right: 14px;
   }
 
-  .chat-folder-layout {
-    margin: 0 auto auto;
-    max-height: calc(100vh - 100px);
-    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 40px), 64px) - max(calc(env(safe-area-inset-bottom, 0px) + 20px), 24px));
-    width: 100%;
-  }
-
-  .chat-folder-body {
-    margin-right: -8px; padding: 14px 8px 14px 0;
-  }
-
+  .chat-folder-layout { margin: 0 auto auto; max-height: calc(100vh - 100px); max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 40px), 64px) - max(calc(env(safe-area-inset-bottom, 0px) + 20px), 24px)); width: 100%; }
+  .popup-dialog.chat-folder-layout { border: none; border-radius: 0; box-shadow: none; height: 100%; margin: 0; max-height: none; max-width: none; min-height: 100vh; min-height: 100dvh; width: 100%; }
+  .chat-folder-layout .chat-folder-form { display: flex; flex-direction: column; flex: 1; height: 100%; min-height: 0; }
+  .chat-folder-body { flex: 1; overflow-y: auto; margin-right: -8px; padding: 14px 8px 14px 0; }
   .chat-folder-actions { padding: 10px 0 0; }
 }
 

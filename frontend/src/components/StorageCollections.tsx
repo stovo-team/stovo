@@ -208,7 +208,12 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
       >
         <h2>{copy.newFolder}</h2>
         <PopupField label={copy.title} autoFocus value={title} onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} />
-        <div className="storage-create-cover-picker"><span>{copy.cover}</span><div className="storage-create-cover-preview" style={{ backgroundColor: coverColor }}>{(() => { const Icon = coverIconOptions.find((option) => option.value === coverIcon)?.Icon ?? Folder; return <Icon size={25} />; })()}</div><SymbolColorControls symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))} symbol={coverIcon} onSymbolChange={(id) => setCoverIcon(id as CoverIconName)} colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))} color={coverColor} onColorChange={setCoverColor} /></div>
+        <div className="storage-create-cover-preview-row">
+          <span className="storage-create-cover-label">{copy.cover}</span>
+          <div className="storage-create-cover-preview" style={{ backgroundColor: coverColor }}>
+            {(() => { const Icon = coverIconOptions.find((option) => option.value === coverIcon)?.Icon ?? Folder; return <Icon size={26} />; })()}
+          </div>
+        </div>
         <div className="storage-popup-select-field">
           <label id="storage-collection-kind-label">{copy.type}</label>
           <PopupSelect
@@ -216,6 +221,16 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
             value={kind}
             onChange={(value: string) => setKind(value as CollectionKind)}
             options={[{ value: "folder", label: copy.fileFolder }, { value: "album", label: copy.photoAlbum }, { value: "music-album", label: copy.musicAlbum }]}
+          />
+        </div>
+        <div className="storage-create-cover-picker">
+          <SymbolColorControls
+            symbols={coverIconOptions.map(({ value, Icon }) => ({ id: value, label: avatarCopy.symbolNames[value], icon: <Icon /> }))}
+            symbol={coverIcon}
+            onSymbolChange={(id) => setCoverIcon(id as CoverIconName)}
+            colors={Object.entries(DESIGN_COLOR_VALUES.avatarPalette).map(([id, color]) => ({ id: color, label: avatarCopy.colorNames[id as keyof typeof avatarCopy.colorNames], value: color }))}
+            color={coverColor}
+            onColorChange={setCoverColor}
           />
         </div>
         <div className="storage-collection-create-actions"><PopupButton variant="secondary" onClick={() => { setCreating(false); setTitle(""); }}>{copy.cancel}</PopupButton><PopupButton variant="primary" disabled={!title.trim()} onClick={() => void create()}>{copy.create}</PopupButton></div>
