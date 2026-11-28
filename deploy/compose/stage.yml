@@ -86,7 +86,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: pgsty/silo:latest
     container_name: stovo-stage-minio
     restart: unless-stopped
     networks:
@@ -96,8 +96,10 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the stage .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the stage .env}
       MINIO_BROWSER: "off"
+      MINIO_MEMLIMIT: ${MINIO_MEMLIMIT:-128MiB}
     expose:
       - "9000"
+    mem_limit: ${MINIO_CONTAINER_MEM_LIMIT:-256m}
     volumes:
       - minio-stage-data:/data
     healthcheck:

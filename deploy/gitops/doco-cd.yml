@@ -13,12 +13,22 @@ services:
       DOCO_GIT_BRANCH: "gitops/stage"
       DOCO_COMPOSE_FILE: "deploy/gitops/compose.yaml"
       DOCO_SECRET_STORES_FILE: "deploy/gitops/secret-stores.yml"
-      DOCO_REMOVE_ORPHANS: "false"
+      DOCO_REMOVE_ORPHANS: "true"
       DOCO_PRUNE_IMAGES: "false"
       ADAPTER_AUTH_TOKEN: "${ADAPTER_AUTH_TOKEN:-}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - doco-cd-data:/data
+    networks:
+      - host-adapter
+
+  apprise:
+    image: caronc/apprise-api:latest
+    container_name: doco-apprise-messenger
+    restart: unless-stopped
+    environment:
+      APPRISE_WORKER_COUNT: "2"
+    mem_limit: 128m
     networks:
       - host-adapter
 
