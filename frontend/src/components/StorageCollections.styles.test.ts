@@ -93,4 +93,9 @@ describe("Storage collection creation dialog layout", () => {
     expect(createActionsRule).toMatch(/justify-self:\s*end/);
     expect(stylesheet).toMatch(/:root\[data-brand-gradient="custom"\][\s\S]*?\.chat-folder-actions \.popup-button--primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
   });
+
+  it("places the cover preview above the collection type selection in the create dialog", () => {
+    expect(stylesheet).toContain(".storage-create-cover-preview-row");
+    expect(stylesheet).toMatch(/\.storage-create-cover-picker\s*\{[^}]*display:\s*flex/);
+  });
 });

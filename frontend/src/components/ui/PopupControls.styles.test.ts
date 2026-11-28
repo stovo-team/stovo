@@ -64,4 +64,13 @@ describe("shared popup control dimensions", () => {
     expect(styles).toMatch(/:root\[data-brand-gradient="custom"\]\s*\.popup-button--primary[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
     expect(styles).toMatch(/:root\[data-brand-gradient="custom"\]\s*\.popup-button--primary:hover:not\(:disabled\)[\s\S]*?background:\s*var\(--color-brand-gradient\)/);
   });
+
+  it("opens popups fullscreen on mobile viewports and native platforms", () => {
+    const mobileBlock = styles.match(/@media[^{]*max-width:\s*768px[^{]*\{([\s\S]*?\n\})/)?.[1] ?? "";
+    expect(mobileBlock).toMatch(/\.popup-backdrop\s*\{[^}]*padding:\s*0/);
+    expect(mobileBlock).toMatch(/\.popup-dialog[^{}]*\{[^}]*width:\s*100%/);
+    expect(mobileBlock).toMatch(/\.popup-dialog[^{}]*\{[^}]*height:\s*100%/);
+    expect(mobileBlock).toMatch(/\.popup-dialog[^{}]*\{[^}]*border-radius:\s*0/);
+    expect(styles).toMatch(/:root\[data-platform="native"\][\s\S]*?\.popup-dialog[^{}]*\{[^}]*width:\s*100%/);
+  });
 });
