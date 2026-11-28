@@ -10,6 +10,7 @@ const TOAST_EVENT = "stovo:toast";
 let nextToastId = 0;
 
 export function showToast(message: string, kind: ToastKind = "success") {
+  if (kind === "success") return;
   window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: { message, kind } }));
 }
 
@@ -21,6 +22,7 @@ export function ToastViewport() {
   useEffect(() => {
     const onToast = (event: Event) => {
       const { message, kind } = (event as CustomEvent<{ message: string; kind: ToastKind }>).detail;
+      if (kind === "success") return;
       const id = ++nextToastId;
       setToasts((current) => [...current.slice(-2), { id, kind, message }]);
       if (kind !== "error") {
@@ -38,7 +40,7 @@ export function ToastViewport() {
     };
   }, []);
 
-  return <div className="toast-viewport" aria-label="Notifications">
+  return <div className="toast-viewport" aria-label={strings.accessibility.notifications}>
     {toasts.map(({ id, kind, message }) => {
       const Icon = kind === "error" ? AlertCircle : kind === "success" ? CheckCircle2 : Info;
       return <div key={id} className={`app-toast app-toast--${kind}`} role={kind === "error" ? "alert" : "status"} aria-live={kind === "error" ? "assertive" : "polite"}>
